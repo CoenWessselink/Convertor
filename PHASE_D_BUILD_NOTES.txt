@@ -1,0 +1,48 @@
+CONVERTOR – PHASE D BUILD NOTES
+
+Doel
+- Lokale bewijs- en validatiefase toevoegen bovenop fase C.
+- Node-gedreven validatie expliciet maken.
+- Playwright smoke/e2e tests toevoegen voor login, upload, jobs en viewer.
+
+Toegevoegd in Convertor-app
+- playwright.config.js
+- tests/e2e/auth-upload.spec.js
+- tests/fixtures/sample.step
+- tests/fixtures/invalid.txt
+- scripts/validate-local.mjs
+- package.json script: test:e2e
+- @playwright/test als devDependency
+
+Toegevoegd in Convertor-Api
+- scripts/local-proof.mjs
+
+Verwachte lokale paden
+- C:\CONVERTOR\Convertor-app
+- C:\CONVERTOR\Convertor-Api
+
+Verplichte lokale commando's
+API
+cd C:\CONVERTOR\Convertor-Api
+copy .env.example .env
+npm install
+npm run migrate
+npm run seed
+npm test
+npm run dev
+
+APP
+cd C:\CONVERTOR\Convertor-app
+copy .env.example .env
+npm install
+npm run lint
+npm run test
+npm run build
+npx playwright install
+npm run test:e2e
+npm run dev
+
+Belangrijk
+- In deze omgeving zijn app unit tests en build opnieuw uit te voeren.
+- Playwright browsers zijn hier niet vooraf beschikbaar; lokale install/run blijft verplicht.
+- Deze fase levert de bewijslaag en testset op, maar de uiteindelijke 100%-claim hangt af van het lokaal groen afronden van alle commando's en de praktijkflow.

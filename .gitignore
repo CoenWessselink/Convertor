@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Build and test output
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# Runtime data and generated files
+Convertor-Api/storage/
+
+# Local logs and proof output
+*.log
+API_*.json
+API_*.txt
+APP_*.log
