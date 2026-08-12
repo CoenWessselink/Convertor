@@ -31,7 +31,14 @@ from cws_convertor.product import (
     PROJECT_PACKAGE_FORMAT,
     PROJECT_SCHEMA_VERSION,
 )
-from .model import ProjectModel, ProjectValidationError, stable_json_bytes, utc_now_iso
+from .model import (
+    ENTITY_COLLECTIONS,
+    ProjectModel,
+    ProjectValidationError,
+    project_hash_bundle_from_snapshot,
+    stable_json_bytes,
+    utc_now_iso,
+)
 
 PACKAGE_SCHEMA_VERSION = "1.0"
 SQLITE_SCHEMA_VERSION = 1
@@ -180,7 +187,8 @@ class ProjectStore:
         source_paths: Mapping[str, str | Path] | None = None,
         previews: Mapping[str, bytes | str | Path] | None = None,
         read_only: bool = False,
-    ) -> Path:
+        return_package: bool = False,
+    ) -> Path | ProjectPackage:
         if read_only:
             raise ProjectPackageError(
                 "Project is read-only geopend en kan niet worden overschreven",
@@ -193,9 +201,18 @@ class ProjectStore:
         should_embed = self.embed_sources_by_default if embed_sources is None else bool(embed_sources)
         source_paths = dict(source_paths or {})
         previews = dict(previews or {})
-        # Work on a validated snapshot.  Autosave and failed writes must never
-        # mutate embedded-path flags or hashes in the live GUI/CLI session.
-        working_project = ProjectModel.from_dict(project.to_dict())
+        # Work on one detached JSON snapshot.  The previous implementation
+        # cloned the complete ProjectModel here and ProjectSession.save had
+        # already cloned it once for transactional revision handling.  A Tekla
+        # project with thousands of entities therefore existed three times in
+        # memory while SQLite and ZIP buffers were also being built.  On a
+        # normal workstation this could trigger heavy swapping and make a save
+        # appear to hang.  A detached snapshot preserves the same safety
+        # property (the live session is never mutated) without a second object
+        # graph clone.
+        project.validate()
+        project_snapshot = project.to_dict()
+        snapshot_sources = dict(project_snapshot.get("sources") or {})
 
         with tempfile.TemporaryDirectory(prefix="cws_project_save_") as temp_name:
             temp = Path(temp_name)
@@ -204,33 +221,43 @@ class ProjectStore:
 
             # Storage placement belongs to the saved snapshot.  Set it before
             # creating SQLite so manifest, index and project JSON agree.
-            for source_record in working_project.sources.values():
-                source_record.embedded_path = ""
+            for source_record in snapshot_sources.values():
+                if isinstance(source_record, dict):
+                    source_record["embedded_path"] = ""
             if should_embed:
-                for source_id, source_record in working_project.sources.items():
-                    candidate_text = source_paths.get(source_id) or source_record.original_path
+                for source_id, source_record in snapshot_sources.items():
+                    if not isinstance(source_record, dict):
+                        raise ProjectPackageError(
+                            f"Bronrecord {source_id} is ongeldig",
+                            code=ErrorCode.PROJECT_WRITE_FAILED,
+                        )
+                    candidate_text = source_paths.get(source_id) or str(
+                        source_record.get("original_path") or ""
+                    )
                     candidate = Path(candidate_text) if candidate_text else Path()
                     if not candidate_text or not candidate.is_file():
                         raise ProjectPackageError(
-                            f"Bronbestand voor {source_record.file_name} ontbreekt; "
+                            f"Bronbestand voor {source_record.get('file_name', source_id)} ontbreekt; "
                             "opslaan met ingesloten bronnen is afgebroken",
                             code=ErrorCode.PROJECT_WRITE_FAILED,
                             details={"source_id": source_id, "path": str(candidate_text or "")},
                         )
                     digest = _sha256_file(candidate)
-                    if digest != source_record.sha256:
+                    if digest != str(source_record.get("sha256") or ""):
                         raise ProjectPackageError(
                             f"Bronbestand {candidate.name} wijkt af van de geregistreerde hash",
                             code=ErrorCode.PROJECT_WRITE_FAILED,
                             details={
                                 "source_id": source_id,
-                                "expected": source_record.sha256,
+                                "expected": source_record.get("sha256", ""),
                                 "actual": digest,
                             },
                         )
-                    safe_name = _safe_filename(source_record.file_name or candidate.name)
+                    safe_name = _safe_filename(
+                        str(source_record.get("file_name") or candidate.name)
+                    )
                     archive_name = f"sources/{source_id}/{safe_name}"
-                    source_record.embedded_path = archive_name
+                    source_record["embedded_path"] = archive_name
                     entries[archive_name] = candidate
                     embedded_sources.append(
                         {
@@ -257,10 +284,23 @@ class ProjectStore:
                         )
                 entries[archive_name] = preview_path
 
-            working_project.app_version = APP_VERSION
-            working_project.validate()
+            project_snapshot["app_version"] = APP_VERSION
+            # Hash before materialising the complete JSON byte string.  The
+            # semantic IFC importer can leave hundreds of megabytes of live
+            # Python objects; keeping the full UTF-8 snapshot alive during
+            # three canonical hash passes caused unnecessary peak memory and
+            # could terminate a save on ordinary workstations.
+            project_hashes = project_hash_bundle_from_snapshot(project_snapshot)
+            project_bytes = stable_json_bytes(project_snapshot)
+            manufacturing_hash = project.manufacturing_state_sha256()
             database_path = temp / "project.sqlite"
-            self._write_database(working_project, database_path)
+            self._write_database(
+                project,
+                database_path,
+                snapshot=project_bytes,
+                semantic_hash=project_hashes["semantic_sha256"],
+                snapshot_data=project_snapshot,
+            )
             entries["project.sqlite"] = database_path
 
             entry_manifest = [
@@ -271,25 +311,30 @@ class ProjectStore:
                 }
                 for archive_name, source_path in sorted(entries.items())
             ]
-            project_hash = working_project.semantic_sha256()
+            project_hash = project_hashes["semantic_sha256"]
             manifest = {
                 "format": PROJECT_PACKAGE_FORMAT,
                 "package_schema_version": PACKAGE_SCHEMA_VERSION,
-                "project_schema_version": working_project.schema_version,
+                "project_schema_version": str(project_snapshot.get("schema_version") or ""),
                 "app_name": APP_NAME,
                 "app_version": APP_VERSION,
-                "project_id": working_project.project_id,
-                "project_name": working_project.project_name,
-                "created_at": working_project.created_at,
+                "project_id": str(project_snapshot.get("project_id") or ""),
+                "project_name": str(project_snapshot.get("project_name") or ""),
+                "created_at": str(project_snapshot.get("created_at") or ""),
                 "saved_at": utc_now_iso(),
                 "project_sha256": project_hash,
-                "manufacturing_state_sha256": working_project.manufacturing_state_sha256(),
+                "content_sha256": project_hashes["content_sha256"],
+                "revision_content_sha256": project_hashes["revision_content_sha256"],
+                "manufacturing_state_sha256": manufacturing_hash,
                 "sqlite_schema_version": SQLITE_SCHEMA_VERSION,
                 "entries": entry_manifest,
                 "embedded_sources": embedded_sources,
-                "entity_counts": working_project.entity_counts(),
-                "source_count": len(working_project.sources),
-                "audit_event_count": len(working_project.audit_log),
+                "entity_counts": {
+                    entity_type: len(dict(project_snapshot.get(collection_name) or {}))
+                    for entity_type, collection_name in ENTITY_COLLECTIONS.items()
+                },
+                "source_count": len(snapshot_sources),
+                "audit_event_count": len(list(project_snapshot.get("audit_log") or [])),
             }
             manifest_path = temp / "manifest.json"
             manifest_path.write_bytes(_pretty_json_bytes(manifest))
@@ -313,6 +358,30 @@ class ProjectStore:
             except Exception:
                 tmp_target.unlink(missing_ok=True)
                 raise
+
+            if return_package:
+                # The archive bytes were just written from this exact snapshot
+                # and all ZIP/entry hashes were verified before the atomic
+                # replace.  Reconstructing the in-memory package directly avoids
+                # immediately decompressing, parsing and hashing the same 20+ MB
+                # project a second time.  A later normal open still performs the
+                # complete independent verification path.
+                saved_project = ProjectModel.from_dict(project_snapshot)
+                saved_project._verified_semantic_sha256 = project_hash  # type: ignore[attr-defined]
+                saved_project._verified_content_sha256 = project_hashes[  # type: ignore[attr-defined]
+                    "content_sha256"
+                ]
+                saved_project._verified_revision_content_sha256 = project_hashes[  # type: ignore[attr-defined]
+                    "revision_content_sha256"
+                ]
+                saved_project._verified_manufacturing_state_sha256 = manufacturing_hash  # type: ignore[attr-defined]
+                return ProjectPackage(
+                    path=target,
+                    project=saved_project,
+                    manifest=manifest,
+                    read_only=False,
+                    migration_performed=False,
+                )
         return target
 
     def open(self, path: str | Path, *, read_only: bool = False) -> ProjectPackage:
@@ -339,7 +408,9 @@ class ProjectStore:
 
         manifest_schema = str(manifest.get("project_schema_version", ""))
         migration_performed = project.schema_version != manifest_schema
-        project_hash = project.semantic_sha256()
+        project_hashes = project_hash_bundle_from_snapshot(project.to_dict())
+        project_hash = project_hashes["semantic_sha256"]
+        manufacturing_hash = project.manufacturing_state_sha256()
         manifest_hash = str(manifest.get("project_sha256", ""))
         if migration_performed:
             # Early schema-1 development packages stored the raw canonical
@@ -364,7 +435,28 @@ class ProjectStore:
         if int(manifest.get("sqlite_schema_version", 0)) != db_schema:
             raise ProjectPackageError("SQLite-schemaversie in manifest en database verschillen")
         if not migration_performed:
-            self._verify_manifest_project_consistency(manifest, project)
+            self._verify_manifest_project_consistency(
+                manifest,
+                project,
+                actual_manufacturing_hash=manufacturing_hash,
+            )
+            for key in ("content_sha256", "revision_content_sha256"):
+                expected = str(manifest.get(key) or "")
+                actual = project_hashes[key]
+                if expected and expected != actual:
+                    raise ProjectPackageError(
+                        f"{key} in manifest en Project Model verschilt",
+                        details={"manifest": expected, "actual": actual},
+                    )
+        # Package hashes are immutable evidence for read-only summaries and GUI
+        # refreshes.  They are deliberately stored as ephemeral attributes and
+        # never serialised back into Project Model 2.x.
+        project._verified_semantic_sha256 = project_hash  # type: ignore[attr-defined]
+        project._verified_content_sha256 = project_hashes["content_sha256"]  # type: ignore[attr-defined]
+        project._verified_revision_content_sha256 = project_hashes[  # type: ignore[attr-defined]
+            "revision_content_sha256"
+        ]
+        project._verified_manufacturing_state_sha256 = manufacturing_hash  # type: ignore[attr-defined]
         return ProjectPackage(
             path=source,
             project=project,
@@ -377,6 +469,8 @@ class ProjectStore:
         self,
         manifest: Mapping[str, Any],
         project: ProjectModel,
+        *,
+        actual_manufacturing_hash: str | None = None,
     ) -> None:
         """Cross-check package metadata against the validated project snapshot."""
 
@@ -391,7 +485,9 @@ class ProjectStore:
         if int(manifest.get("audit_event_count", -1)) != len(project.audit_log):
             raise ProjectPackageError("Aantal auditevents in manifest en Project Model verschilt")
         expected_manufacturing = str(manifest.get("manufacturing_state_sha256") or "")
-        actual_manufacturing = project.manufacturing_state_sha256()
+        actual_manufacturing = (
+            actual_manufacturing_hash or project.manufacturing_state_sha256()
+        )
         if expected_manufacturing != actual_manufacturing:
             raise ProjectPackageError(
                 "Manufacturing-state-hash in manifest en Project Model verschilt",
@@ -549,9 +645,21 @@ class ProjectStore:
             )
         return self.open(saved)
 
-    def _write_database(self, project: ProjectModel, database_path: Path) -> None:
-        snapshot = project.to_json_bytes()
+    def _write_database(
+        self,
+        project: ProjectModel,
+        database_path: Path,
+        *,
+        snapshot: bytes | None = None,
+        semantic_hash: str | None = None,
+        snapshot_data: Mapping[str, Any] | None = None,
+    ) -> None:
+        snapshot_data = dict(snapshot_data) if snapshot_data is not None else project.to_dict()
+        snapshot = snapshot if snapshot is not None else stable_json_bytes(snapshot_data)
         snapshot_hash = hashlib.sha256(snapshot).hexdigest()
+        semantic_hash = semantic_hash or project_hash_bundle_from_snapshot(snapshot_data)[
+            "semantic_sha256"
+        ]
         connection = sqlite3.connect(database_path)
         try:
             connection.execute("PRAGMA journal_mode=DELETE")
@@ -622,7 +730,7 @@ class ProjectStore:
                 "app_version": project.app_version,
                 "project_id": project.project_id,
                 "project_name": project.project_name,
-                "semantic_sha256": project.semantic_sha256(),
+                "semantic_sha256": semantic_hash,
             }
             connection.executemany(
                 "INSERT INTO metadata(key, value) VALUES (?, ?)",
@@ -632,79 +740,104 @@ class ProjectStore:
                 "INSERT INTO project_snapshot(id, project_json, sha256) VALUES (1, ?, ?)",
                 (snapshot, snapshot_hash),
             )
-            for entity in project.iter_entities():
-                data = entity.base_to_dict()
-                assembly_mark = str(
-                    getattr(entity, "assembly_mark", "")
-                    or entity.source_identity.assembly_mark
-                )
-                part_position = str(
-                    getattr(entity, "part_position", "")
-                    or entity.source_identity.part_position
-                )
-                parent_ids: list[str] = []
-                if hasattr(entity, "assembly_ids"):
-                    parent_ids.extend(list(getattr(entity, "assembly_ids")))
-                connection.execute(
-                    """
-                    INSERT INTO entity_index(
-                        entity_id, entity_type, name, category, status,
-                        assembly_mark, part_position, profile, material,
-                        geometry_hash, manufacturing_hash, parent_ids_json,
-                        payload_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
+            entity_insert_sql = """
+                INSERT INTO entity_index(
+                    entity_id, entity_type, name, category, status,
+                    assembly_mark, part_position, profile, material,
+                    geometry_hash, manufacturing_hash, parent_ids_json,
+                    payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """
+            entity_rows: list[tuple[Any, ...]] = []
+            for entity_type, collection_name in ENTITY_COLLECTIONS.items():
+                collection = dict(snapshot_data.get(collection_name) or {})
+                for entity_id, raw_data in collection.items():
+                    data = dict(raw_data or {})
+                    identity = dict(data.get("source_identity") or {})
+                    assembly_mark = str(
+                        data.get("assembly_mark")
+                        or identity.get("assembly_mark")
+                        or ""
+                    )
+                    part_position = str(
+                        data.get("part_position")
+                        or identity.get("part_position")
+                        or ""
+                    )
+                    parent_ids = list(data.get("assembly_ids") or [])
+                    entity_rows.append(
+                        (
+                            str(entity_id),
+                            entity_type,
+                            str(data.get("name") or ""),
+                            str(data.get("category") or ""),
+                            str(data.get("status") or ""),
+                            assembly_mark,
+                            part_position,
+                            str(data.get("profile") or ""),
+                            str(data.get("material") or ""),
+                            str(data.get("geometry_hash") or ""),
+                            str(data.get("manufacturing_hash") or ""),
+                            json.dumps(parent_ids, ensure_ascii=False, sort_keys=True),
+                            stable_json_bytes(data).decode("utf-8"),
+                        )
+                    )
+                    # SQLite accepts executemany batches efficiently.  Keeping
+                    # every full entity payload string in one Python list,
+                    # however, duplicates a large project's JSON in memory.
+                    if len(entity_rows) >= 250:
+                        connection.executemany(entity_insert_sql, entity_rows)
+                        entity_rows.clear()
+                if entity_rows:
+                    connection.executemany(entity_insert_sql, entity_rows)
+                    entity_rows.clear()
+
+            source_rows: list[tuple[Any, ...]] = []
+            for source_id, raw_source in dict(snapshot_data.get("sources") or {}).items():
+                source = dict(raw_source or {})
+                source_rows.append(
                     (
-                        entity.internal_id,
-                        entity.entity_type,
-                        entity.name,
-                        entity.category,
-                        entity.status,
-                        assembly_mark,
-                        part_position,
-                        str(getattr(entity, "profile", "")),
-                        str(getattr(entity, "material", "")),
-                        str(getattr(entity, "geometry_hash", "")),
-                        str(getattr(entity, "manufacturing_hash", "")),
-                        json.dumps(parent_ids, ensure_ascii=False, sort_keys=True),
-                        stable_json_bytes(data).decode("utf-8"),
-                    ),
-                )
-            for source in project.sources.values():
-                connection.execute(
-                    """
-                    INSERT INTO source_files(
-                        source_id, file_name, source_format, sha256, size_bytes,
-                        original_path, embedded_path, payload_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        source.source_id,
-                        source.file_name,
-                        source.source_format,
-                        source.sha256,
-                        source.size_bytes,
-                        source.original_path,
-                        source.embedded_path,
+                        str(source_id),
+                        str(source.get("file_name") or ""),
+                        str(source.get("source_format") or ""),
+                        str(source.get("sha256") or ""),
+                        int(source.get("size_bytes") or 0),
+                        str(source.get("original_path") or ""),
+                        str(source.get("embedded_path") or ""),
                         stable_json_bytes(source).decode("utf-8"),
-                    ),
+                    )
                 )
-            for event in project.audit_log:
-                connection.execute(
-                    """
-                    INSERT INTO audit_events(
-                        event_id, timestamp, user_name, action, entity_id, payload_json
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                    """,
+            connection.executemany(
+                """
+                INSERT INTO source_files(
+                    source_id, file_name, source_format, sha256, size_bytes,
+                    original_path, embedded_path, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                source_rows,
+            )
+
+            audit_rows: list[tuple[Any, ...]] = []
+            for raw_event in list(snapshot_data.get("audit_log") or []):
+                event = dict(raw_event or {})
+                audit_rows.append(
                     (
-                        event.event_id,
-                        event.timestamp,
-                        event.user,
-                        event.action,
-                        event.entity_id,
+                        str(event.get("event_id") or ""),
+                        str(event.get("timestamp") or ""),
+                        str(event.get("user") or ""),
+                        str(event.get("action") or ""),
+                        str(event.get("entity_id") or ""),
                         stable_json_bytes(event).decode("utf-8"),
-                    ),
+                    )
                 )
+            connection.executemany(
+                """
+                INSERT INTO audit_events(
+                    event_id, timestamp, user_name, action, entity_id, payload_json
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                audit_rows,
+            )
             connection.execute(f"PRAGMA user_version={SQLITE_SCHEMA_VERSION}")
             connection.commit()
             integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
@@ -786,9 +919,22 @@ class ProjectStore:
                         f"Niet-ondersteunde pakketversie {manifest.get('package_schema_version')!r}",
                         code=ErrorCode.PROJECT_SCHEMA_UNSUPPORTED,
                     )
-                if _major(str(manifest.get("project_schema_version", ""))) not in {"1", _major(PROJECT_SCHEMA_VERSION)}:
+                project_schema = str(manifest.get("project_schema_version", ""))
+                schema_tuple = _version_tuple(project_schema)
+                current_tuple = _version_tuple(PROJECT_SCHEMA_VERSION)
+                if (
+                    _major(project_schema) not in {"1", _major(PROJECT_SCHEMA_VERSION)}
+                    or (
+                        _major(project_schema) == _major(PROJECT_SCHEMA_VERSION)
+                        and (
+                            not schema_tuple
+                            or not current_tuple
+                            or schema_tuple > current_tuple
+                        )
+                    )
+                ):
                     raise ProjectPackageError(
-                        f"Niet-ondersteunde projectschemaversie {manifest.get('project_schema_version')!r}",
+                        f"Niet-ondersteunde projectschemaversie {project_schema!r}",
                         code=ErrorCode.PROJECT_SCHEMA_UNSUPPORTED,
                     )
                 listed_paths: set[str] = set()
@@ -842,6 +988,16 @@ class ProjectStore:
 
 def _major(version: str) -> str:
     return str(version).split(".", 1)[0]
+
+
+def _version_tuple(version: str) -> tuple[int, ...]:
+    text = str(version or "").strip()
+    if not text:
+        return ()
+    parts = text.split(".")
+    if any(not part.isdigit() for part in parts):
+        return ()
+    return tuple(int(part) for part in parts)
 
 
 def _validate_archive_path(name: str) -> None:

@@ -1,17 +1,15 @@
-# CWS Convertor 0.6.0-beta
+# CWS Convertor 0.7.0-alpha
 
-**CWS Convertor** is een local-first Windows-desktopapplicatie en CLI voor:
+**CWS Convertor** is een local-first desktopapplicatie en CLI voor veilige conversie en productievoorbereiding van:
 
-- NC1/DSTV ↔ STEP ↔ IFC;
-- Trusted Converter PDF en gecontroleerde externe PDF-analyse;
+- NC1/DSTV, STEP en IFC;
+- Trusted Converter PDF en gecontroleerde externe tekeningen;
 - hoeveelheden en Excel;
-- draagbare projectbestanden voor complete IFC-/STEP-modellen.
+- complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie 0.6 voegt het fundament voor **Project / Productie** toe zonder de bewezen v0.5.1-conversiekern te vervangen.
+Versie **0.7.0-alpha** bouwt verder op de bewezen conversiekern en op Project Model 2.0 uit v0.6. De nieuwe fase materialiseert echte IFC-/STEP-semantiek als actieve assemblies, onderdelen, bouten en lassen in **Project Model 2.1**.
 
 ## Veiligheidsarchitectuur
-
-Alle productie-uitvoer loopt via canonieke modellen en deterministische validatie:
 
 ```text
 PDF / NC1 / STEP / IFC
@@ -20,154 +18,193 @@ Canonical Part Model
           ↓
 NC1 / STEP / IFC / PDF / Excel
 
-Complete IFC / STEP
+Compleet IFC / STEP
           ↓
-Canonical Project Model 2.0
+Geverifieerde Part 21-brongrafiek
           ↓
-Assemblies / parts / BOM / productie (gefaseerd en gevalideerd)
+Canonical Project Model 2.1
+          ↓
+Assemblies / parts / fasteners / welds
+          ↓
+Classificatie + featurevalidatie + roundtrip
+          ↓
+BOM / productie-export / optimalisatie / machines
 ```
 
-AI mag documentsemantiek, classificatievoorstellen, confidence, conflicten en controlevragen leveren. AI schrijft geen ongecontroleerde NC1-regels, CAD-geometrie of machinecode. Kritische onzekerheid sluit de productiepoort.
+AI mag documentsemantiek, classificatievoorstellen, confidence en controlevragen leveren. AI schrijft geen ongecontroleerde geometrie, NC1 of machinecode. Kritische onzekerheid sluit de productiepoort.
 
-## Nieuw in 0.6.0-beta
+## Nieuw in 0.7.0-alpha
 
-### CWS-productidentiteit
+### Semantische IFC2X3/IFC4-import
 
-De zichtbare productnaam, GUI, CLI, build, installer en projectbestandskoppeling gebruiken nu **CWS Convertor**. Legacy payloadmarkers blijven bewust leesbaar zodat v0.4/v0.5 IFC- en Trusted PDF-bestanden niet worden gebroken.
+De dependency-light IFC-importer leest en materialiseert onder meer:
 
-### Canonical Project Model 2.0
+- `IfcProject`, site, building en storey-structuur;
+- `IfcElementAssembly` en `IfcRelAggregates`;
+- `IfcPlate`, `IfcBeam`, `IfcColumn`, `IfcMember`, `IfcFooting`, `IfcSlab` en proxies;
+- `IfcMechanicalFastener` en Tekla-las-/fastenerobjecten;
+- local/global placements;
+- GlobalId, Name, Tag, ObjectType en bronnummers;
+- propertysets, quantitysets en materiaalassociaties;
+- assembly marks, part positions, profielen, materialen, lengten en massa’s;
+- verbindingen tussen lassen/fasteners en onderdelen;
+- stabiele interne IDs en bronherkomst per veld.
 
-Het projectmodel bevat voorbereidende entiteiten voor:
+De bronhiërarchie wordt behouden. De importer reduceert het model niet eerst tot één mesh en verzint geen nieuwe assemblystructuur.
 
-- projectbronnen en provenance;
-- assemblies/merken;
-- maakdelen en inkoopdelen;
-- bevestigingsmiddelen en lassen;
-- voorraad en reststukken;
-- productiehandelingen;
-- machineprofielen en machinejobs;
-- validatie, revisies en auditlog.
+### Semantische STEP-import
 
-Identiteit wordt gescheiden in bronidentiteit, placement-onafhankelijke geometry hash en manufacturing hash. Gespiegelde of materiaaltechnisch verschillende delen kunnen daardoor niet ongemerkt als hetzelfde productiedeel worden behandeld.
+De AP203/AP214/AP242-route leest:
 
-### Draagbaar `.cwscproj`-projectbestand
+- product- en product-definitionrecords;
+- product occurrences en assembly usage relations;
+- shape representations en BREP-roots;
+- occurrence placements/transformaties;
+- productnamen, IDs en referentieaanduidingen;
+- placement-onafhankelijke geometriehashes.
 
-Een CWS-project is één ZIP-container met:
+Wanneer een bestand één product en één solid bevat, ontstaat exact één projectonderdeel. Een naam als `2x voetplaat hoog` is geen bewijs voor geometrische opsplitsing. Wanneer een STEP-bron geen aantoonbare solid-root bevat, kiest CWS Convertor route `C_fused_review`: alleen werkelijk aanwezige productrecords worden als reviewobject vastgelegd. De importer verzint dan geen solid, occurrence, assembly of opsplitsing.
 
-- `manifest.json`;
-- `project.sqlite` met het canonieke projectsnapshot;
-- optioneel ingesloten IFC-/STEP-bronnen;
-- hash-gecontroleerde previews;
-- SHA-256 per entry;
-- ZIP-CRC- en SQLite-integriteitscontrole;
-- revisiehistorie en auditlog;
-- veilige, lichtgewicht autosave en herstel.
+### Part 21-grafiekkern
 
-Opslaan gebeurt atomair. Een mislukte batchimport laat het bestaande project byte-identiek staan.
+IFC en STEP delen één ISO-10303-21-parser met:
 
-De Project Foundation-validatie op het grote Tekla IFC-model en de drie AP242 STEP-modellen bevat **117/117 geslaagde controles**. Daarbij zijn ook embedded bronnen/previews, autosaveherstel, CLI, compilecontrole en GUI-start getest.
+- lazy argument parsing;
+- veilige referentiegrafieken;
+- detectie van dubbele entity-ID’s;
+- ID-onafhankelijke Merkle-hashes van geometrische subgrafen;
+- begrensde grafiektraversal;
+- expliciete cachevrijgave na grote imports.
 
-### Deterministische importnulmeting
+### Transactionele projectimport
 
-De huidige projectfase kiest veilig de importroute en legt bewijs vast:
+Semantische import is één atomaire projectbewerking:
 
-1. **Strategy A — semantic structure** voor IFC/STEP met bruikbare productstructuur;
-2. **Strategy B — separate solids** wanneer alleen losse BREP-solids betrouwbaar zijn;
-3. **Strategy C — fused/ambiguous** als expliciete reviewroute.
+1. alle bronbytes worden eerst opnieuw op SHA-256 gecontroleerd;
+2. een geïsoleerde projectkopie wordt gematerialiseerd;
+3. relaties en modelregels worden gevalideerd;
+4. alleen een volledig geslaagde import vervangt de actieve projectsnapshot;
+5. bij een fout blijft het bestaande project ongewijzigd.
 
-Bronnamen leiden nooit op zichzelf tot opsplitsing. Het bestand `2x voetplaat hoog.step` blijft dus één product en één solid totdat geometrie of gebruiker anders bevestigt.
+Herimport verwijdert de oude bronentities en bouwt dezelfde stabiele IDs en hashes opnieuw op. De GUI-actie kan coöperatief worden geannuleerd; parser, importer en service controleren een thread-safe stopsein en rollen de volledige batch terug zonder half project of half opgeslagen bestand.
 
 ### Project / Productie-interface
 
-Het functionele tabblad kan:
+Het bestaande tabblad heeft nu een echte actie **Semantisch importeren**. De interface toont:
 
-- een project maken, openen en opslaan;
-- IFC- en STEP-bronnen in een achtergrondtaak analyseren;
-- bronbestanden optioneel in het project insluiten;
-- nulmetingen exporteren;
-- ingesloten bronnen veilig uitpakken;
-- bronnen sorteren en details/waarschuwingen tonen;
-- projectstatus, gedetecteerde aantallen en opslag samenvatten;
-- periodiek autosaven.
+- assembly-, onderdeel-, bout- en lascounts;
+- gegroepeerde assemblymarks;
+- importstrategie en schemas;
+- bronbewijs en productiegate;
+- achtergrondvoortgang tot op interne IFC-/STEP-importstappen;
+- een actieve **Annuleren**-knop met volledige rollback;
+- details van MLO4/LO4, STEP-producten en blokkades.
 
-De getoonde gegevens komen uit hetzelfde Project Model en dezelfde service als de CLI.
+De uitgebreidere onderdeeleditor, versleepbare eigenschappengrid en 3D-isolatie per part horen bij de volgende classificatie-/BOM-interfacefase.
 
-## Bewezen referentienulmeting
+## Bewezen referentie-import
 
 ### Tekla IFC2X3
 
-| Objectgroep | Aantal |
+| Gematerialiseerd object | Aantal |
 |---|---:|
 | Assemblies | 353 |
-| Platen | 1.293 |
-| Balken/liggers | 707 |
-| Kolommen | 369 |
+| Parts | 2.429 |
 | Mechanische bevestigingsmiddelen | 723 |
-| Las-/fastenerobjecten | 2.654 |
-| Funderingsobjecten | 38 |
-| Building-element proxies | 19 |
-| Slabs | 3 |
+| Lasobjecten | 2.654 |
+| **Totaal** | **6.159** |
 
-De nulmeting vindt tevens `MLO4`, `LO4`, `STRIP5*120`, `S235JR`, lengte 160 mm, circa 0,6 kg assemblygewicht, diameter 14 mm en herhaalde marks `LA1`, `A1`, `MP1` en `MP2`.
+Bronklassen blijven aantoonbaar behouden:
+
+| IFC-klasse | Aantal |
+|---|---:|
+| `IfcElementAssembly` | 353 |
+| `IfcPlate` | 1.293 |
+| `IfcBeam` | 707 |
+| `IfcColumn` | 369 |
+| `IfcMechanicalFastener` | 723 |
+| `IfcFastener` | 2.654 |
+| `IfcFooting` | 38 |
+| `IfcBuildingElementProxy` | 19 |
+| `IfcSlab` | 3 |
+
+Daarnaast worden onder meer bewezen:
+
+- vier `MLO4`-assembly-instanties;
+- vier gekoppelde `LO4`-onderdelen;
+- profiel `STRIP5*120`;
+- materiaal `S235JR`;
+- lengte 160 mm;
+- massa 0,62 kg per LO4-part;
+- vier Ø14-fasteners/gatobjecten;
+- 2.654 verbonden lasobjecten;
+- herhaalde marks `LA1` 71×, `A1` 37×, `MP1` 18× en `MP2` 16×.
 
 ### AP242 STEP
 
-De drie nieuwe referentiebestanden bevatten ieder:
+De drie echte referentiebestanden worden ieder geïmporteerd als:
 
-- één productrecord;
+- één product;
 - één BREP-solid;
-- nul assembly usage-relaties;
-- geldige CAD-geometrie bij de volledige validatierun.
+- één actief projectonderdeel;
+- nul fictieve assemblies;
+- route `B_separate_solids`.
 
-Daarom maakt de importer geen fictieve assemblystructuur.
+
+## Gemeten fasevalidatie
+
+De vrijgavevalidatie bevat **82/82 geslaagde controles**. In de huidige Linuxomgeving duurde de semantische materialisatie van het Tekla IFC-model plus drie STEP-modellen 14,20 seconden. Het atomisch opslaan, intern verifiëren en opnieuw openen van het projectpakket met vier ingesloten bronnen duurde 13,01 seconden. De afzonderlijke `11881`-prestatiepoort voltooide in 5,84 seconden bij 840,51 MB piek-RSS, binnen de ingestelde grenzen van 120 seconden en 1.536 MB. Dit zijn ontwikkelmetingen, geen Windows-SLA.
 
 ## Productiepoort in deze release
 
-Deze beta **registreert en valideert de bronintake**, maar materialiseert het grote IFC-model nog niet volledig als actieve ProjectModel-assemblies/parts. De STEP-solids worden evenmin automatisch als NC1-geschikte maakdelen vrijgegeven. Per bron wordt daarom een blokkerende `semantic_import_pending`-status opgeslagen.
+Semantische import betekent nog niet automatisch productiegeschiktheid. Externe IFC-/STEP-parts blijven op `review_required` en `nc1_eligible = false` totdat de volgende fase minimaal heeft afgerond:
 
-Dat betekent dat complete-model BOM-, NC1-, optimalisatie- en machine-export bewust nog niet beschikbaar zijn. De volgende fase is semantische IFC/STEP-import en betrouwbare part-/assembly-identiteit.
+- maakdeel/inkoopdeel/niet-staal-classificatie;
+- profiel- en featureherkenning;
+- lokale productiezijden en referenties;
+- materiaalbevestiging;
+- Canonical Model → NC1/STEP/IFC → Model-roundtrip;
+- conflictcontrole op marks, geometry hash en manufacturing hash.
+
+Complete-model BOM-, optimalisatie- en machine-uitvoer zijn daarom nog bewust geblokkeerd.
 
 ## Bestaande conversiekern behouden
 
-De v0.5.1-functionaliteit blijft aanwezig:
+De eerdere regressies blijven onderdeel van iedere build:
 
-- NC1 → STEP: 24/24 regressies;
-- STEP → NC1: 19/19 regressies;
-- NC1 → IFC → STEP → NC1: 4/4 focusroundtrips;
-- STEP → IFC → NC1 → STEP: 4/4 focusroundtrips;
-- Trusted PDF-roundtrips;
-- deterministische maatgrafiek en interactieve PDF-review;
-- begrensde optionele AI-laag;
+- NC1 → STEP: 24/24;
+- STEP → NC1: 19/19;
+- NC1 → IFC → STEP → NC1: 4/4;
+- STEP → IFC → NC1 → STEP: 4/4;
+- Trusted Converter PDF;
+- externe vector-PDF-review;
+- deterministische maatgrafiek;
+- begrensde AI-laag;
 - hoeveelheden en Excel.
-
-## GUI starten uit bron
-
-Alleen voor ontwikkelaars:
-
-```text
-py -3.12 -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python app.py
-```
-
-Tabbladen:
-
-- Convertor;
-- Project / Productie;
-- PDF / Tekening;
-- Visuele vergelijking;
-- Profielendatabase;
-- Hoeveelheden & Excel.
 
 ## CLI
 
-Projectbasis:
+### Project aanmaken en bronnen registreren
 
 ```text
-CWS_Convertor_CLI.exe --version
-CWS_Convertor_CLI.exe inspect-model model.ifc model.step --json-report baseline.json
 CWS_Convertor_CLI.exe project-new project.cwscproj --name "Mijn project"
 CWS_Convertor_CLI.exe project-import-baseline project.cwscproj model.ifc model.step
+```
+
+### Semantisch materialiseren
+
+```text
+CWS_Convertor_CLI.exe project-import project.cwscproj --json
+CWS_Convertor_CLI.exe project-tree project.cwscproj --json
+CWS_Convertor_CLI.exe project-list-assemblies project.cwscproj --filter MLO4 --json
+CWS_Convertor_CLI.exe project-list-parts project.cwscproj --filter LO4 --json
+```
+
+`project-import` gebruikt exitcode **2 / review required** wanneer de semantische import slaagt maar de productiegate terecht gesloten blijft. Dit is geen stil gedeeltelijk succes; het JSON-rapport bevat de blokkaderedenen per bron.
+
+### Projectintegriteit
+
+```text
 CWS_Convertor_CLI.exe project-info project.cwscproj --json
 CWS_Convertor_CLI.exe project-sources project.cwscproj --json
 CWS_Convertor_CLI.exe project-verify project.cwscproj --json
@@ -177,46 +214,38 @@ CWS_Convertor_CLI.exe project-recover project.cwscproj -o hersteld.cwscproj
 CWS_Convertor_CLI.exe project-migrate oud.cwscproj -o nieuw.cwscproj
 ```
 
-Bestaande conversies:
-
-```text
-CWS_Convertor_CLI.exe nc1-to-step input.nc1 -o output
-CWS_Convertor_CLI.exe step-to-nc1 input.step -o output
-CWS_Convertor_CLI.exe nc1-to-pdf input.nc1 -o output
-CWS_Convertor_CLI.exe pdf-analyze drawing.pdf -o analyse --ai-provider local-rules
-CWS_Convertor_CLI.exe pdf-to-ifc reviewed_trusted.pdf -o output
-CWS_Convertor_CLI.exe excel model.ifc model.step -o hoeveelheden.xlsx
-```
-
 ## Windows-release
 
-De buildstraat gebruikt Python 3.12 x64 als ontwikkelruntime en levert uiteindelijk:
+De bijgewerkte buildstraat gebruikt Python 3.12 x64 op de **buildcomputer** en maakt:
 
 ```text
-CWS_Convertor_Setup_0.6.0-beta_x64.exe
-CWS_Convertor_Portable_0.6.0-beta_x64.zip
+CWS_Convertor_Setup_0.7.0-alpha_x64.exe
+CWS_Convertor_Portable_0.7.0-alpha_x64.zip
 SHA256SUMS.txt
 ```
 
-De eindgebruiker heeft geen Python, pip, venv of terminal nodig. In deze Linux-ontwikkelomgeving is geen native Windows-EXE gebouwd; de PyInstaller/Inno Setup-workflow moet op Windows worden uitgevoerd en op een schone Windows 10/11 x64-installatie worden geverifieerd.
+De eindgebruiker heeft geen Python, pip, venv of terminal nodig. In de huidige Linuxomgeving is geen native Windows-EXE gebouwd of op een schone Windows-pc getest; de workflow en Inno Setup-configuratie zijn wel bijgewerkt naar 0.7.
 
-## Belangrijkste brononderdelen
+## Belangrijkste modules
 
 ```text
-cws_convertor/product.py          centrale naam en versie
-cws_convertor/project/model.py    Canonical Project Model 2.0
-cws_convertor/project/storage.py  .cwscproj ZIP+SQLite-opslag
-cws_convertor/project/baseline.py IFC/STEP-nulmeting en routekeuze
-cws_convertor/project/service.py  gedeelde GUI/CLI-projectservice
-cws_convertor/project/jobs.py     annuleerbare achtergrondtaken
-project_tab.py                    functionele Project/Productie-GUI
-cli.py                            conversie- en project-CLI
+cws_convertor/importers/p21.py              gedeelde Part 21-grafiekkern
+cws_convertor/importers/ifc_project.py      semantische IFC-projectimport
+cws_convertor/importers/step_project.py     semantische STEP-projectimport
+cws_convertor/importers/semantic.py         gedeeld resultaat-/importcontract
+cws_convertor/project/semantic_import.py    broncontrole, purge, indexes en gate
+cws_convertor/project/model.py              Canonical Project Model 2.1
+cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
+cws_convertor/project/service.py            transactionele GUI/CLI-service
+project_tab.py                              Project / Productie-interface
+cli.py                                      conversie- en project-CLI
 ```
 
 ## Volgende bouwfase
 
-1. semantische IFC Strategy A-import met relaties, placements, properties, materialen, bouten en lassen;
-2. STEP Strategy A/B-import met product occurrences en losse solids;
-3. stabiele assembly-/part-identiteit en groepering;
-4. classificatie en BOM;
-5. daarna pas per-part/per-merk productie-export.
+1. deterministische classificatie van maakdeel, inkoopdeel, fastener, las, niet-staal en onbekend;
+2. profiel-/materiaalherkenning en confidence;
+3. geometry-/manufacturing-conflicten en identieke delen;
+4. part-, assembly-, fastener-, weld- en inkoop-BOM;
+5. uitgebreide eigenschappengrid en onderdeeleditor;
+6. daarna pas per-part/per-merk productie-export.

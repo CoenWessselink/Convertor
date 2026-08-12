@@ -1,4 +1,4 @@
-# CWS Convertor v0.6.0-beta — direct runtime dependency lock (Python 3.12 x64)
+# CWS Convertor v0.7.0-alpha — direct runtime dependency lock (Python 3.12 x64)
 cadquery==2.8.0
 matplotlib==3.10.8
 numpy==2.3.5

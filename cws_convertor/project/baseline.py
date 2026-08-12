@@ -1,10 +1,10 @@
 """Dependency-light IFC/STEP baseline inspection for project imports.
 
-This module deliberately does *not* pretend to be the final semantic importer.
-It performs a deterministic first pass that records schema, entity counts,
-product/assembly evidence, source hashes and the safest import strategy. The
-result is persisted in the project file and acts as the regression baseline for
-the next semantic-import phase.
+This module is the deterministic intake pass that runs before the semantic
+importer. It records schema, entity counts, product/assembly evidence, source
+hashes and the safest import strategy. The result is persisted in the project
+file, remains available as audit evidence and is re-verified before semantic
+materialisation starts.
 """
 from __future__ import annotations
 

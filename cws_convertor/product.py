@@ -10,12 +10,11 @@ APP_NAME = "CWS Convertor"
 APP_SHORT_NAME = APP_NAME
 APP_SLUG = "CWS_Convertor"
 APP_ID = "nl.cws.convertor"
-# Phase 0/1 release: product identity, Canonical Project Model 2.0,
-# deterministic source intake and the portable ``.cwscproj`` store.  This is a
-# beta prerelease of the project foundation, not a production release: semantic
-# IFC/STEP population of assemblies/parts deliberately remains gated for phase 2.
-APP_VERSION = "0.6.0-beta"
-APP_VERSION_NUMERIC = "0.6.0.0"
+# Phase 2 release: semantic IFC/STEP population of assemblies, parts,
+# fasteners, welds, properties and placements.  Exact manufacturing feature
+# validation remains a later gate, therefore this is an alpha release.
+APP_VERSION = "0.7.0-alpha"
+APP_VERSION_NUMERIC = "0.7.0.0"
 APP_PUBLISHER = "CWS"
 APP_DESCRIPTION = (
     "AI-ondersteunde NC1/DSTV-, STEP-, IFC- en technische PDF-convertor"
@@ -29,7 +28,7 @@ DEFAULT_PROJECT_FOLDER = "CWS Convertor Projects"
 
 PROJECT_FILE_EXTENSION = ".cwscproj"
 PROJECT_PACKAGE_FORMAT = "CWS_CWSC_PROJECT_V1"
-PROJECT_SCHEMA_VERSION = "2.0"
+PROJECT_SCHEMA_VERSION = "2.1"
 PROJECT_STORAGE_VERSION = 1
 CANONICAL_PART_SCHEMA_VERSION = "1.1"
 

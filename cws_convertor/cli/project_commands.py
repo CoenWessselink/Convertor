@@ -21,6 +21,9 @@ PROJECT_COMMANDS = {
     "project-register-sources",
     "project-validate",
     "project-migrate",
+    "project-import-semantic",
+    "project-list-parts",
+    "project-list-assemblies",
 }
 
 
@@ -58,6 +61,28 @@ def add_project_parsers(sub: argparse._SubParsersAction) -> None:
     parser = sub.add_parser("project-migrate", help="Migreer read-only project naar schema 2")
     parser.add_argument("project")
     parser.add_argument("-o", "--output", required=True)
+    parser.add_argument("--json-report", default="")
+
+    parser = sub.add_parser(
+        "project-import-semantic",
+        help="Materialiseer IFC/STEP-assemblies, onderdelen, bouten en lassen",
+    )
+    parser.add_argument("project")
+    parser.add_argument("--source-id", action="append", default=[])
+    parser.add_argument("--no-embed", action="store_true")
+    parser.add_argument("--user", default="")
+    parser.add_argument("--json-report", default="")
+
+    parser = sub.add_parser("project-list-parts", help="Lijst semantische onderdelen")
+    parser.add_argument("project")
+    parser.add_argument("--source-id", default="")
+    parser.add_argument("--limit", type=int, default=200)
+    parser.add_argument("--json-report", default="")
+
+    parser = sub.add_parser("project-list-assemblies", help="Lijst semantische assemblies")
+    parser.add_argument("project")
+    parser.add_argument("--source-id", default="")
+    parser.add_argument("--limit", type=int, default=200)
     parser.add_argument("--json-report", default="")
 
 
@@ -118,6 +143,68 @@ def handle_project_command(args: argparse.Namespace) -> tuple[int, dict[str, Any
                 output=str(package.path),
                 project=package.project.summary(),
             )
+        elif command == "project-import-semantic":
+            results = service.semantic_import(
+                args.project,
+                args.source_id or None,
+                embed_sources=not args.no_embed,
+                user=args.user or "cli",
+            )
+            payload.update(
+                status="passed",
+                results=[item.to_dict() for item in results],
+                project=service.project_info(args.project)["summary"],
+            )
+        elif command == "project-list-parts":
+            with service.open(args.project, read_only=True) as session:
+                parts = [
+                    {
+                        "part_id": part.internal_id,
+                        "source_id": part.source_identity.source_file_id,
+                        "part_position": part.part_position,
+                        "name": part.name,
+                        "category": part.category,
+                        "profile": part.profile,
+                        "material": part.material,
+                        "length_mm": part.length_mm,
+                        "assembly_ids": list(part.assembly_ids),
+                        "geometry_hash": part.geometry_hash,
+                        "manufacturing_hash": part.manufacturing_hash,
+                        "nc1_eligible": part.nc1_eligible,
+                    }
+                    for part in session.project.parts.values()
+                    if not args.source_id
+                    or part.source_identity.source_file_id == args.source_id
+                ]
+            parts.sort(key=lambda item: (item["part_position"], item["name"], item["part_id"]))
+            total = len(parts)
+            if args.limit > 0:
+                parts = parts[: args.limit]
+            payload.update(status="passed", total_matching=total, parts=parts)
+        elif command == "project-list-assemblies":
+            with service.open(args.project, read_only=True) as session:
+                assemblies = [
+                    {
+                        "assembly_id": assembly.internal_id,
+                        "source_id": assembly.source_identity.source_file_id,
+                        "assembly_mark": assembly.assembly_mark,
+                        "name": assembly.name,
+                        "part_count": len(assembly.part_ids),
+                        "fastener_count": len(assembly.fastener_ids),
+                        "weld_count": len(assembly.weld_ids),
+                        "total_weight_kg": assembly.total_weight_kg,
+                    }
+                    for assembly in session.project.assemblies.values()
+                    if not args.source_id
+                    or assembly.source_identity.source_file_id == args.source_id
+                ]
+            assemblies.sort(
+                key=lambda item: (item["assembly_mark"], item["name"], item["assembly_id"])
+            )
+            total = len(assemblies)
+            if args.limit > 0:
+                assemblies = assemblies[: args.limit]
+            payload.update(status="passed", total_matching=total, assemblies=assemblies)
         else:
             raise ValueError(f"Onbekend projectcommando {command!r}")
     except Exception as exc:

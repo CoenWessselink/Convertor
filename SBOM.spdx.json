@@ -4,22 +4,22 @@
     {
       "annotationDate": "2026-08-12T00:00:00Z",
       "annotationType": "OTHER",
-      "annotator": "Tool: CWS Convertor build foundation",
-      "comment": "Direct dependency SBOM generated from requirements lock files. Transitive wheel inventory is generated and checked again in the native Windows build."
+      "annotator": "Tool: CWS Convertor semantic import release",
+      "comment": "Direct dependency SBOM generated from pinned lock files. The native Windows build publishes a second transitive wheel inventory."
     }
   ],
   "creationInfo": {
     "created": "2026-08-12T00:00:00Z",
     "creators": [
-      "Tool: CWS Convertor build foundation"
+      "Tool: CWS Convertor semantic import release"
     ]
   },
   "dataLicense": "CC0-1.0",
   "documentDescribes": [
     "SPDXRef-Package-0-CWS-Convertor"
   ],
-  "documentNamespace": "https://cws.local/spdx/CWS-Convertor-0.6.0-beta-93f02fbb-7a5e-4f9b-86dd-c044091c4dd9",
-  "name": "CWS Convertor 0.6.0-beta direct dependency SBOM",
+  "documentNamespace": "https://cws.local/spdx/CWS-Convertor-0.7.0-alpha-1475157a-2c33-4dc7-9bed-892cb9c8c7fe",
+  "name": "CWS Convertor 0.7.0-alpha direct dependency SBOM",
   "packages": [
     {
       "SPDXID": "SPDXRef-Package-0-CWS-Convertor",
@@ -30,7 +30,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "CWS-Convertor",
       "primaryPackagePurpose": "APPLICATION",
-      "versionInfo": "0.6.0-beta"
+      "versionInfo": "0.7.0-alpha"
     },
     {
       "SPDXID": "SPDXRef-Package-1-cadquery",

@@ -1,4 +1,4 @@
-"""Canonical Project Model 2.0 for CWS Convertor.
+"""Canonical Project Model 2.1 for CWS Convertor.
 
 The project model sits above the existing :class:`canonical_model.CanonicalPart`.
 It adds stable project identity, assemblies, procurement, stock, production and
@@ -11,9 +11,11 @@ while changing material or a production feature does.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
+import copy
 import datetime as _dt
 from enum import Enum
 import hashlib
+import io
 import json
 import math
 from pathlib import Path
@@ -93,20 +95,154 @@ def _normalise_for_hash(value: Any, *, precision: int = 9) -> Any:
 
 
 def stable_json_bytes(value: Any) -> bytes:
-    return json.dumps(
-        _normalise_for_hash(value),
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    stream = io.StringIO()
+    _write_stable_json(value, stream.write)
+    return stream.getvalue().encode("utf-8")
 
 
 def stable_sha256(value: Any) -> str:
-    return hashlib.sha256(stable_json_bytes(value)).hexdigest()
+    digest = hashlib.sha256()
+    fragments: list[str] = []
+    fragment_size = 0
+
+    def write(fragment: str) -> None:
+        nonlocal fragment_size
+        fragments.append(fragment)
+        fragment_size += len(fragment)
+        if fragment_size >= 128 * 1024:
+            digest.update("".join(fragments).encode("utf-8"))
+            fragments.clear()
+            fragment_size = 0
+
+    _write_stable_json(value, write)
+    if fragments:
+        digest.update("".join(fragments).encode("utf-8"))
+    return digest.hexdigest()
+
+
+def _write_stable_json(value: Any, write, *, precision: int = 9) -> None:
+    """Stream the canonical JSON representation without a second full copy.
+
+    The previous implementation first normalised an entire project graph and
+    then asked :func:`json.dumps` to allocate another complete string.  On a
+    multi-thousand-object IFC model, three consecutive hashes could retain
+    enough allocator memory to stall the desktop process.  This writer keeps
+    exactly the same canonical ordering and numeric rules while emitting
+    fragments incrementally.
+    """
+
+    if is_dataclass(value):
+        value = asdict(value)
+    if isinstance(value, Enum):
+        value = value.value
+    if isinstance(value, Path):
+        value = str(value)
+    if isinstance(value, Mapping):
+        # Project snapshots overwhelmingly use string keys.  Avoid allocating a
+        # duplicate key map for every nested object; only fall back to the
+        # historical string-key conversion when a non-string key is present.
+        if all(isinstance(key, str) for key in value):
+            mapped = value
+        else:
+            mapped = {str(key): item for key, item in value.items()}
+        write("{")
+        first = True
+        for key in sorted(mapped):
+            if not first:
+                write(",")
+            first = False
+            # ``encode_basestring`` is the same JSON string encoder used by
+            # ``json.dumps`` but avoids constructing a new encoder for every
+            # key.  A 6k-object IFC project contains hundreds of thousands of
+            # keys, so this is a material save-time improvement.
+            write(json.encoder.encode_basestring(key))
+            write(":")
+            _write_stable_json(mapped[key], write, precision=precision)
+        write("}")
+        return
+    if isinstance(value, (list, tuple)):
+        write("[")
+        for index, item in enumerate(value):
+            if index:
+                write(",")
+            _write_stable_json(item, write, precision=precision)
+        write("]")
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ProjectValidationError("Niet-eindige numerieke waarde in projectdata")
+        rounded = round(value, precision)
+        value = 0.0 if rounded == 0.0 else rounded
+        # CPython's JSON encoder serialises finite floats with ``repr``.
+        # Reusing that representation avoids a full ``json.dumps`` call for
+        # every coordinate while keeping the previous canonical bytes.
+        write(repr(value))
+        return
+    if isinstance(value, bool):
+        write("true" if value else "false")
+        return
+    if value is None:
+        write("null")
+        return
+    if isinstance(value, int):
+        write(str(value))
+        return
+    if isinstance(value, str):
+        write(json.encoder.encode_basestring(value))
+        return
+    write(json.encoder.encode_basestring(str(value)))
 
 
 def _major(version: str) -> str:
     return str(version).split(".", 1)[0]
+
+
+def _version_tuple(version: str) -> tuple[int, ...]:
+    """Parse a dotted numeric schema version without accepting loose text.
+
+    Project packages are production evidence.  A future ``2.9`` schema must
+    not be treated as compatible merely because it shares major version 2.
+    """
+
+    text = str(version or "").strip()
+    if not text:
+        return ()
+    parts = text.split(".")
+    if any(not part.isdigit() for part in parts):
+        return ()
+    return tuple(int(part) for part in parts)
+
+
+def project_hash_bundle_from_snapshot(snapshot: Mapping[str, Any]) -> dict[str, str]:
+    """Calculate the three canonical project hashes from one detached snapshot.
+
+    This helper is shared by :class:`ProjectModel` and the project package
+    writer.  It preserves the exact v0.6 hash semantics while avoiding repeated
+    recursive ``to_dict`` copies for large semantic IFC projects.
+    """
+
+    semantic_hash = stable_sha256(snapshot)
+    content_payload = {
+        key: value
+        for key, value in snapshot.items()
+        if key not in {"app_version", "modified_at", "audit_log", "revisions"}
+    }
+    content_hash = stable_sha256(content_payload)
+    revision_payload = dict(content_payload)
+    revision_payload["sources"] = {
+        source_id: {
+            key: value
+            for key, value in dict(source).items()
+            if key not in {"original_path", "embedded_path"}
+        }
+        for source_id, source in dict(content_payload.get("sources") or {}).items()
+    }
+    revision_hash = stable_sha256(revision_payload)
+    return {
+        "semantic_sha256": semantic_hash,
+        "content_sha256": content_hash,
+        "revision_content_sha256": revision_hash,
+    }
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -645,9 +781,39 @@ class Part(ProjectEntity):
                 "holes": [asdict(item) for item in canonical.holes],
                 "geometry": canonical.geometry,
             }
+        descriptor = self.geometry_descriptor
+        # Semantic IFC/STEP descriptors contain source entity IDs for audit and
+        # viewer navigation.  Those occurrence IDs must never make otherwise
+        # identical production geometry look different.  When an importer has
+        # supplied an ID-independent source-geometry fingerprint, hash only the
+        # geometry-relevant facts and keep the rich source descriptor outside
+        # the manufacturing fingerprint.
+        if isinstance(descriptor, Mapping) and descriptor.get("source_geometry_hash"):
+            representation_types = sorted(
+                {
+                    str(item.get("representation_type") or "")
+                    for item in list(descriptor.get("representations") or [])
+                    if isinstance(item, Mapping)
+                    and str(item.get("representation_type") or "")
+                }
+            )
+            descriptor = {
+                "source_geometry_hash": descriptor.get("source_geometry_hash"),
+                "primitive_counts": descriptor.get("primitive_counts", {}),
+                "profile_names": descriptor.get("profile_names", []),
+                "extrusion_depths_source_units": descriptor.get(
+                    "extrusion_depths_source_units", []
+                ),
+                "representation_types": representation_types,
+                "solid_count": descriptor.get("solid_count"),
+                "volume_mm3": descriptor.get("volume_mm3"),
+                "area_mm2": descriptor.get("area_mm2"),
+                "bbox_sorted_mm": descriptor.get("bbox_sorted_mm"),
+                "topology": descriptor.get("topology", {}),
+            }
         return {
             "version": self.hash_algorithm_version,
-            "descriptor": self.geometry_descriptor,
+            "descriptor": descriptor,
             "features": self.production_features,
             "profile": self.profile,
             "profile_type": self.profile_type,
@@ -1257,6 +1423,103 @@ class ProjectModel:
         project.audit("project.migrated_from_canonical_part", user=user)
         return project
 
+    def remove_entities_for_source(
+        self,
+        source_id: str,
+        *,
+        user: str = "system",
+    ) -> dict[str, int]:
+        """Remove all materialised entities originating from one source.
+
+        Semantic re-import is transactional at the service layer.  This helper
+        makes it idempotent by pruning both the entities and every reciprocal
+        project relation before the new graph is inserted.  Entities from
+        other sources are preserved.
+        """
+
+        if source_id not in self.sources:
+            raise ProjectValidationError(f"Onbekende projectbron {source_id}")
+        remove_ids = {
+            entity.internal_id
+            for entity in self.iter_entities()
+            if entity.source_identity.source_file_id == source_id
+        }
+        counts: dict[str, int] = {}
+        if not remove_ids:
+            return {entity_type: 0 for entity_type in ENTITY_COLLECTIONS}
+
+        for assembly in self.assemblies.values():
+            if assembly.internal_id in remove_ids:
+                continue
+            assembly.child_assembly_ids = [
+                item for item in assembly.child_assembly_ids if item not in remove_ids
+            ]
+            assembly.part_ids = [item for item in assembly.part_ids if item not in remove_ids]
+            assembly.purchased_item_ids = [
+                item for item in assembly.purchased_item_ids if item not in remove_ids
+            ]
+            assembly.fastener_ids = [
+                item for item in assembly.fastener_ids if item not in remove_ids
+            ]
+            assembly.weld_ids = [item for item in assembly.weld_ids if item not in remove_ids]
+            if assembly.main_part_id in remove_ids:
+                assembly.main_part_id = ""
+
+        for part in self.parts.values():
+            if part.internal_id in remove_ids:
+                continue
+            part.assembly_ids = [item for item in part.assembly_ids if item not in remove_ids]
+            part.quantity_per_assembly = {
+                key: value
+                for key, value in part.quantity_per_assembly.items()
+                if key not in remove_ids
+            }
+        for purchased in self.purchased_items.values():
+            if purchased.internal_id not in remove_ids:
+                purchased.assembly_ids = [
+                    item for item in purchased.assembly_ids if item not in remove_ids
+                ]
+        for fastener in self.fasteners.values():
+            if fastener.internal_id not in remove_ids:
+                fastener.connected_part_ids = [
+                    item for item in fastener.connected_part_ids if item not in remove_ids
+                ]
+        for weld in self.welds.values():
+            if weld.internal_id not in remove_ids:
+                weld.connected_part_ids = [
+                    item for item in weld.connected_part_ids if item not in remove_ids
+                ]
+        for operation in self.production_operations.values():
+            if operation.internal_id not in remove_ids:
+                operation.part_ids = [item for item in operation.part_ids if item not in remove_ids]
+        for job in self.machine_jobs.values():
+            if job.internal_id not in remove_ids:
+                job.part_ids = [item for item in job.part_ids if item not in remove_ids]
+                job.operation_ids = [
+                    item for item in job.operation_ids if item not in remove_ids
+                ]
+
+        for entity_type, collection_name in ENTITY_COLLECTIONS.items():
+            collection: dict[str, ProjectEntity] = getattr(self, collection_name)
+            matching = [key for key in collection if key in remove_ids]
+            for key in matching:
+                collection.pop(key, None)
+            counts[entity_type] = len(matching)
+
+        self.validation_issues = [
+            issue for issue in self.validation_issues if issue.entity_id not in remove_ids
+        ]
+        spatial_trees = self.settings.get("spatial_trees")
+        if isinstance(spatial_trees, dict):
+            spatial_trees.pop(source_id, None)
+        self.audit(
+            "source.materialised_entities_removed",
+            user=user,
+            entity_id=source_id,
+            details={"counts": counts},
+        )
+        return counts
+
     def get_entity(self, entity_id: str) -> ProjectEntity | None:
         for collection_name in ENTITY_COLLECTIONS.values():
             collection: dict[str, ProjectEntity] = getattr(self, collection_name)
@@ -1322,7 +1585,7 @@ class ProjectModel:
     def validate(self, *, verify_hashes: bool = True) -> None:
         """Validate the complete project graph and all production identities.
 
-        Project Model 2.0 is the persistence boundary for later BOM,
+        Project Model 2.1 is the persistence boundary for later BOM,
         optimisation and machine phases.  Validation is deliberately strict:
         dangling references, cyclic assemblies, non-rigid placements and
         impossible quantities are blocked before a package can be saved.
@@ -1818,8 +2081,36 @@ class ProjectModel:
                 )
 
     def to_dict(self) -> dict[str, Any]:
-        data = asdict(self)
-        for entity_type, collection_name in ENTITY_COLLECTIONS.items():
+        """Return a detached JSON-ready project snapshot.
+
+        ``dataclasses.asdict(self)`` recursively copied every entity collection
+        and the former implementation then serialised those same collections a
+        second time to add ``entity_type``.  Large IFC projects therefore paid
+        the full cost twice and could show pathological memory/GC behaviour on
+        reopening.  Serialising the known top-level fields explicitly is both
+        deterministic and linear in the project size.
+        """
+
+        entity_collection_names = set(ENTITY_COLLECTIONS.values())
+        data: dict[str, Any] = {}
+        for field_info in fields(self):
+            name = field_info.name
+            if name in entity_collection_names:
+                continue
+            value = getattr(self, name)
+            if name == "sources":
+                data[name] = {
+                    source_id: asdict(source)
+                    for source_id, source in value.items()
+                }
+            elif name == "validation_issues":
+                data[name] = [asdict(item) for item in value]
+            elif name == "audit_log":
+                data[name] = [asdict(item) for item in value]
+            else:
+                data[name] = copy.deepcopy(value)
+
+        for _entity_type, collection_name in ENTITY_COLLECTIONS.items():
             data[collection_name] = {
                 entity_id: entity.base_to_dict()
                 for entity_id, entity in getattr(self, collection_name).items()
@@ -1830,7 +2121,7 @@ class ProjectModel:
         return stable_json_bytes(self.to_dict())
 
     def semantic_sha256(self) -> str:
-        return hashlib.sha256(self.to_json_bytes()).hexdigest()
+        return stable_sha256(self.to_dict())
 
     def content_sha256(self) -> str:
         """Stable hash of user/project content, excluding save bookkeeping.
@@ -1889,7 +2180,25 @@ class ProjectModel:
         }
         return stable_sha256(payload)
 
-    def summary(self) -> dict[str, Any]:
+    def summary(self, *, include_expensive_hashes: bool = True) -> dict[str, Any]:
+        """Return project KPIs and release-gate state.
+
+        A verified package may contain thousands of entities.  GUI list refresh
+        and ``project-info`` can reuse the immutable hashes that
+        :class:`ProjectStore` verified while opening the package.  Callers that
+        need a fresh audit fingerprint keep the default and recompute all three
+        content hashes from one project snapshot.
+        """
+
+        if include_expensive_hashes:
+            hashes = project_hash_bundle_from_snapshot(self.to_dict())
+            semantic_hash = hashes["semantic_sha256"]
+            content_hash = hashes["content_sha256"]
+            revision_hash = hashes["revision_content_sha256"]
+        else:
+            semantic_hash = str(getattr(self, "_verified_semantic_sha256", ""))
+            content_hash = str(getattr(self, "_verified_content_sha256", ""))
+            revision_hash = str(getattr(self, "_verified_revision_content_sha256", ""))
         return {
             "schema_version": self.schema_version,
             "app_version": self.app_version,
@@ -1903,10 +2212,13 @@ class ProjectModel:
             "source_count": len(self.sources),
             "entity_counts": self.entity_counts(),
             "blocking_issue_count": len(self.blocking_issues()),
-            "content_sha256": self.content_sha256(),
-            "semantic_sha256": self.semantic_sha256(),
-            "revision_content_sha256": self.revision_content_sha256(),
-            "manufacturing_state_sha256": self.manufacturing_state_sha256(),
+            "content_sha256": content_hash,
+            "semantic_sha256": semantic_hash,
+            "revision_content_sha256": revision_hash,
+            "manufacturing_state_sha256": (
+                str(getattr(self, "_verified_manufacturing_state_sha256", ""))
+                or self.manufacturing_state_sha256()
+            ),
             "production_gate": self.production_gate(),
         }
 
@@ -1916,7 +2228,7 @@ class ProjectModel:
             raise ProjectValidationError("Project Model is geen JSON-object")
         migrated = migrate_project_dict(data)
         version = str(migrated.get("schema_version", ""))
-        if _major(version) != _major(PROJECT_SCHEMA_VERSION):
+        if version != PROJECT_SCHEMA_VERSION:
             raise ProjectValidationError(
                 f"Niet-ondersteund Project Model-schema {version!r}; verwacht {PROJECT_SCHEMA_VERSION}"
             )
@@ -1954,7 +2266,7 @@ class ProjectModel:
 
 
 def migrate_project_dict(data: dict[str, Any]) -> dict[str, Any]:
-    """Migrate known historical project representations to schema 2.0.
+    """Migrate known historical project representations to the current schema.
 
     Version 1.0 was never released as a package, but early development fixtures
     used ``canonical_parts``. Supporting that shape makes the first public
@@ -1967,7 +2279,27 @@ def migrate_project_dict(data: dict[str, Any]) -> dict[str, Any]:
     if not version and "canonical_parts" in raw:
         version = "1.0"
         raw["schema_version"] = version
-    if _major(version) == "2":
+    current = _version_tuple(PROJECT_SCHEMA_VERSION)
+    parsed = _version_tuple(version)
+    if parsed and current and parsed > current:
+        return raw
+    if version == PROJECT_SCHEMA_VERSION:
+        return raw
+    if version == "2.0" and PROJECT_SCHEMA_VERSION == "2.1":
+        raw["schema_version"] = PROJECT_SCHEMA_VERSION
+        history = list(raw.get("migration_history") or [])
+        history.append(
+            {
+                "from": "2.0",
+                "to": PROJECT_SCHEMA_VERSION,
+                "timestamp": utc_now_iso(),
+                "reason": "Semantische IFC/STEP-projectimport metadata en bronstatus toegevoegd.",
+            }
+        )
+        raw["migration_history"] = history
+        # Schema 2.1 did not remove fields.  Existing source records and entity
+        # collections receive their new optional members through dataclass
+        # defaults during ``from_dict``.
         return raw
     if _major(version) != "1":
         return raw

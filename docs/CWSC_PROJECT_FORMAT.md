@@ -24,7 +24,14 @@ previews/<bestandsnaam>
 
 ## Manifest
 
-Het manifest bevat onder meer:
+Vanaf Project Model 2.1 bevat het manifest vier afzonderlijke integriteitshashes:
+
+- `project_sha256` / semantische projectsnapshot;
+- `content_sha256` voor inhoud zonder vluchtige revisievelden;
+- `revision_content_sha256` voor revisiebepaling;
+- `manufacturing_state_sha256` voor productie-invalidering.
+
+Het manifest bevat daarnaast onder meer:
 
 - pakketformaat en opslagversie;
 - productschema en applicatieversie;
@@ -82,3 +89,10 @@ Een inhoudelijke wijziging kan een projectrevisie aanmaken. Bij normaal opslaan 
 - de bron wordt nooit stil overschreven;
 - een onbekende nieuwere major-versie wordt geblokkeerd;
 - legacy IFC-/Trusted-PDF-payloadmarkers blijven buiten het projectformaat bewust compatibel.
+
+
+## Semantische importmetadata in schema 2.1
+
+Per bron worden strategie, importerversie, entitycounts, bronklassecounts, relatiecounts, spatial tree, geometry-samenvatting, bewijs, warnings en productiegate opgeslagen. Iedere gematerialiseerde entity verwijst via `SourceIdentity` terug naar bronbestand, bronhash en IFC/STEP-entity.
+
+Schema 2.0 wordt als compatibele minor-versie gemigreerd. Een onbekende major-versie opent niet stil als schrijfbaar project.

@@ -8,25 +8,9 @@ from typing import Any, Callable
 
 from cws_convertor.product import APP_NAME, APP_VERSION
 
-from ai_support import AISettings
-from conversion import __version__, convert_nc1_to_step, step_to_nc1
-from ifc_support import dstv_to_ifc, ifc_to_dstv, ifc_to_step, step_to_ifc
-from material_database import MaterialDatabase
-from pdf_support import (
-    DrawingTemplate,
-    ExternalPDFExportBlocked,
-    analyze_pdf,
-    ifc_to_pdf,
-    nc1_to_pdf,
-    pdf_to_ifc,
-    pdf_to_nc1,
-    pdf_to_step,
-    review_external_pdf,
-    step_to_pdf,
-    write_analysis_report,
-)
-from profile_database import ProfileDatabase
-from quantities import analyze_files, export_excel
+# CAD/PDF engines are intentionally imported inside their command branches.
+# Project-only commands must be able to inspect a large IFC project without
+# loading OpenCascade/CadQuery and the complete drawing stack into memory.
 from cws_convertor.errors import CWSError
 from cws_convertor.project import (
     ProjectPackageError,
@@ -94,7 +78,9 @@ def _template_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--template", default="", help="Optioneel JSON-bestand met DrawingTemplate-velden")
 
 
-def _load_template(path: str) -> DrawingTemplate:
+def _load_template(path: str) -> "DrawingTemplate":
+    from pdf_support import DrawingTemplate
+
     if not path:
         return DrawingTemplate()
     source = Path(path)
@@ -106,7 +92,9 @@ def _load_template(path: str) -> DrawingTemplate:
     return DrawingTemplate(**{key: value for key, value in data.items() if key in allowed})
 
 
-def _ai_settings(args: argparse.Namespace) -> AISettings:
+def _ai_settings(args: argparse.Namespace) -> "AISettings":
+    from ai_support import AISettings
+
     return AISettings(
         provider=getattr(args, "ai_provider", "none"),
         model=getattr(args, "ai_model", "gpt-5.6"),
@@ -121,7 +109,7 @@ def _write_aggregate_report(path: str, payload: dict[str, Any]) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
-    print(f"RAPPORT {target}")
+    print(f"RAPPORT {target}", file=sys.stderr)
 
 
 def _print_warnings(warnings: list[str]) -> None:
@@ -287,6 +275,46 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--baseline-report", default="", help="Optioneel afzonderlijk JSON-rapport")
     _report_arg(p)
 
+    p = sub.add_parser(
+        "project-import",
+        aliases=["project-import-semantic", "project-materialize"],
+        help="Materialiseer IFC/STEP-assemblies, onderdelen, bouten en lassen",
+    )
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("inputs", nargs="*", help="Optioneel eerst te registreren IFC/STEP-bronnen")
+    p.add_argument(
+        "--source-id",
+        action="append",
+        default=[],
+        help="Importeer alleen deze bron-ID; herhaalbaar. Leeg = alle geregistreerde bronnen",
+    )
+    p.add_argument("--no-embed", action="store_true", help="Bewaar bronnen alleen als geverifieerde pad/hashreferentie")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true", help="Schrijf het semantische importrapport als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser("project-tree", help="Toon de semantische project-/assemblyboom")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--source-id", default="", help="Beperk tot één bron-ID")
+    p.add_argument("--json", action="store_true", help="Schrijf de boom als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser("project-list-parts", help="Toon semantisch geïmporteerde onderdelen")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--source-id", default="", help="Beperk tot één bron-ID")
+    p.add_argument("--filter", default="", help="Zoek in positie, naam, profiel, materiaal en categorie")
+    p.add_argument("--limit", type=int, default=200, help="Maximaal aantal regels; 0 = onbeperkt")
+    p.add_argument("--json", action="store_true", help="Schrijf de lijst als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser("project-list-assemblies", help="Toon semantisch geïmporteerde assemblies/merken")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--source-id", default="", help="Beperk tot één bron-ID")
+    p.add_argument("--filter", default="", help="Zoek in merk en naam")
+    p.add_argument("--limit", type=int, default=200, help="Maximaal aantal regels; 0 = onbeperkt")
+    p.add_argument("--json", action="store_true", help="Schrijf de lijst als JSON")
+    _report_arg(p)
+
     p = sub.add_parser("project-sources", help="Toon alle bronbestanden en importstrategieën")
     p.add_argument("project", help=".cwscproj-projectbestand")
     p.add_argument("--json", action="store_true", help="Schrijf de lijst als JSON naar stdout")
@@ -403,6 +431,308 @@ def main(argv: list[str] | None = None) -> int:
                 "error": _exception_payload(exc),
             }
             print(f"FOUT project lezen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command in {"project-import", "project-import-semantic", "project-materialize"}:
+        try:
+            registered_ids: list[str] = []
+            if args.inputs:
+                files = list(_iter_inputs(args.inputs, {".ifc", ".step", ".stp"}))
+                if not files:
+                    print("Geen geschikte IFC/STEP-bestanden gevonden.", file=sys.stderr)
+                    return EXIT_NO_INPUT
+                registrations = service.register_sources(
+                    args.project,
+                    files,
+                    embed_sources=not args.no_embed,
+                    include_step_geometry=False,
+                    user=args.user or "cli",
+                )
+                registered_ids = [item.source.source_id for item in registrations]
+            selected_ids = list(args.source_id) or registered_ids or None
+
+            def progress(done: int, total: int, message: str) -> None:
+                print(f"[{done}/{total}] {message}", file=sys.stderr)
+
+            results = service.semantic_import_sources(
+                args.project,
+                selected_ids,
+                embed_sources=not args.no_embed,
+                user=args.user or "cli",
+                progress_callback=progress,
+            )
+            info = service.project_info(args.project)
+            production_allowed = bool(results) and all(
+                item.production_export_allowed for item in results
+            )
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed" if production_allowed else "review_required",
+                "project_file": info["path"],
+                "project": info["summary"],
+                "semantic_imports": [item.to_dict() for item in results],
+                "production_export_allowed": production_allowed,
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                for item in results:
+                    counts = item.entity_counts
+                    print(
+                        f"OK   {item.file_name} | {item.strategy} | "
+                        f"assemblies {counts.get('assemblies', 0)} | "
+                        f"onderdelen {counts.get('parts', 0)} | "
+                        f"bouten {counts.get('fasteners', 0)} | "
+                        f"lassen {counts.get('welds', 0)}"
+                    )
+                    for warning in item.warnings:
+                        print(f"     WAARSCHUWING: {warning}")
+                    if not item.production_export_allowed:
+                        print("     PRODUCTIE: geblokkeerd tot classificatie, feature- en roundtripvalidatie")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK if production_allowed else EXIT_REVIEW_REQUIRED
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(
+                "FOUT semantische projectimport; project is niet gedeeltelijk gewijzigd: "
+                f"{exc}",
+                file=sys.stderr,
+            )
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-tree":
+        try:
+            with ProjectSession.open(args.project, read_only=True) as session:
+                project = session.project
+                source_filter = args.source_id.strip()
+                assemblies = [
+                    assembly
+                    for assembly in project.assemblies.values()
+                    if not source_filter
+                    or assembly.source_identity.source_file_id == source_filter
+                ]
+                assembly_ids = {item.internal_id for item in assemblies}
+                child_ids = {
+                    child_id
+                    for item in assemblies
+                    for child_id in item.child_assembly_ids
+                    if child_id in assembly_ids
+                }
+
+                def assembly_node(assembly, seen: set[str]) -> dict[str, Any]:
+                    if assembly.internal_id in seen:
+                        return {
+                            "assembly_id": assembly.internal_id,
+                            "assembly_mark": assembly.assembly_mark,
+                            "cycle": True,
+                        }
+                    next_seen = {*seen, assembly.internal_id}
+                    return {
+                        "assembly_id": assembly.internal_id,
+                        "source_entity_id": assembly.source_identity.source_entity_id,
+                        "assembly_mark": assembly.assembly_mark,
+                        "name": assembly.name,
+                        "quantity": assembly.quantity,
+                        "part_count": len(assembly.part_ids),
+                        "fastener_count": len(assembly.fastener_ids),
+                        "weld_count": len(assembly.weld_ids),
+                        "main_part_id": assembly.main_part_id,
+                        "children": [
+                            assembly_node(project.assemblies[child_id], next_seen)
+                            for child_id in assembly.child_assembly_ids
+                            if child_id in assembly_ids
+                        ],
+                    }
+
+                roots = [item for item in assemblies if item.internal_id not in child_ids]
+                payload = {
+                    "converter_version": APP_VERSION,
+                    "command": args.command,
+                    "status": "passed",
+                    "project_id": project.project_id,
+                    "project_name": project.project_name,
+                    "source_id": source_filter,
+                    "assembly_count": len(assemblies),
+                    "roots": [assembly_node(item, set()) for item in roots],
+                    "standalone_part_ids": [
+                        part.internal_id
+                        for part in project.parts.values()
+                        if not part.assembly_ids
+                        and (
+                            not source_filter
+                            or part.source_identity.source_file_id == source_filter
+                        )
+                    ],
+                    "spatial_trees": (
+                        {source_filter: project.settings.get("spatial_trees", {}).get(source_filter, {})}
+                        if source_filter
+                        else dict(project.settings.get("spatial_trees") or {})
+                    ),
+                }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"{payload['project_name']} | assemblies: {payload['assembly_count']}")
+                for root in payload["roots"]:
+                    print(
+                        f"{root['assembly_mark'] or '-'}\t{root['name']}\t"
+                        f"parts {root['part_count']}\tbouten {root['fastener_count']}\t"
+                        f"lassen {root['weld_count']}"
+                    )
+                print(f"Losse onderdelen: {len(payload['standalone_part_ids'])}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT projectboom lezen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-list-parts":
+        try:
+            query = args.filter.casefold().strip()
+            with ProjectSession.open(args.project, read_only=True) as session:
+                values = []
+                for part in session.project.parts.values():
+                    if args.source_id and part.source_identity.source_file_id != args.source_id:
+                        continue
+                    searchable = " ".join(
+                        [
+                            part.part_position,
+                            part.name,
+                            part.profile,
+                            part.material,
+                            part.category,
+                            part.part_type,
+                        ]
+                    ).casefold()
+                    if query and query not in searchable:
+                        continue
+                    values.append(
+                        {
+                            "part_id": part.internal_id,
+                            "source_id": part.source_identity.source_file_id,
+                            "source_entity_id": part.source_identity.source_entity_id,
+                            "part_position": part.part_position,
+                            "name": part.name,
+                            "category": part.category,
+                            "part_type": part.part_type,
+                            "profile": part.profile,
+                            "material": part.material,
+                            "length_mm": part.length_mm,
+                            "mass_each_kg": part.mass_each_kg,
+                            "assembly_ids": list(part.assembly_ids),
+                            "geometry_hash": part.geometry_hash,
+                            "manufacturing_hash": part.manufacturing_hash,
+                            "nc1_eligible": part.nc1_eligible,
+                            "export_status": part.export_status,
+                        }
+                    )
+                values.sort(key=lambda item: (item["part_position"], item["name"], item["part_id"]))
+                total = len(values)
+                if args.limit > 0:
+                    values = values[: args.limit]
+                payload = {
+                    "converter_version": APP_VERSION,
+                    "command": args.command,
+                    "status": "passed",
+                    "total_matching": total,
+                    "returned": len(values),
+                    "parts": values,
+                }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                for item in values:
+                    print(
+                        f"{item['part_position'] or '-'}\t{item['profile'] or '-'}\t"
+                        f"{item['material'] or '-'}\t{item['length_mm']:.3f}\t"
+                        f"{item['category']}\t{item['name']}"
+                    )
+                print(f"Getoond {len(values)} van {total} onderdelen")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT onderdelen lezen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-list-assemblies":
+        try:
+            query = args.filter.casefold().strip()
+            with ProjectSession.open(args.project, read_only=True) as session:
+                values = []
+                for assembly in session.project.assemblies.values():
+                    if args.source_id and assembly.source_identity.source_file_id != args.source_id:
+                        continue
+                    if query and query not in f"{assembly.assembly_mark} {assembly.name}".casefold():
+                        continue
+                    values.append(
+                        {
+                            "assembly_id": assembly.internal_id,
+                            "source_id": assembly.source_identity.source_file_id,
+                            "source_entity_id": assembly.source_identity.source_entity_id,
+                            "assembly_mark": assembly.assembly_mark,
+                            "name": assembly.name,
+                            "quantity": assembly.quantity,
+                            "part_count": len(assembly.part_ids),
+                            "fastener_count": len(assembly.fastener_ids),
+                            "weld_count": len(assembly.weld_ids),
+                            "total_weight_kg": assembly.total_weight_kg,
+                            "status": assembly.production_status,
+                        }
+                    )
+                values.sort(key=lambda item: (item["assembly_mark"], item["name"], item["assembly_id"]))
+                total = len(values)
+                if args.limit > 0:
+                    values = values[: args.limit]
+                payload = {
+                    "converter_version": APP_VERSION,
+                    "command": args.command,
+                    "status": "passed",
+                    "total_matching": total,
+                    "returned": len(values),
+                    "assemblies": values,
+                }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                for item in values:
+                    print(
+                        f"{item['assembly_mark'] or '-'}\t{item['name']}\t"
+                        f"parts {item['part_count']}\tbouten {item['fastener_count']}\t"
+                        f"lassen {item['weld_count']}\t{item['total_weight_kg']:.3f} kg"
+                    )
+                print(f"Getoond {len(values)} van {total} assemblies")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT assemblies lezen: {exc}", file=sys.stderr)
             _write_aggregate_report(args.json_report, payload)
             return EXIT_FAILED
 
@@ -663,6 +993,8 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_FAILED
 
     if args.command == "nc1-to-step":
+        from conversion import convert_nc1_to_step
+
         output = Path(args.output); output.mkdir(parents=True, exist_ok=True)
         files = list(_iter_inputs(args.inputs, {".nc", ".nc1"}))
         for source in files:
@@ -678,6 +1010,9 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command == "step-to-nc1":
+        from conversion import step_to_nc1
+        from profile_database import ProfileDatabase
+
         output = Path(args.output); output.mkdir(parents=True, exist_ok=True)
         database = ProfileDatabase()
         files = list(_iter_inputs(args.inputs, {".step", ".stp"}))
@@ -703,6 +1038,9 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command == "ifc-to-dstv":
+        from ifc_support import ifc_to_dstv
+        from profile_database import ProfileDatabase
+
         output = Path(args.output); output.mkdir(parents=True, exist_ok=True)
         database = ProfileDatabase()
         files = list(_iter_inputs(args.inputs, {".ifc"}))
@@ -732,6 +1070,8 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command in {"dstv-to-ifc", "ifc-to-step", "step-to-ifc"}:
+        from ifc_support import dstv_to_ifc, ifc_to_step, step_to_ifc
+
         mapping: dict[str, tuple[set[str], Callable[[Path, Path], Any], str]] = {
             "dstv-to-ifc": ({".nc", ".nc1"}, lambda source, target: dstv_to_ifc(source, target, material=args.material), ".ifc"),
             "ifc-to-step": ({".ifc"}, lambda source, target: ifc_to_step(source, target), ".step"),
@@ -753,6 +1093,8 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command in {"nc1-to-pdf", "step-to-pdf", "ifc-to-pdf"}:
+        from pdf_support import ifc_to_pdf, nc1_to_pdf, step_to_pdf
+
         extension_map = {
             "nc1-to-pdf": {".nc", ".nc1"},
             "step-to-pdf": {".step", ".stp"},
@@ -780,6 +1122,8 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command == "pdf-analyze":
+        from pdf_support import analyze_pdf, write_analysis_report
+
         output = Path(args.output); output.mkdir(parents=True, exist_ok=True)
         files = list(_iter_inputs(args.inputs, {".pdf"}))
         settings = _ai_settings(args)
@@ -800,6 +1144,8 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command == "pdf-review":
+        from pdf_support import ExternalPDFExportBlocked, review_external_pdf
+
         files = [Path(args.input)] if Path(args.input).is_file() else []
         if files:
             source = files[0]
@@ -824,6 +1170,13 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command in {"pdf-to-nc1", "pdf-to-step", "pdf-to-ifc"}:
+        from pdf_support import (
+            ExternalPDFExportBlocked,
+            pdf_to_ifc,
+            pdf_to_nc1,
+            pdf_to_step,
+        )
+
         output = Path(args.output); output.mkdir(parents=True, exist_ok=True)
         files = list(_iter_inputs(args.inputs, {".pdf"}))
         settings = _ai_settings(args)
@@ -850,6 +1203,10 @@ def main(argv: list[str] | None = None) -> int:
                 entries.append(_result_entry(source, status="failed", error=str(exc)))
 
     elif args.command in {"excel", "quantities"}:
+        from material_database import MaterialDatabase
+        from profile_database import ProfileDatabase
+        from quantities import analyze_files, export_excel
+
         files = list(_iter_inputs(args.inputs, {".ifc", ".step", ".stp"}))
         if files:
             try:
@@ -877,7 +1234,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_NO_INPUT
 
     payload = {
-        "converter_version": __version__,
+        "converter_version": APP_VERSION,
         "command": args.command,
         "strict_validation": True,
         "summary": {

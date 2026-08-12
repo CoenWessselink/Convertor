@@ -1,19 +1,29 @@
 """High-level project session service for CWS Convertor.
 
-The service keeps GUI and CLI behaviour identical: sources are first registered
-and inspected, never silently turned into production parts.  Semantic import is
-a separate next-phase operation.  Autosave and embedded-source preservation are
-handled here so callers do not have to manipulate package internals.
+The service keeps GUI and CLI behaviour identical.  Source intake remains a
+two-step operation:
+
+1. deterministic baseline inspection and registration;
+2. explicit semantic IFC/STEP materialisation into Project Model 2.x.
+
+Both steps are transactional.  Semantic import never grants production export
+by itself; exact feature recognition and roundtrip validation remain a separate
+release gate.  Autosave and embedded-source preservation are handled here so
+callers do not have to manipulate package internals.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
 import tempfile
-from typing import Iterable
+from typing import Callable, Iterable
 from uuid import uuid4
 
 from cws_convertor.errors import ErrorCode
+from cws_convertor.importers.semantic import (
+    SemanticCancelCheck,
+    SemanticImportResult,
+)
 from cws_convertor.product import PROJECT_FILE_EXTENSION
 from .baseline import (
     BaselineAnalysis,
@@ -23,6 +33,7 @@ from .baseline import (
 )
 from .model import ImportStrategy, ProjectModel, SourceFileRecord, utc_now_iso
 from .storage import ProjectPackage, ProjectPackageError, ProjectStore
+from .semantic_import import semantic_import_source
 
 
 @dataclass
@@ -109,7 +120,9 @@ class ProjectSession:
             read_only=package.read_only,
             dirty=False,
             package=package,
-            _last_saved_content_sha256=package.project.revision_content_sha256(),
+            _last_saved_content_sha256=package.project.summary(
+                include_expensive_hashes=False
+            )["revision_content_sha256"],
         )
         session._prepare_embedded_sources()
         return session
@@ -372,6 +385,145 @@ class ProjectSession:
             result.source.metadata["embed_preference"] = bool(embed)
         return [result.analysis for result in results]
 
+    def resolve_source_path(self, source_id: str) -> Path:
+        """Return verified bytes for a registered source.
+
+        Embedded package entries and live source paths are treated identically:
+        both are checked against the SHA-256 stored in the canonical project.
+        """
+
+        source = self.project.sources.get(source_id)
+        if source is None:
+            raise ProjectPackageError(
+                f"Onbekende projectbron {source_id}",
+                code=ErrorCode.INVALID_INPUT,
+            )
+        candidates: list[Path] = []
+        if source_id in self.source_paths:
+            candidates.append(Path(self.source_paths[source_id]))
+        if source.original_path:
+            candidates.append(Path(source.original_path))
+        checked: list[str] = []
+        for candidate in candidates:
+            resolved = candidate.expanduser().resolve()
+            if str(resolved) in checked:
+                continue
+            checked.append(str(resolved))
+            if not resolved.is_file():
+                continue
+            if sha256_file(resolved) != source.sha256:
+                continue
+            self.source_paths[source_id] = resolved
+            return resolved
+        raise ProjectPackageError(
+            f"Geen geverifieerde bronbytes beschikbaar voor {source.file_name}",
+            code=ErrorCode.PROJECT_INVALID,
+            details={
+                "source_id": source_id,
+                "expected_sha256": source.sha256,
+                "checked_paths": checked,
+                "hint": "Open een project met ingesloten bronnen of koppel de oorspronkelijke bron opnieuw.",
+            },
+        )
+
+    def semantic_import_sources(
+        self,
+        source_ids: Iterable[str] | None = None,
+        *,
+        user: str = "system",
+        progress_callback: Callable[[float, int, str], None] | None = None,
+        cancel_check: SemanticCancelCheck | None = None,
+    ) -> list[SemanticImportResult]:
+        """Materialise verified IFC/STEP sources as one atomic project update."""
+
+        self._ensure_writable()
+        if cancel_check is not None:
+            cancel_check()
+        selected = list(source_ids) if source_ids is not None else list(self.project.sources)
+        if not selected:
+            return []
+        if len(selected) != len(set(selected)):
+            raise ProjectPackageError(
+                "De semantische importselectie bevat dubbele bron-IDs",
+                code=ErrorCode.INVALID_INPUT,
+            )
+        missing = [source_id for source_id in selected if source_id not in self.project.sources]
+        if missing:
+            raise ProjectPackageError(
+                "De semantische importselectie bevat onbekende bron-IDs",
+                code=ErrorCode.INVALID_INPUT,
+                details={"source_ids": missing},
+            )
+
+        # Resolve and hash-check all input bytes before modifying the clone.
+        paths: dict[str, Path] = {}
+        for source_id in selected:
+            if cancel_check is not None:
+                cancel_check()
+            paths[source_id] = self.resolve_source_path(source_id)
+        original_project = self.project
+        original_dirty = self.dirty
+        working = ProjectModel.from_dict(original_project.to_dict())
+        results: list[SemanticImportResult] = []
+        try:
+            total = len(selected)
+            for index, source_id in enumerate(selected, start=1):
+                if cancel_check is not None:
+                    cancel_check()
+                source = working.sources[source_id]
+                if progress_callback is not None:
+                    progress_callback(index - 1, total, f"Semantische import: {source.file_name}")
+                def source_progress(fraction: float, message: str) -> None:
+                    if cancel_check is not None:
+                        cancel_check()
+                    if progress_callback is not None:
+                        progress_callback(
+                            (index - 1) + max(0.0, min(1.0, float(fraction))),
+                            total,
+                            message,
+                        )
+
+                result = semantic_import_source(
+                    working,
+                    source_id,
+                    paths[source_id],
+                    user=user or "system",
+                    progress_callback=source_progress,
+                    cancel_check=cancel_check,
+                )
+                results.append(result)
+                if progress_callback is not None:
+                    progress_callback(index, total, f"Geïmporteerd: {source.file_name}")
+            if cancel_check is not None:
+                cancel_check()
+            working.validate()
+            self.project = working
+            self.dirty = True
+            return results
+        except Exception:
+            self.project = original_project
+            self.dirty = original_dirty
+            raise
+
+    def semantic_import_source(
+        self,
+        source_id: str,
+        *,
+        user: str = "system",
+        cancel_check: SemanticCancelCheck | None = None,
+    ) -> SemanticImportResult:
+        results = self.semantic_import_sources(
+            [source_id],
+            user=user,
+            cancel_check=cancel_check,
+        )
+        if not results:
+            raise ProjectPackageError(
+                "Semantische import leverde geen resultaat",
+                code=ErrorCode.PROJECT_INVALID,
+            )
+        return results[0]
+
     def save(
         self,
         path: str | Path | None = None,
@@ -390,9 +542,18 @@ class ProjectSession:
             )
         if target.suffix.lower() != PROJECT_FILE_EXTENSION:
             target = target.with_suffix(PROJECT_FILE_EXTENSION)
-        # Build the saved snapshot separately.  A failed disk write must not
-        # leave a phantom revision or audit event in the live session.
-        working = ProjectModel.from_dict(self.project.to_dict())
+        # Revision handling must be transactional, but cloning a complete IFC
+        # project graph here doubles peak memory just before ProjectStore builds
+        # its detached JSON snapshot.  Record the small mutable tails, append the
+        # revision on the live model and roll those tails back if any write step
+        # fails.  ProjectStore.save validates and serialises without mutating the
+        # model, so this preserves the former all-or-nothing behaviour while
+        # keeping large-model saves within workstation memory limits.
+        working = self.project
+        original_revision_count = len(working.revisions)
+        original_audit_count = len(working.audit_log)
+        original_modified_at = working.modified_at
+        revision_added = False
         content_hash = working.revision_content_sha256()
         if content_hash != self._last_saved_content_sha256:
             revision = {
@@ -418,20 +579,38 @@ class ProjectSession:
                     "message": revision["message"],
                 },
             )
-        if create_backup and target.is_file():
-            self.store.create_backup(target)
-        saved = self.store.save(
-            working,
-            target,
-            embed_sources=embed_sources,
-            source_paths=self.source_paths,
-            previews=self.preview_paths,
-            read_only=self.read_only,
-        )
+            revision_added = True
+        try:
+            if create_backup and target.is_file():
+                self.store.create_backup(target)
+            saved_package = self.store.save(
+                working,
+                target,
+                embed_sources=embed_sources,
+                source_paths=self.source_paths,
+                previews=self.preview_paths,
+                read_only=self.read_only,
+                return_package=True,
+            )
+            if not isinstance(saved_package, ProjectPackage):
+                raise ProjectPackageError(
+                    "ProjectStore leverde geen geverifieerd projectpakket terug",
+                    code=ErrorCode.PROJECT_WRITE_FAILED,
+                )
+            package = saved_package
+            saved = package.path
+        except Exception:
+            if revision_added:
+                del working.revisions[original_revision_count:]
+                del working.audit_log[original_audit_count:]
+                working.modified_at = original_modified_at
+            raise
         self.path = saved
-        self.package = self.store.open(saved, read_only=self.read_only)
-        self.project = self.package.project
-        self._last_saved_content_sha256 = self.project.revision_content_sha256()
+        self.package = package
+        self.project = package.project
+        self._last_saved_content_sha256 = self.project.summary(
+            include_expensive_hashes=False
+        )["revision_content_sha256"]
         self.dirty = False
         return saved
 
@@ -469,6 +648,16 @@ class ProjectSession:
         return write_baseline_report(analyses, output_path)
 
     def verify(self) -> dict:
+        """Return the verification evidence of the already opened package.
+
+        ``ProjectSession.open`` only returns after ZIP, manifest, SQLite and
+        Project Model validation succeeded.  Reopening the same package here
+        doubled I/O and hash work on large IFC projects and a fresh
+        ``summary()`` recalculated all project fingerprints a third time.
+        Reuse the immutable package evidence instead; open once only for an
+        in-memory session that has a path but no attached package.
+        """
+
         if self.path is None:
             self.project.validate()
             return {
@@ -476,7 +665,9 @@ class ProjectSession:
                 "path": "",
                 "project": self.project.summary(),
             }
-        package = self.store.open(self.path, read_only=True)
+        package = self.package
+        if package is None or package.path.resolve() != Path(self.path).resolve():
+            package = self.store.open(self.path, read_only=True)
         return {
             "status": "valid",
             "path": str(package.path),
@@ -493,7 +684,7 @@ class ProjectSession:
                 "manifest_project_consistency": not package.migration_performed,
             },
             "manifest": package.manifest,
-            "project": package.project.summary(),
+            "project": package.project.summary(include_expensive_hashes=False),
             "embedded_source_count": len(package.embedded_source_names()),
             "preview_count": len(package.preview_names()),
             "read_only": package.read_only,
@@ -613,11 +804,61 @@ class ProjectService:
             )
             return results
 
+    def semantic_import(
+        self,
+        project_path: str | Path,
+        source_ids: Iterable[str] | None = None,
+        *,
+        embed_sources: bool = True,
+        user: str = "system",
+        cancel_check: SemanticCancelCheck | None = None,
+    ) -> list[SemanticImportResult]:
+        """Run and persist the transactional semantic import phase."""
+
+        with ProjectSession.open(project_path, store=self.store) as session:
+            results = session.semantic_import_sources(
+                source_ids,
+                user=user,
+                cancel_check=cancel_check,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"{len(results)} bronbestand(en) semantisch geïmporteerd",
+            )
+            return results
+
+    def semantic_import_sources(
+        self,
+        project_path: str | Path,
+        source_ids: Iterable[str] | None = None,
+        *,
+        embed_sources: bool = True,
+        user: str = "system",
+        progress_callback: Callable[[float, int, str], None] | None = None,
+        cancel_check: SemanticCancelCheck | None = None,
+    ) -> list[SemanticImportResult]:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            results = session.semantic_import_sources(
+                source_ids,
+                user=user,
+                progress_callback=progress_callback,
+                cancel_check=cancel_check,
+            )
+            if cancel_check is not None:
+                cancel_check()
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"{len(results)} bronbestand(en) semantisch geïmporteerd",
+            )
+            return results
+
     def project_info(self, project_path: str | Path) -> dict:
         with ProjectSession.open(project_path, read_only=True, store=self.store) as session:
             return {
                 "path": str(session.path or ""),
-                "summary": session.project.summary(),
+                "summary": session.project.summary(include_expensive_hashes=False),
                 "sources": [
                     {
                         "source_id": source.source_id,
@@ -634,6 +875,18 @@ class ProjectService:
                         "warnings": source.warnings,
                         "semantic_import_pending": bool(
                             source.metadata.get("semantic_import_pending", False)
+                        ),
+                        "semantic_importer_version": str(
+                            source.metadata.get("semantic_importer_version", "")
+                        ),
+                        "semantic_entity_counts": dict(
+                            source.metadata.get("semantic_entity_counts") or {}
+                        ),
+                        "semantic_relationship_counts": dict(
+                            source.metadata.get("semantic_relationship_counts") or {}
+                        ),
+                        "semantic_blocking_reasons": list(
+                            source.metadata.get("semantic_blocking_reasons") or []
                         ),
                     }
                     for source in session.project.sources.values()
@@ -734,6 +987,7 @@ class ProjectService:
 
 __all__ = [
     "SourceRegistrationResult",
+    "SemanticImportResult",
     "ProjectSession",
     "ProjectService",
 ]

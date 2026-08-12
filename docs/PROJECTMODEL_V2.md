@@ -1,4 +1,4 @@
-# Canonical Project Model 2.0
+# Canonical Project Model 2.1
 
 ## Doel en afbakening
 
@@ -87,3 +87,10 @@ AI-resultaten worden als voorstellen opgeslagen. Zij krijgen geen directe produc
 Een projectrevisie wordt alleen aangemaakt wanneer de inhoudelijke projecthash wijzigt. Tijdelijke UI-/runtimevelden veroorzaken geen revisie. Een afzonderlijke manufacturing-state-hash maakt het later mogelijk BOM, optimalisaties en machinejobs gericht ongeldig te verklaren.
 
 Iedere muterende serviceactie schrijft een auditregel met actor, actie, doel, tijdstip en relevante gegevens. Auditvelden worden niet gebruikt om inhoudelijke geometriegelijkheid te bepalen.
+
+
+## Uitbreiding in 2.1
+
+Project Model 2.1 voegt geen tweede geometriekern toe, maar legt semantische IFC/STEP-materialisatie vast: bronklasse, bronentiteit, product occurrence, spatial container, local/global placement, propertysets, materiaalevidence, geometry-subgraafhash, relationele assemblykoppeling en semantische importstatus.
+
+External solids blijven `review_required` totdat zij via het Canonical Part Model en deterministische roundtripvalidatie productiegeschikt zijn verklaard.

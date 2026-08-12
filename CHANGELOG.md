@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7.0-alpha — Semantische IFC/STEP-projectimport
+
+- Gedeelde, dependency-light ISO-10303-21-grafiekkern toegevoegd voor IFC en STEP.
+- IFC2X3/IFC4 assemblies, parts, fasteners, lassen, placements, properties, materialen en relaties als actieve Project Model-entiteiten gematerialiseerd.
+- STEP AP203/AP214/AP242 product definitions, occurrences, placements en BREP-roots gematerialiseerd zonder fictieve opsplitsing.
+- Stabiele bron-ID, geometry hash en manufacturing hash per onderdeel toegevoegd en over opslaan/herimport getest.
+- Semantische import transactioneel gemaakt met bronhashcontrole, bronpurge en rollback bij fouten.
+- Project Model opgehoogd naar schema 2.1 en projecthashing geoptimaliseerd voor grote modellen.
+- `.cwscproj`-manifest uitgebreid met semantic, content, revision-content en manufacturing-state hashes.
+- CLI-opdrachten `project-import`, `project-tree`, `project-list-parts` en `project-list-assemblies` toegevoegd.
+- Project/Productie-GUI uitgebreid met echte semantische import, interne voortgang en materialisatiecounts.
+- Tekla-referentie gematerialiseerd als 353 assemblies, 2.429 parts, 723 fasteners en 2.654 lassen.
+- Drie echte AP242 STEP-referenties elk als precies één product/solid/part geïmporteerd.
+- Productiegate bewust gesloten gehouden tot classificatie, featureherkenning en roundtripvalidatie.
+- Windows-buildstraat en installerconfiguratie bijgewerkt naar 0.7.0-alpha.
+- STEP-route `C_fused_review` toegevoegd voor bronnen zonder betrouwbare solid-root; er wordt geen geometrie, occurrence, assembly of opsplitsing verzonnen.
+- Coöperatief annuleren toegevoegd aan Part 21-parser, importers, projectservice en GUI, met volledige transactionele rollback.
+- Canonical JSON-hashing en grote-projectopslag versneld zonder het bestaande hashcontract te wijzigen.
+- Vrijgavevalidatie uitgebreid naar 82/82 controles; referentiematerialisatie 14,20 s en geverifieerd opslaan/openen 13,01 s in de huidige Linuxomgeving.
+
 ## 0.6.0-beta — Project Foundation
 
 - Productnaam en zichtbare distributie hernoemd naar **CWS Convertor**.

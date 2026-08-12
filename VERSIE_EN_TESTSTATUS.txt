@@ -1,56 +1,63 @@
-CWS Convertor
-Versie: 0.6.0-beta
-Project Model schema: 2.0
-Canonical Part schema: 1.1
-Status: projectfundament gevalideerd; complete semantische projectimport nog geblokkeerd
+CWS CONVERTOR — VERSIE- EN TESTSTATUS
+====================================
 
-BEWEZEN PROJECTFASE
-- Productidentiteit: CWS Convertor
-- Draagbaar .cwscproj: ZIP + SQLite + manifest + SHA-256 + CRC
-- Atomisch opslaan, revisies, audit, autosave en herstel
-- Deterministische IFC/STEP-nulmeting en strategie A/B/C
-- Tekla IFC2X3 nulmeting: 353 assemblies, 1293 platen, 707 balken,
-  369 kolommen, 723 mechanische fasteners, 2654 las/fastenerobjecten,
-  38 footings, 19 proxies en 3 slabs
-- Drie AP242 STEP-referenties: ieder 1 product, 1 BREP-solid en 0 assemblyrelaties
-- Project/Productie GUI en project-CLI
-- Productiepoort gesloten zolang semantic_import_pending waar is
+Product:             CWS Convertor
+Versie:              0.7.0-alpha
+Project Model:       2.1
+Projectbestand:      .cwscproj
+Fase:                Semantische IFC/STEP-projectimport
+Productiestatus:     ALPHA — semantiek gevalideerd, productie-export bewust geblokkeerd
 
-PROJECTTESTS
-- Project Foundation echte-modelvalidatie: 117/117
-- project_model_smoke: 10/10
-- project_storage_smoke: 8/8
-- project_baseline_smoke: 4/4
-- project_cli_smoke: 2/2
-- project_jobs_smoke: 3/3
-- project_service_smoke: 3/3
-- project_reference_files_smoke: 3/3
+NIEUW IN DEZE VERSIE
+--------------------
+- Gedeelde ISO-10303-21-grafiekkern voor IFC en STEP.
+- IFC assemblies, parts, fasteners, lassen, placements, properties en materialen.
+- STEP products, product definitions, occurrences en BREP-roots.
+- Transactionele herimport met bronhashcontrole en rollback.
+- Stabiele bron-ID, geometry hash en manufacturing hash.
+- Project Model 2.1 en uitgebreid .cwscproj-manifest.
+- Nieuwe CLI-projectimport, projectboom, partlijst en assemblylijst.
+- Project/Productie-GUI met semantische materialisatie en harde productiegate.
+- Veilige STEP-route C zonder solid-root: reviewobject, geen verzonnen geometrie.
+- Coöperatief annuleren met rollback zonder gedeeltelijke projectcommit.
+- Gemeten 11881-prestatiepoort: 5,84 s en 840,51 MB piek-RSS.
+- Geoptimaliseerde canonical hashing en projectopslag voor grote IFC-projecten.
 
-BEHOUDEN KERNREGRESSIES
-- NC1 -> STEP: 24/24
-- STEP -> NC1: 19/19
-- NC1 -> IFC -> STEP -> NC1: 4/4
-- STEP -> IFC -> NC1 -> STEP: 4/4
-- Trusted PDF, review, AI en maatgrafiek: bestaande v0.5.1-smokes behouden
-- NC1 -> Trusted PDF -> exact NC1: 24/24
-- STEP -> Trusted PDF -> exact STEP: 19/19
-- Trusted PDF -> IFC-focus: 2/2
-- PDF/AI-veiligheid: 11/11
+REFERENTIE-IFC
+--------------
+Assemblies:           353
+Parts:                2429
+Fasteners:            723
+Lassen:               2654
+Totaal:               6159
+MLO4 assemblies:      4
+LO4 parts:            4
+Ø14 fasteners:        4
+Verbonden lassen:     2654
 
-BEPERKING TESTBRON
-- De originele binaire Pos LO4 - LOSSE PLAAT.pdf was in deze runtime niet aanwezig.
-- De LO4-acceptatie is daarom uitgevoerd met de expliciet synthetische vectorfixture.
+REFERENTIE-STEP
+---------------
+11864:                1 product / 1 solid / 1 part
+11881:                1 product / 1 solid / 1 part
+2x voetplaat hoog:    1 product / 1 solid / 1 part; niet op naam gesplitst
 
-NOG NIET VRIJGEGEVEN
-- Volledige semantische IFC-assembly/part-import
-- STEP product-occurrence-/solid-populatie in Project Model
-- Complete-model BOM en classificatie
-- Per-merk/per-part productiepakketten
-- Handelslengteoptimalisatie en plaatnesting
-- Machineprofielen, postprocessors en vrijgave
-- Native Windows installer-EXE en schone-machine-test
+TESTRESULTATEN
+--------------
+Semantische fase:                     82/82 geslaagd
+NC1 -> STEP:                          24/24 geslaagd
+STEP -> NC1:                          19/19 geslaagd
+NC1 -> IFC -> STEP -> NC1:             4/4 geslaagd
+STEP -> IFC -> NC1 -> STEP:            4/4 geslaagd
+NC1 -> Trusted PDF -> NC1:            24/24 geslaagd
+STEP -> Trusted PDF -> STEP:          19/19 geslaagd
+Trusted PDF -> IFC focus:              2/2 geslaagd
+Synthetische LO4-keten:                1/1 geslaagd
+AI/integriteit/negatieve tests:       11/11 geslaagd
 
-BEOGDE WINDOWSARTEFACTEN
-- CWS_Convertor_Setup_0.6.0-beta_x64.exe
-- CWS_Convertor_Portable_0.6.0-beta_x64.zip
-- SHA256SUMS.txt
+BELANGRIJKE GRENZEN
+-------------------
+- Externe IFC/STEP-parts zijn nog niet automatisch NC1-geschikt.
+- Classificatie en complete BOM volgen in de volgende fase.
+- Optimalisatie en machinejobs blijven geblokkeerd.
+- De oorspronkelijke binaire LO4-PDF is in deze runtime niet getest.
+- Geen native Windows-installer gebouwd of op een schone Windows-pc getest.

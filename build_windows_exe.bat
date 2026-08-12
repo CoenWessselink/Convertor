@@ -3,7 +3,7 @@ setlocal EnableExtensions
 set PYTHONUTF8=1
 cd /d "%~dp0"
 
-set "CWS_VERSION=0.6.0-beta"
+set "CWS_VERSION=0.7.0-alpha"
 set "CWS_DIST=CWS_Convertor"
 
 echo [1/7] Python 3.12 buildomgeving controleren...
@@ -32,9 +32,16 @@ echo [3/7] Regressie- en projecttests uitvoeren...
 ".venv-build\Scripts\python.exe" tests\project_jobs_smoke.py || goto :error
 ".venv-build\Scripts\python.exe" tests\project_service_smoke.py || goto :error
 ".venv-build\Scripts\python.exe" tests\project_reference_files_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\p21_graph_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\ifc_semantic_import_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\step_semantic_import_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\project_semantic_service_smoke.py || goto :error
 ".venv-build\Scripts\python.exe" cli.py --version || goto :error
 ".venv-build\Scripts\python.exe" cli.py project-new --help >nul || goto :error
 ".venv-build\Scripts\python.exe" cli.py project-import-baseline --help >nul || goto :error
+".venv-build\Scripts\python.exe" cli.py project-import --help >nul || goto :error
+".venv-build\Scripts\python.exe" cli.py project-tree --help >nul || goto :error
+".venv-build\Scripts\python.exe" cli.py project-list-parts --help >nul || goto :error
 ".venv-build\Scripts\python.exe" cli.py project-migrate --help >nul || goto :error
 ".venv-build\Scripts\python.exe" -c "from app import ConverterApp; app=ConverterApp(); app.update_idletasks(); app.destroy(); print('GUI smoke OK')" || goto :error
 

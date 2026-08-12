@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - v0.6-project-foundation
+      - v0.7-semantic-import
     paths:
       - "*.py"
       - "*.json"
@@ -27,7 +27,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.6.0-beta
+      CWS_VERSION: 0.7.0-alpha
 
     steps:
       - name: Checkout repository
@@ -64,10 +64,17 @@ jobs:
           python tests/project_jobs_smoke.py
           python tests/project_service_smoke.py
           python tests/project_reference_files_smoke.py
+          python tests/p21_graph_smoke.py
+          python tests/ifc_semantic_import_smoke.py
+          python tests/step_semantic_import_smoke.py
+          python tests/project_semantic_service_smoke.py
           python cli.py --version
           python cli.py pdf-analyze --help
           python cli.py project-new --help
           python cli.py project-import-baseline --help
+          python cli.py project-import --help
+          python cli.py project-tree --help
+          python cli.py project-list-parts --help
           python cli.py project-migrate --help
 
       - name: Project CLI contract smoke
@@ -154,7 +161,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Convertor_0.6.0-beta_Windows_x64
+          name: CWS_Convertor_0.7.0-alpha_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 from uuid import uuid4
 import zipfile
 
@@ -137,7 +138,23 @@ class ProjectStorageTests(unittest.TestCase):
                 manifest = json.loads(archive.read("manifest.json"))
                 self.assertEqual(manifest["source_count"], 1)
                 self.assertEqual(len(manifest["embedded_sources"]), 1)
+                self.assertRegex(manifest["project_sha256"], r"^[0-9a-f]{64}$")
+                self.assertRegex(manifest["content_sha256"], r"^[0-9a-f]{64}$")
+                self.assertRegex(manifest["revision_content_sha256"], r"^[0-9a-f]{64}$")
+                self.assertRegex(manifest["manufacturing_state_sha256"], r"^[0-9a-f]{64}$")
                 self.assertIn("project.sqlite", {item["path"] for item in manifest["entries"]})
+
+            cached_summary = package.project.summary(include_expensive_hashes=False)
+            self.assertEqual(cached_summary["semantic_sha256"], manifest["project_sha256"])
+            self.assertEqual(cached_summary["content_sha256"], manifest["content_sha256"])
+            self.assertEqual(
+                cached_summary["revision_content_sha256"],
+                manifest["revision_content_sha256"],
+            )
+            self.assertEqual(
+                cached_summary["manufacturing_state_sha256"],
+                manifest["manufacturing_state_sha256"],
+            )
 
             reopened = ProjectSession.open(saved)
             reopened.project.description = "Gewijzigde omschrijving"
@@ -237,6 +254,25 @@ class ProjectStorageTests(unittest.TestCase):
             with self.assertRaises(ProjectPackageError):
                 ProjectStore().open(damaged)
 
+    def test_future_project_schema_in_manifest_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="cws_project_future_schema_") as folder_name:
+            folder = Path(folder_name)
+            valid = folder / "valid.cwscproj"
+            ProjectService.create(valid, "Future schema guard").close()
+            future = folder / "future.cwscproj"
+            with zipfile.ZipFile(valid, "r") as source, zipfile.ZipFile(
+                future, "w", compression=zipfile.ZIP_DEFLATED
+            ) as target:
+                for info in source.infolist():
+                    data = source.read(info.filename)
+                    if info.filename == "manifest.json":
+                        manifest = json.loads(data.decode("utf-8"))
+                        manifest["project_schema_version"] = "2.9"
+                        data = json.dumps(manifest, sort_keys=True).encode("utf-8")
+                    target.writestr(info, data)
+            with self.assertRaises(ProjectPackageError):
+                ProjectStore().open(future)
+
     def test_unlisted_or_unsafe_archive_entries_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_project_entries_") as folder_name:
             folder = Path(folder_name)
@@ -286,7 +322,7 @@ class ProjectStorageTests(unittest.TestCase):
             package = ProjectStore().open(legacy)
             self.assertTrue(package.migration_performed)
             self.assertTrue(package.read_only)
-            self.assertEqual(package.project.schema_version, "2.0")
+            self.assertEqual(package.project.schema_version, "2.1")
             self.assertEqual(package.project.project_name, "Legacy project")
 
             migrated = folder / "migrated.cwscproj"
@@ -294,8 +330,40 @@ class ProjectStorageTests(unittest.TestCase):
             self.assertTrue(migrated.is_file())
             self.assertFalse(result.migration_performed)
             self.assertFalse(result.read_only)
-            self.assertEqual(result.project.schema_version, "2.0")
+            self.assertEqual(result.project.schema_version, "2.1")
             self.assertEqual(original_hash, hashlib.sha256(legacy.read_bytes()).hexdigest())
+
+    def test_session_save_reuses_just_written_verified_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="cws_project_save_once_") as folder_name:
+            path = Path(folder_name) / "single_pass.cwscproj"
+            session = ProjectSession.new("Single-pass save")
+            # ProjectStore.save verifies the just-written archive and returns a
+            # package built from the exact saved snapshot.  The session must not
+            # immediately reopen and rehash the same package.
+            with patch.object(
+                session.store,
+                "open",
+                side_effect=AssertionError("save reopened the package"),
+            ):
+                saved = session.save(
+                    path,
+                    embed_sources=False,
+                    create_backup=False,
+                    user="tester",
+                    revision_message="single pass",
+                )
+            self.assertEqual(saved, path)
+            self.assertIsNotNone(session.package)
+            self.assertEqual(session.package.path, path)
+            self.assertEqual(session.project.project_name, "Single-pass save")
+            independently_opened = ProjectStore().open(path, read_only=True)
+            self.assertEqual(
+                independently_opened.project.summary(include_expensive_hashes=False)[
+                    "semantic_sha256"
+                ],
+                session.project.summary(include_expensive_hashes=False)["semantic_sha256"],
+            )
+            session.close()
 
     def test_read_only_session_blocks_save(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_project_readonly_") as folder_name:

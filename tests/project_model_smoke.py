@@ -21,6 +21,7 @@ from cws_convertor.project import (
     StockItem,
     Transform3D,
 )
+from cws_convertor.project.model import _normalise_for_hash, stable_json_bytes, stable_sha256
 
 
 def translated(x: float, y: float, z: float) -> Transform3D:
@@ -111,6 +112,35 @@ class ProjectModelTests(unittest.TestCase):
             project.validate()
             return ProjectModel.from_dict(project.to_dict())
 
+
+    def test_streaming_canonical_json_matches_legacy_hash_contract(self) -> None:
+        samples = [
+            None,
+            True,
+            False,
+            0,
+            -17,
+            0.0,
+            -0.0,
+            1.23456789123,
+            {"z": 2, "a": [1, 2.5, {"é": "✓", "line": "a\nb"}]},
+            ("tuple", 3.1415926535),
+            Path("C:/CWS/project.cwscproj"),
+        ]
+        for sample in samples:
+            with self.subTest(sample=sample):
+                legacy = json.dumps(
+                    _normalise_for_hash(sample),
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                self.assertEqual(stable_json_bytes(sample), legacy)
+                self.assertEqual(
+                    stable_sha256(sample),
+                    __import__("hashlib").sha256(legacy).hexdigest(),
+                )
+
     def test_roundtrip_summary_identity_and_gate(self) -> None:
         project = self._build_project()
         restored = ProjectModel.from_dict(json.loads(project.to_json_bytes()))
@@ -122,6 +152,25 @@ class ProjectModelTests(unittest.TestCase):
         self.assertEqual(project.semantic_sha256(), restored.semantic_sha256())
         self.assertFalse(restored.production_gate()["allowed"])
         self.assertEqual(len(restored.production_gate()["source_failures"]), 1)
+
+    def test_schema_20_migrates_explicitly_to_21(self) -> None:
+        raw = ProjectModel.new("Schema migration", created_by="test").to_dict()
+        raw["schema_version"] = "2.0"
+        raw["migration_history"] = []
+        restored = ProjectModel.from_dict(raw)
+        self.assertEqual(restored.schema_version, "2.1")
+        self.assertTrue(
+            any(
+                item.get("from") == "2.0" and item.get("to") == "2.1"
+                for item in restored.migration_history
+            )
+        )
+
+    def test_future_schema_is_rejected_instead_of_assumed_compatible(self) -> None:
+        raw = ProjectModel.new("Future schema", created_by="test").to_dict()
+        raw["schema_version"] = "2.9"
+        with self.assertRaises(ProjectValidationError):
+            ProjectModel.from_dict(raw)
 
     def test_stable_entity_id_is_repeatable(self) -> None:
         project = ProjectModel.new("ID-test")

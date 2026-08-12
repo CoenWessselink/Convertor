@@ -1,11 +1,13 @@
-"""Functioneel Project / Productie-tabblad voor CWS Convertor v0.6.
+"""Functioneel Project / Productie-tabblad voor CWS Convertor v0.7.
 
 Dit scherm is geen losse mock-up: het maakt/opent echte ``.cwscproj``-bestanden,
-voert de deterministische IFC/STEP-nulmeting uit, sluit bronbestanden optioneel in
-en toont dezelfde data die via de CLI beschikbaar is.
+voert de deterministische IFC/STEP-nulmeting én expliciete semantische import uit,
+sluit bronbestanden optioneel in en toont dezelfde data die via de CLI beschikbaar
+is. Productie-export blijft geblokkeerd tot featurevalidatie is afgerond.
 """
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 import json
 import queue
@@ -17,6 +19,7 @@ from typing import Any, Callable
 from cws_convertor.product import APP_NAME, PROJECT_FILE_EXTENSION
 from cws_convertor.project import (
     BaselineAnalysis,
+    JobCancelled,
     ProjectPackageError,
     ProjectService,
     ProjectSession,
@@ -41,6 +44,8 @@ class CWSProjectTab(ttk.Frame):
         self.session: ProjectSession | None = None
         self.events: queue.Queue[tuple[str, Any]] = queue.Queue()
         self._busy = False
+        self._busy_cancellable = False
+        self._cancel_event = threading.Event()
         self._source_rows: dict[str, dict[str, Any]] = {}
         self.embed_sources = tk.BooleanVar(value=True)
         self._build_ui()
@@ -68,7 +73,7 @@ class CWSProjectTab(ttk.Frame):
         title.grid(row=0, column=0, sticky="w", padx=22, pady=(13, 0))
         subtitle = tk.Label(
             header,
-            text="Projectbestand, bronintegriteit en importstrategie — vóór semantische productie-export",
+            text="Semantische IFC/STEP-structuur, onderdelen, bouten en lassen — met harde productiegate",
             bg="#122033",
             fg="#b8c7d9",
             font=("Segoe UI", 9),
@@ -101,6 +106,20 @@ class CWSProjectTab(ttk.Frame):
             style="CWS.Primary.TButton",
         )
         self.add_button.pack(side="left", padx=(18, 0))
+        self.semantic_button = ttk.Button(
+            toolbar,
+            text="Semantisch importeren",
+            command=self.semantic_import_selected,
+            style="CWS.Primary.TButton",
+        )
+        self.semantic_button.pack(side="left", padx=(6, 0))
+        self.cancel_button = ttk.Button(
+            toolbar,
+            text="Annuleren",
+            command=self.cancel_current_operation,
+            state="disabled",
+        )
+        self.cancel_button.pack(side="left", padx=(6, 0))
         self.report_button = ttk.Button(toolbar, text="Nulmeting exporteren", command=self.export_baseline_report)
         self.report_button.pack(side="left", padx=(6, 0))
         self.extract_button = ttk.Button(toolbar, text="Bron uitpakken", command=self.extract_selected_source)
@@ -171,7 +190,7 @@ class CWSProjectTab(ttk.Frame):
             "format": "Formaat",
             "schema": "Schema",
             "strategy": "Route",
-            "products": "Producten",
+            "products": "Objecten",
             "solids": "Solids",
             "status": "Status",
         }
@@ -215,7 +234,7 @@ class CWSProjectTab(ttk.Frame):
         self.status_label.grid(row=0, column=1, sticky="ew", padx=(10, 0))
         self.phase_label = ttk.Label(
             footer,
-            text="Fase 0/1: projectmodel + opslag + importnulmeting",
+            text="Fase 2: semantische IFC / STEP-projectimport",
             foreground="#64748b",
         )
         self.phase_label.grid(row=0, column=2, sticky="e")
@@ -349,7 +368,7 @@ class CWSProjectTab(ttk.Frame):
                 working = ProjectSession.open(project_path, store=self.store)
                 results = working.register_sources(
                     paths,
-                    include_step_geometry=True,
+                    include_step_geometry=False,
                     user="gui",
                 )
                 working.save(
@@ -365,6 +384,100 @@ class CWSProjectTab(ttk.Frame):
                 self.events.put(("error", ("Model toevoegen", str(exc))))
 
         threading.Thread(target=worker, daemon=True, name="cws-project-import").start()
+
+    def semantic_import_selected(self) -> None:
+        if self.session is None or not self.session.project.sources:
+            messagebox.showinfo(
+                "Semantische import",
+                "Voeg eerst één of meer IFC/STEP-bronnen toe.",
+                parent=self,
+            )
+            return
+        selected = list(self.source_grid.selection())
+        source_ids = selected or list(self.session.project.sources)
+        labels = [self.session.project.sources[item].file_name for item in source_ids]
+        question = (
+            f"Semantische import uitvoeren voor {len(source_ids)} bronbestand(en)?\n\n"
+            + "\n".join(f"• {item}" for item in labels[:6])
+            + ("\n• …" if len(labels) > 6 else "")
+            + "\n\nAssemblies, onderdelen, bouten, lassen, properties en placements "
+            "worden gematerialiseerd. Productie-uitvoer blijft geblokkeerd totdat "
+            "exacte productiefeatures zijn gevalideerd."
+        )
+        if not messagebox.askyesno("Semantische IFC/STEP-import", question, parent=self):
+            return
+        self._start_semantic_import(source_ids)
+
+    def _start_semantic_import(self, source_ids: list[str]) -> None:
+        if self.session is None or self._busy or self.session.path is None:
+            return
+        try:
+            if self.session.dirty:
+                self.session.save(
+                    embed_sources=self.embed_sources.get(),
+                    user="gui",
+                    revision_message="Voor semantische import",
+                )
+        except Exception as exc:
+            messagebox.showerror("Project opslaan", str(exc), parent=self)
+            return
+        self._cancel_event.clear()
+        self._set_busy(
+            True,
+            f"{len(source_ids)} bronbestand(en) semantisch importeren…",
+            cancellable=True,
+        )
+        project_path = Path(self.session.path)
+        embed_sources = self.embed_sources.get()
+
+        def worker() -> None:
+            working: ProjectSession | None = None
+            try:
+                working = ProjectSession.open(project_path, store=self.store)
+
+                def progress(done: float, total: int, message: str) -> None:
+                    self.events.put(("semantic_progress", (done, total, message)))
+
+                def cancel_check() -> None:
+                    if self._cancel_event.is_set():
+                        raise JobCancelled(
+                            "Semantische import geannuleerd; het project is niet gewijzigd."
+                        )
+
+                results = working.semantic_import_sources(
+                    source_ids,
+                    user="gui",
+                    progress_callback=progress,
+                    cancel_check=cancel_check,
+                )
+                working.save(
+                    embed_sources=embed_sources,
+                    user="gui",
+                    revision_message=f"{len(results)} bronbestand(en) semantisch geïmporteerd",
+                )
+                self.events.put(("semantic_ok", (working, results)))
+                working = None
+            except JobCancelled as exc:
+                if working is not None:
+                    working.close()
+                self.events.put(("semantic_cancelled", str(exc)))
+            except Exception as exc:
+                if working is not None:
+                    working.close()
+                self.events.put(("error", ("Semantische import", str(exc))))
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+            name="cws-project-semantic-import",
+        ).start()
+
+    def cancel_current_operation(self) -> None:
+        if not self._busy or not self._busy_cancellable:
+            return
+        self._cancel_event.set()
+        self.cancel_button.configure(state="disabled")
+        self.status_label.configure(text="Annuleren… huidige importstap veilig afronden")
 
     def export_baseline_report(self) -> None:
         if self.session is None or not self.session.project.sources:
@@ -441,7 +554,7 @@ class CWSProjectTab(ttk.Frame):
             return
 
         project = self.session.project
-        summary = project.summary()
+        summary = project.summary(include_expensive_hashes=False)
         badge_styles = {
             "validated": ("GEVALIDEERD", "#16835f"),
             "released": ("VRIJGEGEVEN", "#16835f"),
@@ -484,11 +597,19 @@ class CWSProjectTab(ttk.Frame):
             if detected_assemblies
             else str(len(project.assemblies))
         )
-        self.card_values["parts"].configure(
-            text=f"{len(project.parts)} actief\n{detected_parts} gedetecteerd"
-            if detected_parts
-            else str(len(project.parts))
-        )
+        if project.parts or project.fasteners or project.welds:
+            self.card_values["parts"].configure(
+                text=(
+                    f"{len(project.parts)} actief\n"
+                    f"{len(project.fasteners)} bouten · {len(project.welds)} lassen"
+                )
+            )
+        else:
+            self.card_values["parts"].configure(
+                text=f"0 actief\n{detected_parts} gedetecteerd"
+                if detected_parts
+                else "0"
+            )
         self.card_values["warnings"].configure(
             text=f"{blocking_count} blokkade(n)\n{source_warning_count} melding(en)"
         )
@@ -509,8 +630,27 @@ class CWSProjectTab(ttk.Frame):
         sources_node = self.project_tree.insert(
             root, "end", text=f"Bronbestanden ({len(project.sources)})", open=True
         )
-        self.project_tree.insert(root, "end", text=f"Assemblies / merken ({len(project.assemblies)})")
-        self.project_tree.insert(root, "end", text=f"Onderdelen ({len(project.parts)})")
+        assemblies_node = self.project_tree.insert(
+            root, "end", text=f"Assemblies / merken ({len(project.assemblies)})", open=True
+        )
+        assembly_marks = Counter(
+            item.assembly_mark or "(zonder merk)" for item in project.assemblies.values()
+        )
+        for mark, count in sorted(assembly_marks.items(), key=lambda item: (-item[1], item[0]))[:120]:
+            self.project_tree.insert(assemblies_node, "end", text=f"{mark}  × {count}")
+        if len(assembly_marks) > 120:
+            self.project_tree.insert(
+                assemblies_node,
+                "end",
+                text=f"… {len(assembly_marks) - 120} overige merken",
+            )
+
+        parts_node = self.project_tree.insert(
+            root, "end", text=f"Onderdelen ({len(project.parts)})", open=True
+        )
+        part_types = Counter(item.part_type or "unknown" for item in project.parts.values())
+        for part_type, count in sorted(part_types.items(), key=lambda item: (-item[1], item[0])):
+            self.project_tree.insert(parts_node, "end", text=f"{part_type}: {count}")
         self.project_tree.insert(root, "end", text=f"Inkoopdelen ({len(project.purchased_items)})")
         self.project_tree.insert(root, "end", text=f"Bouten / fasteners ({len(project.fasteners)})")
         self.project_tree.insert(root, "end", text=f"Lassen ({len(project.welds)})")
@@ -528,7 +668,20 @@ class CWSProjectTab(ttk.Frame):
         )
         for source_id, source in project.sources.items():
             analysis = dict(source.analysis or {})
-            self.project_tree.insert(sources_node, "end", text=source.file_name)
+            source_node = self.project_tree.insert(sources_node, "end", text=source.file_name)
+            semantic_counts = dict(source.metadata.get("semantic_entity_counts") or {})
+            if source.semantic_import_complete:
+                for label, key in (
+                    ("Assemblies", "assemblies"),
+                    ("Onderdelen", "parts"),
+                    ("Bouten", "fasteners"),
+                    ("Lassen", "welds"),
+                ):
+                    self.project_tree.insert(
+                        source_node,
+                        "end",
+                        text=f"{label}: {int(semantic_counts.get(key, 0) or 0)}",
+                    )
             route = source.import_strategy
             embedded = source_id in embedded_names
             if source.production_export_allowed:
@@ -548,7 +701,11 @@ class CWSProjectTab(ttk.Frame):
                     source.source_format,
                     schema,
                     route,
-                    int(analysis.get("product_count", 0) or 0),
+                    int(
+                        semantic_counts.get("total_materialised", 0)
+                        or analysis.get("product_count", 0)
+                        or 0
+                    ),
                     int(analysis.get("solid_count", 0) or 0),
                     status,
                 ),
@@ -576,10 +733,11 @@ class CWSProjectTab(ttk.Frame):
             f"Projecthash: {summary['semantic_sha256']}\n"
             f"Productiestatus: {project.status}\n"
             f"Blokkerende controles: {blocking_count}\n\n"
-            "De getoonde bron- en objectaantallen zijn een deterministische "
-            "importnulmeting. Assemblies en onderdelen worden pas actief na de "
-            "volgende semantische IFC/STEP-importfase; productie-export blijft "
-            "tot die tijd bewust geblokkeerd."
+            "IFC/STEP-bronnen kunnen nu expliciet semantisch worden geïmporteerd. "
+            "Daarbij worden bronhiërarchie, assemblies, onderdelen, bouten, lassen, "
+            "properties en placements in het Canonical Project Model vastgelegd. "
+            "NC1- en machine-uitvoer blijven bewust geblokkeerd totdat profiel- en "
+            "featureherkenning per onderdeel door de volgende productiefase is gevalideerd."
         )
         self.status_label.configure(
             text="Project gereed" if not self.session.dirty else "Niet-opgeslagen wijzigingen"
@@ -626,6 +784,32 @@ class CWSProjectTab(ttk.Frame):
             lines.extend(["", "CAD-GEOMETRIENULMETING"])
             for key, value in geometry.items():
                 lines.append(f"• {key}: {value}")
+        semantic = dict(analysis.get("semantic_import") or {})
+        if semantic:
+            lines.extend(["", "SEMANTISCHE IMPORT"])
+            lines.append(f"• Importer: {semantic.get('importer_version', '—')}")
+            lines.append(f"• Route: {semantic.get('strategy', source.import_strategy)}")
+            for key, value in dict(semantic.get("entity_counts") or {}).items():
+                lines.append(f"• {key}: {value}")
+            evidence = dict(semantic.get("evidence") or {})
+            for key in (
+                "MLO4_assembly_count",
+                "MLO4_LO4_links",
+                "bolt_or_hole_diameter_14_count",
+                "connected_weld_count",
+                "product_count",
+                "solid_root_count",
+                "materialised_part_count",
+            ):
+                if key in evidence:
+                    value = evidence[key]
+                    if isinstance(value, (list, dict)):
+                        value = json.dumps(value, ensure_ascii=False)
+                    lines.append(f"• {key}: {value}")
+            blocking = list(semantic.get("blocking_reasons") or [])
+            if blocking:
+                lines.extend(["", "PRODUCTIEGATE"])
+                lines.extend(f"⛔ {item}" for item in blocking)
         issues = [
             issue
             for issue in self.session.project.validation_issues
@@ -659,15 +843,34 @@ class CWSProjectTab(ttk.Frame):
         self.source_grid.heading(column, command=lambda: self._sort_sources(column, not reverse))
 
     # ------------------------------------------------------------------ lifecycle
-    def _set_busy(self, busy: bool, message: str = "") -> None:
+    def _set_busy(
+        self,
+        busy: bool,
+        message: str = "",
+        *,
+        cancellable: bool = False,
+    ) -> None:
         self._busy = busy
+        self._busy_cancellable = bool(busy and cancellable)
         state = "disabled" if busy else "normal"
-        for button in (self.new_button, self.open_button, self.save_button, self.add_button, self.report_button, self.extract_button):
+        for button in (
+            self.new_button,
+            self.open_button,
+            self.save_button,
+            self.add_button,
+            self.semantic_button,
+            self.report_button,
+            self.extract_button,
+        ):
             button.configure(state=state)
+        self.cancel_button.configure(
+            state="normal" if self._busy_cancellable else "disabled"
+        )
         if busy:
             self.progress.start(10)
         else:
             self.progress.stop()
+            self._cancel_event.clear()
         if message:
             self.status_label.configure(text=message)
 
@@ -684,6 +887,29 @@ class CWSProjectTab(ttk.Frame):
                         + ", ".join(item.source.file_name for item in results)
                     )
                     self.refresh()
+                elif event == "semantic_progress":
+                    done, total, message = payload
+                    percentage = int(round((float(done) / max(1, int(total))) * 100.0))
+                    self.status_label.configure(text=f"{percentage:3d}% · {message}")
+                elif event == "semantic_ok":
+                    session, results = payload
+                    self._replace_session(session)
+                    total = sum(
+                        int(result.entity_counts.get("total_materialised", 0) or 0)
+                        for result in results
+                    )
+                    self._set_busy(
+                        False,
+                        f"Semantische import gereed: {total} objecten gematerialiseerd",
+                    )
+                    self.log_callback(
+                        f"Semantische IFC/STEP-import gereed voor {len(results)} bron(n); "
+                        f"{total} objecten gematerialiseerd. Productiegate blijft actief."
+                    )
+                    self.refresh()
+                elif event == "semantic_cancelled":
+                    self._set_busy(False, "Semantische import geannuleerd; project ongewijzigd")
+                    self.log_callback(str(payload))
                 elif event == "error":
                     title, message = payload
                     self._set_busy(False, "Bewerking mislukt")
@@ -717,6 +943,7 @@ class CWSProjectTab(ttk.Frame):
         return True
 
     def destroy(self) -> None:
+        self._cancel_event.set()
         if self.session is not None:
             try:
                 self.session.close()

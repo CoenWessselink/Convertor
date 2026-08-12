@@ -95,6 +95,34 @@ class ProjectCLITests(unittest.TestCase):
             self.assertEqual(len(sources_payload["sources"]), 1)
             source_id = sources_payload["sources"][0]["source_id"]
 
+            semantic_report = folder / "semantic.json"
+            semantic_stdout, _ = self.run_cli(
+                "project-import",
+                str(project),
+                "--source-id",
+                source_id,
+                "--json",
+                "--json-report",
+                str(semantic_report),
+                expected=cli.EXIT_REVIEW_REQUIRED,
+            )
+            semantic_payload = json.loads(semantic_stdout)
+            self.assertEqual(semantic_payload["status"], "review_required")
+            self.assertEqual(semantic_payload["semantic_imports"][0]["entity_counts"]["parts"], 1)
+            self.assertFalse(semantic_payload["production_export_allowed"])
+            self.assertTrue(semantic_report.is_file())
+
+            parts_stdout, _ = self.run_cli("project-list-parts", str(project), "--json")
+            parts_payload = json.loads(parts_stdout)
+            self.assertEqual(parts_payload["total_matching"], 1)
+            self.assertEqual(parts_payload["parts"][0]["name"], "CLI")
+            self.assertFalse(parts_payload["parts"][0]["nc1_eligible"])
+
+            tree_stdout, _ = self.run_cli("project-tree", str(project), "--json")
+            tree_payload = json.loads(tree_stdout)
+            self.assertEqual(tree_payload["assembly_count"], 0)
+            self.assertEqual(len(tree_payload["standalone_part_ids"]), 1)
+
             verify_stdout, _ = self.run_cli("project-verify", str(project), "--json")
             verify_payload = json.loads(verify_stdout)
             self.assertTrue(verify_payload["checks"]["zip_crc"])
@@ -118,7 +146,7 @@ class ProjectCLITests(unittest.TestCase):
 
     def test_version_identity(self) -> None:
         self.assertEqual(APP_NAME, "CWS Convertor")
-        self.assertEqual(APP_VERSION, "0.6.0-beta")
+        self.assertEqual(APP_VERSION, "0.7.0-alpha")
         parser = cli.build_parser()
         self.assertIn("CWS Convertor", parser.description or "")
 

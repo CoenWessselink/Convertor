@@ -1,9 +1,8 @@
-"""Canonical project and production-preparation foundation for CWS Convertor.
+"""Canonical project and production-preparation API for CWS Convertor.
 
-The package intentionally exposes only the verified v0.6 project API.  The
-semantic IFC/STEP importer is a later phase; source registration in this phase
-records deterministic evidence and blocks production export until that import
-has completed.
+Project Model 2.x supports deterministic source intake, semantic IFC/STEP
+materialisation and the portable ``.cwscproj`` package.  Semantic import does
+not bypass feature-level production validation.
 """
 from .model import (
     Assembly,
@@ -36,7 +35,12 @@ from .baseline import (
     inspect_model_file,
     write_baseline_report,
 )
-from .service import ProjectService, ProjectSession, SourceRegistrationResult
+from .service import (
+    ProjectService,
+    ProjectSession,
+    SemanticImportResult,
+    SourceRegistrationResult,
+)
 
 __all__ = [
     "ProjectModel",
@@ -74,4 +78,5 @@ __all__ = [
     "ProjectService",
     "ProjectSession",
     "SourceRegistrationResult",
+    "SemanticImportResult",
 ]
