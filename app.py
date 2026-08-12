@@ -6,6 +6,7 @@ import json
 import os
 import queue
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -69,7 +70,7 @@ class ComparisonRecord:
 
 
 class ConverterApp(tk.Tk):
-    def __init__(self) -> None:
+    def __init__(self, initial_files=()) -> None:
         super().__init__()
         self.title(f"NC1 ↔ STEP / IFC Converter v{__version__}")
         self.minsize(1220, 760)
@@ -111,6 +112,9 @@ class ConverterApp(tk.Tk):
             self._write_log(
                 "OPMERKING: IfcOpenShell is niet geïnstalleerd in deze omgeving. IFC-functies worden beschikbaar na installatie via requirements.txt."
             )
+        startup_paths = [Path(value).expanduser() for value in initial_files if str(value).strip()]
+        if startup_paths:
+            self.after_idle(lambda: self._open_initial_files(startup_paths))
 
     # ------------------------------------------------------------------ UI
     def _build_ui(self) -> None:
@@ -744,6 +748,46 @@ class ConverterApp(tk.Tk):
         names = filedialog.askopenfilenames(title="Selecteer invoerbestanden", filetypes=filters)
         self._add_files(Path(name) for name in names)
 
+    def _open_initial_files(self, paths) -> None:
+        """Open bestanden die via Windows-dubbelklik/contextmenu zijn meegegeven."""
+
+        existing = [Path(path).resolve() for path in paths if Path(path).is_file()]
+        if not existing:
+            return
+        first = existing[0]
+        suffix = first.suffix.lower()
+        if suffix == ".pdf":
+            self.pdf_review_source.set(str(first))
+            self.notebook.select(self.pdf_tab)
+            self.pdf_status.configure(text=f"Geopend via Windows: {first.name}. Analyse wordt gestart.")
+            self._write_log(f"PDF geopend via bestandskoppeling: {first}")
+            self.after(150, self._start_pdf_analysis)
+            return
+
+        direction_by_suffix = {
+            ".nc": "nc1-to-step",
+            ".nc1": "nc1-to-step",
+            ".step": "step-to-nc1",
+            ".stp": "step-to-nc1",
+            ".ifc": "ifc-to-dstv",
+        }
+        direction = direction_by_suffix.get(suffix)
+        if direction is None:
+            messagebox.showwarning(
+                "Niet-ondersteund bestand",
+                f"Het bestandstype {suffix or '(zonder extensie)'} kan niet automatisch worden geopend.",
+            )
+            return
+        self.direction.set(direction)
+        self._direction_changed()
+        matching = [path for path in existing if path.suffix.lower() in self._extensions()[0]]
+        self._add_files(matching)
+        self.notebook.select(self.converter_tab)
+        self._write_log(
+            f"{len(matching)} bestand(en) geopend via Windows-bestandskoppeling; "
+            f"voorgestelde route: {DIRECTION_LABELS[direction]}."
+        )
+
     def _choose_input_folder(self) -> None:
         folder = filedialog.askdirectory(title="Selecteer invoermap")
         if not folder:
@@ -1267,4 +1311,4 @@ class ConverterApp(tk.Tk):
 
 
 if __name__ == "__main__":
-    ConverterApp().mainloop()
+    ConverterApp(sys.argv[1:]).mainloop()

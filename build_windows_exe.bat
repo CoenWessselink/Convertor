@@ -1,53 +1,63 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 set PYTHONUTF8=1
 cd /d "%~dp0"
 
-if not exist ".venv\Scripts\python.exe" (
-    echo Voer eerst start_converter.bat uit om de omgeving te installeren.
-    pause
-    exit /b 1
+echo [1/7] Python 3.12 buildomgeving controleren...
+where py >nul 2>&1 || goto :no_python
+if not exist ".venv-build\Scripts\python.exe" (
+    py -3.12 -m venv .venv-build || goto :error
 )
 
-".venv\Scripts\python.exe" -m pip install --upgrade pyinstaller
-if errorlevel 1 goto :error
+echo [2/7] Dependencies installeren...
+".venv-build\Scripts\python.exe" -m pip install --upgrade pip || goto :error
+".venv-build\Scripts\python.exe" -m pip install -r requirements-build.txt || goto :error
+".venv-build\Scripts\python.exe" -m pip check || goto :error
 
+echo [3/7] Regressietests uitvoeren...
+".venv-build\Scripts\python.exe" -m py_compile *.py tests\*.py validation\*.py || goto :error
+".venv-build\Scripts\python.exe" tests\analytic_fitting_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\regression_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\pdf_ai_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\pdf_review_smoke.py || goto :error
+
+echo [4/7] Oude build verwijderen...
 if exist "build" rmdir /s /q "build"
 if exist "dist\NC1_STEP_Converter" rmdir /s /q "dist\NC1_STEP_Converter"
+if exist "dist_installer" rmdir /s /q "dist_installer"
 
-".venv\Scripts\pyinstaller.exe" --noconfirm --clean --windowed --onedir ^
-  --name NC1_STEP_Converter ^
-  --collect-all cadquery ^
-  --collect-all OCP ^
-  --collect-all matplotlib ^
-  --collect-all ifcopenshell ^
-  --collect-all xlsxwriter ^
-  --hidden-import matplotlib.backends.backend_tkagg ^
-  --hidden-import ifcopenshell.api ^
-  --hidden-import ifcopenshell.geom ^
-  --add-data "profiles.json;." ^
-  --add-data "materials.json;." ^
-  app.py
-if errorlevel 1 goto :error
+echo [5/7] Standalone onedir-programma bouwen...
+".venv-build\Scripts\pyinstaller.exe" --noconfirm --clean NC1_STEP_Converter.spec || goto :error
+if not exist "dist\NC1_STEP_Converter\NC1_STEP_Converter.exe" goto :error
+if not exist "dist\NC1_STEP_Converter\NC1_STEP_Converter_CLI.exe" goto :error
+"dist\NC1_STEP_Converter\NC1_STEP_Converter_CLI.exe" --version || goto :error
 
-copy /y README.md "dist\NC1_STEP_Converter\README.md" >nul
-copy /y VERSIE_EN_TESTSTATUS.txt "dist\NC1_STEP_Converter\VERSIE_EN_TESTSTATUS.txt" >nul
-if exist CHANGELOG.md copy /y CHANGELOG.md "dist\NC1_STEP_Converter\CHANGELOG.md" >nul
+echo [6/7] Portable ZIP maken...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\NC1_STEP_Converter' -DestinationPath 'dist\NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip' -Force" || goto :error
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\NC1_STEP_Converter' -DestinationPath 'dist\NC1_STEP_Converter_Windows_x64.zip' -Force"
+echo [7/7] Installer bouwen...
+set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+if not exist "%ISCC%" (
+    echo Inno Setup 6 is niet aanwezig op deze buildcomputer.
+    echo De portable ZIP is wel gemaakt; installeer Inno Setup 6 en voer dit bestand opnieuw uit.
+    exit /b 2
+)
+"%ISCC%" "installer\NC1_STEP_Converter.iss" || goto :error
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$files=@('dist\NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip','dist_installer\NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe'); $lines=foreach($f in $files){$h=(Get-FileHash -Algorithm SHA256 $f).Hash.ToLowerInvariant(); \"$h  $([IO.Path]::GetFileName($f))\"}; $lines | Set-Content -Encoding ascii 'SHA256SUMS_WINDOWS.txt'; Get-Content 'SHA256SUMS_WINDOWS.txt'" || goto :error
 
 echo.
-echo Windows-EXE gereed:
-echo %CD%\dist\NC1_STEP_Converter\NC1_STEP_Converter.exe
-echo Release ZIP:
-echo %CD%\dist\NC1_STEP_Converter_Windows_x64.zip
-echo.
-echo De complete map NC1_STEP_Converter moet bij de EXE blijven.
-pause
+echo Gereed:
+echo   %CD%\dist_installer\NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe
+echo   %CD%\dist\NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip
+echo   %CD%\SHA256SUMS_WINDOWS.txt
 exit /b 0
+
+:no_python
+echo Python Launcher ontbreekt op de buildcomputer. Dit is alleen een ontwikkelaars-/CI-buildscript.
+exit /b 3
 
 :error
 echo.
-echo De Windows-build is mislukt. Zie de foutmelding hierboven.
-pause
+echo De Windows-releasebuild is mislukt. Zie de foutmelding hierboven.
 exit /b 1

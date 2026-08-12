@@ -842,15 +842,21 @@ def render_part_pdf(
     drawing_top = page_height - margin - 16 * mm
     available_width = drawing_right - drawing_left
     available_height = drawing_top - drawing_bottom
+    has_profile_end_view = part.header.profile_type.upper() not in {"", "B"}
+    # Reserve a dedicated right-hand column for the profile cross-section.
+    # Without this reservation, long slender profiles can geometrically overlap
+    # the end view even though both individually fit inside the drawing area.
+    section_reserve = 52 * mm if has_profile_end_view else 0.0
+    main_available_width = max(available_width - section_reserve, 40 * mm)
 
     contour = _main_contour(part)
     bounds = _contour_bounds(contour, part)
     model_width = max(bounds[2] - bounds[0], 1e-6)
     model_height = max(bounds[3] - bounds[1], 1e-6)
-    factor = min(available_width / model_width, available_height / model_height)
+    factor = min(main_available_width / model_width, available_height / model_height)
     factor *= 0.78
     origin = (
-        drawing_left + (available_width - model_width * factor) / 2,
+        drawing_left + (main_available_width - model_width * factor) / 2,
         drawing_bottom + (available_height - model_height * factor) / 2,
     )
     scale_ratio = 72.0 / 25.4 / factor if factor > 0 else 1.0
@@ -866,14 +872,23 @@ def render_part_pdf(
     pdf.setFont("Helvetica", 6.5)
     pdf.drawRightString(page_width - margin - 4 * mm, page_height - margin - 7.5 * mm, f"Bron: {part.source_file}")
 
-    # Concept watermark is deliberately visible when the export gate is closed.
-    if not part.validation.production_export_allowed or part.drawing.drawing_status in {"concept", "review"}:
+    # Drawing status is explicit. A reviewed drawing is not silently presented
+    # as released, while a blocked concept remains unmistakably non-production.
+    drawing_status = (part.drawing.drawing_status or "concept").strip().lower()
+    watermark = ""
+    if drawing_status in {"expired", "obsolete", "vervallen"}:
+        watermark = "VERVALLEN - NIET GEBRUIKEN"
+    elif not part.validation.production_export_allowed or drawing_status == "concept":
+        watermark = "CONCEPT - NIET VOOR PRODUCTIE"
+    elif drawing_status in {"review", "check", "ter controle"}:
+        watermark = "TER CONTROLE - NIET VRIJGEGEVEN"
+    if watermark:
         pdf.saveState()
         pdf.setFillColorRGB(0.82, 0.82, 0.82)
-        pdf.setFont("Helvetica-Bold", 42)
+        pdf.setFont("Helvetica-Bold", 38 if len(watermark) > 27 else 42)
         pdf.translate(page_width / 2, page_height / 2)
         pdf.rotate(28)
-        pdf.drawCentredString(0, 0, "CONCEPT - NIET VOOR PRODUCTIE")
+        pdf.drawCentredString(0, 0, watermark)
         pdf.restoreState()
 
     pdf.setStrokeColorRGB(0, 0, 0)
@@ -910,13 +925,22 @@ def render_part_pdf(
         pdf.setFont("Helvetica", 7)
         pdf.drawString(tx + 1 * mm, ty + 1.3 * mm, label)
 
-    radii = sorted({round(float(point.radius), 3) for item in part.contours for point in item.points if point.radius > 0})
-    if radii:
+    radius_groups: dict[float, int] = {}
+    for item in part.contours:
+        for point in item.points:
+            if point.radius > 0:
+                key = round(float(point.radius), 3)
+                radius_groups[key] = radius_groups.get(key, 0) + 1
+    if radius_groups:
+        labels = [
+            (f"{count}x R {_fmt(value, active.decimal_places)}" if count > 1 else f"R {_fmt(value, active.decimal_places)}")
+            for value, count in sorted(radius_groups.items())
+        ]
         pdf.setFont("Helvetica", 7)
-        pdf.drawString(drawing_left, drawing_top + 4 * mm, "Radii: " + ", ".join(f"R {_fmt(value, active.decimal_places)}" for value in radii))
+        pdf.drawString(drawing_left, drawing_top + 4 * mm, "Radii: " + ", ".join(labels))
 
     # For profiles, add a deterministic end view to convey the cross-section.
-    if part.header.profile_type.upper() not in {"", "B"}:
+    if has_profile_end_view:
         _draw_profile_end_view(pdf, part, drawing_right - 48 * mm, drawing_top - 42 * mm, 40 * mm, 34 * mm)
         pdf.setFont("Helvetica", 6.5)
         pdf.drawCentredString(drawing_right - 28 * mm, drawing_top - 46 * mm, "Doorsnede")
@@ -1951,6 +1975,51 @@ def analyze_external_pdf(
                             status="automatic",
                         ),
                     )
+                    part.set_evidence(
+                        f"holes[{index}].diameter",
+                        CanonicalEvidence(
+                            value=float(hole.diameter),
+                            page=1,
+                            method="pdf_vector_circle_fit",
+                            confidence=0.92 if expected_diameters else 0.84,
+                            status="automatic",
+                        ),
+                    )
+                # A written diameter callout and a measured vector circle are
+                # two independent evidence sources.  They must agree before a
+                # production release; a human confirmation of the generic hole
+                # alone may not silently resolve a diameter contradiction.
+                expanded_expected = [
+                    float(item["diameter_mm"])
+                    for item in hole_callouts
+                    for _ in range(max(0, int(item.get("count", 0))))
+                ]
+                unmatched_expected = list(expanded_expected)
+                for index, hole in enumerate(part.holes):
+                    if not unmatched_expected:
+                        break
+                    nearest = min(unmatched_expected, key=lambda value: abs(value - hole.diameter))
+                    unmatched_expected.remove(nearest)
+                    tolerance = max(0.6, abs(nearest) * 0.02)
+                    field_path = f"holes[{index}].diameter"
+                    if abs(float(hole.diameter) - nearest) <= tolerance:
+                        item = part.field_evidence[field_path]
+                        item.method = "pdf_vector_circle+text_callout_consistent"
+                        item.confidence = max(item.confidence, 0.96)
+                        item.notes.append(
+                            f"Vectorcirkel en geschreven callout komen overeen binnen {tolerance:.2f} mm."
+                        )
+                    else:
+                        conflicts.append(field_path)
+                        message = (
+                            f"Geschreven gatdiameter Ø{nearest:g} en gemeten vectorcirkel "
+                            f"Ø{float(hole.diameter):.2f} zijn tegenstrijdig."
+                        )
+                        warnings.append(message)
+                        item = part.field_evidence[field_path]
+                        item.method = "pdf_vector_circle_vs_text_conflict"
+                        item.confidence = min(item.confidence, 0.50)
+                        item.notes.append(message)
                 if part.contours:
                     radii_detected = sorted(round(point.radius, 2) for point in part.contours[0].points if point.radius > 0)
                     radii_expected = sorted(round(float(item["radius_mm"]), 2) for item in radius_callouts)
@@ -2610,7 +2679,7 @@ def pdf_to_step(
             raise ValueError("Trusted PDF bevat een STEP-bijlage zonder geldige solid")
         route = "trusted-pdf->exact-step-attachment"
     else:
-        from conversion import convert_nc1_to_step
+        from conversion import build_shape, convert_nc1_to_step
 
         with tempfile.TemporaryDirectory(prefix="pdf_to_step_") as folder:
             nc1 = canonical_to_nc1(analysis.part, Path(folder) / "validated.nc1")
@@ -2634,22 +2703,50 @@ def pdf_to_ifc(
         target.write_bytes(ifc_bytes)
         route = "trusted-pdf->exact-ifc-attachment"
     else:
-        from conversion import convert_nc1_to_step
+        from conversion import build_shape, convert_nc1_to_step
+        from ifc_native import write_native_ifc
         from ifc_semantic import SemanticIFCError, write_semantic_plate_ifc
-        from ifc_support import dstv_to_ifc, load_ifc_geometry
+        from ifc_support import load_ifc_geometry
         from canonical_model import extract_part_from_ifc
 
         with tempfile.TemporaryDirectory(prefix="pdf_to_ifc_") as folder:
-            nc1 = canonical_to_nc1(analysis.part, Path(folder) / "validated.nc1")
+            # Preserve exact source attachments of Trusted PDFs.  Regenerating
+            # an NC1/STEP intermediary and then overwriting the attachment in
+            # ``export_part`` would make ``source_sha256`` disagree with the
+            # source attachment and correctly trip the canonical integrity
+            # check.  Use an exact NC1 attachment when it exists; otherwise
+            # create a strictly validated NC1 from the reviewed canonical
+            # model.
+            nc1 = Path(folder) / "validated.nc1"
+            exact_nc1 = analysis.part.attachment_bytes("nc1")
+            if exact_nc1 is not None:
+                nc1.write_bytes(exact_nc1)
+                import converter as core
+
+                parsed = core.parse_nc1(nc1)
+                if build_shape(parsed).val().Volume() <= 1e-6:
+                    raise ValueError("Trusted PDF bevat een NC1-bijlage zonder geldige solid")
+            else:
+                canonical_to_nc1(analysis.part, nc1)
             generated_step = Path(folder) / "validated.step"
-            convert_nc1_to_step(nc1, generated_step)
+            exact_step = analysis.part.attachment_bytes("step")
+            if exact_step is not None:
+                generated_step.write_bytes(exact_step)
+            else:
+                convert_nc1_to_step(nc1, generated_step)
             shape = cq.importers.importStep(str(generated_step)).val()
             if shape.Volume() <= 1e-6 or not shape.Solids():
                 raise ValueError("PDF->IFC tussencontrole leverde geen geldige plaat-solid")
 
             export_part = analysis.part.clone()
-            export_part.add_attachment("nc1", nc1.name, "application/x-dstv", nc1.read_bytes())
-            export_part.add_attachment("step", generated_step.name, "model/step", generated_step.read_bytes())
+            if export_part.attachment("nc1") is None:
+                export_part.add_attachment("nc1", nc1.name, "application/x-dstv", nc1.read_bytes())
+            # Keep an original STEP source attachment intact when the Trusted
+            # PDF originated from STEP.  The generated STEP remains the
+            # validated geometric intermediary, but it is not allowed to
+            # replace the source attachment whose hash is part of provenance.
+            if export_part.attachment("step") is None:
+                export_part.add_attachment("step", generated_step.name, "model/step", generated_step.read_bytes())
             box = shape.BoundingBox()
             export_part.geometry.update(
                 {
@@ -2667,15 +2764,23 @@ def pdf_to_ifc(
                     route = "validated-pdf->canonical->semantic-ifcplate-sweptsolid+payload"
                 except SemanticIFCError as exc:
                     semantic_error = str(exc)
-                    result = dstv_to_ifc(nc1, target, material=analysis.part.material or material)
-                    if not result.outputs:
-                        raise ValueError("PDF->IFC leverde geen uitvoerbestand")
-                    route = "validated-pdf->canonical->nc1->ifc-tessellation-payload-fallback"
+                    write_native_ifc(
+                        shape,
+                        target,
+                        name=export_part.part_id or target.stem,
+                        material=analysis.part.material or material,
+                        canonical=export_part,
+                    )
+                    route = "validated-pdf->canonical->analytic-step->ifc-tessellation+payload-fallback"
             else:
-                result = dstv_to_ifc(nc1, target, material=analysis.part.material or material)
-                if not result.outputs:
-                    raise ValueError("PDF->IFC leverde geen uitvoerbestand")
-                route = "validated-pdf->canonical->nc1->ifc-payload"
+                write_native_ifc(
+                    shape,
+                    target,
+                    name=export_part.part_id or target.stem,
+                    material=analysis.part.material or material,
+                    canonical=export_part,
+                )
+                route = "validated-pdf->canonical->analytic-step->ifc-tessellation+payload"
 
             restored = extract_part_from_ifc(target, strict=True)
             if restored is None or restored.attachment_bytes("nc1") is None:

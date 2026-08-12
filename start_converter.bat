@@ -6,15 +6,15 @@ set PYTHONUTF8=1
 if not exist ".venv\Scripts\python.exe" (
     if exist ".venv" rmdir /s /q ".venv"
     echo Eerste installatie: lokale Python-omgeving wordt aangemaakt.
-    py -3.11 -m venv .venv 2>nul
+    py -3.12 -m venv .venv 2>nul
     if errorlevel 1 (
-        python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3,11) else 1)" 2>nul
+        python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3,12) else 1)" 2>nul
         if not errorlevel 1 python -m venv .venv
     )
     if not exist ".venv\Scripts\python.exe" (
         echo.
         echo Geen geschikte Python-versie gevonden.
-        echo Installeer 64-bits Python 3.11 en voer dit bestand opnieuw uit.
+        echo Installeer 64-bits Python 3.12 en voer dit bestand opnieuw uit.
         pause
         exit /b 1
     )
@@ -29,7 +29,7 @@ if not exist ".venv\Scripts\python.exe" (
     if errorlevel 1 goto :install_error
 )
 
-".venv\Scripts\python.exe" -c "import cadquery, matplotlib, xlsxwriter, ifcopenshell" 2>nul
+".venv\Scripts\python.exe" -c "import cadquery, matplotlib, xlsxwriter, ifcopenshell, fitz, pypdf, reportlab" 2>nul
 if errorlevel 1 (
     echo Benodigde pakketten worden geinstalleerd of bijgewerkt.
     ".venv\Scripts\python.exe" -m pip install -r requirements.txt

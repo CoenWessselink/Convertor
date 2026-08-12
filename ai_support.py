@@ -1216,7 +1216,7 @@ def interpret_drawing(
         model=active.model or DEFAULT_OPENAI_MODEL,
         api_key=active.api_key or None,
         endpoint=active.endpoint or OPENAI_RESPONSES_ENDPOINT,
-        timeout=float(active.timeout),
+        timeout_seconds=float(active.timeout),
         transport=active.transport,
     )
     cloud = provider.interpret(safe_context, images, cloud_consent=True)

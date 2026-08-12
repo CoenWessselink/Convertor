@@ -13,7 +13,12 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 
-def create_synthetic_lo4_pdf(path: str | Path) -> Path:
+def create_synthetic_lo4_pdf(
+    path: str | Path,
+    *,
+    hole_callout_diameter_mm: float = 14.0,
+    hole_geometry_diameter_mm: float = 14.0,
+) -> Path:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     page_width, page_height = landscape(A4)
@@ -30,7 +35,8 @@ def create_synthetic_lo4_pdf(path: str | Path) -> Path:
     pdf.setFont("Helvetica-Bold", 14)
     pdf.drawString(36, page_height - 134, "LOSSE PLAAT")
     pdf.setFont("Helvetica", 10)
-    pdf.drawString(500, page_height - 75, "1*Ø14")
+    callout = f"1*Ø{hole_callout_diameter_mm:g}".replace(".", ",")
+    pdf.drawString(500, page_height - 75, callout)
     pdf.drawString(500, page_height - 93, "R 13,5")
     pdf.drawString(500, page_height - 111, "R 13,5")
 
@@ -64,8 +70,9 @@ def create_synthetic_lo4_pdf(path: str | Path) -> Path:
     )
     pdf.drawPath(path_obj, stroke=1, fill=0)
 
-    # Hole centre 20 mm from the lower-left production datum, Ø14.
-    pdf.circle(200.0, 250.0, 14.0, stroke=1, fill=0)
+    # Hole centre 20 mm from the lower-left production datum. At scale 1:2,
+    # one model millimetre is represented by two PDF points in this fixture.
+    pdf.circle(200.0, 250.0, hole_geometry_diameter_mm, stroke=1, fill=0)
 
     # A title-block rectangle helps verify that the outline selector rejects
     # page borders and drawing frames.

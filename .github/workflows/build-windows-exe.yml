@@ -1,22 +1,24 @@
-name: Build Windows EXE
+name: Build Windows installer and portable package
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - cloudflare
+      - v0.5-pdf-ai
+      - v0.5-pdf-review
     paths:
       - "*.py"
-      - "profiles.json"
-      - "materials.json"
-      - "requirements.txt"
+      - "*.json"
+      - "templates/**"
+      - "installer/**"
       - "tests/**"
-      - "build_windows_exe.bat"
+      - "requirements*.txt"
+      - "NC1_STEP_Converter.spec"
       - ".github/workflows/build-windows-exe.yml"
 
 jobs:
-  build-windows:
+  build-windows-x64:
     runs-on: windows-latest
     permissions:
       contents: read
@@ -25,61 +27,109 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.11 x64
+      - name: Set up Python 3.12 x64
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           architecture: "x64"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Install runtime and build dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-          python -m pip install pyinstaller
+          python -m pip install -r requirements-build.txt
+          python -m pip check
 
-      - name: Compile and run regressions
+      - name: Compile and run safety regressions
         shell: pwsh
         run: |
-          python -m py_compile *.py tests/regression_smoke.py
+          python -m py_compile *.py tests/*.py validation/*.py
+          python tests/analytic_fitting_smoke.py
           python tests/regression_smoke.py
-          python cli.py --help
-          python cli.py nc1-to-step --help
-          python cli.py step-to-nc1 --help
-          python cli.py ifc-to-dstv --help
-          python cli.py excel --help
+          python tests/pdf_ai_smoke.py
+          python tests/pdf_review_smoke.py
+          python cli.py --version
+          python cli.py pdf-analyze --help
+          python cli.py nc1-to-pdf --help
+          python cli.py pdf-to-nc1 --help
 
       - name: GUI import smoke
         shell: pwsh
         run: |
           python -c "from app import ConverterApp; app=ConverterApp(); app.update_idletasks(); app.destroy(); print('GUI smoke OK')"
 
-      - name: Build portable Windows application
+      - name: Build onedir GUI and CLI
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --windowed --onedir `
-            --name NC1_STEP_Converter `
-            --collect-all cadquery `
-            --collect-all OCP `
-            --collect-all matplotlib `
-            --collect-all ifcopenshell `
-            --collect-all xlsxwriter `
-            --hidden-import matplotlib.backends.backend_tkagg `
-            --hidden-import ifcopenshell.api `
-            --hidden-import ifcopenshell.geom `
-            --add-data "profiles.json;." `
-            --add-data "materials.json;." `
-            app.py
-          Copy-Item README.md dist/NC1_STEP_Converter/README.md
-          Copy-Item VERSIE_EN_TESTSTATUS.txt dist/NC1_STEP_Converter/VERSIE_EN_TESTSTATUS.txt
-          if (Test-Path CHANGELOG.md) { Copy-Item CHANGELOG.md dist/NC1_STEP_Converter/CHANGELOG.md }
-          Compress-Archive -Path dist/NC1_STEP_Converter -DestinationPath NC1_STEP_Converter_Windows_x64.zip -Force
+          pyinstaller --noconfirm --clean NC1_STEP_Converter.spec
+          if (-not (Test-Path "dist/NC1_STEP_Converter/NC1_STEP_Converter.exe")) { throw "GUI EXE ontbreekt" }
+          if (-not (Test-Path "dist/NC1_STEP_Converter/NC1_STEP_Converter_CLI.exe")) { throw "CLI EXE ontbreekt" }
+          & "dist/NC1_STEP_Converter/NC1_STEP_Converter_CLI.exe" --version
+          Compress-Archive -Path "dist/NC1_STEP_Converter" -DestinationPath "dist/NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip" -Force
 
-      - name: Upload Windows EXE package
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build one-file installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe niet gevonden" }
+          & $iscc "installer/NC1_STEP_Converter.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup build mislukt" }
+
+      - name: Install and smoke-test packaged application without Python on PATH
+        shell: pwsh
+        run: |
+          $installer = Resolve-Path "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe"
+          $installDir = Join-Path $env:RUNNER_TEMP "NC1_STEP_IFC_Converter_Installed"
+          & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR="$installDir"
+          if ($LASTEXITCODE -ne 0) { throw "Stille installatie mislukt met exitcode $LASTEXITCODE" }
+          $gui = Join-Path $installDir "NC1_STEP_Converter.exe"
+          $cli = Join-Path $installDir "NC1_STEP_Converter_CLI.exe"
+          if (-not (Test-Path $gui)) { throw "Geinstalleerde GUI EXE ontbreekt" }
+          if (-not (Test-Path $cli)) { throw "Geinstalleerde CLI EXE ontbreekt" }
+
+          # De runner heeft Python voor de build, maar de eindgebruikers-smoke
+          # draait met een minimaal systeem-PATH zonder Python/pip/venv.
+          $savedPath = $env:PATH
+          try {
+            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
+            & $cli --version
+            if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde CLI --version faalde" }
+            & $cli pdf-analyze --help
+            if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde PDF CLI-smoke faalde" }
+          } finally {
+            $env:PATH = $savedPath
+          }
+
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (-not (Test-Path $uninstaller)) { throw "Uninstaller ontbreekt" }
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if ($LASTEXITCODE -ne 0) { throw "Stille uninstall mislukt" }
+
+      - name: Create checksums
+        shell: pwsh
+        run: |
+          $files = @(
+            "dist/NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip",
+            "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe"
+          )
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
+            "$hash  $([IO.Path]::GetFileName($file))"
+          }
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          Copy-Item $files release/
+          $lines | Set-Content -Encoding ascii release/SHA256SUMS.txt
+          Get-Content release/SHA256SUMS.txt
+
+      - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NC1_STEP_Converter_Windows_x64
-          path: NC1_STEP_Converter_Windows_x64.zip
+          name: NC1_STEP_IFC_Converter_0.5.0_Windows_x64
+          path: release/*
           if-no-files-found: error
           retention-days: 30

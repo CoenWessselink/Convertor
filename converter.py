@@ -266,6 +266,118 @@ def _clean_poly_points(contour: Contour) -> list[tuple[float, float]]:
     return cleaned
 
 
+def _rounded_vertex_geometry_2d(
+    previous: tuple[float, float],
+    current: tuple[float, float],
+    following: tuple[float, float],
+    radius: float,
+) -> tuple[tuple[float, float], tuple[float, float], tuple[float, float], float] | None:
+    """Return tangent-in, tangent-out, centre and signed arc extent.
+
+    DSTV stores a corner radius on the vertex.  The old prototype ignored this
+    and replaced every arc by a sharp corner.  The construction below keeps the
+    analytical circular edge while capping an impossible radius to 45% of both
+    adjacent segments.  That cap mirrors the drawing renderer and prevents
+    self-intersecting fillets from malformed source data.
+    """
+
+    px, py = previous
+    cx, cy = current
+    nx, ny = following
+    incoming = (px - cx, py - cy)
+    outgoing = (nx - cx, ny - cy)
+    lin = math.hypot(*incoming)
+    lout = math.hypot(*outgoing)
+    if radius <= 1e-9 or lin <= 1e-9 or lout <= 1e-9:
+        return None
+    incoming = (incoming[0] / lin, incoming[1] / lin)
+    outgoing = (outgoing[0] / lout, outgoing[1] / lout)
+    cosine = max(-1.0, min(1.0, incoming[0] * outgoing[0] + incoming[1] * outgoing[1]))
+    angle = math.acos(cosine)
+    if angle <= 1e-6 or abs(math.pi - angle) <= 1e-6:
+        return None
+    tangent_distance = radius / math.tan(angle / 2.0)
+    tangent_distance = min(tangent_distance, lin * 0.45, lout * 0.45)
+    if tangent_distance <= 1e-9:
+        return None
+    actual_radius = tangent_distance * math.tan(angle / 2.0)
+    tangent_in = (cx + incoming[0] * tangent_distance, cy + incoming[1] * tangent_distance)
+    tangent_out = (cx + outgoing[0] * tangent_distance, cy + outgoing[1] * tangent_distance)
+    bisector = (incoming[0] + outgoing[0], incoming[1] + outgoing[1])
+    bisector_length = math.hypot(*bisector)
+    if bisector_length <= 1e-9:
+        return None
+    bisector = (bisector[0] / bisector_length, bisector[1] / bisector_length)
+    centre_distance = actual_radius / math.sin(angle / 2.0)
+    centre = (cx + bisector[0] * centre_distance, cy + bisector[1] * centre_distance)
+    start_angle = math.atan2(tangent_in[1] - centre[1], tangent_in[0] - centre[0])
+    end_angle = math.atan2(tangent_out[1] - centre[1], tangent_out[0] - centre[0])
+    cross = (tangent_in[0] - centre[0]) * (tangent_out[1] - centre[1]) - (tangent_in[1] - centre[1]) * (tangent_out[0] - centre[0])
+    if cross >= 0:
+        extent = (end_angle - start_angle) % (2.0 * math.pi)
+    else:
+        extent = -((start_angle - end_angle) % (2.0 * math.pi))
+    if abs(extent) > math.pi:
+        extent = extent - 2.0 * math.pi if extent > 0 else extent + 2.0 * math.pi
+    return tangent_in, tangent_out, centre, extent
+
+
+def _contour_wire(contour: Contour) -> cq.Wire:
+    """Build an exact planar wire from straight and radius-tagged DSTV points."""
+
+    source_points = list(contour.geometry_points)
+    if len(source_points) > 1 and math.dist(
+        (source_points[0].x, source_points[0].q),
+        (source_points[-1].x, source_points[-1].q),
+    ) < 1e-7:
+        source_points.pop()
+    cleaned: list[ContourPoint] = []
+    for point in source_points:
+        if not cleaned or math.dist((cleaned[-1].x, cleaned[-1].q), (point.x, point.q)) > 1e-9:
+            cleaned.append(point)
+    if len(cleaned) < 3:
+        raise ValueError(f"Contour {contour.kind}/{contour.face} heeft minder dan 3 geometriepunten")
+
+    points = [(float(point.x), float(point.q)) for point in cleaned]
+    rounded = [
+        _rounded_vertex_geometry_2d(
+            points[index - 1],
+            points[index],
+            points[(index + 1) % len(points)],
+            max(0.0, float(cleaned[index].radius)),
+        )
+        for index in range(len(points))
+    ]
+    edges: list[cq.Edge] = []
+    for index, current in enumerate(points):
+        next_index = (index + 1) % len(points)
+        start = rounded[index][1] if rounded[index] is not None else current
+        end = rounded[next_index][0] if rounded[next_index] is not None else points[next_index]
+        if math.dist(start, end) > 1e-8:
+            edges.append(cq.Edge.makeLine(cq.Vector(start[0], start[1], 0.0), cq.Vector(end[0], end[1], 0.0)))
+        next_round = rounded[next_index]
+        if next_round is not None:
+            tangent_in, tangent_out, centre, extent = next_round
+            start_angle = math.atan2(tangent_in[1] - centre[1], tangent_in[0] - centre[0])
+            radius = math.hypot(tangent_in[0] - centre[0], tangent_in[1] - centre[1])
+            middle_angle = start_angle + extent / 2.0
+            middle = (
+                centre[0] + radius * math.cos(middle_angle),
+                centre[1] + radius * math.sin(middle_angle),
+            )
+            edges.append(
+                cq.Edge.makeThreePointArc(
+                    cq.Vector(tangent_in[0], tangent_in[1], 0.0),
+                    cq.Vector(middle[0], middle[1], 0.0),
+                    cq.Vector(tangent_out[0], tangent_out[1], 0.0),
+                )
+            )
+    wire = cq.Wire.assembleEdges(edges)
+    if not wire.IsClosed() or not wire.isValid():
+        raise ValueError(f"Contour {contour.kind}/{contour.face} kon niet als gesloten analytische wire worden opgebouwd")
+    return wire
+
+
 def _contour_mask(contour: Contour, span: float) -> cq.Workplane:
     pts = _clean_poly_points(contour)
     if len(pts) < 3:
@@ -376,13 +488,17 @@ def build_plate(part: NC1Part) -> cq.Workplane:
         raise ValueError("Ongeldige plaatlengte of -dikte")
     contours = part.contours_for("v") or part.contours_for("o")
     if contours:
-        pts = _clean_poly_points(contours[0])
+        contour = contours[0]
+        try:
+            wire = _contour_wire(contour)
+            solid_shape = cq.Solid.extrudeLinear(wire, [], cq.Vector(0.0, 0.0, thickness))
+            solid = cq.Workplane("XY").newObject([solid_shape])
+        except Exception as exc:
+            raise ValueError(f"Plaatcontour kon niet analytisch worden opgebouwd: {exc}") from exc
     else:
         pts = [(0.0, 0.0), (h.length, 0.0), (h.length, h.dim1), (0.0, h.dim1)]
         part.warnings.append("Geen AK-contour; omhullende rechthoek gebruikt")
-    if len(pts) < 3:
-        raise ValueError("Plaatcontour bevat minder dan drie punten")
-    solid = cq.Workplane("XY").polyline(pts).close().extrude(thickness)
+        solid = cq.Workplane("XY").polyline(pts).close().extrude(thickness)
     return _apply_holes(part, solid, "B", h.dim1, h.length, thickness, thickness)
 
 

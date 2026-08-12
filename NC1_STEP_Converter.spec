@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = Path(SPECPATH)
 
-packages = ["cadquery", "OCP", "matplotlib", "ifcopenshell", "xlsxwriter", "pymupdf"]
+packages = ["cadquery", "OCP", "matplotlib", "ifcopenshell", "xlsxwriter", "pymupdf", "pypdf", "reportlab"]
 binaries = []
 datas = [
     (str(ROOT / "profiles.json"), "."),
@@ -21,6 +21,15 @@ hiddenimports = [
     "ifcopenshell.geom",
     "ifcopenshell.util.element",
     "ifcopenshell.util.unit",
+    "pypdf._crypt_providers",
+    "reportlab.pdfbase._fontdata",
+    "reportlab.pdfbase._fontdata_enc_macexpert",
+    "reportlab.pdfbase._fontdata_enc_macroman",
+    "reportlab.pdfbase._fontdata_enc_pdfdoc",
+    "reportlab.pdfbase._fontdata_enc_standard",
+    "reportlab.pdfbase._fontdata_enc_symbol",
+    "reportlab.pdfbase._fontdata_enc_winansi",
+    "reportlab.pdfbase._fontdata_enc_zapfdingbats",
 ]
 for package in packages:
     package_datas, package_binaries, package_hidden = collect_all(package)

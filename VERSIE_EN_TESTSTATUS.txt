@@ -1,17 +1,33 @@
-NC1 ↔ STEP / IFC Converter
-Versie: 0.3.0
-Status: v0.3 source release en Windows EXE build-ready release.
+NC1 / DSTV - STEP - IFC - Trusted PDF Converter
+Versie: 0.5.0
+Status: broncode en releaseketen gereed voor Windows x64-build; Windows-installer nog niet in deze Linuxruntime gebouwd of schoon geinstalleerd.
 
-Getest in deze omgeving:
-- Python modules compileren: OK
-- NC1 → STEP op aangeleverde set: 24/24 OK
-- STEP → NC1 op aangeleverde set: 19/19 OK
-- Hoeveelheden + Excel op STEP-sample: OK
-- CLI help en kerncommands: OK
-- GUI start + viewer smoke via Xvfb: OK
+Daadwerkelijk getest in deze omgeving:
+- Python 3.13.5 modules compileren: OK
+- Analytische fitting smoke: OK
+- Kern-/IFC-/Excel-smoke: OK
+- PDF/AI-smoke: OK
+- NC1 -> STEP: 24/24 OK
+- STEP -> NC1: 19/19 OK
+- NC1 -> IFC -> STEP -> NC1: 4/4 OK
+- STEP -> IFC -> NC1 -> STEP: 4/4 OK
+- Trusted PDF P1811 -> NC1/STEP/IFC: OK
+- Trusted PDF D20 -> STEP: volumeverschil 0% binnen meetprecisie
+- Zichtbare PDF-manipulatie: correct geblokkeerd
+- Beschadigde Trusted PDF-checksum: correct geblokkeerd
+- Externe synthetische LO4-vector-PDF: 12 semantische velden herkend; productie-export correct geblokkeerd
+- Cloud-AI-contract met mocktransport: toestemming, store=false, schema en audit OK
+- AI-geometrieguard: verboden productie-inhoud correct geweigerd
+- PDF's gerenderd en visueel gecontroleerd: geen afgekapte hoofdtekst of ontbrekende hoofdmaten
 
-Niet volledig runtime-getest in deze Linuxomgeving:
-- IFC-functies met IfcOpenShell, omdat IfcOpenShell hier niet geïnstalleerd is.
-- Native Windows EXE, omdat deze omgeving geen Windows-runner is.
+Niet als uitgevoerd claimen:
+- De echte Pos LO4 - LOSSE PLAAT.pdf was niet als lokaal PDF-binaire bron beschikbaar; alleen als File Library-referentie/uitgelezen tekst.
+- Native Windows x64 EXE/installerbuild.
+- Installatie op een schone Windows x64-machine zonder Python.
+- Formele belastingstest met zeer grote IFC/STEP-projectbestanden.
+- Volledige externe scan-OCR, maatgrafiek en interactieve contourcorrectie.
 
-De Windows EXE kan lokaal met build_windows_exe.bat of via GitHub Actions worden gebouwd.
+Beoogde Windows-output na geslaagde runnerbuild:
+- NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe
+- NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip
+- SHA256SUMS.txt

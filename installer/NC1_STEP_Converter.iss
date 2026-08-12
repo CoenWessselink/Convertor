@@ -34,7 +34,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Maak een snelkoppeling op het bureaublad"; GroupDescription: "Snelkoppelingen:"; Flags: unchecked
-Name: "fileassoc"; Description: "Koppel .nc, .nc1, .step, .stp, .ifc en Trusted PDF aan de converter"; GroupDescription: "Bestandskoppelingen:"; Flags: checkedonce
+Name: "fileassoc"; Description: "Koppel .nc, .nc1, .step, .stp en .ifc aan de converter; voeg een PDF-contextmenu toe"; GroupDescription: "Bestandskoppelingen:"; Flags: checkedonce
 
 [Files]
 Source: "..\dist\NC1_STEP_Converter\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -62,6 +62,10 @@ Root: HKCR; Subkey: ".ifc"; ValueType: string; ValueName: ""; ValueData: "NC1STE
 Root: HKCR; Subkey: "NC1STEPConverter.IFC"; ValueType: string; ValueName: ""; ValueData: "IFC staalonderdeel"; Flags: uninsdeletekey; Tasks: fileassoc
 Root: HKCR; Subkey: "NC1STEPConverter.IFC\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
 Root: HKCR; Subkey: "NC1STEPConverter.IFC\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+
+; Laat de standaard PDF-lezer intact. Voeg alleen een expliciete contextmenu-optie toe.
+Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\NC1STEPConverter"; ValueType: string; ValueName: ""; ValueData: "Openen in NC1 STEP IFC Converter"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\NC1STEPConverter\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Start {#MyAppName}"; Flags: nowait postinstall skipifsilent
