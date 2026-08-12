@@ -26,6 +26,18 @@ from typing import Any, Callable, Iterable, Protocol
 OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses"
 DEFAULT_OPENAI_MODEL = "gpt-5.6"
 
+
+class AIConfigurationError(RuntimeError):
+    """De gekozen AI-provider is niet geïnstalleerd of niet geconfigureerd."""
+
+
+class CloudAIConsentError(PermissionError):
+    """Cloudverwerking werd gevraagd zonder expliciete toestemming."""
+
+
+class AIResponseError(ValueError):
+    """Een AI-response voldoet niet aan het begrensde adviescontract."""
+
 # AI mag deze semantische velden voorstellen. Exacte featurecoordinaten vallen
 # bewust buiten de lijst.
 ALLOWED_FIELD_NAMES = {
@@ -981,3 +993,277 @@ def apply_ai_analysis(part: Any, result: AIAnalysisResult) -> Any:
 
 def page_images_from_paths(paths: Iterable[str | Path]) -> list[bytes]:
     return [Path(path).read_bytes() for path in paths]
+
+# ---------------------------------------------------------------------------
+# Canonical drawing-review API used by the integrated v0.5 PDF module.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AISettings:
+    """Runtime settings for the advisory drawing interpreter.
+
+    Cloud processing is disabled by default. ``transport`` exists only for
+    deterministic tests and enterprise gateways; normal users leave it unset.
+    """
+
+    provider: str = "none"  # none, local-rules, openai
+    model: str = DEFAULT_OPENAI_MODEL
+    allow_cloud: bool = False
+    api_key: str = ""
+    endpoint: str = OPENAI_RESPONSES_ENDPOINT
+    max_pages: int = 3
+    render_dpi: int = 144
+    audit_log: str = ""
+    timeout: float = 90.0
+    transport: Callable[[urllib.request.Request, float], tuple[int, bytes, dict[str, str]]] | None = None
+
+
+@dataclass
+class AIFieldSuggestion:
+    field_path: str
+    value: Any
+    confidence: float
+    page: int = 1
+    source_text: str = ""
+    reason: str = ""
+
+    def validate(self) -> None:
+        if not self.field_path.strip():
+            raise ValueError("AI-veldsuggestie mist field_path")
+        if not 0.0 <= float(self.confidence) <= 1.0:
+            raise ValueError("AI-confidence moet tussen 0 en 1 liggen")
+        if int(self.page) < 1:
+            raise ValueError("AI-paginanummer moet 1 of hoger zijn")
+
+
+@dataclass
+class AIQuestionSuggestion:
+    field_path: str
+    question: str
+    severity: str = "blocking"
+    alternatives: list[str] = field(default_factory=list)
+    page: int = 1
+    reason: str = ""
+
+
+@dataclass
+class AIInterpretation:
+    provider: str
+    model: str
+    fields: list[AIFieldSuggestion] = field(default_factory=list)
+    questions: list[AIQuestionSuggestion] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    request_id: str = ""
+    response_sha256: str = ""
+    audit: dict[str, Any] = field(default_factory=dict)
+
+    def validate(self) -> None:
+        for item in self.fields:
+            item.validate()
+        for item in self.questions:
+            if not item.field_path.strip() or not item.question.strip():
+                raise ValueError("AI-vraag mist field_path of vraagtekst")
+            if item.severity not in {"blocking", "warning", "information"}:
+                raise ValueError(f"Ongeldige AI-vraagernst: {item.severity!r}")
+            if int(item.page) < 1:
+                raise ValueError("AI-vraag heeft een ongeldig paginanummer")
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def _local_review_interpretation(context: dict[str, Any]) -> AIInterpretation:
+    labels = {
+        "position": "onderdeelpositie",
+        "profile": "profiel",
+        "material": "materiaal",
+        "length": "lengte",
+        "plate_thickness": "plaatdikte",
+        "outer_contour": "gesloten buitencontour",
+        "hole_positions": "gatposities",
+        "reference_side": "referentiezijde",
+    }
+    questions: list[AIQuestionSuggestion] = []
+    for field_path in [str(item) for item in context.get("missing_critical", [])]:
+        label = labels.get(field_path, field_path.replace("_", " "))
+        questions.append(
+            AIQuestionSuggestion(
+                field_path=field_path,
+                question=f"Welke waarde of geometrische referentie geldt voor {label}?",
+                severity="blocking",
+                reason="Kritisch productiegegeven ontbreekt in de deterministische PDF-analyse.",
+            )
+        )
+    for field_path in [str(item) for item in context.get("conflicts", [])]:
+        label = labels.get(field_path, field_path.replace("_", " "))
+        questions.append(
+            AIQuestionSuggestion(
+                field_path=field_path,
+                question=f"Welke van de conflicterende interpretaties voor {label} is correct?",
+                severity="blocking",
+                reason="De deterministische analyse vond tegenstrijdige brongegevens.",
+            )
+        )
+    return AIInterpretation(
+        provider="local-rules",
+        model="deterministic-question-engine-v1",
+        questions=questions,
+        audit={"local_only": True, "store": False},
+    )
+
+
+def _render_pdf_page_images(
+    pdf_path: str | Path,
+    *,
+    max_pages: int,
+    render_dpi: int,
+) -> list[bytes]:
+    try:
+        import pymupdf
+    except Exception as exc:
+        raise RuntimeError("PyMuPDF ontbreekt; PDF-pagina's kunnen niet worden gerenderd") from exc
+    source = Path(pdf_path)
+    document = pymupdf.open(source)
+    try:
+        count = min(len(document), max(1, int(max_pages)))
+        zoom = max(72, int(render_dpi)) / 72.0
+        matrix = pymupdf.Matrix(zoom, zoom)
+        return [
+            document[index].get_pixmap(matrix=matrix, alpha=False).tobytes("png")
+            for index in range(count)
+        ]
+    finally:
+        document.close()
+
+
+def _write_drawing_ai_audit(
+    pdf_path: str | Path,
+    settings: AISettings,
+    result: AIInterpretation,
+    *,
+    page_count: int,
+) -> None:
+    if not settings.audit_log:
+        return
+    target = Path(settings.audit_log).expanduser()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "source_sha256": hashlib.sha256(Path(pdf_path).read_bytes()).hexdigest(),
+        "provider": result.provider,
+        "model": result.model,
+        "page_count": int(page_count),
+        "request_id": result.request_id,
+        "response_sha256": result.response_sha256,
+        "field_count": len(result.fields),
+        "question_count": len(result.questions),
+        "store": False,
+    }
+    with target.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+def interpret_drawing(
+    pdf_path: str | Path,
+    *,
+    deterministic_context: dict[str, Any],
+    settings: AISettings | None = None,
+) -> AIInterpretation:
+    """Interpret a drawing without ever producing production geometry.
+
+    The local provider only formulates review questions. The optional OpenAI
+    provider uses the Responses API request contract already guarded above:
+    explicit consent, ``store=false``, strict Structured Outputs and recursive
+    rejection of geometry/machine-code fields.
+    """
+
+    active = settings or AISettings()
+    provider_name = active.provider.strip().lower()
+    if provider_name in {"", "none", "off"}:
+        return AIInterpretation(provider="none", model="none", audit={"store": False})
+    if provider_name in {"local", "local-rules", "rules"}:
+        result = _local_review_interpretation(deterministic_context)
+        result.validate()
+        return result
+    if provider_name not in {"openai", "cloud", "hybrid"}:
+        raise ValueError(f"Onbekende AI-provider: {active.provider!r}")
+    if not active.allow_cloud:
+        raise CloudAIConsentError(
+            "Cloud-AI is uitgeschakeld. Geef per bewerking expliciet toestemming voordat een tekening wordt verzonden."
+        )
+
+    images = _render_pdf_page_images(
+        pdf_path,
+        max_pages=active.max_pages,
+        render_dpi=active.render_dpi,
+    )
+    safe_context = {
+        key: deterministic_context[key]
+        for key in (
+            "page_count",
+            "page_classification",
+            "sheet_format",
+            "orientation",
+            "detected_fields",
+            "missing_critical",
+            "conflicts",
+            "vector_path_count",
+            "image_count",
+        )
+        if key in deterministic_context
+    }
+    provider = OpenAIResponsesProvider(
+        model=active.model or DEFAULT_OPENAI_MODEL,
+        api_key=active.api_key or None,
+        endpoint=active.endpoint or OPENAI_RESPONSES_ENDPOINT,
+        timeout=float(active.timeout),
+        transport=active.transport,
+    )
+    cloud = provider.interpret(safe_context, images, cloud_consent=True)
+    fields = [
+        AIFieldSuggestion(
+            field_path=item.name,
+            value=item.value,
+            confidence=float(item.confidence),
+            page=int(item.page or 1),
+            source_text=item.evidence,
+            reason="Semantische cloud-AI-suggestie; deterministische geometriekoppeling vereist.",
+        )
+        for item in cloud.fields
+    ]
+    questions = [
+        AIQuestionSuggestion(
+            field_path=item.field,
+            question=item.question,
+            severity="blocking" if item.blocking else "warning",
+            alternatives=[str(value) for value in item.options],
+            page=1,
+            reason="Door AI geformuleerde controlevraag; geen productiegeometrie.",
+        )
+        for item in cloud.questions
+    ]
+    questions.extend(
+        AIQuestionSuggestion(
+            field_path=item.field,
+            question=item.message,
+            severity="blocking" if item.blocking else "warning",
+            alternatives=[str(value) for value in item.alternatives],
+            page=1,
+            reason="AI detecteerde een mogelijk semantisch conflict.",
+        )
+        for item in cloud.conflicts
+    )
+    response_material = json.dumps(cloud.to_dict(), ensure_ascii=False, sort_keys=True).encode("utf-8")
+    result = AIInterpretation(
+        provider=cloud.provider,
+        model=cloud.model,
+        fields=fields,
+        questions=questions,
+        warnings=[],
+        request_id=str(cloud.audit.get("request_id", "")),
+        response_sha256=hashlib.sha256(response_material).hexdigest(),
+        audit=dict(cloud.audit),
+    )
+    result.validate()
+    _write_drawing_ai_audit(pdf_path, active, result, page_count=len(images))
+    return result

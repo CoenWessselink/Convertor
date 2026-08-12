@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-import base64
-import math
+import json
 import os
 import queue
 import subprocess
-import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -20,20 +18,20 @@ from conversion import (
     step_to_nc1,
 )
 from ifc_support import dstv_to_ifc, ifc_available, ifc_to_dstv, ifc_to_step, step_to_ifc
-from ai_support import LocalSemanticProvider, OpenAIResponsesProvider
+from ai_support import AISettings
+from material_database import MaterialDatabase
 from pdf_support import (
-    PDFProductionBlockedError,
-    analyze_external_pdf,
+    ExternalPDFExportBlocked,
+    analyze_pdf,
     ifc_to_pdf,
-    inspect_pdf,
     nc1_to_pdf,
     pdf_to_ifc,
     pdf_to_nc1,
     pdf_to_step,
-    render_pdf_pages,
+    review_external_pdf,
     step_to_pdf,
+    write_analysis_report,
 )
-from material_database import MaterialDatabase
 from profile_database import ProfileDatabase
 from quantities import QuantityAnalysis, analyze_files, export_excel
 from visualization import ComparisonViewer
@@ -46,12 +44,12 @@ DIRECTION_LABELS = {
     "dstv-to-ifc": "DSTV / NC1 → IFC",
     "ifc-to-step": "IFC → STEP",
     "step-to-ifc": "STEP → IFC",
-    "pdf-to-nc1": "PDF → NC1 / DSTV",
-    "pdf-to-step": "PDF → STEP",
-    "pdf-to-ifc": "PDF → IFC",
-    "nc1-to-pdf": "NC1 / DSTV → PDF",
-    "step-to-pdf": "STEP → PDF",
-    "ifc-to-pdf": "IFC → PDF",
+    "pdf-to-nc1": "PDF / tekening → NC1 / DSTV",
+    "pdf-to-step": "PDF / tekening → STEP",
+    "pdf-to-ifc": "PDF / tekening → IFC",
+    "nc1-to-pdf": "NC1 / DSTV → technische PDF",
+    "step-to-pdf": "STEP → technische PDF",
+    "ifc-to-pdf": "IFC → technische PDF",
 }
 
 MODEL_SUFFIXES = {".nc", ".nc1", ".step", ".stp", ".ifc"}
@@ -89,18 +87,18 @@ class ConverterApp(tk.Tk):
         self.profile_family = tk.StringVar(value="Alle")
         self.profile_type = tk.StringVar(value="Alle")
         self.quantity_material = tk.StringVar(value="S355JR")
+        self.pdf_review_source = tk.StringVar(value="")
+        self.pdf_review_file = tk.StringVar(value="")
+        self.pdf_ai_provider = tk.StringVar(value="none")
+        self.pdf_allow_cloud = tk.BooleanVar(value=False)
+        self.pdf_analysis_result = None
         self.quantity_files: list[Path] = []
         self.quantity_analysis: QuantityAnalysis | None = None
         self.files: list[Path] = []
         self.comparisons: list[ComparisonRecord] = []
         self.events: queue.Queue[tuple] = queue.Queue()
         self.quantity_events: queue.Queue[tuple] = queue.Queue()
-        self.pdf_ai_events: queue.Queue[tuple] = queue.Queue()
-        self.pdf_ai_file = tk.StringVar(value="")
-        self.pdf_ai_use_cloud = tk.BooleanVar(value=False)
-        self.pdf_ai_model = tk.StringVar(value="")
-        self.pdf_ai_status = tk.StringVar(value="Selecteer een technische PDF.")
-        self._pdf_preview_image: tk.PhotoImage | None = None
+        self.pdf_events: queue.Queue[tuple] = queue.Queue()
         self._active_direction = self.direction.get()
         self.profile_database = ProfileDatabase()
         self.material_database = MaterialDatabase()
@@ -123,16 +121,16 @@ class ConverterApp(tk.Tk):
         self.preview_tab = ttk.Frame(self.notebook, padding=8)
         self.database_tab = ttk.Frame(self.notebook, padding=12)
         self.quantities_tab = ttk.Frame(self.notebook, padding=12)
-        self.pdf_ai_tab = ttk.Frame(self.notebook, padding=10)
+        self.pdf_tab = ttk.Frame(self.notebook, padding=12)
         self.notebook.add(self.converter_tab, text="Converter")
+        self.notebook.add(self.pdf_tab, text="PDF / Tekening")
         self.notebook.add(self.preview_tab, text="Visuele vergelijking")
-        self.notebook.add(self.pdf_ai_tab, text="PDF / AI controle")
         self.notebook.add(self.database_tab, text="Profielendatabase")
         self.notebook.add(self.quantities_tab, text="Hoeveelheden & Excel")
 
         self._build_converter_tab()
+        self._build_pdf_tab()
         self._build_preview_tab()
-        self._build_pdf_ai_tab()
         self._build_database_tab()
         self._build_quantities_tab()
 
@@ -197,13 +195,10 @@ class ConverterApp(tk.Tk):
         ttk.Spinbox(self.advanced_settings, from_=0.1, to=10.0, increment=0.1, textvariable=self.profile_tolerance, width=8).grid(
             row=1, column=1, sticky="w", padx=(6, 18), pady=(8, 0)
         )
-        self.strict_validation_check = ttk.Checkbutton(
+        ttk.Label(
             self.advanced_settings,
-            text="Strikte veiligheidscontrole is verplicht; onbetrouwbare productie-uitvoer wordt geweigerd",
-            variable=self.strict_validation,
-            state="disabled",
-        )
-        self.strict_validation_check.grid(row=1, column=2, columnspan=4, sticky="w", pady=(8, 0))
+            text="Strikte veiligheidscontrole is verplicht en kan niet worden uitgeschakeld.",
+        ).grid(row=1, column=2, columnspan=4, sticky="w", pady=(8, 0))
 
         preview_option = ttk.Frame(root)
         preview_option.grid(row=5, column=0, sticky="ew")
@@ -232,6 +227,337 @@ class ConverterApp(tk.Tk):
         log_scroll.grid(row=0, column=1, sticky="ns")
         self.log.configure(yscrollcommand=log_scroll.set)
 
+    def _build_pdf_tab(self) -> None:
+        """Functional review surface for external and Trusted Converter PDFs.
+
+        The full side-by-side drawing editor is a later UI phase. This tab
+        already exposes the safe workflow: deterministic analysis, confidence
+        and provenance review, explicit questions, optional advisory AI and a
+        reviewed Trusted PDF export.
+        """
+
+        root = self.pdf_tab
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(3, weight=1)
+
+        source_box = ttk.LabelFrame(root, text="Technische PDF", padding=10)
+        source_box.grid(row=0, column=0, sticky="ew")
+        source_box.columnconfigure(1, weight=1)
+        ttk.Label(source_box, text="Bron-PDF:").grid(row=0, column=0, sticky="w")
+        ttk.Entry(source_box, textvariable=self.pdf_review_source).grid(row=0, column=1, sticky="ew", padx=8)
+        ttk.Button(source_box, text="Kiezen", command=self._choose_pdf_review_source).grid(row=0, column=2)
+
+        ttk.Label(source_box, text="AI-provider:").grid(row=1, column=0, sticky="w", pady=(8, 0))
+        provider = ttk.Combobox(
+            source_box,
+            textvariable=self.pdf_ai_provider,
+            values=["none", "local-rules", "openai"],
+            state="readonly",
+            width=18,
+        )
+        provider.grid(row=1, column=1, sticky="w", padx=8, pady=(8, 0))
+        ttk.Checkbutton(
+            source_box,
+            text="Ik geef voor deze analyse expliciet toestemming voor cloudverwerking",
+            variable=self.pdf_allow_cloud,
+        ).grid(row=1, column=1, sticky="e", padx=8, pady=(8, 0))
+        self.pdf_analyze_button = ttk.Button(source_box, text="Analyseren", command=self._start_pdf_analysis)
+        self.pdf_analyze_button.grid(row=1, column=2, pady=(8, 0))
+
+        action_box = ttk.Frame(root)
+        action_box.grid(row=1, column=0, sticky="ew", pady=(10, 6))
+        ttk.Button(action_box, text="Analyse-JSON opslaan", command=self._save_pdf_analysis).pack(side="left")
+        ttk.Label(action_box, text="Review-JSON:").pack(side="left", padx=(18, 4))
+        ttk.Entry(action_box, textvariable=self.pdf_review_file, width=58).pack(side="left", fill="x", expand=True)
+        ttk.Button(action_box, text="Kiezen", command=self._choose_pdf_review_file).pack(side="left", padx=4)
+        ttk.Button(action_box, text="Reviewed Trusted PDF maken", command=self._review_pdf_to_trusted).pack(side="right")
+
+        self.pdf_status = ttk.Label(
+            root,
+            text=(
+                "Trusted PDF wordt exact gelezen. Externe PDF wordt lokaal als vector/raster geanalyseerd; "
+                "onzekere productiegegevens blokkeren NC1/STEP/IFC-uitvoer."
+            ),
+            wraplength=1320,
+            justify="left",
+        )
+        self.pdf_status.grid(row=2, column=0, sticky="ew", pady=(0, 6))
+
+        split = ttk.Panedwindow(root, orient="horizontal")
+        split.grid(row=3, column=0, sticky="nsew")
+        fields_frame = ttk.LabelFrame(split, text="Herkende velden, provenance en confidence", padding=6)
+        questions_frame = ttk.LabelFrame(split, text="Waarschuwingen en controlevragen", padding=6)
+        split.add(fields_frame, weight=3)
+        split.add(questions_frame, weight=2)
+        fields_frame.columnconfigure(0, weight=1)
+        fields_frame.rowconfigure(0, weight=1)
+        columns = ("field", "value", "confidence", "method", "status", "page")
+        self.pdf_field_tree = ttk.Treeview(fields_frame, columns=columns, show="headings")
+        headings = {
+            "field": "Veld",
+            "value": "Waarde",
+            "confidence": "Confidence",
+            "method": "Methode",
+            "status": "Status",
+            "page": "Pagina",
+        }
+        widths = {"field": 180, "value": 260, "confidence": 90, "method": 180, "status": 90, "page": 60}
+        for column in columns:
+            self.pdf_field_tree.heading(column, text=headings[column])
+            self.pdf_field_tree.column(column, width=widths[column], anchor="w" if column in {"field", "value", "method"} else "center")
+        self.pdf_field_tree.grid(row=0, column=0, sticky="nsew")
+        fy = ttk.Scrollbar(fields_frame, orient="vertical", command=self.pdf_field_tree.yview)
+        fy.grid(row=0, column=1, sticky="ns")
+        fx = ttk.Scrollbar(fields_frame, orient="horizontal", command=self.pdf_field_tree.xview)
+        fx.grid(row=1, column=0, sticky="ew")
+        self.pdf_field_tree.configure(yscrollcommand=fy.set, xscrollcommand=fx.set)
+
+        questions_frame.columnconfigure(0, weight=1)
+        questions_frame.rowconfigure(0, weight=1)
+        self.pdf_questions = tk.Text(questions_frame, wrap="word", state="disabled")
+        self.pdf_questions.grid(row=0, column=0, sticky="nsew")
+        qy = ttk.Scrollbar(questions_frame, orient="vertical", command=self.pdf_questions.yview)
+        qy.grid(row=0, column=1, sticky="ns")
+        self.pdf_questions.configure(yscrollcommand=qy.set)
+
+    # ---------------------------------------------------------- PDF review
+    def _choose_pdf_review_source(self) -> None:
+        name = filedialog.askopenfilename(
+            title="Selecteer technische PDF",
+            filetypes=[("PDF", "*.pdf"), ("Alle bestanden", "*.*")],
+        )
+        if not name:
+            return
+        self.pdf_review_source.set(name)
+        self.pdf_analysis_result = None
+        self._show_pdf_analysis(None)
+        self.pdf_status.configure(text=f"Geselecteerd: {Path(name).name}. Start de analyse.")
+
+    def _choose_pdf_review_file(self) -> None:
+        name = filedialog.askopenfilename(
+            title="Selecteer review-JSON",
+            filetypes=[("JSON", "*.json"), ("Alle bestanden", "*.*")],
+        )
+        if name:
+            self.pdf_review_file.set(name)
+
+    def _pdf_ai_settings(self, *, audit_directory: Path | None = None) -> AISettings:
+        provider = self.pdf_ai_provider.get().strip().lower() or "none"
+        allow_cloud = bool(self.pdf_allow_cloud.get())
+        if provider == "openai" and not allow_cloud:
+            raise PermissionError(
+                "OpenAI is geselecteerd, maar expliciete toestemming voor cloudverwerking ontbreekt."
+            )
+        audit_log = ""
+        if audit_directory is not None:
+            audit_directory.mkdir(parents=True, exist_ok=True)
+            audit_log = str(audit_directory / "ai_audit.jsonl")
+        return AISettings(provider=provider, allow_cloud=allow_cloud, audit_log=audit_log)
+
+    def _start_pdf_analysis(self) -> None:
+        source = Path(self.pdf_review_source.get()).expanduser()
+        if not source.is_file() or source.suffix.lower() != ".pdf":
+            messagebox.showwarning("Geen PDF", "Selecteer eerst een bestaand PDF-bestand.")
+            return
+        try:
+            settings = self._pdf_ai_settings(
+                audit_directory=Path(self.output_directory.get()).expanduser()
+            )
+        except PermissionError as exc:
+            messagebox.showwarning("Cloud-AI niet toegestaan", str(exc))
+            return
+        self.pdf_analyze_button.configure(state="disabled")
+        self.pdf_status.configure(text=f"Analyse bezig: {source.name} …")
+        self.pdf_analysis_result = None
+        self._show_pdf_analysis(None)
+        worker = threading.Thread(
+            target=self._pdf_analysis_worker,
+            args=(source, settings),
+            daemon=True,
+        )
+        worker.start()
+        self.after(100, self._poll_pdf_events)
+
+    def _pdf_analysis_worker(self, source: Path, settings: AISettings) -> None:
+        try:
+            analysis = analyze_pdf(source, ai_settings=settings)
+            self.pdf_events.put(("analysis_done", analysis))
+        except Exception as exc:
+            self.pdf_events.put(("error", "PDF-analyse", str(exc)))
+
+    def _poll_pdf_events(self) -> None:
+        processed = False
+        try:
+            while True:
+                event = self.pdf_events.get_nowait()
+                processed = True
+                kind = event[0]
+                if kind == "analysis_done":
+                    self.pdf_analyze_button.configure(state="normal")
+                    self.pdf_analysis_result = event[1]
+                    self._show_pdf_analysis(self.pdf_analysis_result)
+                elif kind == "review_done":
+                    self.pdf_analyze_button.configure(state="normal")
+                    conversion_result, analysis = event[1], event[2]
+                    self.pdf_analysis_result = analysis
+                    self.pdf_review_source.set(str(conversion_result.primary_output or ""))
+                    self._show_pdf_analysis(analysis)
+                    messagebox.showinfo(
+                        "Trusted PDF gemaakt",
+                        "Reviewed Trusted Converter PDF opgeslagen:\n"
+                        + str(conversion_result.primary_output),
+                    )
+                elif kind == "error":
+                    self.pdf_analyze_button.configure(state="normal")
+                    self.pdf_status.configure(text=f"{event[1]} mislukt")
+                    messagebox.showerror(event[1], event[2])
+        except queue.Empty:
+            pass
+        if self.pdf_analyze_button.instate(["disabled"]) or not processed:
+            self.after(100, self._poll_pdf_events)
+
+    @staticmethod
+    def _display_value(value: object) -> str:
+        if isinstance(value, (dict, list, tuple)):
+            return json.dumps(value, ensure_ascii=False, sort_keys=True)
+        return str(value)
+
+    def _show_pdf_analysis(self, analysis) -> None:
+        for item in self.pdf_field_tree.get_children():
+            self.pdf_field_tree.delete(item)
+        self.pdf_questions.configure(state="normal")
+        self.pdf_questions.delete("1.0", "end")
+        if analysis is None:
+            self.pdf_questions.configure(state="disabled")
+            return
+
+        part = analysis.part
+        for field_path, evidence in sorted(part.field_evidence.items()):
+            self.pdf_field_tree.insert(
+                "",
+                "end",
+                values=(
+                    field_path,
+                    self._display_value(evidence.value),
+                    f"{float(evidence.confidence):.0%}",
+                    evidence.method,
+                    evidence.status,
+                    evidence.page or "",
+                ),
+            )
+        if not part.field_evidence:
+            for field_path, value in sorted(analysis.detected_fields.items()):
+                self.pdf_field_tree.insert(
+                    "",
+                    "end",
+                    values=(field_path, self._display_value(value), "", "detected", "", ""),
+                )
+
+        lines = [
+            f"Modus: {analysis.mode}",
+            "Productie-export: " + ("TOEGESTAAN" if analysis.production_export_allowed else "GEBLOKKEERD"),
+            f"Onderdeel: {part.part_id or part.header.position_number or '-'}",
+            f"Profiel: {part.header.profile or '-'} | materiaal: {part.header.material or '-'} | aantal: {part.header.quantity}",
+            "",
+        ]
+        if part.validation.errors or analysis.errors:
+            lines.append("FOUTEN")
+            lines.extend(f"- {item}" for item in dict.fromkeys(part.validation.errors + analysis.errors))
+            lines.append("")
+        warnings = list(dict.fromkeys(part.validation.warnings + analysis.warnings + part.warnings))
+        if warnings:
+            lines.append("WAARSCHUWINGEN")
+            lines.extend(f"- {item}" for item in warnings)
+            lines.append("")
+        questions = part.validation.unresolved_questions
+        if questions:
+            lines.append("CONTROLEVRAGEN")
+            for question in questions:
+                lines.append(
+                    f"- [{question.status}/{question.severity}] {question.question_id}: {question.prompt}"
+                )
+                if question.alternatives:
+                    lines.append("  Alternatieven: " + " | ".join(map(str, question.alternatives)))
+                if question.reason:
+                    lines.append("  Reden: " + question.reason)
+            lines.append("")
+        if analysis.ai is not None:
+            lines.append(
+                f"AI-advies: {analysis.ai.provider} / {analysis.ai.model}; "
+                f"{len(analysis.ai.fields)} veldsuggestie(s), {len(analysis.ai.questions)} vraag/vragen."
+            )
+        self.pdf_questions.insert("1.0", "\n".join(lines))
+        self.pdf_questions.configure(state="disabled")
+        self.pdf_status.configure(
+            text=(
+                f"{Path(analysis.source).name}: {analysis.mode}; "
+                f"{len(analysis.pages)} pagina('s); "
+                + ("productie-export toegestaan" if analysis.production_export_allowed else "review vereist")
+            )
+        )
+
+    def _save_pdf_analysis(self) -> None:
+        if self.pdf_analysis_result is None:
+            messagebox.showwarning("Geen analyse", "Analyseer eerst een PDF-bestand.")
+            return
+        source = Path(self.pdf_analysis_result.source)
+        name = filedialog.asksaveasfilename(
+            title="Analyse-JSON opslaan",
+            initialfile=f"{source.stem}.analysis.json",
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json")],
+        )
+        if not name:
+            return
+        try:
+            target = write_analysis_report(self.pdf_analysis_result, name)
+            messagebox.showinfo("Analyse opgeslagen", f"Analyse opgeslagen:\n{target}")
+        except Exception as exc:
+            messagebox.showerror("Analyse opslaan", str(exc))
+
+    def _review_pdf_to_trusted(self) -> None:
+        source = Path(self.pdf_review_source.get()).expanduser()
+        review = Path(self.pdf_review_file.get()).expanduser()
+        if not source.is_file() or source.suffix.lower() != ".pdf":
+            messagebox.showwarning("Geen PDF", "Selecteer eerst de externe bron-PDF.")
+            return
+        if not review.is_file() or review.suffix.lower() != ".json":
+            messagebox.showwarning("Geen review", "Selecteer eerst een bestaand review-JSON-bestand.")
+            return
+        default = Path(self.output_directory.get()).expanduser() / f"{source.stem}_reviewed_trusted.pdf"
+        name = filedialog.asksaveasfilename(
+            title="Reviewed Trusted PDF opslaan",
+            initialdir=str(default.parent),
+            initialfile=default.name,
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+        )
+        if not name:
+            return
+        try:
+            settings = self._pdf_ai_settings(audit_directory=Path(name).parent)
+        except PermissionError as exc:
+            messagebox.showwarning("Cloud-AI niet toegestaan", str(exc))
+            return
+        self.pdf_analyze_button.configure(state="disabled")
+        self.pdf_status.configure(text=f"Review toepassen en Trusted PDF maken: {source.name} …")
+
+        def worker() -> None:
+            try:
+                result = review_external_pdf(
+                    source,
+                    review,
+                    name,
+                    ai_settings=settings,
+                )
+                analysis = analyze_pdf(result.primary_output)
+                self.pdf_events.put(("review_done", result, analysis))
+            except Exception as exc:
+                self.pdf_events.put(("error", "PDF-review", str(exc)))
+
+        threading.Thread(target=worker, daemon=True).start()
+        self.after(100, self._poll_pdf_events)
+
     def _build_preview_tab(self) -> None:
         top = ttk.Frame(self.preview_tab)
         top.pack(fill="x", pady=(0, 6))
@@ -245,69 +571,6 @@ class ConverterApp(tk.Tk):
         ttk.Button(top, text="Resultaat openen", command=lambda: self._open_comparison_path(True)).pack(side="left", padx=2)
         self.viewer = ComparisonViewer(self.preview_tab)
         self.viewer.pack(fill="both", expand=True)
-
-    def _build_pdf_ai_tab(self) -> None:
-        root = self.pdf_ai_tab
-        root.columnconfigure(0, weight=1)
-        root.columnconfigure(1, weight=1)
-        root.rowconfigure(2, weight=1)
-
-        controls = ttk.LabelFrame(root, text="Technische PDF analyseren", padding=10)
-        controls.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-        controls.columnconfigure(1, weight=1)
-        ttk.Label(controls, text="PDF-bestand:").grid(row=0, column=0, sticky="w")
-        ttk.Entry(controls, textvariable=self.pdf_ai_file).grid(row=0, column=1, sticky="ew", padx=8)
-        ttk.Button(controls, text="Kiezen", command=self._choose_pdf_ai_file).grid(row=0, column=2, padx=(0, 6))
-        ttk.Button(controls, text="Trusted PDF controleren", command=self._inspect_pdf_ai).grid(row=0, column=3, padx=(0, 6))
-        self.pdf_ai_analyze_button = ttk.Button(controls, text="Analyseren", command=self._start_pdf_ai_analysis)
-        self.pdf_ai_analyze_button.grid(row=0, column=4)
-
-        privacy = ttk.Frame(controls)
-        privacy.grid(row=1, column=0, columnspan=5, sticky="ew", pady=(10, 0))
-        ttk.Checkbutton(
-            privacy,
-            text="Cloud-AI gebruiken - ik geef expliciet toestemming om deze PDF extern te verwerken",
-            variable=self.pdf_ai_use_cloud,
-        ).pack(side="left")
-        ttk.Label(privacy, text="Model:").pack(side="left", padx=(18, 4))
-        ttk.Entry(privacy, textvariable=self.pdf_ai_model, width=26).pack(side="left")
-        ttk.Label(
-            privacy,
-            text="API-sleutel via OPENAI_API_KEY; lokale analyse blijft standaard.",
-        ).pack(side="left", padx=(10, 0))
-
-        info = ttk.Label(
-            root,
-            text=(
-                "AI interpreteert alleen tekst, titelblok, aanzichten, conflicten en controlevragen. "
-                "Exacte contouren, gatposities, maatwaarden en NC1/STEP/IFC-export worden deterministisch "
-                "berekend. Externe PDF's blijven geblokkeerd voor productie totdat alle kritische vragen zijn bevestigd."
-            ),
-            wraplength=1380,
-            justify="left",
-        )
-        info.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 8))
-
-        source_frame = ttk.LabelFrame(root, text="Bron-PDF", padding=6)
-        source_frame.grid(row=2, column=0, sticky="nsew", padx=(0, 4))
-        source_frame.columnconfigure(0, weight=1)
-        source_frame.rowconfigure(0, weight=1)
-        self.pdf_preview_label = ttk.Label(source_frame, text="Nog geen PDF geselecteerd", anchor="center")
-        self.pdf_preview_label.grid(row=0, column=0, sticky="nsew")
-
-        result_frame = ttk.LabelFrame(root, text="Herkende gegevens, confidence en blokkades", padding=6)
-        result_frame.grid(row=2, column=1, sticky="nsew", padx=(4, 0))
-        result_frame.columnconfigure(0, weight=1)
-        result_frame.rowconfigure(0, weight=1)
-        self.pdf_ai_result = tk.Text(result_frame, wrap="word", state="disabled")
-        self.pdf_ai_result.grid(row=0, column=0, sticky="nsew")
-        result_scroll = ttk.Scrollbar(result_frame, orient="vertical", command=self.pdf_ai_result.yview)
-        result_scroll.grid(row=0, column=1, sticky="ns")
-        self.pdf_ai_result.configure(yscrollcommand=result_scroll.set)
-
-        ttk.Label(root, textvariable=self.pdf_ai_status, anchor="w").grid(
-            row=3, column=0, columnspan=2, sticky="ew", pady=(8, 0)
-        )
 
     def _build_database_tab(self) -> None:
         header = ttk.Frame(self.database_tab)
@@ -429,164 +692,6 @@ class ConverterApp(tk.Tk):
         qx.grid(row=1, column=0, sticky="ew")
         self.quantity_tree.configure(yscrollcommand=qy.set, xscrollcommand=qx.set)
 
-    # ------------------------------------------------------------ PDF / AI
-    def _choose_pdf_ai_file(self) -> None:
-        name = filedialog.askopenfilename(
-            title="Selecteer technische PDF",
-            filetypes=[("PDF", "*.pdf"), ("Alle bestanden", "*.*")],
-        )
-        if not name:
-            return
-        self.pdf_ai_file.set(name)
-        self._load_pdf_ai_preview(Path(name))
-        self.pdf_ai_status.set("PDF geladen. Kies lokale analyse of geef expliciet toestemming voor cloud-AI.")
-
-    def _load_pdf_ai_preview(self, path: Path) -> None:
-        try:
-            images = render_pdf_pages(path, dpi=100, max_pages=1)
-            if not images:
-                raise ValueError("PDF bevat geen pagina's")
-            encoded = base64.b64encode(images[0]).decode("ascii")
-            image = tk.PhotoImage(data=encoded)
-            factor = max(1, math.ceil(max(image.width() / 650, image.height() / 680)))
-            if factor > 1:
-                image = image.subsample(factor, factor)
-            self._pdf_preview_image = image
-            self.pdf_preview_label.configure(image=image, text="")
-        except Exception as exc:
-            self._pdf_preview_image = None
-            self.pdf_preview_label.configure(image="", text=f"Preview kon niet worden geladen:\n{exc}")
-    def _set_pdf_ai_text(self, text: str) -> None:
-        self.pdf_ai_result.configure(state="normal")
-        self.pdf_ai_result.delete("1.0", "end")
-        self.pdf_ai_result.insert("1.0", text)
-        self.pdf_ai_result.configure(state="disabled")
-
-    def _inspect_pdf_ai(self) -> None:
-        path = Path(self.pdf_ai_file.get()).expanduser()
-        if not path.is_file():
-            messagebox.showwarning("PDF", "Selecteer eerst een PDF-bestand.")
-            return
-        try:
-            inspection = inspect_pdf(path)
-            lines = [
-                f"Classificatie: {inspection.classification}",
-                f"Trusted exact: {'ja' if inspection.trusted_exact else 'nee'}",
-            ]
-            for key, value in sorted(inspection.details.items()):
-                lines.append(f"{key}: {value}")
-            if inspection.errors:
-                lines.append("\nFouten:")
-                lines.extend(f"- {item}" for item in inspection.errors)
-            if inspection.warnings:
-                lines.append("\nWaarschuwingen:")
-                lines.extend(f"- {item}" for item in inspection.warnings)
-            self._set_pdf_ai_text("\n".join(lines))
-            self.pdf_ai_status.set(
-                "Exacte embedded data gevalideerd." if inspection.trusted_exact else "Geen geldige exacte Trusted PDF-payload."
-            )
-        except Exception as exc:
-            messagebox.showerror("Trusted PDF controleren", str(exc))
-
-    def _start_pdf_ai_analysis(self) -> None:
-        path = Path(self.pdf_ai_file.get()).expanduser()
-        if not path.is_file():
-            messagebox.showwarning("PDF", "Selecteer eerst een PDF-bestand.")
-            return
-        use_cloud = bool(self.pdf_ai_use_cloud.get())
-        model = self.pdf_ai_model.get().strip()
-        if use_cloud and not model:
-            messagebox.showwarning("Cloud-AI", "Vul eerst een expliciet model in.")
-            return
-        self.pdf_ai_analyze_button.configure(state="disabled")
-        self.pdf_ai_status.set("PDF wordt lokaal voorbereid en geanalyseerd...")
-        thread = threading.Thread(
-            target=self._pdf_ai_worker,
-            args=(path, use_cloud, model),
-            daemon=True,
-        )
-        thread.start()
-        self.after(100, self._poll_pdf_ai_events)
-
-    def _pdf_ai_worker(self, path: Path, use_cloud: bool, model: str) -> None:
-        try:
-            provider = (
-                OpenAIResponsesProvider(model=model)
-                if use_cloud
-                else LocalSemanticProvider()
-            )
-            analysis = analyze_external_pdf(
-                path,
-                ai_provider=provider,
-                cloud_consent=use_cloud,
-            )
-            self.pdf_ai_events.put(("result", analysis))
-        except Exception as exc:
-            self.pdf_ai_events.put(("error", str(exc)))
-
-    def _format_pdf_ai_analysis(self, analysis) -> str:
-        part = analysis.part
-        lines = [
-            f"Bestand: {analysis.source.name}",
-            f"Onderdeel: {part.part_id}",
-            f"Importmethode: {part.import_method}",
-            f"Productie-export: {'VRIJGEGEVEN' if part.validation.production_export_allowed else 'GEBLOKKEERD'}",
-            "",
-            "Herkende velden:",
-        ]
-        for name, item in sorted(part.field_values.items()):
-            status = "automatisch" if item.confidence >= 0.95 else "controle"
-            lines.append(
-                f"- {name}: {item.value} | confidence {item.confidence:.0%} | {status} | {item.method}"
-            )
-            if item.evidence:
-                lines.append(f"    bron: {item.evidence}")
-        if part.validation.errors:
-            lines.extend(["", "Blokkerende fouten:"])
-            lines.extend(f"- {item}" for item in part.validation.errors)
-        open_questions = [
-            item for item in part.validation.unresolved_questions
-            if item.status.lower() not in {"resolved", "answered", "dismissed"}
-        ]
-        if open_questions:
-            lines.extend(["", "Controlevragen:"])
-            for item in open_questions:
-                label = "BLOKKEREND" if item.blocking else "waarschuwing"
-                lines.append(f"- [{label}] {item.message}")
-        if analysis.ai is not None:
-            lines.extend(["", f"AI-provider: {analysis.ai.provider}"])
-            if analysis.ai.model:
-                lines.append(f"Model: {analysis.ai.model}")
-            for suggestion in analysis.ai.layout_suggestions:
-                lines.append(f"- Layoutvoorstel: {suggestion}")
-        if analysis.warnings:
-            lines.extend(["", "Waarschuwingen:"])
-            lines.extend(f"- {item}" for item in analysis.warnings)
-        return "\n".join(lines)
-
-    def _poll_pdf_ai_events(self) -> None:
-        try:
-            while True:
-                event = self.pdf_ai_events.get_nowait()
-                if event[0] == "result":
-                    analysis = event[1]
-                    self._set_pdf_ai_text(self._format_pdf_ai_analysis(analysis))
-                    self.pdf_ai_status.set(
-                        "Analyse klaar - productie geblokkeerd totdat kritische geometrie is bevestigd."
-                        if not analysis.part.validation.production_export_allowed
-                        else "Analyse klaar en vrijgegeven."
-                    )
-                    self.pdf_ai_analyze_button.configure(state="normal")
-                    return
-                if event[0] == "error":
-                    self.pdf_ai_analyze_button.configure(state="normal")
-                    self.pdf_ai_status.set("Analyse mislukt.")
-                    messagebox.showerror("PDF / AI analyse", event[1])
-                    return
-        except queue.Empty:
-            pass
-        self.after(100, self._poll_pdf_ai_events)
-
     # ------------------------------------------------------------ conversion
     def _direction_changed(self) -> None:
         selected = self.direction.get()
@@ -597,27 +702,25 @@ class ConverterApp(tk.Tk):
         self._active_direction = selected
         notes = {
             "nc1-to-step": "NC1/DSTV → STEP ondersteunt platen, I/HEA-profielen, U/C-profielen, hoeklijnen, RHS/SHS-kokers, massief rond en ronde buizen.",
-            "step-to-nc1": "STEP → NC1 herkent platen en standaardprofielen via de profielendatabase. De NC1-uitvoer wordt opnieuw opgebouwd en volumetrisch gecontroleerd.",
-            "ifc-to-dstv": "IFC → DSTV maakt per converteerbaar IFC-element een apart NC1-bestand en schrijft daarnaast een manifest met gelukte en geweigerde objecten.",
-            "dstv-to-ifc": "DSTV/NC1 → IFC bouwt eerst een lokaal STEP-solid op en schrijft daarna een IFC-element met materiaal- en broneigenschappen.",
-            "ifc-to-step": "IFC → STEP probeert eerst geverifieerde payload of analytische fitting; faceted fallback blijft onder strenge controle.",
-            "step-to-ifc": "STEP → IFC schrijft zichtbare IFC-geometrie en een exacte canonieke converterpayload.",
-            "pdf-to-nc1": "PDF → NC1 is exact voor een ongewijzigde Trusted Converter PDF. Externe PDF's worden eerst geanalyseerd en blijven geblokkeerd totdat kritische geometrie is bevestigd.",
-            "pdf-to-step": "PDF → STEP is exact voor een ongewijzigde Trusted Converter PDF. AI mag geen STEP-geometrie genereren.",
-            "pdf-to-ifc": "PDF → IFC is exact voor een ongewijzigde Trusted Converter PDF. Externe PDF's vereisen review en vrijgave.",
-            "nc1-to-pdf": "NC1/DSTV → PDF maakt een vectoriële werktekening met maatvoering, stukregel, titelblok en gehashte exacte modeldata.",
-            "step-to-pdf": "STEP → PDF maakt een vectoriële werktuigbouwkundige onderdeeltekening en sluit de exacte STEP/productiedata in.",
-            "ifc-to-pdf": "IFC → PDF maakt per onderdeel een vectoriële technische PDF; converterpayload krijgt voorrang.",
+            "step-to-nc1": "STEP → NC1 herkent platen en standaardprofielen via de profielendatabase. De NC1-uitvoer wordt opnieuw opgebouwd en verplicht geometrisch gecontroleerd.",
+            "ifc-to-dstv": "IFC → DSTV maakt per veilig converteerbaar IFC-element een apart NC1-bestand. De strikte veiligheidscontrole kan niet worden uitgeschakeld.",
+            "dstv-to-ifc": "DSTV/NC1 → IFC schrijft zichtbare IFC-geometrie plus een gehashte canonieke converterpayload voor betrouwbare terugconversie.",
+            "ifc-to-step": "IFC → STEP gebruikt bij converter-eigen IFC eerst de geverifieerde analytische payload; externe IFC volgt de veilige geometrische fallback.",
+            "step-to-ifc": "STEP → IFC schrijft een semantisch element met materiaal, broneigenschappen, quantities en exacte converterpayload wanneer classificatie veilig is.",
+            "pdf-to-nc1": "Alleen een geldige Trusted Converter PDF of een volledig menselijk gereviewde externe tekening mag naar productie-NC1. Onzekere velden blokkeren de uitvoer.",
+            "pdf-to-step": "PDF → STEP loopt via het canonieke model en een verplicht gevalideerde NC1/analytische solid-route. AI levert uitsluitend adviessuggesties.",
+            "pdf-to-ifc": "PDF → IFC loopt via het gevalideerde canonieke model en bewaart de exacte productiedata in de IFC-payload.",
+            "nc1-to-pdf": "NC1 → PDF maakt een vectoriële technische tekening met titelblok, stukregel, maatvoering en embedded exact model.",
+            "step-to-pdf": "STEP → PDF classificeert het profiel/plaatdeel veilig en maakt een Trusted Converter PDF. Niet-classificeerbare STEP blijft concept.",
+            "ifc-to-pdf": "IFC → PDF maakt één PDF per onderdeel wanneer het IFC meerdere elementen bevat; converterpayload heeft prioriteit.",
         }
         self.note.configure(text=notes.get(selected, ""))
-        if selected in {"step-to-nc1", "ifc-to-dstv"}:
+        if selected in {"step-to-nc1", "ifc-to-dstv", "step-to-pdf"}:
             self.profile_combo.configure(state="readonly")
-            self.strict_validation.set(self.strict_validation.get())
         else:
             self.profile_choice.set("Automatisch")
-        if selected in {"nc1-to-step", "ifc-to-step"}:
-            # Material/order/profile are less relevant but harmless; keep visible for clarity only when needed.
-            pass
+            self.profile_combo.configure(state="disabled")
+        self.strict_validation.set(True)
 
     def _extensions(self) -> tuple[set[str], list[tuple[str, str]]]:
         mapping = {
@@ -704,11 +807,30 @@ class ConverterApp(tk.Tk):
         preferred = self.profile_choice.get()
         if preferred == "Automatisch":
             preferred = ""
+        provider = self.pdf_ai_provider.get().strip().lower() or "none"
+        allow_cloud = bool(self.pdf_allow_cloud.get())
+        if self.direction.get().startswith("pdf-to") and provider == "openai" and not allow_cloud:
+            messagebox.showwarning(
+                "Cloud-AI niet toegestaan",
+                "OpenAI is geselecteerd, maar expliciete toestemming voor deze PDF-analyse ontbreekt.",
+            )
+            self.convert_button.configure(state="normal")
+            self.status.configure(text="Gereed")
+            return
+        if not self.direction.get().startswith("pdf-to"):
+            provider = "none"
+            allow_cloud = False
+        ai_settings = AISettings(
+            provider=provider,
+            allow_cloud=allow_cloud,
+            audit_log=str(output / "ai_audit.jsonl"),
+        )
+        self._conversion_comparison_start = len(self.comparisons)
         worker = threading.Thread(
             target=self._worker,
             args=(
                 list(self.files), output, self.direction.get(), self.material.get().strip() or "S355JR",
-                self.order_number.get().strip() or "STEP", preferred, float(self.profile_tolerance.get()), True,
+                self.order_number.get().strip() or "STEP", preferred, float(self.profile_tolerance.get()), ai_settings,
             ),
             daemon=True,
         )
@@ -724,12 +846,14 @@ class ConverterApp(tk.Tk):
         order_number: str,
         preferred_profile: str,
         tolerance: float,
-        strict_validation: bool,
+        ai_settings: AISettings,
     ) -> None:
         failures = 0
         for index, source in enumerate(files, start=1):
             try:
-                outputs, warnings, failed_items = self._convert_one(source, output, direction, material, order_number, preferred_profile, tolerance, strict_validation)
+                outputs, warnings, failed_items = self._convert_one(
+                    source, output, direction, material, order_number, preferred_profile, tolerance, ai_settings
+                )
                 if failed_items:
                     failures += len(failed_items)
                 self.events.put(("log", f"OK   {source.name} → {len(outputs)} uitvoerbestand(en)"))
@@ -740,11 +864,11 @@ class ConverterApp(tk.Tk):
                 for fail in failed_items:
                     self.events.put(("log", f"     NIET GECONVERTEERD: {fail}"))
                 for out in outputs:
-                    if out.suffix.lower() in MODEL_SUFFIXES:
+                    if source.suffix.lower() in MODEL_SUFFIXES and out.suffix.lower() in MODEL_SUFFIXES:
                         self.events.put(("converted", source, out, direction, DIRECTION_LABELS.get(direction, direction)))
-            except PDFProductionBlockedError as exc:
+            except ExternalPDFExportBlocked as exc:
                 failures += 1
-                self.events.put(("log", f"GEBLOKKEERD {source.name}: {exc}"))
+                self.events.put(("log", f"REVIEW VEREIST {source.name}: {exc}"))
             except Exception as exc:
                 failures += 1
                 self.events.put(("log", f"FOUT {source.name}: {exc}"))
@@ -760,7 +884,7 @@ class ConverterApp(tk.Tk):
         order_number: str,
         preferred_profile: str,
         tolerance: float,
-        strict_validation: bool,
+        ai_settings: AISettings,
     ) -> tuple[list[Path], list[str], list[str]]:
         if direction == "nc1-to-step":
             target = output / f"{source.stem}.step"
@@ -776,7 +900,7 @@ class ConverterApp(tk.Tk):
                 profile_database=self.profile_database,
                 preferred_profile=preferred_profile,
                 tolerance_mm=tolerance,
-                strict_validation=strict_validation,
+                strict_validation=True,
             )
             warnings = [
                 f"{result.profile_designation}; confidence {result.confidence:.0%}; volumeverschil {result.volume_delta_percent:+.6f}%"
@@ -791,7 +915,7 @@ class ConverterApp(tk.Tk):
                 profile_database=self.profile_database,
                 preferred_profile=preferred_profile,
                 tolerance_mm=tolerance,
-                strict_validation=strict_validation,
+                strict_validation=True,
             )
             return result.outputs, result.warnings, result.failures
         if direction == "dstv-to-ifc":
@@ -803,24 +927,35 @@ class ConverterApp(tk.Tk):
         if direction == "step-to-ifc":
             result = step_to_ifc(source, output / f"{source.stem}.ifc", material=material)
             return result.outputs, result.warnings, result.failures
+        if direction == "pdf-to-nc1":
+            result = pdf_to_nc1(source, output / f"{source.stem}.nc1", ai_settings=ai_settings)
+            return result.outputs, result.warnings, result.failures
+        if direction == "pdf-to-step":
+            result = pdf_to_step(source, output / f"{source.stem}.step", ai_settings=ai_settings)
+            return result.outputs, result.warnings, result.failures
+        if direction == "pdf-to-ifc":
+            result = pdf_to_ifc(
+                source,
+                output / f"{source.stem}.ifc",
+                material=material,
+                ai_settings=ai_settings,
+            )
+            return result.outputs, result.warnings, result.failures
         if direction == "nc1-to-pdf":
             result = nc1_to_pdf(source, output / f"{source.stem}.pdf")
-            return result.outputs, result.warnings, []
+            return result.outputs, result.warnings, result.failures
         if direction == "step-to-pdf":
-            result = step_to_pdf(source, output / f"{source.stem}.pdf", material=material)
-            return result.outputs, result.warnings, []
+            result = step_to_pdf(
+                source,
+                output / f"{source.stem}.pdf",
+                material=material,
+                preferred_profile=preferred_profile,
+                tolerance_mm=tolerance,
+            )
+            return result.outputs, result.warnings, result.failures
         if direction == "ifc-to-pdf":
-            result = ifc_to_pdf(source, output / source.stem)
-            return result.outputs, result.warnings, []
-        if direction == "pdf-to-nc1":
-            result = pdf_to_nc1(source, output / f"{source.stem}.nc1")
-            return result.outputs, result.warnings, []
-        if direction == "pdf-to-step":
-            result = pdf_to_step(source, output / f"{source.stem}.step")
-            return result.outputs, result.warnings, []
-        if direction == "pdf-to-ifc":
-            result = pdf_to_ifc(source, output / f"{source.stem}.ifc")
-            return result.outputs, result.warnings, []
+            result = ifc_to_pdf(source, output / source.stem, material=material)
+            return result.outputs, result.warnings, result.failures
         return convert_file(
             source,
             output,
@@ -830,7 +965,7 @@ class ConverterApp(tk.Tk):
             profile_database=self.profile_database,
             preferred_profile=preferred_profile,
             tolerance_mm=tolerance,
-            strict_validation=strict_validation,
+            strict_validation=True,
         )
 
     def _poll_events(self) -> None:
@@ -849,7 +984,7 @@ class ConverterApp(tk.Tk):
                     self.convert_button.configure(state="normal")
                     self.status.configure(text=f"Klaar: {total} bronbestand(en), {failed} fout/niet-converteerbaar")
                     self._write_log(f"Klaar. Uitvoer: {output}")
-                    if self.auto_preview.get() and self.comparisons:
+                    if self.auto_preview.get() and len(self.comparisons) > getattr(self, "_conversion_comparison_start", 0):
                         self.comparison_combo.current(len(self.comparisons) - 1)
                         self.after(50, self._load_selected_comparison)
                         self.notebook.select(self.preview_tab)
@@ -1131,31 +1266,5 @@ class ConverterApp(tk.Tk):
             messagebox.showerror("Excel export", str(exc))
 
 
-def launch_app() -> None:
-    app = ConverterApp()
-    if len(sys.argv) > 1:
-        candidate = Path(sys.argv[1]).expanduser()
-        if candidate.is_file():
-            suffix = candidate.suffix.lower()
-            direction_by_suffix = {
-                ".nc": "nc1-to-step",
-                ".nc1": "nc1-to-step",
-                ".step": "step-to-nc1",
-                ".stp": "step-to-nc1",
-                ".ifc": "ifc-to-step",
-            }
-            if suffix == ".pdf":
-                app.pdf_ai_file.set(str(candidate))
-                app._load_pdf_ai_preview(candidate)
-                app.notebook.select(app.pdf_ai_tab)
-                app.pdf_ai_status.set("PDF via Windows-bestandsassociatie geopend; kies controleren of analyseren.")
-            elif suffix in direction_by_suffix:
-                app.direction.set(direction_by_suffix[suffix])
-                app._direction_changed()
-                app._add_files([candidate])
-                app.output_directory.set(str(candidate.parent / "Converter_Output"))
-    app.mainloop()
-
-
 if __name__ == "__main__":
-    launch_app()
+    ConverterApp().mainloop()
