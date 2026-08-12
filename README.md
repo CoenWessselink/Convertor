@@ -1,6 +1,6 @@
-# NC1 / DSTV - STEP - IFC - Trusted PDF Converter v0.5.0
+# NC1 / DSTV - STEP - IFC - Trusted PDF Converter v0.5.1
 
-Lokale Windows-applicatie en CLI voor staalonderdelen. De v0.5-lijn bouwt voort op de bewezen NC1/STEP-kern en voegt een canoniek onderdeelmodel, lossless converter-eigen IFC/PDF, technische vector-PDF's en een begrensde AI-laag voor tekeningen toe.
+Lokale Windows-applicatie en CLI voor staalonderdelen. De v0.5-lijn bouwt voort op de bewezen NC1/STEP-kern en voegt een canoniek onderdeelmodel, lossless converter-eigen IFC/PDF, technische vector-PDF's, een deterministische maatgrafiek, menselijke review en een begrensde AI-laag toe.
 
 ## Veiligheidsprincipe
 
@@ -16,13 +16,13 @@ Canonical Part Model
 NC1 / STEP / IFC / PDF / Excel
 ```
 
-AI mag uitsluitend documentsemantiek, aanzichten, conflicten, confidence en controlevragen voorstellen. AI schrijft geen NC1-regels, STEP/IFC-geometrie, contourcoördinaten of gatposities. Geometrie, maatwaarden, hoeveelheden, serialisatie en vrijgave blijven deterministisch.
+AI mag uitsluitend documentsemantiek, aanzichten, conflicten, confidence en controlevragen voorstellen. AI schrijft geen NC1-regels, STEP/IFC-geometrie, contourcoordinaten of gatposities. Geometrie, maatwaarden, hoeveelheden, serialisatie, roundtripcontrole en vrijgave blijven deterministisch.
 
 Een kritische afwijking of onopgeloste vraag blokkeert productie-export. De strikte veiligheidscontrole is in GUI en CLI niet uitschakelbaar.
 
-## Aantoonbaar werkende kern
+## Aantoonbaar geteste status
 
-De volledige meegeleverde regressieset is met v0.5 opnieuw uitgevoerd:
+### Conversiekern
 
 | Testgroep | Geslaagd | Totaal |
 |---|---:|---:|
@@ -31,7 +31,21 @@ De volledige meegeleverde regressieset is met v0.5 opnieuw uitgevoerd:
 | NC1 -> IFC -> STEP -> NC1 | 4 | 4 |
 | STEP -> IFC -> NC1 -> STEP | 4 | 4 |
 
-De acht focusbestanden inclusief platen met gaten, HEA140/HEA160 en rondstaal D20 zijn geslaagd. Details staan in `VALIDATION_V05/ROUNDTRIP_VALIDATIE_V05.md` in het vrijgavepakket.
+De acht focusbestanden, inclusief platen met gaten, HEA140/HEA160 en rondstaal D20, zijn geslaagd met de strikte productiepoort ingeschakeld.
+
+### PDF, review en AI
+
+| Testgroep | Geslaagd | Totaal |
+|---|---:|---:|
+| NC1 -> Trusted PDF -> exact NC1 | 24 | 24 |
+| STEP -> Trusted PDF -> exact STEP | 19 | 19 |
+| Focus Trusted PDF -> IFC | 2 | 2 |
+| Synthetische LO4 externe-PDF-keten | 1 | 1 |
+| AI-, integriteits-, review- en ambiguiteitstests | 11 | 11 |
+
+De synthetische LO4-test reconstrueert een gesloten plaatcontour met twee analytische radii R13,5 en een analytisch gat Ø14 op X/Y 20 mm. Na expliciete review worden NC1, STEP, semantisch IfcPlate en een nieuwe Trusted PDF gemaakt. De maatgrafiek is voor en na review geldig met 100% dekking.
+
+Volledige rapporten staan in de afzonderlijke validatiepakketten.
 
 ## Conversierichtingen
 
@@ -53,46 +67,78 @@ De acht focusbestanden inclusief platen met gaten, HEA140/HEA160 en rondstaal D2
 - ongewijzigde Trusted Converter PDF -> NC1/DSTV
 - ongewijzigde Trusted Converter PDF -> STEP
 - ongewijzigde Trusted Converter PDF -> IFC
-- externe PDF -> lokale vector-/tekstanalyse en optionele AI-review
+- eenvoudige externe vector-PDF met plaat/strip -> analyse -> interactieve review -> Trusted PDF -> NC1/STEP/IFC
 
-Een externe PDF zonder geverifieerde converterpayload wordt niet direct naar productieformaten vrijgegeven. De huidige v0.5 analyseert documenttype, bladformaat, tekst, stukregel, profiel, materiaal, positie, aantallen, callouts, radii, schaal en controlevragen. Exacte externe-PDF-geometrie en de interactieve correctieworkflow zijn nog in ontwikkeling.
+Een willekeurige externe PDF zonder geverifieerde converterpayload wordt nooit stilzwijgend naar productieformaten vrijgegeven. Alleen wanneer contour, gaten, radii, referentiezijde, kritische metadata en maatconsistentie deterministisch zijn bepaald of expliciet zijn bevestigd, kan een Trusted PDF worden gemaakt.
 
 ## Trusted Converter PDF
 
 Een door de applicatie gemaakte Trusted PDF bevat:
 
 - een scherpe vectoriele werktekening;
-- maatvoering van hoofdmaten en gatcallouts;
-- een configureerbare stukregel en titelblok;
+- een deterministische, feature-gekoppelde maatgrafiek;
+- totale hoofdafmetingen, gatdiameters en gatposities vanaf vaste datums;
+- radii, plaatdikte/profieldoorsnede, stukregel en titelblok;
 - het volledige versieerbare canonieke model als `converter-model.json`;
-- de oorspronkelijke NC1/STEP/IFC-bron als gekoppelde PDF-bijlage;
+- een `converter-manifest.json` met hashes en technische identiteit;
+- de oorspronkelijke NC1/STEP/IFC-bron als gekoppelde PDF-bijlage wanneer beschikbaar;
 - XMP-velden met schema-, onderdeel- en hashinformatie;
 - hashes van canoniek model, geometrie, bronbestand en zichtbare tekening.
 
-Bij import worden alle lagen opnieuw gecontroleerd. Een zichtbare wijziging, beschadigde manifestchecksum, ontbrekende bronbijlage of XMP-mismatch maakt de PDF ongeldig voor productie-export.
+Bij import worden alle lagen opnieuw gecontroleerd. Een zichtbare wijziging, beschadigde manifestchecksum, ontbrekende bronbijlage, maatgrafiekfout of XMP-mismatch maakt de PDF ongeldig voor productie-export.
 
-## PDF/AI-tabblad
+## Externe PDF en interactieve review
 
-Het tabblad **PDF / AI controle** ondersteunt:
+De huidige vector-PDF-pipeline kan lokaal:
 
-- PDF kiezen en als afbeelding voorvertonen;
-- Trusted PDF controleren;
-- lokale offline semantische analyse;
-- optionele cloud-AI na expliciete toestemming;
-- per veld waarde, confidence, methode en bronbewijs tonen;
-- blokkerende fouten en gerichte controlevragen tonen.
+- pagina's classificeren als vector, raster, hybride of tekst-only;
+- bladformaat, oriëntatie, schaal en tekeningskwaliteit bepalen;
+- tekst, woorden, vectorpaden, cirkels en afbeeldingen met broncoordinaten uitlezen;
+- stukregel, titelblok, positie, profiel, materiaal, lengte, aantal, merk en onderwerp herkennen;
+- gesloten plaatcontouren reconstrueren;
+- collineaire segmenten vereenvoudigen;
+- cirkels, ronde gaten en uit Bezierpaden gefitte contourbogen herkennen;
+- geschreven en geometrisch gemeten waarden op conflicten controleren;
+- per veld provenance, confidence, status en bronbewijs opslaan;
+- gerichte blokkerende controlevragen formuleren.
 
-Cloud-AI staat standaard uit. Bij inschakeling is een expliciet model en `OPENAI_API_KEY` nodig. De aanvraag gebruikt gestructureerde semantische uitvoer, `store=false` en een auditrecord met hashes en request-ID's. Klantbestanden worden niet stilzwijgend extern verwerkt.
+Via **Interactief reviewen** toont de GUI links de bron-PDF en rechts het deterministisch gereconstrueerde model. De gebruiker kan toegestane velden, gaten en contourpunten corrigeren, bronbewijs markeren, vragen beantwoorden en de review met naam/commentaar vastleggen. Alleen toegestane paden worden verwerkt; onbekende of niet-onderbouwde reviewvelden worden geweigerd.
+
+## AI-functie
+
+Het tabblad **PDF / Tekening** ondersteunt drie standen:
+
+- geen AI;
+- lokale offline regel-/semantiekprovider;
+- optionele OpenAI Responses-provider na expliciete toestemming.
+
+Cloud-AI staat standaard uit. Voor inschakeling zijn een modelnaam en `OPENAI_API_KEY` nodig. De cloudrequest gebruikt afbeeldinginput, een strikt semantisch JSON-schema, `store=false` en een auditrecord met hashes en request-ID's. Klantinhoud wordt niet in het lokale auditrecord opgeslagen.
+
+AI-uitvoer gaat door een recursieve whitelist/guard. Vrije productiegeometrie, coordinate arrays, NC1/DSTV, STEP, IFC, solids en machinecode worden actief geweigerd. AI kan dus alleen een reviewvoorstel leveren; de deterministische parser en geometriekern blijven leidend.
+
+## Deterministische maatgrafiek
+
+`dimension_graph.py` bouwt maatobjecten rechtstreeks uit het canonieke model. Elke maat bevat:
+
+- stabiele ID en maatsoort;
+- numerieke waarde en eenheid;
+- echte geometrische ankers;
+- featureverwijzingen;
+- bronveld, provenance, confidence en status;
+- kritische/release-indicatie;
+- optionele datumketen.
+
+De validatielaag controleert waarde, ankers, featurebestaan, duplicaten, ketens en verplichte dekking. Productie-PDF-export wordt geblokkeerd wanneer de maatgrafiek niet valide is.
 
 ## Technische tekeninggenerator
 
-De v0.5-generator maakt een reproduceerbare A4-vector-PDF met:
+De v0.5.1-generator maakt een reproduceerbare vector-PDF met:
 
 - primaire projectie;
-- eind-/doorsnedeweergave;
-- standaard tekenschaal die exact overeenkomt met het titelblok;
-- totale lengte en breedte/hoogte;
-- gaten met diametercallout;
+- eind-/doorsnedeweergave waar relevant;
+- standaard tekenschaal die overeenkomt met het titelblok;
+- totale lengte, breedte en/of hoogte;
+- gatdiameters en datumgebaseerde gatposities;
 - contourradii indien aanwezig;
 - plaatdikte of profieldoorsnede;
 - stukregel met Pos, Profiel, Materiaal, Lengte, Aantal en Merk;
@@ -111,9 +157,9 @@ NC1_STEP_Converter.exe
 
 Tabbladen:
 
-- **Converter** - alle conversierichtingen, batchverwerking en log;
+- **Converter** - conversierichtingen, batchverwerking en log;
 - **Visuele vergelijking** - links/rechts 3D-vergelijking;
-- **PDF / AI controle** - Trusted PDF en externe PDF-analyse;
+- **PDF / Tekening** - Trusted PDF, externe PDF-analyse, AI en interactieve review;
 - **Profielendatabase** - zoeken en filteren in 1.718 profielrecords;
 - **Hoeveelheden & Excel** - hoeveelheden, massa en materiaaldata.
 
@@ -128,9 +174,11 @@ NC1_STEP_Converter_CLI.exe nc1-to-step input.nc1 -o output
 NC1_STEP_Converter_CLI.exe step-to-nc1 input.step -o output
 NC1_STEP_Converter_CLI.exe nc1-to-pdf input.nc1 -o output
 NC1_STEP_Converter_CLI.exe step-to-pdf input.step -o output
-NC1_STEP_Converter_CLI.exe pdf-inspect drawing.pdf --json
-NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf --ai-provider local --json
-NC1_STEP_Converter_CLI.exe pdf-to-nc1 trusted.pdf -o output
+NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf -o analyse --ai-provider local-rules
+NC1_STEP_Converter_CLI.exe pdf-review drawing.pdf --review review.json -o reviewed_trusted.pdf
+NC1_STEP_Converter_CLI.exe pdf-to-nc1 reviewed_trusted.pdf -o output
+NC1_STEP_Converter_CLI.exe pdf-to-step reviewed_trusted.pdf -o output
+NC1_STEP_Converter_CLI.exe pdf-to-ifc reviewed_trusted.pdf -o output
 NC1_STEP_Converter_CLI.exe ifc-to-pdf model.ifc -o output
 NC1_STEP_Converter_CLI.exe excel model.ifc model.step -o hoeveelheden.xlsx
 ```
@@ -141,11 +189,10 @@ Voor optionele cloud-AI:
 
 ```text
 set OPENAI_API_KEY=...
-NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf ^
+NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf -o analyse ^
   --ai-provider openai ^
   --allow-cloud-ai ^
-  --ai-model gpt-5.6 ^
-  --json
+  --ai-model gpt-5.6
 ```
 
 ## Windows-installatie
@@ -153,14 +200,14 @@ NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf ^
 De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De beoogde release bevat:
 
 ```text
-NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe
-NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip
+NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe
+NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip
 SHA256SUMS.txt
 ```
 
 De installer bundelt de Python-runtime, CadQuery/Open CASCADE, IfcOpenShell, PyMuPDF, Matplotlib, XlsxWriter, profielen, materialen en templates. De daadwerkelijke Windows-EXE en installer moeten op een Windows x64-runner worden gebouwd en getest; een Linux-build is daarvoor niet gelijkwaardig.
 
-Ontwikkelaars kunnen op Windows de volledige releaseketen starten met `build_windows_exe.bat`. GitHub Actions gebruikt Python 3.12 x64, voert alle smoke- en PDF-tests uit, bouwt een PyInstaller `onedir`, maakt de portable ZIP en verpakt die via Inno Setup in één installer-EXE.
+Ontwikkelaars kunnen op Windows de volledige releaseketen starten met `build_windows_exe.bat`. GitHub Actions gebruikt Python 3.12 x64, voert compile-, kern-, PDF-, maatgrafiek-, review- en GUI-smokes uit, bouwt een PyInstaller `onedir`, maakt de portable ZIP, verpakt die via Inno Setup in één installer-EXE en voert een geinstalleerde-app-smoke uit met Python verwijderd uit `PATH`.
 
 ## Broninstallatie voor ontwikkelaars
 
@@ -190,6 +237,9 @@ python -m py_compile *.py tests\*.py validation\*.py
 python tests\analytic_fitting_smoke.py
 python tests\regression_smoke.py
 python tests\pdf_ai_smoke.py
+python tests\pdf_review_smoke.py
+python tests\dimension_graph_smoke.py
+python tests\review_workflow_smoke.py
 ```
 
 Volledige NC1/STEP/IFC-regressie:
@@ -200,7 +250,7 @@ python validation\run_v05_validation.py ^
   --output <validatiemap>
 ```
 
-Persistente PDF/AI-validatie:
+Persistente PDF/AI/review-validatie:
 
 ```text
 python validation\run_v05_pdf_ai_validation.py ^
@@ -210,11 +260,14 @@ python validation\run_v05_pdf_ai_validation.py ^
 
 ## Huidige beperkingen
 
-- De exacte Trusted PDF-roundtrip is productierijp voor door de converter gemaakte PDF's; willekeurige externe tekeningen zijn nog reviewplichtig.
-- De echte `Pos LO4 - LOSSE PLAAT.pdf` kon in de huidige runtime niet binair worden geopend en is daarom nog geen uitgevoerde vector-/geometrieregressietest. Alleen een duidelijk als synthetisch gemarkeerde semantische test is uitgevoerd.
-- Algemene externe scan-OCR, perspectiefcorrectie, maatgrafiek, aanzichtkoppeling en interactieve contourcorrectie zijn nog niet volledig ingebouwd.
-- De tekeningenmodule heeft nu primaire en doorsnedeweergaven; volledige hidden-lineprojectie, detailaanzichten, snijlijnen en handmatig verplaatsbare maten volgen later.
+- De exacte Trusted PDF-roundtrip is geteste bronfunctionaliteit voor door de converter gemaakte PDF's; willekeurige externe tekeningen blijven reviewplichtig.
+- De echte `Pos LO4 - LOSSE PLAAT.pdf` kon in deze runtime niet als lokaal PDF-binair bestand worden geopend en is daarom nog geen uitgevoerde vector-/geometrieregressietest. Alleen een duidelijk als synthetisch gemarkeerde LO4-test is uitgevoerd.
+- De externe geometrische reconstructie is nu gericht op eenvoudige vectoriele platen/strips. Algemene profieltekeningen, meerdere orthografische aanzichten en complexe bewerkingen zijn nog niet productiebreed afgedekt.
+- Raster-OCR, deskew, foto-/perspectiefcorrectie en taal-/symboolvarianten zijn nog geen productie-importer.
+- De interactieve editor dekt velden, gaten en contourpunten; een volledig vrije CAD-schetseditor, drag-and-drop maatankers, undo/redo en detailaanzichtbewerking volgen later.
+- Volledige hidden-lineprojectie, detailaanzichten, snijlijnen en algemene maatplaatsingsoptimalisatie zijn nog niet gereed.
+- De uitgebreide materiaal-/onderdeeleditor, versleepbare eigenschappenlijst, prijsregels, bewerkingstijden, projectopslag en licenties uit de aanvullende UI-scope zijn nog niet gebouwd.
 - Grote externe IFC/STEP-bestanden en multi-gigabyte projectmodellen hebben nog geen formele belastings-/geheugentest.
-- Een echte Windows-installer is pas bewezen nadat het GitHub/Windows-buildresultaat op een schone Windows x64-machine zonder Python is geinstalleerd en getest.
+- Een echte Windows-installer is pas bewezen nadat het Windows-buildresultaat op een schone Windows x64-machine zonder Python is geinstalleerd en getest.
 
 Geen van deze beperkingen schakelt de veiligheidscontrole uit: onzekere productie-uitvoer wordt geblokkeerd.

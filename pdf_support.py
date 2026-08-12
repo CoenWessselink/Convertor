@@ -69,6 +69,7 @@ from canonical_model import (
     sha256_file,
     utc_now_iso,
 )
+from dimension_graph import populate_dimension_graph, validate_dimension_graph
 
 TRUSTED_MODEL_NAME = "converter-model.json"
 TRUSTED_MANIFEST_NAME = "converter-manifest.json"
@@ -208,6 +209,13 @@ class _VectorPath:
 # ---------------------------------------------------------------------------
 
 
+def _with_dimension_graph(part: CanonicalPart) -> CanonicalPart:
+    """Ensure every source adapter exposes feature-linked drawing dimensions."""
+
+    populate_dimension_graph(part, overwrite=True, strict=False)
+    return part
+
+
 def canonical_from_nc1(path: str | Path) -> CanonicalPart:
     import converter as core
     from conversion import build_shape
@@ -216,7 +224,7 @@ def canonical_from_nc1(path: str | Path) -> CanonicalPart:
     parsed = core.parse_nc1(source)
     shape = build_shape(parsed).val()
     box = shape.BoundingBox()
-    return canonical_from_nc1_part(
+    return _with_dimension_graph(canonical_from_nc1_part(
         parsed,
         source_bytes=source.read_bytes(),
         converter_version=DEFAULT_CONVERTER_VERSION,
@@ -226,7 +234,7 @@ def canonical_from_nc1(path: str | Path) -> CanonicalPart:
             "bbox_mm": [float(box.xlen), float(box.ylen), float(box.zlen)],
             "solids": len(shape.Solids()),
         },
-    )
+    ))
 
 
 def canonical_from_step(
@@ -245,7 +253,7 @@ def canonical_from_step(
         result.converter_version = DEFAULT_CONVERTER_VERSION
         if result.attachment("step") is None:
             result.add_attachment("step", source.name, "model/step", source.read_bytes())
-        return result
+        return _with_dimension_graph(result)
 
     from conversion import step_to_nc1
     from profile_database import ProfileDatabase
@@ -284,7 +292,7 @@ def canonical_from_step(
             canonical.validation.export_status = "validated"
             canonical.validation.production_export_allowed = True
             canonical.refresh_export_gate()
-            return canonical
+            return _with_dimension_graph(canonical)
     except Exception as exc:
         warning = (
             "STEP kon niet veilig als DSTV-plaat of standaardprofiel worden geclassificeerd. "
@@ -339,7 +347,7 @@ def canonical_from_step(
                 reason="Automatische STEP-classificatie voldeed niet aan de veiligheidscriteria.",
             )
         )
-        return canonical
+        return _with_dimension_graph(canonical)
 
 
 def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> list[CanonicalPart]:
@@ -350,7 +358,7 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
         part.converter_version = DEFAULT_CONVERTER_VERSION
         if part.attachment("ifc") is None and source.stat().st_size <= 32 * 1024 * 1024:
             part.add_attachment("ifc", source.name, "model/ifc", source.read_bytes())
-        return [part]
+        return [_with_dimension_graph(part)]
 
     from ifc_support import load_ifc_geometry
 
@@ -411,7 +419,7 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
                 reason="Extern IFC bevat geen lossless productiedata van de converter.",
             )
         )
-        parts.append(part)
+        parts.append(_with_dimension_graph(part))
     return parts
 
 
@@ -649,6 +657,128 @@ def _draw_vertical_dimension(
     pdf.restoreState()
 
 
+def _draw_horizontal_dimension_between(
+    pdf: canvas.Canvas,
+    first: tuple[float, float],
+    second: tuple[float, float],
+    dimension_y: float,
+    label: str,
+) -> None:
+    """Horizontal dimension with independent geometric anchor heights."""
+
+    x1, y1 = first
+    x2, y2 = second
+    pdf.setLineWidth(0.4)
+    pdf.line(x1, y1, x1, dimension_y)
+    pdf.line(x2, y2, x2, dimension_y)
+    pdf.line(x1, dimension_y, x2, dimension_y)
+    direction = 0.0 if x2 >= x1 else math.pi
+    _draw_arrow(pdf, x1, dimension_y, direction)
+    _draw_arrow(pdf, x2, dimension_y, direction + math.pi)
+    center = (x1 + x2) / 2
+    width = stringWidth(label, "Helvetica", 6.4)
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.rect(center - width / 2 - 1.7, dimension_y - 3.6, width + 3.4, 7.2, stroke=0, fill=1)
+    pdf.setFillColorRGB(0, 0, 0)
+    pdf.setFont("Helvetica", 6.4)
+    pdf.drawCentredString(center, dimension_y - 2.1, label)
+
+
+def _draw_vertical_dimension_between(
+    pdf: canvas.Canvas,
+    first: tuple[float, float],
+    second: tuple[float, float],
+    dimension_x: float,
+    label: str,
+) -> None:
+    """Vertical dimension with independent geometric anchor widths."""
+
+    x1, y1 = first
+    x2, y2 = second
+    pdf.setLineWidth(0.4)
+    pdf.line(x1, y1, dimension_x, y1)
+    pdf.line(x2, y2, dimension_x, y2)
+    pdf.line(dimension_x, y1, dimension_x, y2)
+    direction = math.pi / 2 if y2 >= y1 else -math.pi / 2
+    _draw_arrow(pdf, dimension_x, y1, direction)
+    _draw_arrow(pdf, dimension_x, y2, direction + math.pi)
+    center = (y1 + y2) / 2
+    pdf.saveState()
+    pdf.translate(dimension_x - 2.1, center)
+    pdf.rotate(90)
+    width = stringWidth(label, "Helvetica", 6.4)
+    pdf.setFillColorRGB(1, 1, 1)
+    pdf.rect(-width / 2 - 1.7, -3.6, width + 3.4, 7.2, stroke=0, fill=1)
+    pdf.setFillColorRGB(0, 0, 0)
+    pdf.setFont("Helvetica", 6.4)
+    pdf.drawCentredString(0, -2.1, label)
+    pdf.restoreState()
+
+
+def _draw_hole_position_dimensions(
+    pdf: canvas.Canvas,
+    part: CanonicalPart,
+    *,
+    bounds: tuple[float, float, float, float],
+    origin: tuple[float, float],
+    scale: float,
+    px0: float,
+    py0: float,
+    drawing_left: float,
+    table_top: float,
+) -> None:
+    """Draw datum-based hole coordinates from the semantic dimension graph.
+
+    A small number of unique ordinates is drawn directly.  Dense patterns are
+    kept in the embedded dimension graph and are represented by a note instead
+    of producing an unreadable forest of overlapping lines.
+    """
+
+    if not part.holes:
+        return
+    graph = {str(item.get("id")): item for item in part.drawing.dimensions}
+    x_rows: list[tuple[float, float, float, str]] = []
+    y_rows: list[tuple[float, float, float, str]] = []
+    seen_x: set[float] = set()
+    seen_y: set[float] = set()
+    for index, hole in enumerate(part.holes, start=1):
+        hx, hy = _transform_point(hole.x, hole.q, bounds=bounds, origin=origin, scale=scale)
+        x_item = graph.get(f"hole-{index:03d}-x")
+        y_item = graph.get(f"hole-{index:03d}-y")
+        if x_item is not None:
+            value = round(float(x_item["value_mm"]), 3)
+            if value not in seen_x and value > 0.001:
+                seen_x.add(value)
+                x_rows.append((value, hx, hy, str(x_item.get("label", value))))
+        if y_item is not None:
+            value = round(float(y_item["value_mm"]), 3)
+            if value not in seen_y and value > 0.001:
+                seen_y.add(value)
+                y_rows.append((value, hx, hy, str(y_item.get("label", value))))
+
+    x_rows.sort(key=lambda item: item[0])
+    y_rows.sort(key=lambda item: item[0])
+    max_direct = 4
+    for row, (_value, hx, hy, label) in enumerate(x_rows[:max_direct]):
+        dimension_y = py0 - (18 + row * 5.2) * mm
+        if dimension_y <= table_top + 2 * mm:
+            break
+        _draw_horizontal_dimension_between(pdf, (px0, py0), (hx, hy), dimension_y, label)
+    for row, (_value, hx, hy, label) in enumerate(y_rows[:max_direct]):
+        dimension_x = px0 - (20 + row * 5.2) * mm
+        if dimension_x <= drawing_left - 20 * mm:
+            break
+        _draw_vertical_dimension_between(pdf, (px0, py0), (hx, hy), dimension_x, label)
+
+    if len(x_rows) > max_direct or len(y_rows) > max_direct:
+        pdf.setFont("Helvetica", 5.8)
+        pdf.drawString(
+            drawing_left,
+            table_top + 2.5 * mm,
+            "Dicht gatpatroon: volledige X/Y-maatgrafiek is opgenomen in de Trusted PDF-data.",
+        )
+
+
 def _draw_profile_end_view(
     pdf: canvas.Canvas,
     part: CanonicalPart,
@@ -819,6 +949,7 @@ def render_part_pdf(
 ) -> Path:
     """Render a deterministic, vector-only technical part drawing."""
 
+    populate_dimension_graph(part, overwrite=True, strict=False)
     active = copy.deepcopy(template or DrawingTemplate())
     if part.drawing.sheet_format:
         active.sheet_format = part.drawing.sheet_format
@@ -836,6 +967,7 @@ def render_part_pdf(
     margin = 10 * mm
     title_height = 46 * mm
     table_height = 18 * mm
+    table_y = margin + 47 * mm
     drawing_left = margin + 22 * mm
     drawing_bottom = margin + title_height + table_height + 18 * mm
     drawing_right = page_width - margin - 18 * mm
@@ -909,6 +1041,17 @@ def render_part_pdf(
     px1, py1 = _transform_point(bounds[2], bounds[3], bounds=bounds, origin=origin, scale=factor)
     _draw_horizontal_dimension(pdf, px0, px1, py0, py0 - 11 * mm, _fmt(model_width, active.decimal_places))
     _draw_vertical_dimension(pdf, py0, py1, px0, px0 - 12 * mm, _fmt(model_height, active.decimal_places))
+    _draw_hole_position_dimensions(
+        pdf,
+        part,
+        bounds=bounds,
+        origin=origin,
+        scale=factor,
+        px0=px0,
+        py0=py0,
+        drawing_left=drawing_left,
+        table_top=table_y + 16 * mm,
+    )
 
     if part.holes:
         groups: dict[float, int] = {}
@@ -945,7 +1088,6 @@ def render_part_pdf(
         pdf.setFont("Helvetica", 6.5)
         pdf.drawCentredString(drawing_right - 28 * mm, drawing_top - 46 * mm, "Doorsnede")
 
-    table_y = margin + 47 * mm
     _draw_part_table(pdf, part, x=margin + 3 * mm, y=table_y, width=page_width - 2 * margin - 6 * mm)
     pdf.setFont("Helvetica-Bold", 6.5)
     pdf.drawString(margin + 3 * mm, table_y - 5 * mm, f"Totaal aantal keer uit te voeren: {int(part.header.quantity or 1)}")
@@ -1093,6 +1235,7 @@ def create_trusted_pdf(
     prepared.drawing = copy.deepcopy(prepared.drawing or CanonicalDrawingData())
     if not prepared.drawing.drawing_status:
         prepared.drawing.drawing_status = "released" if prepared.validation.production_export_allowed else "concept"
+    populate_dimension_graph(prepared, overwrite=True, strict=False)
 
     with tempfile.TemporaryDirectory(prefix="trusted_pdf_") as folder:
         base = Path(folder) / "visible.pdf"
@@ -1344,10 +1487,43 @@ _TOTAL_QTY_RE = re.compile(r"totaal\s+aantal(?:\s+keer\s+uit\s+te\s+voeren)?\s*[
 _HOLE_RE = re.compile(r"\b(\d+)\s*[x*]\s*Ø\s*(\d+(?:[.,]\d+)?)\b", re.IGNORECASE)
 _RADIUS_RE = re.compile(r"\bR\s*(\d+(?:[.,]\d+)?)\b", re.IGNORECASE)
 _MATERIAL_RE = re.compile(r"\bS\d{3}(?:JR|J0|J2|N|NL|M|ML|MC|NC|QL|Q)?\b", re.IGNORECASE)
+_BARE_DIMENSION_SEQUENCE_RE = re.compile(
+    r"^\s*-?\d+(?:[.,]\d+)?(?:\s+-?\d+(?:[.,]\d+)?){0,11}\s*$"
+)
 _PROFILE_RE = re.compile(
     r"\b(?:STRIP|PL|PLAAT|HEA|HEB|HEM|IPE|IPN|UPN|UNP|UPE|RHS|SHS|CHS|KOKER|D|L)[A-Za-z0-9*×x/.,-]+\b",
     re.IGNORECASE,
 )
+
+
+def _written_dimension_candidates(lines: Sequence[_LineRecord]) -> list[dict[str, Any]]:
+    """Collect isolated written numbers without assigning them to geometry.
+
+    This is intentionally a candidate list.  A number is not a production
+    dimension until a deterministic dimension-line/feature relation or an
+    explicit human confirmation exists.
+    """
+
+    result: list[dict[str, Any]] = []
+    for line in lines:
+        text = _normalise_text(line.text)
+        if not _BARE_DIMENSION_SEQUENCE_RE.fullmatch(text):
+            continue
+        values = [_float_text(token) for token in text.split()]
+        for token_index, value in enumerate(values):
+            result.append(
+                {
+                    "value_mm_text": float(value),
+                    "page": int(line.page),
+                    "bbox": list(line.bbox),
+                    "source_text": text,
+                    "token_index": token_index,
+                    "method": "isolated_vector_text_candidate",
+                    "confidence": 0.35,
+                    "status": "unlinked",
+                }
+            )
+    return result
 
 
 def _vector_paths(page: Any, page_number: int) -> list[_VectorPath]:
@@ -1821,6 +1997,19 @@ def analyze_external_pdf(
         detected["hole_callouts"] = hole_callouts
     if radius_callouts:
         detected["radius_callouts"] = radius_callouts
+    dimension_candidates = _written_dimension_candidates(normalized_lines)
+    if dimension_candidates:
+        # Keep only source text/value/page in the public field summary.  PDF
+        # coordinates stay in the canonical provenance data for local review.
+        detected["written_dimension_candidates"] = [
+            {
+                "value_mm_text": item["value_mm_text"],
+                "page": item["page"],
+                "source_text": item["source_text"],
+                "status": item["status"],
+            }
+            for item in dimension_candidates
+        ]
 
     # Subject/title heuristic: high-information uppercase line, excluding labels.
     labels = {
@@ -1907,6 +2096,7 @@ def analyze_external_pdf(
                 "holes": hole_callouts,
                 "hole_count": sum(int(item["count"]) for item in hole_callouts),
                 "radii": radius_callouts,
+                "dimension_candidates": dimension_candidates,
             },
             "nominal_stock_envelope": {
                 "length_mm": header.length,
@@ -2033,6 +2223,7 @@ def analyze_external_pdf(
             warnings.append("Geen eenduidige gesloten hoofdcontour in de vectorlaag gevonden.")
             part.validation.warnings.append(warnings[-1])
 
+    dimension_graph_report = populate_dimension_graph(part, overwrite=True, strict=False)
     missing = _critical_missing(part)
     for name in missing:
         part.add_question(_question_for_missing(name))
@@ -2116,6 +2307,15 @@ def analyze_external_pdf(
         "conflicts": conflicts,
         "vector_path_count": sum(item.vector_path_count for item in pages),
         "image_count": sum(item.image_count for item in pages),
+        "written_dimension_candidates": [
+            {
+                "value_mm_text": item["value_mm_text"],
+                "page": item["page"],
+                "source_text": item["source_text"],
+            }
+            for item in dimension_candidates[:80]
+        ],
+        "dimension_graph_summary": dimension_graph_report.to_dict(),
     }
     ai_result = None
     if ai_settings and ai_settings.provider.lower() not in {"", "none", "off"}:
@@ -2146,6 +2346,7 @@ def analyze_external_pdf(
             "missing_critical": missing,
             "conflicts": conflicts,
             "analysis_context": context,
+            "dimension_graph": dimension_graph_report.to_dict(),
         },
     )
 
@@ -2397,6 +2598,9 @@ def validate_reviewed_part(part: CanonicalPart) -> tuple[list[str], list[str]]:
         errors.append("Plaatlengte, plaatbreedte en plaatdikte moeten positief zijn")
     if part.header.quantity <= 0:
         errors.append("Aantal moet minimaal 1 zijn")
+    graph_report = populate_dimension_graph(part, overwrite=True, strict=False)
+    errors.extend(graph_report.errors)
+    warnings.extend(graph_report.warnings)
     return list(dict.fromkeys(errors)), list(dict.fromkeys(warnings))
 
 
@@ -2481,6 +2685,46 @@ def apply_review(
     result.errors = list(part.validation.errors)
     result.mode = "external_reviewed" if part.validation.production_export_allowed else "external_review_incomplete"
     result.details["review"] = copy.deepcopy(part.properties["review"])
+    result.details["dimension_graph"] = dict(part.properties.get("dimension_graph") or {})
+    return result
+
+
+def finalize_reviewed_analysis(
+    reviewed: PDFAnalysisResult,
+    output_pdf: str | Path,
+    *,
+    template: DrawingTemplate | None = None,
+) -> PDFConversionResult:
+    """Create a Trusted PDF from an already applied and validated human review.
+
+    This entry point is used by the interactive GUI.  It deliberately does not
+    analyse the source a second time (and therefore never repeats an optional
+    cloud-AI request).  The same production gate, source hash and exact
+    attachment checks as the file-based review route remain mandatory.
+    """
+
+    if not reviewed.production_export_allowed:
+        raise ExternalPDFExportBlocked(
+            "Review is nog niet volledig: "
+            + " | ".join(
+                reviewed.errors
+                + [item.prompt for item in reviewed.part.validation.blocking_questions()]
+            )
+        )
+    source = Path(reviewed.source)
+    if not source.is_file() or source.suffix.lower() != ".pdf":
+        raise FileNotFoundError(f"Externe bron-PDF ontbreekt: {source}")
+    source_bytes = source.read_bytes()
+    part = reviewed.part.clone()
+    if len(source_bytes) <= 8 * 1024 * 1024:
+        part.add_attachment("source_pdf", source.name, "application/pdf", source_bytes)
+    part.source_format = "PDF"
+    part.source_file = source.name
+    part.source_sha256 = sha256_bytes(source_bytes)
+    result = create_trusted_pdf(part, output_pdf, template=template)
+    result.source = source
+    result.details["route"] = "external-pdf->human-review->validated-canonical->trusted-pdf"
+    result.details["review_mode"] = reviewed.mode
     return result
 
 
@@ -2495,21 +2739,7 @@ def review_external_pdf(
     analysis = analyze_external_pdf(input_pdf, ai_settings=ai_settings)
     review_data = json.loads(Path(review_json).read_text(encoding="utf-8"))
     reviewed = apply_review(analysis, review_data)
-    if not reviewed.production_export_allowed:
-        raise ExternalPDFExportBlocked(
-            "Review is nog niet volledig: "
-            + " | ".join(reviewed.errors + [item.prompt for item in reviewed.part.validation.blocking_questions()])
-        )
-    source_bytes = Path(input_pdf).read_bytes()
-    if len(source_bytes) <= 8 * 1024 * 1024:
-        reviewed.part.add_attachment("source_pdf", Path(input_pdf).name, "application/pdf", source_bytes)
-    reviewed.part.source_format = "PDF"
-    reviewed.part.source_file = Path(input_pdf).name
-    reviewed.part.source_sha256 = sha256_bytes(source_bytes)
-    result = create_trusted_pdf(reviewed.part, output_pdf, template=template)
-    result.source = Path(input_pdf)
-    result.details["route"] = "external-pdf->human-review->validated-canonical->trusted-pdf"
-    return result
+    return finalize_reviewed_analysis(reviewed, output_pdf, template=template)
 
 
 # ---------------------------------------------------------------------------
@@ -2525,6 +2755,11 @@ def _ascii_safe(value: Any, fallback: str = "-") -> str:
 def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
     """Serialize validated canonical plate/profile data and re-read it strictly."""
 
+    graph_report = populate_dimension_graph(part, overwrite=True, strict=False)
+    if graph_report.errors:
+        raise ExternalPDFExportBlocked(
+            "Productie-export is geblokkeerd door de maatgrafiek: " + " | ".join(graph_report.errors)
+        )
     if not part.refresh_export_gate():
         questions = [item.prompt for item in part.validation.blocking_questions()]
         raise ExternalPDFExportBlocked(

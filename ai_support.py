@@ -1209,6 +1209,8 @@ def interpret_drawing(
             "conflicts",
             "vector_path_count",
             "image_count",
+            "written_dimension_candidates",
+            "dimension_graph_summary",
         )
         if key in deterministic_context
     }

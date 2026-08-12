@@ -45,12 +45,14 @@ from ai_support import (
 )
 from canonical_model import extract_part_from_ifc, sha256_file
 from conversion import __version__, build_shape
+from dimension_graph import validate_dimension_graph
 from pdf_support import (
     ExternalPDFExportBlocked,
     TrustedPDFError,
     analyze_external_pdf,
     analyze_pdf,
     apply_review,
+    finalize_reviewed_analysis,
     load_trusted_pdf,
     nc1_to_pdf,
     pdf_to_ifc,
@@ -60,6 +62,7 @@ from pdf_support import (
     step_to_pdf,
     visible_pdf_sha256,
 )
+from review_workflow import build_review_payload, collect_review_fields
 from validation.geometric_compare import compare_step
 from validation.pdf_fixtures import create_synthetic_lo4_pdf
 from validation.semantic_compare import compare_nc1
@@ -253,11 +256,19 @@ def _validate_nc1_trusted_roundtrips(files: Iterable[Path], output: Path) -> lis
         try:
             generated = nc1_to_pdf(source, pdf)
             trusted = load_trusted_pdf(pdf, strict=True)
+            dimension_report = validate_dimension_graph(trusted.part)
             reverse = pdf_to_nc1(pdf, restored)
             comparison = compare_nc1(source, restored)
             source_metrics = _nc1_metrics(source)
             row.update(
-                status="passed" if source.read_bytes() == restored.read_bytes() and comparison["passed"] else "different",
+                status=(
+                    "passed"
+                    if source.read_bytes() == restored.read_bytes()
+                    and comparison["passed"]
+                    and dimension_report.valid
+                    and dimension_report.coverage_percent == 100.0
+                    else "different"
+                ),
                 byte_equal=source.read_bytes() == restored.read_bytes(),
                 semantic_equal=bool(comparison["passed"]),
                 trusted_mode=trusted.mode,
@@ -278,6 +289,10 @@ def _validate_nc1_trusted_roundtrips(files: Iterable[Path], output: Path) -> lis
                 geometry_sha256=trusted.details["manifest"]["geometry_sha256"],
                 pdf_route=generated.details.get("route"),
                 reverse_route=reverse.details.get("route"),
+                dimension_graph_valid=dimension_report.valid,
+                dimension_graph_coverage_percent=dimension_report.coverage_percent,
+                dimension_count=dimension_report.checked_dimensions,
+                dimension_chain_count=dimension_report.checked_chains,
                 pdf=str(pdf.relative_to(output.parent)),
                 restored=str(restored.relative_to(output.parent)),
             )
@@ -299,12 +314,20 @@ def _validate_step_trusted_roundtrips(files: Iterable[Path], output: Path) -> li
         try:
             generated = step_to_pdf(source, pdf)
             trusted = load_trusted_pdf(pdf, strict=True)
+            dimension_report = validate_dimension_graph(trusted.part)
             reverse = pdf_to_step(pdf, restored)
             comparison = compare_step(source, restored)
             metrics = _step_metrics(source)
             byte_equal = source.read_bytes() == restored.read_bytes()
             row.update(
-                status="passed" if byte_equal and comparison["passed"] else "different",
+                status=(
+                    "passed"
+                    if byte_equal
+                    and comparison["passed"]
+                    and dimension_report.valid
+                    and dimension_report.coverage_percent == 100.0
+                    else "different"
+                ),
                 byte_equal=byte_equal,
                 geometry_equal=bool(comparison["passed"]),
                 trusted_mode=trusted.mode,
@@ -328,6 +351,10 @@ def _validate_step_trusted_roundtrips(files: Iterable[Path], output: Path) -> li
                 geometry_sha256=trusted.details["manifest"]["geometry_sha256"],
                 pdf_route=generated.details.get("route"),
                 reverse_route=reverse.details.get("route"),
+                dimension_graph_valid=dimension_report.valid,
+                dimension_graph_coverage_percent=dimension_report.coverage_percent,
+                dimension_count=dimension_report.checked_dimensions,
+                dimension_chain_count=dimension_report.checked_chains,
                 pdf=str(pdf.relative_to(output.parent)),
                 restored=str(restored.relative_to(output.parent)),
             )
@@ -401,6 +428,9 @@ def _validate_synthetic_lo4(output: Path, render_dir: Path, *, dpi: int) -> dict
     field_checks = {key: before.detected_fields.get(key) == value for key, value in expected_fields.items()}
     radii = sorted(point.radius for item in before.part.contours for point in item.points if point.radius > 0)
     hole = before.part.holes[0] if before.part.holes else None
+    before_dimension_report = validate_dimension_graph(before.part)
+    review_fields = collect_review_fields(before.part)
+    review_field_paths = {item.path for item in review_fields}
     blocking_before = len(before.part.validation.blocking_questions())
     try:
         pdf_to_nc1(source, output / "must_remain_blocked.nc1")
@@ -409,20 +439,23 @@ def _validate_synthetic_lo4(output: Path, render_dir: Path, *, dpi: int) -> dict
     else:
         blocked_before = False
 
-    review_data = {
-        "reviewed_by": "validation-runner",
-        "confirm": ["holes[0]"],
-        "comment": "Synthetische vectorgeometrie en productiereferentie visueel gecontroleerd.",
-    }
+    review_data = build_review_payload(
+        before.part,
+        reviewed_by="validation-runner",
+        confirm=["holes[0]"],
+        comment="Synthetische vectorgeometrie en productiereferentie visueel gecontroleerd.",
+    )
     review_path = output / "LO4_review.json"
     review_path.write_text(json.dumps(review_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     after = apply_review(before, review_data)
+    after_dimension_report = validate_dimension_graph(after.part)
     after_report = output / "LO4_analysis_after_review.json"
     after_report.write_text(json.dumps(after.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
     trusted = output / "LO4_reviewed_trusted.pdf"
-    review_external_pdf(source, review_path, trusted)
+    finalized = finalize_reviewed_analysis(after, trusted)
     trusted_analysis = load_trusted_pdf(trusted, strict=True)
+    trusted_dimension_report = validate_dimension_graph(trusted_analysis.part)
     nc1 = output / "LO4_from_pdf.nc1"
     step = output / "LO4_from_pdf.step"
     ifc = output / "LO4_from_pdf.ifc"
@@ -474,6 +507,31 @@ def _validate_synthetic_lo4(output: Path, render_dir: Path, *, dpi: int) -> dict
         "hole_position_20_20": hole is not None and abs(hole.x - 20.0) <= 0.15 and abs(hole.q - 20.0) <= 0.15,
         "blocked_before_review": blocked_before and not before.production_export_allowed,
         "released_after_review": after.production_export_allowed,
+        "review_workflow_fields": {
+            "header.position_number",
+            "header.profile",
+            "header.dim2",
+            "holes[0]",
+            "holes[0].diameter",
+            "contours[0]",
+        }.issubset(review_field_paths),
+        "dimension_graph_before_review": (
+            before_dimension_report.valid
+            and before_dimension_report.coverage_percent == 100.0
+            and before_dimension_report.checked_dimensions >= 8
+        ),
+        "dimension_graph_after_review": (
+            after_dimension_report.valid
+            and after_dimension_report.coverage_percent == 100.0
+        ),
+        "dimension_graph_in_trusted_pdf": (
+            trusted_dimension_report.valid
+            and trusted_dimension_report.coverage_percent == 100.0
+        ),
+        "interactive_finalize_route": (
+            finalized.details.get("route")
+            == "external-pdf->human-review->validated-canonical->trusted-pdf"
+        ),
         "trusted_exact": trusted_analysis.mode == "trusted_exact",
         "nc1_header": parsed.header.position_number == "LO4" and parsed.header.profile == "STRIP5*120",
         "nc1_one_hole": len(parsed.holes) == 1 and abs(parsed.holes[0].diameter - 14.0) <= 0.01,
@@ -493,6 +551,12 @@ def _validate_synthetic_lo4(output: Path, render_dir: Path, *, dpi: int) -> dict
         "mode_after_review": after.mode,
         "blocking_questions_before": blocking_before,
         "blocking_questions_after": len(after.part.validation.blocking_questions()),
+        "interactive_review_field_count": len(review_fields),
+        "interactive_review_field_paths": sorted(review_field_paths),
+        "dimension_graph_before_review": before_dimension_report.to_dict(),
+        "dimension_graph_after_review": after_dimension_report.to_dict(),
+        "dimension_graph_trusted_pdf": trusted_dimension_report.to_dict(),
+        "trusted_finalize_route": finalized.details.get("route"),
         "detected_fields": before.detected_fields,
         "field_checks": field_checks,
         "feature_checks": feature_checks,
@@ -720,6 +784,80 @@ def _validate_ai_and_negative(
             "conflicts": conflict.details.get("conflicts", []),
         }
     )
+
+    # The file-based review command and the interactive in-memory route must
+    # converge on the same deterministic gate.  This also keeps the CLI path in
+    # the persistent release validation, not only in unit tests.
+    file_review = build_review_payload(
+        before.part,
+        reviewed_by="validation-runner",
+        confirm=["holes[0]"],
+        comment="File-based review route smoke",
+    )
+    file_review_path = output / "LO4_file_route_review.json"
+    file_review_path.write_text(
+        json.dumps(file_review, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    file_route_pdf = output / "LO4_file_route_trusted.pdf"
+    file_route_result = review_external_pdf(synthetic_lo4, file_review_path, file_route_pdf)
+    file_route_analysis = load_trusted_pdf(file_route_pdf, strict=True)
+    file_route_graph = validate_dimension_graph(file_route_analysis.part)
+    file_route_ok = bool(
+        file_route_result.details.get("route")
+        == "external-pdf->human-review->validated-canonical->trusted-pdf"
+        and file_route_analysis.mode == "trusted_exact"
+        and file_route_graph.valid
+        and file_route_graph.coverage_percent == 100.0
+    )
+    rows.append(
+        {
+            "test": "file-based human review route",
+            "status": "passed" if file_route_ok else "failed",
+            "route": file_route_result.details.get("route"),
+            "trusted_mode": file_route_analysis.mode,
+            "dimension_graph_valid": file_route_graph.valid,
+            "dimension_graph_coverage_percent": file_route_graph.coverage_percent,
+        }
+    )
+
+    # A drawing dimension is an output of the deterministic model, not a free
+    # UI label.  A modified value therefore has to be rejected against the
+    # canonical geometry.
+    tampered_dimensions = [dict(item) for item in before.part.drawing.dimensions]
+    overall = next(item for item in tampered_dimensions if item.get("id") == "overall-x")
+    overall["value_mm"] = float(overall["value_mm"]) + 10.0
+    tampered_graph = validate_dimension_graph(
+        before.part,
+        tampered_dimensions,
+        before.part.drawing.dimension_chains,
+    )
+    rows.append(
+        {
+            "test": "dimension graph tamper guard",
+            "status": "passed" if not tampered_graph.valid else "failed",
+            "rejected": not tampered_graph.valid,
+            "errors": tampered_graph.errors,
+        }
+    )
+
+    try:
+        build_review_payload(
+            before.part,
+            reviewed_by="validation-runner",
+            confirm=["holes[999]"],
+        )
+    except ValueError:
+        review_evidence_guard = True
+    else:
+        review_evidence_guard = False
+    rows.append(
+        {
+            "test": "review evidence allow-list guard",
+            "status": "passed" if review_evidence_guard else "failed",
+            "rejected": review_evidence_guard,
+        }
+    )
     return rows
 
 
@@ -733,6 +871,7 @@ def _validate_real_lo4(real_lo4: Path | None, output: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     try:
         analysis = analyze_external_pdf(real_lo4)
+        dimension_report = validate_dimension_graph(analysis.part)
         report = output / "real_LO4_analysis.json"
         report.write_text(json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         expected = {
@@ -756,6 +895,7 @@ def _validate_real_lo4(real_lo4: Path | None, output: Path) -> dict[str, Any]:
             "checks": checks,
             "production_export_allowed": analysis.production_export_allowed,
             "blocking_questions": [item.prompt for item in analysis.part.validation.blocking_questions()],
+            "dimension_graph": dimension_report.to_dict(),
         }
     except Exception as exc:
         return {
@@ -814,6 +954,12 @@ def _markdown(results: dict[str, Any]) -> str:
             "",
             f"Radii: `{lo4['radii_mm']}` mm; gat: `{lo4['hole_mm']}`; STEP-volumeverschil: `{lo4['volume_delta_percent']:+.12f}%`.",
             "",
+            (
+                "De interactieve review bood "
+                f"{lo4['interactive_review_field_count']} controleerbare velden/features. "
+                "De deterministische maatgrafiek was voor review, na review en in de Trusted PDF geldig met 100% dekking."
+            ),
+            "",
             "De keten genereerde een gevalideerd NC1-bestand, analytische STEP-solid, semantisch IfcPlate met SweptSolid/cirkelvoid/boogindices, een Trusted PDF en een tweede exacte PDF->NC1-roundtrip.",
             "",
             "## AI- en integriteitsbeveiliging",
@@ -836,6 +982,7 @@ def _markdown(results: dict[str, Any]) -> str:
             "",
             "- Raster-OCR, foto-/perspectiefcorrectie en algemene meer-aanzichtreconstructie zijn nog geen productie-importer.",
             "- Een willekeurige externe PDF blijft geblokkeerd totdat contour, gaten, referentiezijde en conflicterende maatvoering deterministisch of expliciet zijn bevestigd.",
+            "- De huidige interactieve editor dekt velden, gaten en contourpunten; een volledig vrije CAD-schetseditor en handmatig verplaatsbare maatankers volgen later.",
             "- De Windows-installer is pas bewezen na een native Windows x64-build en schone-machine-installatietest.",
             "",
             "Volledige meetwaarden, routes, fouttraces en hashes staan in `results.json`, de CSV-bestanden en `SHA256SUMS.txt`.",

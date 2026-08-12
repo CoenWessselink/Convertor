@@ -445,7 +445,7 @@ def _minimal_step_canonical(
 ) -> CanonicalPart:
     metrics = _shape_metrics(shape)
     canonical = CanonicalPart(
-        converter_version="0.5.0",
+        converter_version="0.5.1",
         source_format="STEP",
         source_file=source.name,
         source_sha256=sha256_bytes(source.read_bytes()),

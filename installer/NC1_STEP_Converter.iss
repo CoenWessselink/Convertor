@@ -1,5 +1,5 @@
 #define MyAppName "NC1 STEP IFC Converter"
-#define MyAppVersion "0.5.0"
+#define MyAppVersion "0.5.1"
 #define MyAppPublisher "NC1 STEP IFC Converter"
 #define MyAppExeName "NC1_STEP_Converter.exe"
 #define MyCliExeName "NC1_STEP_Converter_CLI.exe"

@@ -20,6 +20,12 @@ echo [3/7] Regressietests uitvoeren...
 ".venv-build\Scripts\python.exe" tests\regression_smoke.py || goto :error
 ".venv-build\Scripts\python.exe" tests\pdf_ai_smoke.py || goto :error
 ".venv-build\Scripts\python.exe" tests\pdf_review_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\dimension_graph_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tests\review_workflow_smoke.py || goto :error
+".venv-build\Scripts\python.exe" cli.py --version || goto :error
+".venv-build\Scripts\python.exe" cli.py pdf-analyze --help >nul || goto :error
+".venv-build\Scripts\python.exe" cli.py pdf-review --help >nul || goto :error
+".venv-build\Scripts\python.exe" -c "from app import ConverterApp; app=ConverterApp(); app.update_idletasks(); app.destroy(); print('GUI smoke OK')" || goto :error
 
 echo [4/7] Oude build verwijderen...
 if exist "build" rmdir /s /q "build"
@@ -33,7 +39,7 @@ if not exist "dist\NC1_STEP_Converter\NC1_STEP_Converter_CLI.exe" goto :error
 "dist\NC1_STEP_Converter\NC1_STEP_Converter_CLI.exe" --version || goto :error
 
 echo [6/7] Portable ZIP maken...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\NC1_STEP_Converter' -DestinationPath 'dist\NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip' -Force" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\NC1_STEP_Converter' -DestinationPath 'dist\NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip' -Force" || goto :error
 
 echo [7/7] Installer bouwen...
 set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
@@ -44,12 +50,12 @@ if not exist "%ISCC%" (
 )
 "%ISCC%" "installer\NC1_STEP_Converter.iss" || goto :error
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$files=@('dist\NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip','dist_installer\NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe'); $lines=foreach($f in $files){$h=(Get-FileHash -Algorithm SHA256 $f).Hash.ToLowerInvariant(); \"$h  $([IO.Path]::GetFileName($f))\"}; $lines | Set-Content -Encoding ascii 'SHA256SUMS_WINDOWS.txt'; Get-Content 'SHA256SUMS_WINDOWS.txt'" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$files=@('dist\NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip','dist_installer\NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe'); $lines=foreach($f in $files){$h=(Get-FileHash -Algorithm SHA256 $f).Hash.ToLowerInvariant(); \"$h  $([IO.Path]::GetFileName($f))\"}; $lines | Set-Content -Encoding ascii 'SHA256SUMS_WINDOWS.txt'; Get-Content 'SHA256SUMS_WINDOWS.txt'" || goto :error
 
 echo.
 echo Gereed:
-echo   %CD%\dist_installer\NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe
-echo   %CD%\dist\NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip
+echo   %CD%\dist_installer\NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe
+echo   %CD%\dist\NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip
 echo   %CD%\SHA256SUMS_WINDOWS.txt
 exit /b 0
 

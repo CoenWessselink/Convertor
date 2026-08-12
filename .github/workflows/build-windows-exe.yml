@@ -49,6 +49,8 @@ jobs:
           python tests/regression_smoke.py
           python tests/pdf_ai_smoke.py
           python tests/pdf_review_smoke.py
+          python tests/dimension_graph_smoke.py
+          python tests/review_workflow_smoke.py
           python cli.py --version
           python cli.py pdf-analyze --help
           python cli.py nc1-to-pdf --help
@@ -66,7 +68,7 @@ jobs:
           if (-not (Test-Path "dist/NC1_STEP_Converter/NC1_STEP_Converter.exe")) { throw "GUI EXE ontbreekt" }
           if (-not (Test-Path "dist/NC1_STEP_Converter/NC1_STEP_Converter_CLI.exe")) { throw "CLI EXE ontbreekt" }
           & "dist/NC1_STEP_Converter/NC1_STEP_Converter_CLI.exe" --version
-          Compress-Archive -Path "dist/NC1_STEP_Converter" -DestinationPath "dist/NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip" -Force
+          Compress-Archive -Path "dist/NC1_STEP_Converter" -DestinationPath "dist/NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip" -Force
 
       - name: Install Inno Setup
         shell: pwsh
@@ -83,7 +85,7 @@ jobs:
       - name: Install and smoke-test packaged application without Python on PATH
         shell: pwsh
         run: |
-          $installer = Resolve-Path "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe"
+          $installer = Resolve-Path "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe"
           $installDir = Join-Path $env:RUNNER_TEMP "NC1_STEP_IFC_Converter_Installed"
           & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR="$installDir"
           if ($LASTEXITCODE -ne 0) { throw "Stille installatie mislukt met exitcode $LASTEXITCODE" }
@@ -114,8 +116,8 @@ jobs:
         shell: pwsh
         run: |
           $files = @(
-            "dist/NC1_STEP_IFC_Converter_Portable_0.5.0_x64.zip",
-            "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.0_x64.exe"
+            "dist/NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip",
+            "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe"
           )
           $lines = foreach ($file in $files) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
@@ -129,7 +131,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NC1_STEP_IFC_Converter_0.5.0_Windows_x64
+          name: NC1_STEP_IFC_Converter_0.5.1_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

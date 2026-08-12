@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.5.1
+
+### Deterministische maatgrafiek
+
+- Nieuwe `dimension_graph.py` met feature-gekoppelde maatobjecten en stabiele ID's.
+- Totale hoofdafmetingen, gatdiameters, X/Y-ordinaten vanaf vaste datums, radii en profiel-/diktegegevens worden uit het canonieke model opgebouwd.
+- Provenance, confidence, geometrische ankers, featureverwijzingen en maatketens worden per maat opgeslagen.
+- Releasevalidatie controleert waarden, ankers, referenties, duplicaten, ketens en verplichte dekking.
+- Trusted PDF-export wordt geblokkeerd bij een ongeldige of gemanipuleerde maatgrafiek.
+
+### Interactieve PDF-review
+
+- Nieuwe `review_workflow.py` met strikte allow-list voor menselijke correcties.
+- Nieuwe `review_dialog.py` met bron-PDF links en deterministisch 2D-model rechts.
+- Bronbewijs en modelonderdelen kunnen vanuit de veld-/featurelijst worden gemarkeerd.
+- Veldwaarden, gaten en contourpunten kunnen gecontroleerd en gecorrigeerd worden.
+- Blokkerende vragen kunnen worden beantwoord of door expliciete bewijsbevestiging worden opgelost.
+- Reviewer, commentaar en auditinformatie worden in het canonieke model vastgelegd.
+- `pdf-review` CLI-route en **Interactief reviewen** in de GUI toegevoegd.
+
+### Externe vector-PDF naar productieobject
+
+- Eenvoudige platen/strips kunnen na deterministische reconstructie en expliciete review als Trusted PDF worden vastgelegd.
+- De synthetische LO4-keten behoudt gesloten contour, twee analytische R13,5-bogen, één analytisch Ø14-gat op X/Y 20 mm, materiaal, profiel, aantallen en titelgegevens.
+- Reviewed PDF -> NC1 -> STEP -> semantisch IfcPlate -> Trusted PDF is als volledige testketen uitgevoerd.
+
+### AI en GUI
+
+- OpenAI-modelkeuze is zichtbaar en configureerbaar in het PDF/Tekening-tabblad.
+- Standaardmodel voor de optionele provider is `gpt-5.6`.
+- API-sleutel wordt uitsluitend uit `OPENAI_API_KEY` gelezen en niet in projectbestanden opgeslagen.
+- AI blijft adviserend; geometry-/machinecodeguard en expliciete cloudtoestemming blijven verplicht.
+
+### Distributie en validatie
+
+- Versie verhoogd naar 0.5.1 in broncode, installer, workflow en buildscript.
+- Windows-workflow voert ook maatgrafiek- en reviewsmokes uit.
+- Workflow installeert de gebouwde applicatie stil, test de CLI met een minimaal systeem-`PATH` zonder Python en voert daarna de uninstaller uit.
+- NC1 -> Trusted PDF -> exact NC1: 24/24 geslaagd.
+- STEP -> Trusted PDF -> exact STEP: 19/19 geslaagd.
+- Focus Trusted PDF -> IFC: 2/2 geslaagd.
+- Synthetische LO4-keten: 1/1 geslaagd.
+- AI-, integriteits-, review- en ambiguiteitstests: 11/11 geslaagd.
+
 ## v0.5.0
 
 ### Canoniek model en veiligheid

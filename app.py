@@ -19,11 +19,12 @@ from conversion import (
     step_to_nc1,
 )
 from ifc_support import dstv_to_ifc, ifc_available, ifc_to_dstv, ifc_to_step, step_to_ifc
-from ai_support import AISettings
+from ai_support import AISettings, DEFAULT_OPENAI_MODEL
 from material_database import MaterialDatabase
 from pdf_support import (
     ExternalPDFExportBlocked,
     analyze_pdf,
+    finalize_reviewed_analysis,
     ifc_to_pdf,
     nc1_to_pdf,
     pdf_to_ifc,
@@ -35,6 +36,7 @@ from pdf_support import (
 )
 from profile_database import ProfileDatabase
 from quantities import QuantityAnalysis, analyze_files, export_excel
+from review_dialog import PDFReviewDialog
 from visualization import ComparisonViewer
 
 
@@ -91,6 +93,7 @@ class ConverterApp(tk.Tk):
         self.pdf_review_source = tk.StringVar(value="")
         self.pdf_review_file = tk.StringVar(value="")
         self.pdf_ai_provider = tk.StringVar(value="none")
+        self.pdf_ai_model = tk.StringVar(value=DEFAULT_OPENAI_MODEL)
         self.pdf_allow_cloud = tk.BooleanVar(value=False)
         self.pdf_analysis_result = None
         self.quantity_files: list[Path] = []
@@ -260,17 +263,26 @@ class ConverterApp(tk.Tk):
             width=18,
         )
         provider.grid(row=1, column=1, sticky="w", padx=8, pady=(8, 0))
+        ttk.Label(source_box, text="AI-model:").grid(row=2, column=0, sticky="w", pady=(8, 0))
+        ttk.Entry(source_box, textvariable=self.pdf_ai_model, width=28).grid(
+            row=2, column=1, sticky="w", padx=8, pady=(8, 0)
+        )
         ttk.Checkbutton(
             source_box,
             text="Ik geef voor deze analyse expliciet toestemming voor cloudverwerking",
             variable=self.pdf_allow_cloud,
-        ).grid(row=1, column=1, sticky="e", padx=8, pady=(8, 0))
+        ).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
         self.pdf_analyze_button = ttk.Button(source_box, text="Analyseren", command=self._start_pdf_analysis)
         self.pdf_analyze_button.grid(row=1, column=2, pady=(8, 0))
+        ttk.Label(
+            source_box,
+            text="Cloudsleutel wordt uitsluitend uit de omgevingsvariabele OPENAI_API_KEY gelezen.",
+        ).grid(row=2, column=2, sticky="e", pady=(8, 0))
 
         action_box = ttk.Frame(root)
         action_box.grid(row=1, column=0, sticky="ew", pady=(10, 6))
         ttk.Button(action_box, text="Analyse-JSON opslaan", command=self._save_pdf_analysis).pack(side="left")
+        ttk.Button(action_box, text="Interactief reviewen", command=self._interactive_pdf_review).pack(side="left", padx=(6, 0))
         ttk.Label(action_box, text="Review-JSON:").pack(side="left", padx=(18, 4))
         ttk.Entry(action_box, textvariable=self.pdf_review_file, width=58).pack(side="left", fill="x", expand=True)
         ttk.Button(action_box, text="Kiezen", command=self._choose_pdf_review_file).pack(side="left", padx=4)
@@ -356,7 +368,12 @@ class ConverterApp(tk.Tk):
         if audit_directory is not None:
             audit_directory.mkdir(parents=True, exist_ok=True)
             audit_log = str(audit_directory / "ai_audit.jsonl")
-        return AISettings(provider=provider, allow_cloud=allow_cloud, audit_log=audit_log)
+        return AISettings(
+            provider=provider,
+            model=self.pdf_ai_model.get().strip() or DEFAULT_OPENAI_MODEL,
+            allow_cloud=allow_cloud,
+            audit_log=audit_log,
+        )
 
     def _start_pdf_analysis(self) -> None:
         source = Path(self.pdf_review_source.get()).expanduser()
@@ -449,6 +466,21 @@ class ConverterApp(tk.Tk):
                     evidence.page or "",
                 ),
             )
+        for dimension in part.drawing.dimensions:
+            provenance = dict(dimension.get("provenance") or {})
+            confidence = float(provenance.get("confidence", 0.0) or 0.0)
+            self.pdf_field_tree.insert(
+                "",
+                "end",
+                values=(
+                    f"maat:{dimension.get('id', '-')}",
+                    f"{dimension.get('label', dimension.get('value_mm', '-'))} mm",
+                    f"{confidence:.0%}",
+                    provenance.get("method", "dimension_graph"),
+                    provenance.get("status", "derived"),
+                    provenance.get("page") or "",
+                ),
+            )
         if not part.field_evidence:
             for field_path, value in sorted(analysis.detected_fields.items()):
                 self.pdf_field_tree.insert(
@@ -464,6 +496,21 @@ class ConverterApp(tk.Tk):
             f"Profiel: {part.header.profile or '-'} | materiaal: {part.header.material or '-'} | aantal: {part.header.quantity}",
             "",
         ]
+        graph = dict(part.properties.get("dimension_graph") or {})
+        graph_validation = dict(graph.get("validation") or {})
+        if graph_validation:
+            lines.extend(
+                [
+                    "MAATGRAFIEK",
+                    (
+                        f"- {graph_validation.get('checked_dimensions', 0)} maatobjecten, "
+                        f"{graph_validation.get('checked_chains', 0)} ketens, "
+                        f"dekking {float(graph_validation.get('coverage_percent', 0.0)):.0f}%"
+                    ),
+                    "- Status: " + ("geldig" if graph_validation.get("valid") else "ongeldig"),
+                    "",
+                ]
+            )
         if part.validation.errors or analysis.errors:
             lines.append("FOUTEN")
             lines.extend(f"- {item}" for item in dict.fromkeys(part.validation.errors + analysis.errors))
@@ -518,6 +565,67 @@ class ConverterApp(tk.Tk):
             messagebox.showinfo("Analyse opgeslagen", f"Analyse opgeslagen:\n{target}")
         except Exception as exc:
             messagebox.showerror("Analyse opslaan", str(exc))
+
+    def _interactive_pdf_review(self) -> None:
+        analysis = self.pdf_analysis_result
+        if analysis is None:
+            messagebox.showwarning("Geen analyse", "Analyseer eerst de externe technische PDF.")
+            return
+        if analysis.mode.startswith("trusted"):
+            messagebox.showinfo(
+                "Trusted PDF",
+                "Deze PDF is al exact geverifieerd en heeft geen menselijke reconstructiereview nodig.",
+            )
+            return
+        source = Path(analysis.source)
+        if not source.is_file() or source.suffix.lower() != ".pdf":
+            messagebox.showwarning("Bron ontbreekt", "De geanalyseerde bron-PDF is niet meer beschikbaar.")
+            return
+
+        dialog = PDFReviewDialog(self, analysis)
+        self.wait_window(dialog)
+        if dialog.result is None or dialog.reviewed_analysis is None:
+            return
+
+        output_directory = Path(self.output_directory.get()).expanduser()
+        output_directory.mkdir(parents=True, exist_ok=True)
+        review_path = output_directory / f"{source.stem}.review.json"
+        review_path.write_text(
+            json.dumps(dialog.result, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        self.pdf_review_file.set(str(review_path))
+        self.pdf_analysis_result = dialog.reviewed_analysis
+        self._show_pdf_analysis(dialog.reviewed_analysis)
+
+        default = output_directory / f"{source.stem}_reviewed_trusted.pdf"
+        name = filedialog.asksaveasfilename(
+            title="Reviewed Trusted PDF opslaan",
+            initialdir=str(default.parent),
+            initialfile=default.name,
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+        )
+        if not name:
+            self.pdf_status.configure(
+                text=f"Review gevalideerd en opgeslagen als {review_path.name}; Trusted PDF nog niet gemaakt."
+            )
+            return
+
+        reviewed_analysis = dialog.reviewed_analysis
+        self.pdf_analyze_button.configure(state="disabled")
+        self.pdf_status.configure(text=f"Gevalideerde review als Trusted PDF opslaan: {source.name} …")
+
+        def worker() -> None:
+            try:
+                result = finalize_reviewed_analysis(reviewed_analysis, name)
+                trusted_analysis = analyze_pdf(result.primary_output)
+                self.pdf_events.put(("review_done", result, trusted_analysis))
+            except Exception as exc:
+                self.pdf_events.put(("error", "Interactieve PDF-review", str(exc)))
+
+        threading.Thread(target=worker, daemon=True).start()
+        self.after(100, self._poll_pdf_events)
 
     def _review_pdf_to_trusted(self) -> None:
         source = Path(self.pdf_review_source.get()).expanduser()
@@ -866,6 +974,7 @@ class ConverterApp(tk.Tk):
             allow_cloud = False
         ai_settings = AISettings(
             provider=provider,
+            model=self.pdf_ai_model.get().strip() or DEFAULT_OPENAI_MODEL,
             allow_cloud=allow_cloud,
             audit_log=str(output / "ai_audit.jsonl"),
         )
