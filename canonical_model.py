@@ -24,6 +24,8 @@ STEP_MARKER = "NC1_STEP_CONVERTER_PAYLOAD_V1"
 NC1_MARKER = "NC1_STEP_CONVERTER_PAYLOAD_V1"
 IFC_MARKER = "NC1_STEP_CONVERTER_PAYLOAD_V1"
 MAX_ATTACHMENT_BYTES = 32 * 1024 * 1024
+MAX_RAW_PAYLOAD_BYTES = 96 * 1024 * 1024
+MAX_ENCODED_PAYLOAD_CHARS = 160 * 1024 * 1024
 
 
 class CanonicalPayloadError(ValueError):
@@ -292,6 +294,8 @@ def encode_part(part: CanonicalPart) -> str:
 
 
 def decode_part(encoded: str) -> CanonicalPart:
+    if len(encoded) > MAX_ENCODED_PAYLOAD_CHARS:
+        raise CanonicalPayloadError("Canonieke payload is groter dan de ingestelde veiligheidslimiet")
     try:
         envelope_data = base64.b64decode(encoded.encode("ascii"), validate=True)
     except Exception as exc:
@@ -303,7 +307,13 @@ def decode_part(encoded: str) -> CanonicalPart:
         raise CanonicalPayloadError(f"Niet-ondersteunde payloadcodec {envelope.codec!r}")
     try:
         compressed = base64.b64decode(envelope.payload_b64.encode("ascii"), validate=True)
-        raw = zlib.decompress(compressed)
+        decompressor = zlib.decompressobj()
+        raw = decompressor.decompress(compressed, MAX_RAW_PAYLOAD_BYTES + 1)
+        if len(raw) > MAX_RAW_PAYLOAD_BYTES or decompressor.unconsumed_tail:
+            raise CanonicalPayloadError("Gedecomprimeerde payload overschrijdt de veiligheidslimiet")
+        raw += decompressor.flush(MAX_RAW_PAYLOAD_BYTES + 1 - len(raw))
+        if len(raw) > MAX_RAW_PAYLOAD_BYTES:
+            raise CanonicalPayloadError("Gedecomprimeerde payload overschrijdt de veiligheidslimiet")
     except Exception as exc:
         raise CanonicalPayloadError("Payload kon niet worden gedecomprimeerd") from exc
     if sha256_bytes(raw) != envelope.payload_sha256:
@@ -319,30 +329,66 @@ def _chunk(text: str, size: int = 1800) -> list[str]:
     return [text[index : index + size] for index in range(0, len(text), size)] or [""]
 
 
+def _assemble_chunks(matches: Iterable[tuple[str, str, str]], label: str) -> str:
+    rows = list(matches)
+    if not rows:
+        raise CanonicalPayloadError(f"{label}-payload bevat geen chunks")
+    totals = {int(total) for _index, total, _chunk_text in rows}
+    if len(totals) != 1:
+        raise CanonicalPayloadError(f"{label}-payload bevat conflicterende aantallen")
+    total = totals.pop()
+    if total <= 0 or total > 1_000_000:
+        raise CanonicalPayloadError(f"{label}-payload bevat een ongeldig chunk-aantal")
+    parts: dict[int, str] = {}
+    for index_text, _total, chunk_text in rows:
+        index = int(index_text)
+        if index in parts and parts[index] != chunk_text:
+            raise CanonicalPayloadError(f"{label}-payload bevat conflicterende chunk {index}")
+        parts[index] = chunk_text
+    if sorted(parts) != list(range(1, total + 1)):
+        raise CanonicalPayloadError(f"{label}-payload mist één of meer chunks")
+    encoded = "".join(parts[index] for index in range(1, total + 1))
+    if len(encoded) > MAX_ENCODED_PAYLOAD_CHARS:
+        raise CanonicalPayloadError(f"{label}-payload overschrijdt de veiligheidslimiet")
+    return encoded
+
+
 def _strip_step_payload(text: str) -> str:
     pattern = re.compile(
-        rf"/\*\s*{re.escape(STEP_MARKER)}\s+\d+/\d+\s+[A-Za-z0-9+/=]+\s*\*/\s*",
-        flags=re.IGNORECASE,
+        rf"(?mi)^[ \t]*/\*[ \t]*{re.escape(STEP_MARKER)}[ \t]+\d+/\d+[ \t]+[A-Za-z0-9+/=]+[ \t]*\*/[ \t]*(?:\r?\n)?"
     )
     return pattern.sub("", text)
 
 
+def strip_step_payload_bytes(data: bytes) -> bytes:
+    """Verwijder alleen convertercommentregels; overige STEP-bytes blijven gelijk."""
+
+    return _strip_step_payload(data.decode("latin-1")).encode("latin-1")
+
+
 def embed_part_in_step(path: str | Path, part: CanonicalPart) -> None:
     target = Path(path)
-    text = target.read_text(encoding="latin-1", errors="replace")
-    text = _strip_step_payload(text).rstrip() + "\n"
+    original = target.read_bytes()
+    text = _strip_step_payload(original.decode("latin-1"))
+    newline = "\r\n" if "\r\n" in text else "\n"
     chunks = _chunk(encode_part(part))
-    comments = "\n".join(
+    comments = newline.join(
         f"/* {STEP_MARKER} {index}/{len(chunks)} {chunk} */"
         for index, chunk in enumerate(chunks, start=1)
     )
     marker = "END-ISO-10303-21;"
-    pos = text.upper().rfind(marker)
-    if pos >= 0:
-        text = text[:pos].rstrip() + "\n" + comments + "\n" + text[pos:]
+    position = text.upper().rfind(marker)
+    if position >= 0:
+        prefix = text[:position]
+        suffix = text[position:]
+        if prefix and not prefix.endswith(("\n", "\r")):
+            prefix += newline
+        text = prefix + comments + newline + suffix
     else:
-        text = text.rstrip() + "\n" + comments + "\n"
-    target.write_text(text, encoding="latin-1", newline="\n")
+        if text and not text.endswith(("\n", "\r")):
+            text += newline
+        text += comments + newline
+    target.write_bytes(text.encode("latin-1"))
 
 
 def extract_part_from_step(path: str | Path, *, strict: bool = False) -> CanonicalPart | None:
@@ -355,14 +401,7 @@ def extract_part_from_step(path: str | Path, *, strict: bool = False) -> Canonic
     if not matches:
         return None
     try:
-        totals = {int(total) for _index, total, _chunk_text in matches}
-        if len(totals) != 1:
-            raise CanonicalPayloadError("STEP-payload bevat conflicterende aantallen")
-        total = totals.pop()
-        parts = {int(index): chunk_text for index, _total, chunk_text in matches}
-        if sorted(parts) != list(range(1, total + 1)):
-            raise CanonicalPayloadError("STEP-payload mist één of meer chunks")
-        return decode_part("".join(parts[index] for index in range(1, total + 1)))
+        return decode_part(_assemble_chunks(matches, "STEP"))
     except CanonicalPayloadError:
         if strict:
             raise
@@ -373,21 +412,44 @@ def _strip_nc1_payload(lines: Iterable[str]) -> list[str]:
     return [line for line in lines if not line.lstrip().startswith(f"** {NC1_MARKER} ")]
 
 
+def strip_nc1_payload_bytes(data: bytes) -> bytes:
+    text = data.decode("ascii", errors="replace")
+    kept = [
+        line
+        for line in text.splitlines(keepends=True)
+        if not line.lstrip().startswith(f"** {NC1_MARKER} ")
+    ]
+    return "".join(kept).encode("ascii", errors="replace")
+
+
 def embed_part_in_nc1(path: str | Path, part: CanonicalPart) -> None:
     target = Path(path)
-    text = target.read_text(encoding="ascii", errors="replace")
-    lines = _strip_nc1_payload(text.splitlines())
+    original = target.read_bytes()
+    text = original.decode("ascii", errors="replace")
+    newline = "\r\n" if "\r\n" in text else "\n"
+    raw_lines = text.splitlines(keepends=True)
+    lines = [
+        line
+        for line in raw_lines
+        if not line.lstrip().startswith(f"** {NC1_MARKER} ")
+    ]
     chunks = _chunk(encode_part(part), size=72)
     payload_lines = [
-        f"** {NC1_MARKER} {index}/{len(chunks)} {chunk}"
+        f"** {NC1_MARKER} {index}/{len(chunks)} {chunk}{newline}"
         for index, chunk in enumerate(chunks, start=1)
     ]
-    try:
-        insert_at = next(index for index, line in enumerate(lines) if line.strip() == "ST") + 1
-    except StopIteration as exc:
-        raise ValueError(f"Geen ST-blok gevonden in {target.name}") from exc
+    insert_at = None
+    for index, line in enumerate(lines):
+        if line.strip() == "ST":
+            insert_at = index + 1
+            break
+    if insert_at is None:
+        raise ValueError(f"Geen ST-blok gevonden in {target.name}")
+    # Zorg dat de ST-regel een regeleinde heeft voordat payloadregels volgen.
+    if lines[insert_at - 1] and not lines[insert_at - 1].endswith(("\n", "\r")):
+        lines[insert_at - 1] += newline
     lines[insert_at:insert_at] = payload_lines
-    target.write_text("\r\n".join(lines) + "\r\n", encoding="ascii", newline="")
+    target.write_bytes("".join(lines).encode("ascii", errors="replace"))
 
 
 def extract_part_from_nc1(path: str | Path, *, strict: bool = False) -> CanonicalPart | None:
@@ -404,14 +466,7 @@ def extract_part_from_nc1(path: str | Path, *, strict: bool = False) -> Canonica
     if not matches:
         return None
     try:
-        totals = {int(total) for _index, total, _chunk_text in matches}
-        if len(totals) != 1:
-            raise CanonicalPayloadError("NC1-payload bevat conflicterende aantallen")
-        total = totals.pop()
-        parts = {int(index): chunk_text for index, _total, chunk_text in matches}
-        if sorted(parts) != list(range(1, total + 1)):
-            raise CanonicalPayloadError("NC1-payload mist één of meer chunks")
-        return decode_part("".join(parts[index] for index in range(1, total + 1)))
+        return decode_part(_assemble_chunks(matches, "NC1"))
     except CanonicalPayloadError:
         if strict:
             raise
@@ -436,24 +491,69 @@ def embed_part_in_ifc_text(text: str, part: CanonicalPart) -> str:
     return clean + comments + "\n"
 
 
+def _ifc_unescape(value: str) -> str:
+    return value.replace("''", "'").replace("\\\\", "\\")
+
+
+def _extract_part_from_ifc_pset(text: str) -> CanonicalPart | None:
+    """Lees de lossless payload uit echte IfcPropertySingleValue-records.
+
+    De commentkopie is alleen redundantie voor dependency-arme herstelacties. De
+    propertyset is de primaire, interoperabele opslaglaag en blijft bruikbaar
+    wanneer comments door een IFC-tool worden verwijderd.
+    """
+
+    if "PSET_NC1STEPCONVERTER" not in text.upper():
+        return None
+    property_pattern = re.compile(
+        r"#\d+\s*=\s*IFCPROPERTYSINGLEVALUE\s*\(\s*'([^']*(?:''[^']*)*)'\s*,\s*\$\s*,\s*"
+        r"(IFCTEXT|IFCLABEL|IFCIDENTIFIER|IFCINTEGER|IFCREAL)\s*\(\s*(?:'((?:''|[^'])*)'|([^\)]*))\s*\)\s*,\s*\$\s*\)\s*;",
+        re.IGNORECASE,
+    )
+    values: dict[str, str] = {}
+    for match in property_pattern.finditer(text):
+        name = _ifc_unescape(match.group(1))
+        value = _ifc_unescape(match.group(3)) if match.group(3) is not None else match.group(4).strip()
+        previous = values.get(name)
+        if previous is not None and previous != value:
+            raise CanonicalPayloadError(f"IFC-property {name!r} komt met conflicterende waarden voor")
+        values[name] = value
+    chunks: list[tuple[str, str, str]] = []
+    try:
+        total = int(values.get("PayloadChunkCount", "0"))
+    except ValueError as exc:
+        raise CanonicalPayloadError("IFC PayloadChunkCount is ongeldig") from exc
+    if total <= 0:
+        return None
+    for index in range(1, total + 1):
+        key = f"PayloadChunk_{index:04d}"
+        if key not in values:
+            raise CanonicalPayloadError(f"IFC-propertyset mist {key}")
+        chunks.append((str(index), str(total), values[key]))
+    encoded = _assemble_chunks(chunks, "IFC-Pset")
+    expected_sha = values.get("PayloadSHA256", "")
+    if expected_sha and sha256_bytes(encoded.encode("ascii")) != expected_sha:
+        raise CanonicalPayloadError("Checksum van IFC-propertysetpayload klopt niet")
+    codec = values.get("PayloadCodec", PAYLOAD_CODEC)
+    if codec != PAYLOAD_CODEC:
+        raise CanonicalPayloadError(f"Niet-ondersteunde IFC-payloadcodec {codec!r}")
+    return decode_part(encoded)
+
+
 def extract_part_from_ifc(path: str | Path, *, strict: bool = False) -> CanonicalPart | None:
     text = Path(path).read_text(encoding="utf-8", errors="replace")
-    matches = re.findall(
-        rf"/\*\s*{re.escape(IFC_MARKER)}\s+(\d+)/(\d+)\s+([A-Za-z0-9+/=]+)\s*\*/",
-        text,
-        flags=re.IGNORECASE,
-    )
-    if not matches:
-        return None
     try:
-        totals = {int(total) for _index, total, _chunk_text in matches}
-        if len(totals) != 1:
-            raise CanonicalPayloadError("IFC-payload bevat conflicterende aantallen")
-        total = totals.pop()
-        parts = {int(index): chunk_text for index, _total, chunk_text in matches}
-        if sorted(parts) != list(range(1, total + 1)):
-            raise CanonicalPayloadError("IFC-payload mist één of meer chunks")
-        return decode_part("".join(parts[index] for index in range(1, total + 1)))
+        pset_part = _extract_part_from_ifc_pset(text)
+        if pset_part is not None:
+            return pset_part
+        matches = re.findall(
+            rf"/\*\s*{re.escape(IFC_MARKER)}\s+(\d+)/(\d+)\s+([A-Za-z0-9+/=]+)\s*\*/",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not matches:
+            return None
+        return decode_part(_assemble_chunks(matches, "IFC-comment"))
     except CanonicalPayloadError:
         if strict:
             raise

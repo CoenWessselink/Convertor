@@ -31,6 +31,7 @@ from canonical_model import (
     sha256_bytes,
 )
 from ifc_native import parse_native_ifc_meshes, write_native_ifc
+from analytic_fitting import recognize_analytic_shape
 
 
 class IFCDependencyError(RuntimeError):
@@ -46,8 +47,9 @@ def require_ifcopenshell():
         import ifcopenshell.util.unit  # type: ignore
     except Exception as exc:  # pragma: no cover - dependency is optional in source environment
         raise IFCDependencyError(
-            "IFC-functionaliteit vereist IfcOpenShell. Start start_converter.bat opnieuw "
-            "of installeer 'ifcopenshell==0.8.5' in de gebruikte Python-omgeving."
+            "Voor algemene externe IFC-geometrie is IfcOpenShell nodig. De officiële "
+            "Windows-installer bundelt deze dependency; converter-eigen IFC4-tessellaties "
+            "blijven ook met de ingebouwde parser beschikbaar."
         ) from exc
     return ifcopenshell
 
@@ -434,15 +436,36 @@ def ifc_to_step(input_path: str | Path, output_path: str | Path) -> IFCConversio
     model = load_ifc_geometry(source)
     shapes: list[cq.Shape] = []
     for item in model.items:
+        recognition = recognize_analytic_shape(
+            item.vertices_mm,
+            item.triangles,
+            minimum_confidence=0.92,
+            radial_tolerance_mm=0.35,
+        )
+        if recognition.shape is not None:
+            shapes.append(recognition.shape)
+            if recognition.kind == "cylinder":
+                warnings.append(
+                    f"{item.guid}: analytische cilinder hersteld "
+                    f"(Ø{float(recognition.diagnostics.get('diameter_mm', 0.0)):.3f} mm, "
+                    f"confidence {recognition.confidence:.1%}, "
+                    f"radiale RMS {float(recognition.diagnostics.get('rms_residual_mm', 0.0)):.4f} mm)."
+                )
+            continue
         try:
             shapes.append(mesh_to_cq_shape(item.vertices_mm, item.triangles, make_solid=True))
+            if recognition.kind != "none":
+                warnings.append(
+                    f"{item.guid}: analytische kandidaat niet vrijgegeven "
+                    f"(confidence {recognition.confidence:.1%}); faceted fallback gebruikt."
+                )
         except Exception as exc:
             warnings.append(f"{item.guid}: niet naar STEP-oppervlak omgezet: {exc}")
     _export_shapes_step(shapes, target)
     warnings.extend(model.warnings)
     warnings.append(
-        "Externe IFC zonder converterpayload is als gefacetteerde geometrie opgebouwd; "
-        "productieconversie vereist herkenningscontrole/confidence."
+        "Externe IFC zonder converterpayload: analytische fitting wordt eerst geprobeerd; "
+        "overige geometrie blijft faceted en vereist herkenningscontrole/confidence."
     )
     return IFCConversionResult(source, [target], warnings)
 
@@ -759,7 +782,15 @@ def ifc_to_dstv(
         for index, item in enumerate(model.items, start=1):
             stem = _safe_name(item.tag or item.name or item.guid, f"element_{index:03d}")
             try:
-                shape = mesh_to_cq_shape(item.vertices_mm, item.triangles, make_solid=True)
+                recognition = recognize_analytic_shape(
+                    item.vertices_mm,
+                    item.triangles,
+                    minimum_confidence=0.92,
+                    radial_tolerance_mm=0.35,
+                )
+                shape = recognition.shape
+                if shape is None:
+                    shape = mesh_to_cq_shape(item.vertices_mm, item.triangles, make_solid=True)
                 if not shape.Solids() or shape.Volume() <= 1e-6:
                     raise ValueError("IFC-driehoeksgeometrie kon niet als gesloten solid worden opgebouwd")
                 step_path = temp / f"{stem}.step"
@@ -786,7 +817,14 @@ def ifc_to_dstv(
                         "profile": result.profile_designation,
                         "confidence": result.confidence,
                         "volume_delta_percent": result.volume_delta_percent,
-                        "status": "converted-by-geometric-fallback",
+                        "analytic_recognition": recognition.kind,
+                        "analytic_confidence": recognition.confidence,
+                        "analytic_diagnostics": recognition.diagnostics,
+                        "status": (
+                            "converted-by-analytic-fallback"
+                            if recognition.shape is not None
+                            else "converted-by-geometric-fallback"
+                        ),
                     }
                 )
             except Exception as exc:
