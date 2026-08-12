@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -96,13 +97,17 @@ export function inferFormatFromPath(filePath) {
 }
 
 export function modelIdFromRelativePath(relativePath) {
-  return relativePath
+  const slug = relativePath
     .replace(/^reference-models-local\//, 'local/')
     .replace(/^reference-models\//, 'repo/')
     .replace(/\.[^.]+$/, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+  const readableSlug = slug.length > 120 ? slug.slice(0, 120).replace(/-+$/g, '') : slug;
+  const stableHash = createHash('sha1').update(relativePath).digest('hex').slice(0, 10);
+
+  return `${readableSlug}-${stableHash}`;
 }
 
 export function valueAtPath(value, propertyPath) {

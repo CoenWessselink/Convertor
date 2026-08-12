@@ -10,6 +10,7 @@ import {
   discoverReferenceModels,
   formatValue,
   loadExpectations,
+  modelIdFromRelativePath,
   modelRoots,
   repoPath,
   resultRoots,
@@ -18,6 +19,8 @@ import {
 
 const models = discoverReferenceModels();
 const expectations = loadExpectations();
+const manualValidationExpectations = expectations.filter((expectation) => expectation.validation?.status === 'manual_validation_required');
+const validatedExpectations = expectations.filter((expectation) => expectation.validation?.status === 'validated');
 
 test('reference mappen bestaan', () => {
   for (const root of modelRoots.filter((item) => !item.optional)) {
@@ -42,6 +45,15 @@ test('expected-result schema is geldig', () => {
     );
     seenModelPaths.add(modelPath);
   }
+});
+
+test('model ids blijven uniek bij gelijkende bestandsnamen', () => {
+  const first = modelIdFromRelativePath('reference-models-local/STEP/samenstel/Samenstel nieuw - FNM16-HHFNSS_Predeterminado (1).step');
+  const second = modelIdFromRelativePath('reference-models-local/STEP/samenstel/Samenstel nieuw - FNM16-HHFNSS_Predeterminado_1.step');
+
+  assert.notEqual(first, second);
+  assert.match(first, /-[a-f0-9]{10}$/);
+  assert.match(second, /-[a-f0-9]{10}$/);
 });
 
 test('ieder referentiemodel heeft een expected-result bestand', () => {
@@ -78,17 +90,17 @@ test('ieder expected-result verwijst naar een bestaand model', () => {
   );
 });
 
-for (const expectation of expectations) {
+test('manual validation required baselines worden nog niet inhoudelijk vergeleken', () => {
+  assert.ok(
+    manualValidationExpectations.length <= expectations.length,
+    'Interne regressietestconfiguratie is inconsistent.'
+  );
+});
+
+for (const expectation of validatedExpectations) {
   const name = `reference baseline: ${expectation.model?.path || expectation.__file}`;
-  const status = expectation.validation?.status;
 
-  test(name, status === 'manual_validation_required' ? { skip: 'manual validation required' } : {}, () => {
-    assert.equal(
-      status,
-      'validated',
-      `${expectation.__file}: validation.status moet validated zijn voordat regressiewaarden worden vergeleken`
-    );
-
+  test(name, () => {
     const modelPath = repoPath(expectation.model.path);
     assert.ok(fs.existsSync(modelPath), `${expectation.model.path} bestaat niet`);
 

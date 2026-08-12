@@ -34,6 +34,23 @@ test('rules engine geeft confidence terug', () => {
   assert.ok(analysis.confidence > 0);
 });
 
+test('parseert grote IFC puntenlijsten zonder stack overflow', () => {
+  const points = Array.from({ length: 150000 }, (_, index) => `#${index + 10}=IFCCARTESIANPOINT((${index}.0,${index % 500}.0,${index % 37}.0));`);
+  const filePath = tempFile('large.ifc', [
+    'ISO-10303-21;',
+    "FILE_SCHEMA(('IFC4'));",
+    "#1=IFCBEAM('large');",
+    ...points
+  ].join('\n'));
+  const parsed = parseFile(filePath, 'large.ifc');
+
+  assert.equal(parsed.source.format, 'IFC');
+  assert.equal(parsed.model.entities.cartesianPoints, 150000);
+  assert.equal(parsed.model.dimensions.length, 149999);
+  assert.equal(parsed.model.dimensions.width, 499);
+  assert.equal(parsed.model.dimensions.height, 36);
+});
+
 test('viewer payload bevat projecties en issue markers', () => {
   const filePath = tempFile('beam.nc1', 'ST\nHEA200\n6000 200 0\nBO 100 100\nAK 1 2');
   const parsed = parseFile(filePath, 'beam.nc1');

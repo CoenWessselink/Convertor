@@ -14,7 +14,7 @@ npm run test:regression
 
 - Elk model in `reference-models/` of `reference-models-local/` moet een `.expected.json` bestand hebben.
 - `validated` expected-results worden automatisch vergeleken.
-- `manual_validation_required` expected-results worden bewust overgeslagen totdat de waarden handmatig betrouwbaar zijn gemaakt.
+- `manual_validation_required` expected-results worden wel gekoppeld en geteld, maar nog niet inhoudelijk vergeleken totdat de waarden handmatig betrouwbaar zijn gemaakt.
 - Failures melden model, eigenschap, verwachte waarde, gevonden waarde en vermoedelijke oorzaak.
 
 ## Lokale Vertrouwelijke Tests

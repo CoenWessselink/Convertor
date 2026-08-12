@@ -157,9 +157,18 @@ function fallbackGeometry(label) {
 }
 
 function geometryFromPoints(points, label) {
-  const xs = points.map((p) => p.x), ys = points.map((p) => p.y), zs = points.map((p) => p.z);
-  const min = { x: Math.min(...xs), y: Math.min(...ys), z: Math.min(...zs) };
-  const max = { x: Math.max(...xs), y: Math.max(...ys), z: Math.max(...zs) };
+  const min = { x: Infinity, y: Infinity, z: Infinity };
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+
+  for (const point of points) {
+    min.x = Math.min(min.x, point.x);
+    min.y = Math.min(min.y, point.y);
+    min.z = Math.min(min.z, point.z);
+    max.x = Math.max(max.x, point.x);
+    max.y = Math.max(max.y, point.y);
+    max.z = Math.max(max.z, point.z);
+  }
+
   const bbox = { min, max, width: max.x - min.x, depth: max.y - min.y, height: max.z - min.z };
   const vertices = [
     { x: min.x, y: min.y, z: min.z }, { x: max.x, y: min.y, z: min.z }, { x: max.x, y: max.y, z: min.z }, { x: min.x, y: max.y, z: min.z },
