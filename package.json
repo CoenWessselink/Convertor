@@ -1,0 +1,14 @@
+{
+  "name": "steelconverter",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:api && npm run test:app && npm run test:regression",
+    "test:api": "npm --prefix Convertor-Api test",
+    "test:app": "npm --prefix Convertor-app test",
+    "build:app": "npm --prefix Convertor-app run build",
+    "test:regression": "node --test tests/regression/*.test.mjs",
+    "reference:analyze": "node tests/regression/analyze-reference-models.mjs"
+  }
+}

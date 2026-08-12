@@ -20,3 +20,7 @@ Convertor-Api/storage/
 API_*.json
 API_*.txt
 APP_*.log
+
+# Confidential local reference models/results
+reference-models-local/
+reference-results-local/
