@@ -1,0 +1,17 @@
+NC1 ↔ STEP / IFC Converter
+Versie: 0.3.0
+Status: v0.3 source release en Windows EXE build-ready release.
+
+Getest in deze omgeving:
+- Python modules compileren: OK
+- NC1 → STEP op aangeleverde set: 24/24 OK
+- STEP → NC1 op aangeleverde set: 19/19 OK
+- Hoeveelheden + Excel op STEP-sample: OK
+- CLI help en kerncommands: OK
+- GUI start + viewer smoke via Xvfb: OK
+
+Niet volledig runtime-getest in deze Linuxomgeving:
+- IFC-functies met IfcOpenShell, omdat IfcOpenShell hier niet geïnstalleerd is.
+- Native Windows EXE, omdat deze omgeving geen Windows-runner is.
+
+De Windows EXE kan lokaal met build_windows_exe.bat of via GitHub Actions worden gebouwd.

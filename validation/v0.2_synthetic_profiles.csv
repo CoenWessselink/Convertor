@@ -1,0 +1,3 @@
+source,output,profile,type,confidence,volume_delta_percent,test_basis
+U100x50x8.5x6.step,U100x50x8.5x6.nc1,U100x50x8.5x6,U,1.0,1.6250268977802554e-12,synthetic profile generated from the same profile definition
+CHS88.9x5.step,CHS88.9x5.nc1,CHS88.9x5,RO,1.0,-2.226018892938404e-12,synthetic profile generated from the same profile definition

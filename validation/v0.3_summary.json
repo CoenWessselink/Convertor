@@ -1,0 +1,11 @@
+{
+  "version": "0.3.0",
+  "nc1_to_step_ok": 24,
+  "nc1_to_step_fail": 0,
+  "step_to_nc1_ok": 19,
+  "step_to_nc1_fail": 0,
+  "profiles_loaded": 1718,
+  "excel_items": 3,
+  "excel_path": "validation_v03_run/excel/v0.3_quantity_export_sample.xlsx",
+  "ifc_runtime_available": false
+}

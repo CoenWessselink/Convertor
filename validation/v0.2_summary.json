@@ -1,0 +1,30 @@
+{
+  "forward_count": 24,
+  "forward_with_reference": 19,
+  "forward_max_abs_reference_volume_delta_percent": 0.008683554807227746,
+  "reverse_count": 19,
+  "reverse_plate_count": 13,
+  "reverse_profile_count": 6,
+  "reverse_max_abs_volume_delta_percent": 0.0006572700005487301,
+  "reverse_max_abs_area_delta_percent": 0.0007411418623992106,
+  "extra_count": 5,
+  "extra_max_abs_volume_delta_percent": 2.026125132875293e-12,
+  "profiles": [
+    "D20",
+    "HEA140",
+    "HEA160",
+    "K60/3",
+    "L100/10",
+    "L60/6",
+    "PL10*115.25",
+    "PL10*122.99",
+    "PL10*130",
+    "PL10*180.01",
+    "PL10*220.01",
+    "PL10*95.75",
+    "PL15*140",
+    "PL15*140.01",
+    "PL15*142",
+    "PL15*160"
+  ]
+}

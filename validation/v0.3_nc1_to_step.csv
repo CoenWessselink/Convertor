@@ -1,0 +1,25 @@
+file,status,profile,warnings
+P1793.nc1,OK,PL10*115.3,
+P1796.nc1,OK,PL10*95.8,
+P1803.nc1,OK,STRIP10*220,
+P1807.nc1,OK,STRIP10*180,
+P1811.nc1,OK,STRIP10*130,
+P1821.nc1,OK,STRIP10*130,
+P1823.nc1,OK,STRIP10*130,
+P1881.nc1,OK,STRIP15*160,
+P1999.nc1,OK,STRIP15*140,
+P2162.nc1,OK,STRIP15*140,
+P2165.nc1,OK,STRIP15*160,
+P2172.nc1,OK,STRIP15*140,
+P2174.nc1,OK,STRIP15*160,
+Pr1293.nc1,OK,HEA160,AK-contour v bevat boogradii/klinkinformatie; prototype benadert deze lokaal met rechte segmenten
+Pr1298.nc1,OK,HEA140,AK-contour v bevat boogradii/klinkinformatie; prototype benadert deze lokaal met rechte segmenten
+Pr1301.nc1,OK,HEA140,AK-contour v bevat boogradii/klinkinformatie; prototype benadert deze lokaal met rechte segmenten
+Pr1343.nc1,OK,HEA140,
+Pr1527.nc1,OK,D20,
+Pr1528.nc1,OK,K60/3,Koker opgebouwd uit nominale maten en radius; controleer fabrikant-specifieke hoekgeometrie.
+Pr1657.nc1,OK,L60/6,"L-profiel opgebouwd uit nominale benen, diktes en wortelradius; niet-opgegeven teenradii kunnen afwijken"
+Pr1658.nc1,OK,L60/6,"L-profiel opgebouwd uit nominale benen, diktes en wortelradius; niet-opgegeven teenradii kunnen afwijken"
+Pr1706.nc1,OK,L100/10,"L-profiel opgebouwd uit nominale benen, diktes en wortelradius; niet-opgegeven teenradii kunnen afwijken"
+Pr1707.nc1,OK,L100/10,"L-profiel opgebouwd uit nominale benen, diktes en wortelradius; niet-opgegeven teenradii kunnen afwijken"
+Pr1738.nc1,OK,HEA160,

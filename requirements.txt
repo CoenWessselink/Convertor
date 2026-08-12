@@ -1,0 +1,5 @@
+cadquery==2.8.0
+matplotlib==3.10.8
+numpy>=2.0,<3
+XlsxWriter==3.2.9
+ifcopenshell==0.8.5

@@ -1,0 +1,85 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - cloudflare
+    paths:
+      - "*.py"
+      - "profiles.json"
+      - "materials.json"
+      - "requirements.txt"
+      - "tests/**"
+      - "build_windows_exe.bat"
+      - ".github/workflows/build-windows-exe.yml"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: "x64"
+          cache: "pip"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Compile and run regressions
+        shell: pwsh
+        run: |
+          python -m py_compile *.py tests/regression_smoke.py
+          python tests/regression_smoke.py
+          python cli.py --help
+          python cli.py nc1-to-step --help
+          python cli.py step-to-nc1 --help
+          python cli.py ifc-to-dstv --help
+          python cli.py excel --help
+
+      - name: GUI import smoke
+        shell: pwsh
+        run: |
+          python -c "from app import ConverterApp; app=ConverterApp(); app.update_idletasks(); app.destroy(); print('GUI smoke OK')"
+
+      - name: Build portable Windows application
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --windowed --onedir `
+            --name NC1_STEP_Converter `
+            --collect-all cadquery `
+            --collect-all OCP `
+            --collect-all matplotlib `
+            --collect-all ifcopenshell `
+            --collect-all xlsxwriter `
+            --hidden-import matplotlib.backends.backend_tkagg `
+            --hidden-import ifcopenshell.api `
+            --hidden-import ifcopenshell.geom `
+            --add-data "profiles.json;." `
+            --add-data "materials.json;." `
+            app.py
+          Copy-Item README.md dist/NC1_STEP_Converter/README.md
+          Copy-Item VERSIE_EN_TESTSTATUS.txt dist/NC1_STEP_Converter/VERSIE_EN_TESTSTATUS.txt
+          if (Test-Path CHANGELOG.md) { Copy-Item CHANGELOG.md dist/NC1_STEP_Converter/CHANGELOG.md }
+          Compress-Archive -Path dist/NC1_STEP_Converter -DestinationPath NC1_STEP_Converter_Windows_x64.zip -Force
+
+      - name: Upload Windows EXE package
+        uses: actions/upload-artifact@v4
+        with:
+          name: NC1_STEP_Converter_Windows_x64
+          path: NC1_STEP_Converter_Windows_x64.zip
+          if-no-files-found: error
+          retention-days: 30
