@@ -1,0 +1,16 @@
+{
+  "template_id": "default",
+  "company_name": "",
+  "company_subtitle": "",
+  "logo_path": "",
+  "default_subject": "ONDERDEELTEKENING",
+  "default_status": "CONCEPT",
+  "drawn_by": "",
+  "checked_by": "",
+  "general_notes": [],
+  "projection_method": "first_angle",
+  "decimal_precision": 1,
+  "line_weight_mm": 0.25,
+  "show_hidden_lines": true,
+  "include_isometric": true
+}

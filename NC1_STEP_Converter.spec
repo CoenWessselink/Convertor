@@ -1,0 +1,96 @@
+# -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
+from PyInstaller.utils.hooks import collect_all, collect_submodules
+
+ROOT = Path(SPECPATH)
+
+packages = ["cadquery", "OCP", "matplotlib", "ifcopenshell", "xlsxwriter", "pymupdf"]
+binaries = []
+datas = [
+    (str(ROOT / "profiles.json"), "."),
+    (str(ROOT / "materials.json"), "."),
+    (str(ROOT / "templates"), "templates"),
+    (str(ROOT / "README.md"), "."),
+    (str(ROOT / "CHANGELOG.md"), "."),
+    (str(ROOT / "VERSIE_EN_TESTSTATUS.txt"), "."),
+]
+hiddenimports = [
+    "fitz",
+    "matplotlib.backends.backend_tkagg",
+    "ifcopenshell.api",
+    "ifcopenshell.geom",
+    "ifcopenshell.util.element",
+    "ifcopenshell.util.unit",
+]
+for package in packages:
+    package_datas, package_binaries, package_hidden = collect_all(package)
+    datas += package_datas
+    binaries += package_binaries
+    hiddenimports += package_hidden
+hiddenimports += collect_submodules("ifcopenshell.api")
+
+common = dict(
+    pathex=[str(ROOT)],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=sorted(set(hiddenimports)),
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+    optimize=1,
+)
+
+a_gui = Analysis([str(ROOT / "app.py")], **common)
+pyz_gui = PYZ(a_gui.pure)
+exe_gui = EXE(
+    pyz_gui,
+    a_gui.scripts,
+    [],
+    exclude_binaries=True,
+    name="NC1_STEP_Converter",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
+a_cli = Analysis([str(ROOT / "cli.py")], **common)
+pyz_cli = PYZ(a_cli.pure)
+exe_cli = EXE(
+    pyz_cli,
+    a_cli.scripts,
+    [],
+    exclude_binaries=True,
+    name="NC1_STEP_Converter_CLI",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe_gui,
+    exe_cli,
+    a_gui.binaries,
+    a_gui.datas,
+    a_cli.binaries,
+    a_cli.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="NC1_STEP_Converter",
+)

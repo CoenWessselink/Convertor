@@ -8,7 +8,7 @@ worden geraden.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 import base64
 import copy
@@ -18,7 +18,7 @@ import re
 import zlib
 from typing import Any, Iterable
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 PAYLOAD_CODEC = "zlib+base64+json"
 STEP_MARKER = "NC1_STEP_CONVERTER_PAYLOAD_V1"
 NC1_MARKER = "NC1_STEP_CONVERTER_PAYLOAD_V1"
@@ -63,6 +63,17 @@ class CanonicalHeader:
     web_miter_rear: float = 0.0
     flange_miter_front: float = 0.0
     flange_miter_rear: float = 0.0
+    mark: str = ""
+    project_number: str = ""
+    assembly_id: str = ""
+    part_name: str = ""
+    coating: str = ""
+    material_grade: str = ""
+    density_kg_m3: float = 7850.0
+    profile_category: str = ""
+    profile_series: str = ""
+    profile_standard: str = ""
+    thickness: float = 0.0
     info: list[str] = field(default_factory=list)
 
 
@@ -92,6 +103,57 @@ class CanonicalHole:
     datum: str = ""
     operation: str = ""
     depth: float = 0.0
+
+
+@dataclass
+class CanonicalFieldValue:
+    """Waarde met herkomst, confidence en menselijke reviewstatus."""
+
+    value: Any = None
+    source_page: int | None = None
+    source_bbox: list[float] = field(default_factory=list)
+    method: str = ""
+    confidence: float = 0.0
+    status: str = "automatic"
+    confirmed_by: str = ""
+    evidence: str = ""
+
+
+@dataclass
+class CanonicalQuestion:
+    question_id: str
+    field_name: str
+    message: str
+    options: list[str] = field(default_factory=list)
+    blocking: bool = True
+    status: str = "open"
+    answer: str = ""
+
+
+@dataclass
+class CanonicalDrawing:
+    sheet_format: str = "A4"
+    orientation: str = "landscape"
+    scale: str = "auto"
+    status: str = "draft"
+    template_id: str = "default"
+    title_block: dict[str, Any] = field(default_factory=dict)
+    views: list[dict[str, Any]] = field(default_factory=list)
+    dimensions: list[dict[str, Any]] = field(default_factory=list)
+    annotations: list[dict[str, Any]] = field(default_factory=list)
+    visible_drawing_sha256: str = ""
+
+
+@dataclass
+class CanonicalValidation:
+    errors: list[str] = field(default_factory=list)
+    unresolved_questions: list[CanonicalQuestion] = field(default_factory=list)
+    geometric_comparison: dict[str, Any] = field(default_factory=dict)
+    feature_comparison: dict[str, Any] = field(default_factory=dict)
+    export_status: str = "draft"
+    production_export_allowed: bool = True
+    released_by: str = ""
+    released_at: str = ""
 
 
 @dataclass
@@ -133,11 +195,13 @@ class CanonicalAttachment:
 @dataclass
 class CanonicalPart:
     schema_version: str = SCHEMA_VERSION
-    converter_version: str = "0.4.0"
+    converter_version: str = "0.5.0"
     source_format: str = ""
     source_file: str = ""
     source_sha256: str = ""
     part_id: str = ""
+    imported_at: str = ""
+    import_method: str = ""
     header: CanonicalHeader = field(default_factory=CanonicalHeader)
     contours: list[CanonicalContour] = field(default_factory=list)
     holes: list[CanonicalHole] = field(default_factory=list)
@@ -154,6 +218,10 @@ class CanonicalPart:
     geometry: dict[str, Any] = field(default_factory=dict)
     recognition: dict[str, Any] = field(default_factory=dict)
     properties: dict[str, Any] = field(default_factory=dict)
+    field_values: dict[str, CanonicalFieldValue] = field(default_factory=dict)
+    drawing: CanonicalDrawing = field(default_factory=CanonicalDrawing)
+    validation: CanonicalValidation = field(default_factory=CanonicalValidation)
+    audit_log: list[dict[str, Any]] = field(default_factory=list)
     attachments: dict[str, CanonicalAttachment] = field(default_factory=dict)
 
     @property
@@ -194,7 +262,12 @@ class CanonicalPart:
             raise CanonicalPayloadError(
                 f"Niet-ondersteunde canonieke schema-versie {version!r}; verwacht {SCHEMA_VERSION}"
             )
-        header = CanonicalHeader(**dict(data.get("header") or {}))
+
+        def filtered(dataclass_type: type, values: dict[str, Any]) -> dict[str, Any]:
+            allowed = {item.name for item in fields(dataclass_type)}
+            return {key: value for key, value in values.items() if key in allowed}
+
+        header = CanonicalHeader(**filtered(CanonicalHeader, dict(data.get("header") or {})))
         contours: list[CanonicalContour] = []
         for contour_data in data.get("contours") or []:
             points = []
@@ -210,7 +283,21 @@ class CanonicalPart:
                     points=points,
                 )
             )
-        holes = [CanonicalHole(**dict(item)) for item in data.get("holes") or []]
+        holes = [CanonicalHole(**filtered(CanonicalHole, dict(item))) for item in data.get("holes") or []]
+        field_values = {
+            str(key): CanonicalFieldValue(**filtered(CanonicalFieldValue, dict(value)))
+            for key, value in (data.get("field_values") or {}).items()
+        }
+        drawing = CanonicalDrawing(**filtered(CanonicalDrawing, dict(data.get("drawing") or {})))
+        validation_data = dict(data.get("validation") or {})
+        questions = [
+            CanonicalQuestion(**filtered(CanonicalQuestion, dict(item)))
+            for item in validation_data.pop("unresolved_questions", []) or []
+        ]
+        validation = CanonicalValidation(
+            unresolved_questions=questions,
+            **filtered(CanonicalValidation, validation_data),
+        )
         attachments = {
             str(key): CanonicalAttachment(**dict(value))
             for key, value in (data.get("attachments") or {}).items()
@@ -222,6 +309,8 @@ class CanonicalPart:
             source_file=str(data.get("source_file", "")),
             source_sha256=str(data.get("source_sha256", "")),
             part_id=str(data.get("part_id", "")),
+            imported_at=str(data.get("imported_at", "")),
+            import_method=str(data.get("import_method", "")),
             header=header,
             contours=contours,
             holes=holes,
@@ -231,6 +320,10 @@ class CanonicalPart:
             geometry=dict(data.get("geometry") or {}),
             recognition=dict(data.get("recognition") or {}),
             properties=dict(data.get("properties") or {}),
+            field_values=field_values,
+            drawing=drawing,
+            validation=validation,
+            audit_log=[dict(item) for item in data.get("audit_log") or []],
             attachments=attachments,
         )
         part.validate()
@@ -241,6 +334,18 @@ class CanonicalPart:
             raise CanonicalPayloadError(f"Niet-ondersteunde schema-versie {self.schema_version}")
         if self.source_sha256 and len(self.source_sha256) != 64:
             raise CanonicalPayloadError("source_sha256 heeft niet de verwachte lengte")
+        for name, field_value in self.field_values.items():
+            if not 0.0 <= float(field_value.confidence) <= 1.0:
+                raise CanonicalPayloadError(f"Confidence van veld {name!r} ligt buiten 0..1")
+        blocking_open = [
+            question.question_id
+            for question in self.validation.unresolved_questions
+            if question.blocking and question.status.lower() not in {"answered", "resolved", "dismissed"}
+        ]
+        if self.validation.production_export_allowed and (self.validation.errors or blocking_open):
+            raise CanonicalPayloadError(
+                "Productie-export staat aan terwijl blokkerende fouten of vragen openstaan"
+            )
         for attachment in self.attachments.values():
             attachment.bytes()
         if self.source_sha256:
@@ -278,11 +383,53 @@ class PayloadEnvelope:
             raise CanonicalPayloadError("Payload-envelop is geen geldige JSON") from exc
 
 
-def encode_part(part: CanonicalPart) -> str:
+def canonical_json_bytes(part: CanonicalPart) -> bytes:
+    """Deterministische JSON-representatie, inclusief gecontroleerde bijlagen."""
+
     part.validate()
-    raw = json.dumps(part.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
+    return json.dumps(
+        part.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def canonical_sha256(part: CanonicalPart) -> str:
+    return sha256_bytes(canonical_json_bytes(part))
+
+
+def geometry_sha256(part: CanonicalPart) -> str:
+    """Hash alleen productiebepalende geometrie en lokale assen."""
+
+    payload = {
+        "profile": part.header.profile,
+        "profile_type": part.header.profile_type,
+        "length": part.header.length,
+        "dimensions": [
+            part.header.dim1, part.header.dim2, part.header.dim3, part.header.dim4,
+            part.header.radius, part.header.thickness,
+        ],
+        "coordinate_frame": part.coordinate_frame,
+        "contours": [asdict(item) for item in part.contours],
+        "holes": [asdict(item) for item in part.holes],
+        "geometry": part.geometry,
+    }
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return sha256_bytes(raw)
+
+
+def production_export_allowed(part: CanonicalPart) -> tuple[bool, list[str]]:
+    reasons = list(part.validation.errors)
+    reasons.extend(
+        question.message
+        for question in part.validation.unresolved_questions
+        if question.blocking and question.status.lower() not in {"answered", "resolved", "dismissed"}
     )
+    if not part.validation.production_export_allowed:
+        reasons.append("Canoniek model is nog niet vrijgegeven voor productie-export")
+    return (not reasons), reasons
+
+
+def encode_part(part: CanonicalPart) -> str:
+    raw = canonical_json_bytes(part)
     compressed = zlib.compress(raw, level=9)
     envelope = PayloadEnvelope(
         schema_version=SCHEMA_VERSION,
@@ -564,7 +711,7 @@ def canonical_from_nc1_part(
     part: Any,
     *,
     source_bytes: bytes | None = None,
-    converter_version: str = "0.4.0",
+    converter_version: str = "0.5.0",
     geometry: dict[str, Any] | None = None,
     recognition: dict[str, Any] | None = None,
 ) -> CanonicalPart:
@@ -609,6 +756,7 @@ def canonical_from_nc1_part(
         source_file=source.name,
         source_sha256=sha256_bytes(data),
         part_id=part.header.part_number or source.stem,
+        import_method="exact",
         header=header,
         contours=contours,
         holes=holes,
@@ -616,6 +764,21 @@ def canonical_from_nc1_part(
         warnings=list(part.warnings),
         geometry=dict(geometry or {}),
         recognition=dict(recognition or {"method": "native NC1 parser", "confidence": 1.0}),
+        field_values={
+            "position": CanonicalFieldValue(
+                value=header.position_number, method="native NC1 parser", confidence=1.0
+            ),
+            "profile": CanonicalFieldValue(
+                value=header.profile, method="native NC1 parser", confidence=1.0
+            ),
+            "material": CanonicalFieldValue(
+                value=header.material, method="native NC1 parser", confidence=1.0
+            ),
+            "quantity": CanonicalFieldValue(
+                value=header.quantity, method="native NC1 parser", confidence=1.0
+            ),
+        },
+        validation=CanonicalValidation(export_status="validated", production_export_allowed=True),
     )
     canonical.add_attachment("nc1", source.name, "application/x-dstv", data)
     return canonical

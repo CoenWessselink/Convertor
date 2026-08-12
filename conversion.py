@@ -28,7 +28,7 @@ from canonical_model import (
     sha256_bytes,
 )
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 
 # ---------------------------------------------------------------------------
@@ -788,6 +788,7 @@ def step_to_nc1(
     preferred_profile: str = "",
     tolerance_mm: float = 1.0,
     strict_validation: bool = True,
+    embed_converter_payload: bool = False,
 ) -> StepToNC1Result:
     """Converteer STEP naar NC1 met lossless payload-prioriteit.
 
@@ -808,9 +809,10 @@ def step_to_nc1(
         nc1_bytes = payload.attachment_bytes("nc1")
         if nc1_bytes:
             target.write_bytes(nc1_bytes)
-            # Houd ook de oorspronkelijke STEP-bijlage beschikbaar voor een
-            # volgende NC1→STEP-conversie. De regels zijn geldige DSTV-comments.
-            embed_part_in_nc1(target, payload)
+            # Productie-NC1 blijft standaard schoon. Alleen interne transport-
+            # routes mogen expliciet een converterpayload in DSTV-commentaar zetten.
+            if embed_converter_payload:
+                embed_part_in_nc1(target, payload)
             try:
                 reconstructed_part = core.parse_nc1(target)
                 reconstructed_shape = build_shape(reconstructed_part).val()
@@ -940,7 +942,8 @@ def step_to_nc1(
     canonical.add_attachment("step", source.name, "model/step", source.read_bytes())
     # Vervang de NC1-bijlage expliciet door de nog payloadvrije productie-uitvoer.
     canonical.add_attachment("nc1", target.name, "application/x-dstv", generated_nc1)
-    embed_part_in_nc1(target, canonical)
+    if embed_converter_payload:
+        embed_part_in_nc1(target, canonical)
 
     return StepToNC1Result(
         source,

@@ -1,0 +1,34 @@
+{
+  "template_id": "default-company-v1",
+  "company_name": "",
+  "company_subtitle": "",
+  "logo_path": "",
+  "sheet_format": "A4",
+  "orientation": "landscape",
+  "projection_method": "first-angle",
+  "decimal_places": 1,
+  "font_name": "helv",
+  "title_font_name": "helv",
+  "margin_mm": 8.0,
+  "title_block_height_mm": 42.0,
+  "parts_table_height_mm": 18.0,
+  "line_width_mm": 0.25,
+  "thin_line_width_mm": 0.13,
+  "dimension_text_height_mm": 3.0,
+  "normal_text_height_mm": 2.7,
+  "title_text_height_mm": 4.0,
+  "default_status": "CONCEPT",
+  "default_subject": "ONDERDEELTEKENING",
+  "default_notes": [
+    "Maten in millimeters, tenzij anders vermeld.",
+    "Niet van de tekening meten voor productie."
+  ],
+  "title_block_defaults": {
+    "project": "",
+    "work": "",
+    "client": "",
+    "drawn_by": "",
+    "checked_by": "",
+    "revision": ""
+  }
+}
