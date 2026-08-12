@@ -6,6 +6,8 @@ import json
 import sys
 from typing import Any, Callable
 
+from cws_convertor.product import APP_NAME, APP_VERSION
+
 from ai_support import AISettings
 from conversion import __version__, convert_nc1_to_step, step_to_nc1
 from ifc_support import dstv_to_ifc, ifc_to_dstv, ifc_to_step, step_to_ifc
@@ -25,6 +27,14 @@ from pdf_support import (
 )
 from profile_database import ProfileDatabase
 from quantities import analyze_files, export_excel
+from cws_convertor.errors import CWSError
+from cws_convertor.project import (
+    ProjectPackageError,
+    ProjectService,
+    ProjectSession,
+    inspect_model_file,
+    write_baseline_report,
+)
 
 
 EXIT_OK = 0
@@ -130,11 +140,21 @@ def _result_entry(source: Path, *, status: str, outputs: list[Path] | None = Non
     }
 
 
+def _exception_payload(exc: Exception) -> dict[str, Any]:
+    if isinstance(exc, CWSError):
+        return exc.to_dict()
+    return {
+        "code": "CWS-9001",
+        "message": str(exc),
+        "type": type(exc).__name__,
+    }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="NC1/DSTV ↔ STEP ↔ IFC ↔ technische PDF Converter + hoeveelheden/Excel"
+        description=f"{APP_NAME}: NC1/DSTV ↔ STEP ↔ IFC ↔ technische PDF + projecten/productie"
     )
-    parser.add_argument("--version", action="version", version=__version__)
+    parser.add_argument("--version", action="version", version=f"{APP_NAME} {APP_VERSION}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("nc1-to-step", help="Converteer .nc/.nc1 naar STEP")
@@ -229,6 +249,78 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("inputs", nargs="+", help="IFC/STEP-bestanden of mappen")
     p.add_argument("--material", default="S355JR", help="Fallback materiaal")
     _report_arg(p)
+
+    p = sub.add_parser("inspect-model", help="Maak een deterministische IFC/STEP-importnulmeting")
+    p.add_argument("inputs", nargs="+", help="IFC/STEP-bestanden of mappen")
+    p.add_argument("--geometry", action="store_true", help="Lees STEP ook als CAD-solid voor volume, oppervlak en bbox")
+    p.add_argument("--json-report", required=True, help="Uitvoerbestand voor de complete JSON-nulmeting")
+
+    p = sub.add_parser(
+        "project-new",
+        aliases=["project-create"],
+        help="Maak een nieuw draagbaar CWS Convertor-project",
+    )
+    p.add_argument("project", help="Doelbestand; .cwscproj wordt zo nodig toegevoegd")
+    p.add_argument("--name", required=True, help="Projectnaam")
+    p.add_argument("--customer", "--client", dest="customer", default="", help="Klant/opdrachtgever")
+    p.add_argument("--order", default="", help="Order- of werknummer")
+    p.add_argument("--description", default="", help="Projectomschrijving")
+    p.add_argument("--phase", default="", help="Projectfase")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    _report_arg(p)
+
+    p = sub.add_parser("project-info", help="Toon projectmetadata, statussen en aantallen")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--json", action="store_true", help="Schrijf de informatie als JSON naar stdout")
+    _report_arg(p)
+
+    p = sub.add_parser(
+        "project-import-baseline",
+        aliases=["project-add-source"],
+        help="Registreer IFC/STEP-bronnen en voer de veilige importnulmeting uit",
+    )
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("inputs", nargs="+", help="IFC/STEP-bestanden of mappen")
+    p.add_argument("--geometry", action="store_true", help="Lees STEP ook als CAD-solid voor geometrienulmeting")
+    p.add_argument("--no-embed", action="store_true", help="Sla hash/pad op zonder bronbestand in te sluiten")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--baseline-report", default="", help="Optioneel afzonderlijk JSON-rapport")
+    _report_arg(p)
+
+    p = sub.add_parser("project-sources", help="Toon alle bronbestanden en importstrategieën")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--json", action="store_true", help="Schrijf de lijst als JSON naar stdout")
+    _report_arg(p)
+
+    p = sub.add_parser("project-verify", help="Controleer ZIP, hashes, SQLite en Project Model")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--json", action="store_true", help="Schrijf het verificatierapport als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser("project-export-json", help="Exporteer het canonieke Project Model als JSON")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("-o", "--output", required=True, help="Uitvoerbestand (.json)")
+    _report_arg(p)
+
+    p = sub.add_parser("project-extract-source", help="Pak een ingesloten IFC/STEP-bron veilig uit")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("source_id", help="Interne bron-ID uit project-sources")
+    p.add_argument("-o", "--output", required=True, help="Uitvoerbestand of uitvoermap")
+    p.add_argument("--overwrite", action="store_true")
+    _report_arg(p)
+
+    p = sub.add_parser("project-recover", help="Herstel de nieuwste geldige autosave")
+    p.add_argument("project", help="Hoofdproject waarvoor een autosave bestaat")
+    p.add_argument("-o", "--output", default="", help="Optioneel ander herstelbestand")
+    _report_arg(p)
+
+    p = sub.add_parser(
+        "project-migrate",
+        help="Schrijf een oud project expliciet als nieuw schema-2 .cwscproj-bestand",
+    )
+    p.add_argument("project", help="Oud of read-only .cwscproj-projectbestand")
+    p.add_argument("-o", "--output", required=True, help="Nieuw doelbestand; bron wordt niet gewijzigd")
+    _report_arg(p)
     return parser
 
 
@@ -239,6 +331,336 @@ def main(argv: list[str] | None = None) -> int:
     review_required = 0
     entries: list[dict[str, Any]] = []
     files: list[Path] = []
+
+    # Project commands use exactly the same Project Model and package service
+    # as the GUI.  Baseline registration is atomic: a failing source leaves the
+    # existing .cwscproj untouched.
+    service = ProjectService()
+
+    if args.command in {"project-new", "project-create"}:
+        try:
+            package = service.create_project(
+                args.project,
+                project_name=args.name,
+                description=args.description,
+                customer=args.customer,
+                order_number=args.order,
+                project_phase=args.phase,
+                created_by=args.user or "cli",
+            )
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "project_file": str(package.path),
+                "project": package.project.summary(),
+                "manifest": package.manifest,
+            }
+            print(f"OK   Nieuw project: {package.path}")
+            print(f"     Project-ID: {package.project.project_id}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT project maken: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-info":
+        try:
+            info = service.project_info(args.project)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                **info,
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                summary = info["summary"]
+                counts = summary["entity_counts"]
+                print(f"{APP_NAME} project: {summary['project_name']}")
+                print(f"Bestand: {info['path']}")
+                print(
+                    f"Status: {summary['status']} | bronnen: {summary['source_count']} | "
+                    f"assemblies: {counts['assembly']} | onderdelen: {counts['part']}"
+                )
+                print(f"Blokkerende controles: {summary['blocking_issue_count']}")
+                print(f"Projecthash: {summary['semantic_sha256']}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT project lezen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-sources":
+        try:
+            info = service.project_info(args.project)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "project_file": info["path"],
+                "sources": info["sources"],
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                for item in info["sources"]:
+                    gate = "VRIJ" if item["production_export_allowed"] else "GEBLOKKEERD"
+                    print(
+                        f"{item['source_id']}\t{item['source_format']}\t"
+                        f"{item['import_strategy']}\t{gate}\t{item['file_name']}\t{item['sha256']}"
+                    )
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT projectbronnen lezen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-verify":
+        try:
+            verification = service.verify_project(args.project)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "verification": verification,
+                "checks": {
+                    "zip_crc": True,
+                    "manifest_entries_sha256": True,
+                    "sqlite_integrity": True,
+                    "snapshot_sha256": True,
+                    "project_model": True,
+                    "entity_references": True,
+                },
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"GELDIG {verification['path']}")
+                print(f"Projecthash: {verification['project']['semantic_sha256']}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"ONGELDIG project: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-export-json":
+        try:
+            with ProjectSession.open(args.project, read_only=True) as session:
+                target = session.export_json(args.output)
+                summary = session.project.summary()
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "output": str(target),
+                "project": summary,
+            }
+            print(f"OK   Project Model JSON: {target}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT Project Model exporteren: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-extract-source":
+        try:
+            with ProjectSession.open(args.project, read_only=True) as session:
+                record = session.project.sources.get(args.source_id)
+                if record is None:
+                    raise ProjectPackageError(f"Onbekende bron-ID {args.source_id}")
+                output = Path(args.output)
+                target = output / record.file_name if output.is_dir() or not output.suffix else output
+                if target.exists() and not args.overwrite:
+                    raise ProjectPackageError(f"Doelbestand bestaat al: {target}")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if session.package is None:
+                    raise ProjectPackageError("Projectpakket is niet geopend")
+                extracted = session.package.extract_source(args.source_id, target)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "output": str(extracted),
+            }
+            print(f"OK   Bron uitgepakt: {extracted}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT bron uitpakken: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-recover":
+        try:
+            target = service.recover_autosave(args.project, args.output or None)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "output": str(target),
+            }
+            print(f"OK   Project hersteld: {target}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT autosave herstellen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-migrate":
+        try:
+            package = service.migrate_project(args.project, args.output)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "source": str(args.project),
+                "output": str(package.path),
+                "project": package.project.summary(),
+                "manifest": package.manifest,
+            }
+            print(f"OK   Project gemigreerd: {package.path}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT project migreren: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "inspect-model":
+        files = list(_iter_inputs(args.inputs, {".ifc", ".step", ".stp"}))
+        if not files:
+            print("Geen geschikte IFC/STEP-bestanden gevonden.", file=sys.stderr)
+            return EXIT_NO_INPUT
+        analyses = []
+        for source in files:
+            try:
+                analysis = inspect_model_file(source, include_geometry=args.geometry)
+                analyses.append(analysis)
+                print(
+                    f"OK   {source.name} | {analysis.import_strategy.value} | "
+                    f"producten {analysis.product_count} | solids {analysis.solid_count}"
+                )
+            except Exception as exc:
+                failures += 1
+                print(f"FOUT {source.name}: {exc}", file=sys.stderr)
+        if failures:
+            return EXIT_FAILED
+        report = write_baseline_report(analyses, args.json_report)
+        print(f"RAPPORT {report}")
+        return EXIT_OK
+
+    if args.command in {"project-import-baseline", "project-add-source"}:
+        files = list(_iter_inputs(args.inputs, {".ifc", ".step", ".stp"}))
+        if not files:
+            print("Geen geschikte IFC/STEP-bestanden gevonden.", file=sys.stderr)
+            return EXIT_NO_INPUT
+        try:
+            results = service.register_sources(
+                args.project,
+                files,
+                embed_sources=not args.no_embed,
+                include_step_geometry=args.geometry,
+                user=args.user or "cli",
+            )
+            for result in results:
+                analysis = result.analysis
+                print(
+                    f"OK   {analysis.file_name} | {analysis.import_strategy.value} | "
+                    f"producten {analysis.product_count} | solids {analysis.solid_count}"
+                )
+            report_path = ""
+            if args.baseline_report:
+                report_path = str(
+                    write_baseline_report(
+                        [result.analysis for result in results],
+                        args.baseline_report,
+                    )
+                )
+                print(f"RAPPORT {report_path}")
+            info = service.project_info(args.project)
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "project_file": info["path"],
+                "project": info["summary"],
+                "production_export_allowed": False,
+                "semantic_import_pending": True,
+                "analyses": [result.to_dict() for result in results],
+                "baseline_report": report_path,
+            }
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(
+                "FOUT projectimport; bestaand project is niet gedeeltelijk opgeslagen: "
+                f"{exc}",
+                file=sys.stderr,
+            )
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
 
     if args.command == "nc1-to-step":
         output = Path(args.output); output.mkdir(parents=True, exist_ok=True)

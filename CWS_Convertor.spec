@@ -13,6 +13,11 @@ datas = [
     (str(ROOT / "README.md"), "."),
     (str(ROOT / "CHANGELOG.md"), "."),
     (str(ROOT / "VERSIE_EN_TESTSTATUS.txt"), "."),
+    (str(ROOT / "WINDOWS_EXE_RELEASE.md"), "."),
+    (str(ROOT / "SBOM.spdx.json"), "."),
+    (str(ROOT / "requirements-runtime.lock.txt"), "."),
+    (str(ROOT / "requirements-build.lock.txt"), "."),
+    (str(ROOT / "docs"), "docs"),
 ]
 hiddenimports = [
     "fitz",
@@ -58,7 +63,7 @@ exe_gui = EXE(
     a_gui.scripts,
     [],
     exclude_binaries=True,
-    name="NC1_STEP_Converter",
+    name="CWS_Convertor",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -78,7 +83,7 @@ exe_cli = EXE(
     a_cli.scripts,
     [],
     exclude_binaries=True,
-    name="NC1_STEP_Converter_CLI",
+    name="CWS_Convertor_CLI",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -101,5 +106,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="NC1_STEP_Converter",
+    name="CWS_Convertor",
 )

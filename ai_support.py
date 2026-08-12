@@ -22,6 +22,8 @@ import urllib.request
 import uuid
 from typing import Any, Callable, Iterable, Protocol
 
+from cws_convertor.product import APP_VERSION, USER_AGENT
+
 
 OPENAI_RESPONSES_ENDPOINT = "https://api.openai.com/v1/responses"
 DEFAULT_OPENAI_MODEL = "gpt-5.6"
@@ -740,7 +742,7 @@ class OpenAIResponsesProvider:
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
-                "User-Agent": "NC1-STEP-IFC-Converter/0.5",
+                "User-Agent": USER_AGENT,
                 "X-Client-Request-Id": client_request_id,
             },
         )

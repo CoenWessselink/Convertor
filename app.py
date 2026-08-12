@@ -11,6 +11,8 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from cws_branding import DEFAULT_OUTPUT_DIRECTORY, PRODUCT_NAME
+
 from conversion import (
     __version__,
     convert_file,
@@ -35,6 +37,7 @@ from pdf_support import (
     write_analysis_report,
 )
 from profile_database import ProfileDatabase
+from project_tab import CWSProjectTab
 from quantities import QuantityAnalysis, analyze_files, export_excel
 from review_dialog import PDFReviewDialog
 from visualization import ComparisonViewer
@@ -74,12 +77,13 @@ class ComparisonRecord:
 class ConverterApp(tk.Tk):
     def __init__(self, initial_files=()) -> None:
         super().__init__()
-        self.title(f"NC1 ↔ STEP / IFC Converter v{__version__}")
+        self.title(f"{PRODUCT_NAME} v{__version__}")
         self.minsize(1220, 760)
         self.geometry("1500x900")
+        self._configure_style()
 
         self.direction = tk.StringVar(value="nc1-to-step")
-        self.output_directory = tk.StringVar(value=str(Path.home() / "NC1_STEP_Output"))
+        self.output_directory = tk.StringVar(value=str(Path.home() / DEFAULT_OUTPUT_DIRECTORY))
         self.material = tk.StringVar(value="S355JR")
         self.order_number = tk.StringVar(value="STEP")
         self.profile_choice = tk.StringVar(value="Automatisch")
@@ -120,16 +124,47 @@ class ConverterApp(tk.Tk):
             self.after_idle(lambda: self._open_initial_files(startup_paths))
 
     # ------------------------------------------------------------------ UI
+    def _configure_style(self) -> None:
+        style = ttk.Style(self)
+        try:
+            style.theme_use("clam")
+        except tk.TclError:
+            pass
+        style.configure(".", font=("Segoe UI", 9))
+        style.configure("TNotebook", background="#eaf0f5", borderwidth=0)
+        style.configure("TNotebook.Tab", padding=(14, 8), font=("Segoe UI", 9, "bold"))
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", "#ffffff"), ("active", "#dbe7f2")],
+            foreground=[("selected", "#122033")],
+        )
+        style.configure(
+            "CWS.Primary.TButton",
+            background="#2563a6",
+            foreground="#ffffff",
+            padding=(12, 7),
+            font=("Segoe UI", 9, "bold"),
+        )
+        style.map(
+            "CWS.Primary.TButton",
+            background=[("active", "#1f5187"), ("disabled", "#9caec0")],
+            foreground=[("disabled", "#edf2f7")],
+        )
+        style.configure("Treeview", rowheight=25, fieldbackground="#ffffff", background="#ffffff")
+        style.configure("Treeview.Heading", font=("Segoe UI", 9, "bold"), padding=(6, 6))
+
     def _build_ui(self) -> None:
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=8, pady=8)
 
         self.converter_tab = ttk.Frame(self.notebook, padding=12)
+        self.project_tab = CWSProjectTab(self.notebook, log_callback=self._write_log)
         self.preview_tab = ttk.Frame(self.notebook, padding=8)
         self.database_tab = ttk.Frame(self.notebook, padding=12)
         self.quantities_tab = ttk.Frame(self.notebook, padding=12)
         self.pdf_tab = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(self.converter_tab, text="Converter")
+        self.notebook.add(self.converter_tab, text="Convertor")
+        self.notebook.add(self.project_tab, text="Project / Productie")
         self.notebook.add(self.pdf_tab, text="PDF / Tekening")
         self.notebook.add(self.preview_tab, text="Visuele vergelijking")
         self.notebook.add(self.database_tab, text="Profielendatabase")
@@ -864,6 +899,10 @@ class ConverterApp(tk.Tk):
             return
         first = existing[0]
         suffix = first.suffix.lower()
+        if suffix == ".cwscproj":
+            self.project_tab.open_project(first)
+            self.notebook.select(self.project_tab)
+            return
         if suffix == ".pdf":
             self.pdf_review_source.set(str(first))
             self.notebook.select(self.pdf_tab)

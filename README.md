@@ -1,217 +1,148 @@
-# NC1 / DSTV - STEP - IFC - Trusted PDF Converter v0.5.1
+# CWS Convertor 0.6.0-beta
 
-Lokale Windows-applicatie en CLI voor staalonderdelen. De v0.5-lijn bouwt voort op de bewezen NC1/STEP-kern en voegt een canoniek onderdeelmodel, lossless converter-eigen IFC/PDF, technische vector-PDF's, een deterministische maatgrafiek, menselijke review en een begrensde AI-laag toe.
+**CWS Convertor** is een local-first Windows-desktopapplicatie en CLI voor:
 
-## Veiligheidsprincipe
+- NC1/DSTV ↔ STEP ↔ IFC;
+- Trusted Converter PDF en gecontroleerde externe PDF-analyse;
+- hoeveelheden en Excel;
+- draagbare projectbestanden voor complete IFC-/STEP-modellen.
 
-Alle productieformaten lopen via één canoniek onderdeelmodel:
+Versie 0.6 voegt het fundament voor **Project / Productie** toe zonder de bewezen v0.5.1-conversiekern te vervangen.
+
+## Veiligheidsarchitectuur
+
+Alle productie-uitvoer loopt via canonieke modellen en deterministische validatie:
 
 ```text
 PDF / NC1 / STEP / IFC
-          |
-          v
+          ↓
 Canonical Part Model
-          |
-          v
+          ↓
 NC1 / STEP / IFC / PDF / Excel
+
+Complete IFC / STEP
+          ↓
+Canonical Project Model 2.0
+          ↓
+Assemblies / parts / BOM / productie (gefaseerd en gevalideerd)
 ```
 
-AI mag uitsluitend documentsemantiek, aanzichten, conflicten, confidence en controlevragen voorstellen. AI schrijft geen NC1-regels, STEP/IFC-geometrie, contourcoordinaten of gatposities. Geometrie, maatwaarden, hoeveelheden, serialisatie, roundtripcontrole en vrijgave blijven deterministisch.
+AI mag documentsemantiek, classificatievoorstellen, confidence, conflicten en controlevragen leveren. AI schrijft geen ongecontroleerde NC1-regels, CAD-geometrie of machinecode. Kritische onzekerheid sluit de productiepoort.
 
-Een kritische afwijking of onopgeloste vraag blokkeert productie-export. De strikte veiligheidscontrole is in GUI en CLI niet uitschakelbaar.
+## Nieuw in 0.6.0-beta
 
-## Aantoonbaar geteste status
+### CWS-productidentiteit
 
-### Conversiekern
+De zichtbare productnaam, GUI, CLI, build, installer en projectbestandskoppeling gebruiken nu **CWS Convertor**. Legacy payloadmarkers blijven bewust leesbaar zodat v0.4/v0.5 IFC- en Trusted PDF-bestanden niet worden gebroken.
 
-| Testgroep | Geslaagd | Totaal |
-|---|---:|---:|
-| NC1 -> STEP | 24 | 24 |
-| STEP -> NC1 | 19 | 19 |
-| NC1 -> IFC -> STEP -> NC1 | 4 | 4 |
-| STEP -> IFC -> NC1 -> STEP | 4 | 4 |
+### Canonical Project Model 2.0
 
-De acht focusbestanden, inclusief platen met gaten, HEA140/HEA160 en rondstaal D20, zijn geslaagd met de strikte productiepoort ingeschakeld.
+Het projectmodel bevat voorbereidende entiteiten voor:
 
-### PDF, review en AI
+- projectbronnen en provenance;
+- assemblies/merken;
+- maakdelen en inkoopdelen;
+- bevestigingsmiddelen en lassen;
+- voorraad en reststukken;
+- productiehandelingen;
+- machineprofielen en machinejobs;
+- validatie, revisies en auditlog.
 
-| Testgroep | Geslaagd | Totaal |
-|---|---:|---:|
-| NC1 -> Trusted PDF -> exact NC1 | 24 | 24 |
-| STEP -> Trusted PDF -> exact STEP | 19 | 19 |
-| Focus Trusted PDF -> IFC | 2 | 2 |
-| Synthetische LO4 externe-PDF-keten | 1 | 1 |
-| AI-, integriteits-, review- en ambiguiteitstests | 11 | 11 |
+Identiteit wordt gescheiden in bronidentiteit, placement-onafhankelijke geometry hash en manufacturing hash. Gespiegelde of materiaaltechnisch verschillende delen kunnen daardoor niet ongemerkt als hetzelfde productiedeel worden behandeld.
 
-De synthetische LO4-test reconstrueert een gesloten plaatcontour met twee analytische radii R13,5 en een analytisch gat Ø14 op X/Y 20 mm. Na expliciete review worden NC1, STEP, semantisch IfcPlate en een nieuwe Trusted PDF gemaakt. De maatgrafiek is voor en na review geldig met 100% dekking.
+### Draagbaar `.cwscproj`-projectbestand
 
-Volledige rapporten staan in de afzonderlijke validatiepakketten.
+Een CWS-project is één ZIP-container met:
 
-## Conversierichtingen
+- `manifest.json`;
+- `project.sqlite` met het canonieke projectsnapshot;
+- optioneel ingesloten IFC-/STEP-bronnen;
+- hash-gecontroleerde previews;
+- SHA-256 per entry;
+- ZIP-CRC- en SQLite-integriteitscontrole;
+- revisiehistorie en auditlog;
+- veilige, lichtgewicht autosave en herstel.
 
-### Productiekern
+Opslaan gebeurt atomair. Een mislukte batchimport laat het bestaande project byte-identiek staan.
 
-- NC1/DSTV -> STEP
-- STEP -> NC1/DSTV
-- NC1/DSTV -> IFC
-- IFC -> NC1/DSTV
-- STEP -> IFC
-- IFC -> STEP
-- IFC/STEP -> hoeveelheden en Excel
+De Project Foundation-validatie op het grote Tekla IFC-model en de drie AP242 STEP-modellen bevat **117/117 geslaagde controles**. Daarbij zijn ook embedded bronnen/previews, autosaveherstel, CLI, compilecontrole en GUI-start getest.
 
-### Technische PDF
+### Deterministische importnulmeting
 
-- NC1/DSTV -> vectoriele Trusted Converter PDF
-- STEP -> vectoriele Trusted Converter PDF
-- IFC -> een of meer vectoriele technische PDF's
-- ongewijzigde Trusted Converter PDF -> NC1/DSTV
-- ongewijzigde Trusted Converter PDF -> STEP
-- ongewijzigde Trusted Converter PDF -> IFC
-- eenvoudige externe vector-PDF met plaat/strip -> analyse -> interactieve review -> Trusted PDF -> NC1/STEP/IFC
+De huidige projectfase kiest veilig de importroute en legt bewijs vast:
 
-Een willekeurige externe PDF zonder geverifieerde converterpayload wordt nooit stilzwijgend naar productieformaten vrijgegeven. Alleen wanneer contour, gaten, radii, referentiezijde, kritische metadata en maatconsistentie deterministisch zijn bepaald of expliciet zijn bevestigd, kan een Trusted PDF worden gemaakt.
+1. **Strategy A — semantic structure** voor IFC/STEP met bruikbare productstructuur;
+2. **Strategy B — separate solids** wanneer alleen losse BREP-solids betrouwbaar zijn;
+3. **Strategy C — fused/ambiguous** als expliciete reviewroute.
 
-## Trusted Converter PDF
+Bronnamen leiden nooit op zichzelf tot opsplitsing. Het bestand `2x voetplaat hoog.step` blijft dus één product en één solid totdat geometrie of gebruiker anders bevestigt.
 
-Een door de applicatie gemaakte Trusted PDF bevat:
+### Project / Productie-interface
 
-- een scherpe vectoriele werktekening;
-- een deterministische, feature-gekoppelde maatgrafiek;
-- totale hoofdafmetingen, gatdiameters en gatposities vanaf vaste datums;
-- radii, plaatdikte/profieldoorsnede, stukregel en titelblok;
-- het volledige versieerbare canonieke model als `converter-model.json`;
-- een `converter-manifest.json` met hashes en technische identiteit;
-- de oorspronkelijke NC1/STEP/IFC-bron als gekoppelde PDF-bijlage wanneer beschikbaar;
-- XMP-velden met schema-, onderdeel- en hashinformatie;
-- hashes van canoniek model, geometrie, bronbestand en zichtbare tekening.
+Het functionele tabblad kan:
 
-Bij import worden alle lagen opnieuw gecontroleerd. Een zichtbare wijziging, beschadigde manifestchecksum, ontbrekende bronbijlage, maatgrafiekfout of XMP-mismatch maakt de PDF ongeldig voor productie-export.
+- een project maken, openen en opslaan;
+- IFC- en STEP-bronnen in een achtergrondtaak analyseren;
+- bronbestanden optioneel in het project insluiten;
+- nulmetingen exporteren;
+- ingesloten bronnen veilig uitpakken;
+- bronnen sorteren en details/waarschuwingen tonen;
+- projectstatus, gedetecteerde aantallen en opslag samenvatten;
+- periodiek autosaven.
 
-## Externe PDF en interactieve review
+De getoonde gegevens komen uit hetzelfde Project Model en dezelfde service als de CLI.
 
-De huidige vector-PDF-pipeline kan lokaal:
+## Bewezen referentienulmeting
 
-- pagina's classificeren als vector, raster, hybride of tekst-only;
-- bladformaat, oriëntatie, schaal en tekeningskwaliteit bepalen;
-- tekst, woorden, vectorpaden, cirkels en afbeeldingen met broncoordinaten uitlezen;
-- stukregel, titelblok, positie, profiel, materiaal, lengte, aantal, merk en onderwerp herkennen;
-- gesloten plaatcontouren reconstrueren;
-- collineaire segmenten vereenvoudigen;
-- cirkels, ronde gaten en uit Bezierpaden gefitte contourbogen herkennen;
-- geschreven en geometrisch gemeten waarden op conflicten controleren;
-- per veld provenance, confidence, status en bronbewijs opslaan;
-- gerichte blokkerende controlevragen formuleren.
+### Tekla IFC2X3
 
-Via **Interactief reviewen** toont de GUI links de bron-PDF en rechts het deterministisch gereconstrueerde model. De gebruiker kan toegestane velden, gaten en contourpunten corrigeren, bronbewijs markeren, vragen beantwoorden en de review met naam/commentaar vastleggen. Alleen toegestane paden worden verwerkt; onbekende of niet-onderbouwde reviewvelden worden geweigerd.
+| Objectgroep | Aantal |
+|---|---:|
+| Assemblies | 353 |
+| Platen | 1.293 |
+| Balken/liggers | 707 |
+| Kolommen | 369 |
+| Mechanische bevestigingsmiddelen | 723 |
+| Las-/fastenerobjecten | 2.654 |
+| Funderingsobjecten | 38 |
+| Building-element proxies | 19 |
+| Slabs | 3 |
 
-## AI-functie
+De nulmeting vindt tevens `MLO4`, `LO4`, `STRIP5*120`, `S235JR`, lengte 160 mm, circa 0,6 kg assemblygewicht, diameter 14 mm en herhaalde marks `LA1`, `A1`, `MP1` en `MP2`.
 
-Het tabblad **PDF / Tekening** ondersteunt drie standen:
+### AP242 STEP
 
-- geen AI;
-- lokale offline regel-/semantiekprovider;
-- optionele OpenAI Responses-provider na expliciete toestemming.
+De drie nieuwe referentiebestanden bevatten ieder:
 
-Cloud-AI staat standaard uit. Voor inschakeling zijn een modelnaam en `OPENAI_API_KEY` nodig. De cloudrequest gebruikt afbeeldinginput, een strikt semantisch JSON-schema, `store=false` en een auditrecord met hashes en request-ID's. Klantinhoud wordt niet in het lokale auditrecord opgeslagen.
+- één productrecord;
+- één BREP-solid;
+- nul assembly usage-relaties;
+- geldige CAD-geometrie bij de volledige validatierun.
 
-AI-uitvoer gaat door een recursieve whitelist/guard. Vrije productiegeometrie, coordinate arrays, NC1/DSTV, STEP, IFC, solids en machinecode worden actief geweigerd. AI kan dus alleen een reviewvoorstel leveren; de deterministische parser en geometriekern blijven leidend.
+Daarom maakt de importer geen fictieve assemblystructuur.
 
-## Deterministische maatgrafiek
+## Productiepoort in deze release
 
-`dimension_graph.py` bouwt maatobjecten rechtstreeks uit het canonieke model. Elke maat bevat:
+Deze beta **registreert en valideert de bronintake**, maar materialiseert het grote IFC-model nog niet volledig als actieve ProjectModel-assemblies/parts. De STEP-solids worden evenmin automatisch als NC1-geschikte maakdelen vrijgegeven. Per bron wordt daarom een blokkerende `semantic_import_pending`-status opgeslagen.
 
-- stabiele ID en maatsoort;
-- numerieke waarde en eenheid;
-- echte geometrische ankers;
-- featureverwijzingen;
-- bronveld, provenance, confidence en status;
-- kritische/release-indicatie;
-- optionele datumketen.
+Dat betekent dat complete-model BOM-, NC1-, optimalisatie- en machine-export bewust nog niet beschikbaar zijn. De volgende fase is semantische IFC/STEP-import en betrouwbare part-/assembly-identiteit.
 
-De validatielaag controleert waarde, ankers, featurebestaan, duplicaten, ketens en verplichte dekking. Productie-PDF-export wordt geblokkeerd wanneer de maatgrafiek niet valide is.
+## Bestaande conversiekern behouden
 
-## Technische tekeninggenerator
+De v0.5.1-functionaliteit blijft aanwezig:
 
-De v0.5.1-generator maakt een reproduceerbare vector-PDF met:
+- NC1 → STEP: 24/24 regressies;
+- STEP → NC1: 19/19 regressies;
+- NC1 → IFC → STEP → NC1: 4/4 focusroundtrips;
+- STEP → IFC → NC1 → STEP: 4/4 focusroundtrips;
+- Trusted PDF-roundtrips;
+- deterministische maatgrafiek en interactieve PDF-review;
+- begrensde optionele AI-laag;
+- hoeveelheden en Excel.
 
-- primaire projectie;
-- eind-/doorsnedeweergave waar relevant;
-- standaard tekenschaal die overeenkomt met het titelblok;
-- totale lengte, breedte en/of hoogte;
-- gatdiameters en datumgebaseerde gatposities;
-- contourradii indien aanwezig;
-- plaatdikte of profieldoorsnede;
-- stukregel met Pos, Profiel, Materiaal, Lengte, Aantal en Merk;
-- status, datum, bronbestand, formaat en schaal;
-- conceptwatermerk wanneer productie niet is vrijgegeven.
+## GUI starten uit bron
 
-Bedrijfsspecifieke instellingen staan in `templates/default_company.json` en kunnen als eigen JSON-template worden opgeslagen.
-
-## GUI
-
-Start na installatie via het Startmenu of dubbelklik op:
-
-```text
-NC1_STEP_Converter.exe
-```
-
-Tabbladen:
-
-- **Converter** - conversierichtingen, batchverwerking en log;
-- **Visuele vergelijking** - links/rechts 3D-vergelijking;
-- **PDF / Tekening** - Trusted PDF, externe PDF-analyse, AI en interactieve review;
-- **Profielendatabase** - zoeken en filteren in 1.718 profielrecords;
-- **Hoeveelheden & Excel** - hoeveelheden, massa en materiaaldata.
-
-De Windows-installer kan `.nc`, `.nc1`, `.step`, `.stp` en `.ifc` koppelen. Voor PDF blijft de normale PDF-lezer intact; de installer voegt alleen **Openen in NC1 STEP IFC Converter** aan het contextmenu toe.
-
-## CLI
-
-Voorbeelden:
-
-```text
-NC1_STEP_Converter_CLI.exe nc1-to-step input.nc1 -o output
-NC1_STEP_Converter_CLI.exe step-to-nc1 input.step -o output
-NC1_STEP_Converter_CLI.exe nc1-to-pdf input.nc1 -o output
-NC1_STEP_Converter_CLI.exe step-to-pdf input.step -o output
-NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf -o analyse --ai-provider local-rules
-NC1_STEP_Converter_CLI.exe pdf-review drawing.pdf --review review.json -o reviewed_trusted.pdf
-NC1_STEP_Converter_CLI.exe pdf-to-nc1 reviewed_trusted.pdf -o output
-NC1_STEP_Converter_CLI.exe pdf-to-step reviewed_trusted.pdf -o output
-NC1_STEP_Converter_CLI.exe pdf-to-ifc reviewed_trusted.pdf -o output
-NC1_STEP_Converter_CLI.exe ifc-to-pdf model.ifc -o output
-NC1_STEP_Converter_CLI.exe excel model.ifc model.step -o hoeveelheden.xlsx
-```
-
-Machineleesbare JSON-rapportage en batchmappen worden ondersteund. Gebruik `--help` bij het hoofdcommando en subcommando.
-
-Voor optionele cloud-AI:
-
-```text
-set OPENAI_API_KEY=...
-NC1_STEP_Converter_CLI.exe pdf-analyze drawing.pdf -o analyse ^
-  --ai-provider openai ^
-  --allow-cloud-ai ^
-  --ai-model gpt-5.6
-```
-
-## Windows-installatie
-
-De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De beoogde release bevat:
-
-```text
-NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe
-NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip
-SHA256SUMS.txt
-```
-
-De installer bundelt de Python-runtime, CadQuery/Open CASCADE, IfcOpenShell, PyMuPDF, Matplotlib, XlsxWriter, profielen, materialen en templates. De daadwerkelijke Windows-EXE en installer moeten op een Windows x64-runner worden gebouwd en getest; een Linux-build is daarvoor niet gelijkwaardig.
-
-Ontwikkelaars kunnen op Windows de volledige releaseketen starten met `build_windows_exe.bat`. GitHub Actions gebruikt Python 3.12 x64, voert compile-, kern-, PDF-, maatgrafiek-, review- en GUI-smokes uit, bouwt een PyInstaller `onedir`, maakt de portable ZIP, verpakt die via Inno Setup in één installer-EXE en voert een geinstalleerde-app-smoke uit met Python verwijderd uit `PATH`.
-
-## Broninstallatie voor ontwikkelaars
-
-De normale gebruiker hoeft dit niet uit te voeren. Voor bronontwikkeling:
+Alleen voor ontwikkelaars:
 
 ```text
 py -3.12 -m venv .venv
@@ -219,55 +150,73 @@ py -3.12 -m venv .venv
 .venv\Scripts\python app.py
 ```
 
-Belangrijkste runtime-afhankelijkheden:
+Tabbladen:
 
-- CadQuery 2.8.0;
-- NumPy 2.x;
-- Matplotlib 3.10.8;
-- XlsxWriter 3.2.9;
-- IfcOpenShell 0.8.5;
-- PyMuPDF 1.26.7.
+- Convertor;
+- Project / Productie;
+- PDF / Tekening;
+- Visuele vergelijking;
+- Profielendatabase;
+- Hoeveelheden & Excel.
 
-## Tests
+## CLI
 
-Snelle tests:
-
-```text
-python -m py_compile *.py tests\*.py validation\*.py
-python tests\analytic_fitting_smoke.py
-python tests\regression_smoke.py
-python tests\pdf_ai_smoke.py
-python tests\pdf_review_smoke.py
-python tests\dimension_graph_smoke.py
-python tests\review_workflow_smoke.py
-```
-
-Volledige NC1/STEP/IFC-regressie:
+Projectbasis:
 
 ```text
-python validation\run_v05_validation.py ^
-  --handover-root <overdrachtspakket> ^
-  --output <validatiemap>
+CWS_Convertor_CLI.exe --version
+CWS_Convertor_CLI.exe inspect-model model.ifc model.step --json-report baseline.json
+CWS_Convertor_CLI.exe project-new project.cwscproj --name "Mijn project"
+CWS_Convertor_CLI.exe project-import-baseline project.cwscproj model.ifc model.step
+CWS_Convertor_CLI.exe project-info project.cwscproj --json
+CWS_Convertor_CLI.exe project-sources project.cwscproj --json
+CWS_Convertor_CLI.exe project-verify project.cwscproj --json
+CWS_Convertor_CLI.exe project-export-json project.cwscproj -o project-model.json
+CWS_Convertor_CLI.exe project-extract-source project.cwscproj <source-id> -o bron.ifc
+CWS_Convertor_CLI.exe project-recover project.cwscproj -o hersteld.cwscproj
+CWS_Convertor_CLI.exe project-migrate oud.cwscproj -o nieuw.cwscproj
 ```
 
-Persistente PDF/AI/review-validatie:
+Bestaande conversies:
 
 ```text
-python validation\run_v05_pdf_ai_validation.py ^
-  --handover-root <overdrachtspakket> ^
-  --output <validatiemap>
+CWS_Convertor_CLI.exe nc1-to-step input.nc1 -o output
+CWS_Convertor_CLI.exe step-to-nc1 input.step -o output
+CWS_Convertor_CLI.exe nc1-to-pdf input.nc1 -o output
+CWS_Convertor_CLI.exe pdf-analyze drawing.pdf -o analyse --ai-provider local-rules
+CWS_Convertor_CLI.exe pdf-to-ifc reviewed_trusted.pdf -o output
+CWS_Convertor_CLI.exe excel model.ifc model.step -o hoeveelheden.xlsx
 ```
 
-## Huidige beperkingen
+## Windows-release
 
-- De exacte Trusted PDF-roundtrip is geteste bronfunctionaliteit voor door de converter gemaakte PDF's; willekeurige externe tekeningen blijven reviewplichtig.
-- De echte `Pos LO4 - LOSSE PLAAT.pdf` kon in deze runtime niet als lokaal PDF-binair bestand worden geopend en is daarom nog geen uitgevoerde vector-/geometrieregressietest. Alleen een duidelijk als synthetisch gemarkeerde LO4-test is uitgevoerd.
-- De externe geometrische reconstructie is nu gericht op eenvoudige vectoriele platen/strips. Algemene profieltekeningen, meerdere orthografische aanzichten en complexe bewerkingen zijn nog niet productiebreed afgedekt.
-- Raster-OCR, deskew, foto-/perspectiefcorrectie en taal-/symboolvarianten zijn nog geen productie-importer.
-- De interactieve editor dekt velden, gaten en contourpunten; een volledig vrije CAD-schetseditor, drag-and-drop maatankers, undo/redo en detailaanzichtbewerking volgen later.
-- Volledige hidden-lineprojectie, detailaanzichten, snijlijnen en algemene maatplaatsingsoptimalisatie zijn nog niet gereed.
-- De uitgebreide materiaal-/onderdeeleditor, versleepbare eigenschappenlijst, prijsregels, bewerkingstijden, projectopslag en licenties uit de aanvullende UI-scope zijn nog niet gebouwd.
-- Grote externe IFC/STEP-bestanden en multi-gigabyte projectmodellen hebben nog geen formele belastings-/geheugentest.
-- Een echte Windows-installer is pas bewezen nadat het Windows-buildresultaat op een schone Windows x64-machine zonder Python is geinstalleerd en getest.
+De buildstraat gebruikt Python 3.12 x64 als ontwikkelruntime en levert uiteindelijk:
 
-Geen van deze beperkingen schakelt de veiligheidscontrole uit: onzekere productie-uitvoer wordt geblokkeerd.
+```text
+CWS_Convertor_Setup_0.6.0-beta_x64.exe
+CWS_Convertor_Portable_0.6.0-beta_x64.zip
+SHA256SUMS.txt
+```
+
+De eindgebruiker heeft geen Python, pip, venv of terminal nodig. In deze Linux-ontwikkelomgeving is geen native Windows-EXE gebouwd; de PyInstaller/Inno Setup-workflow moet op Windows worden uitgevoerd en op een schone Windows 10/11 x64-installatie worden geverifieerd.
+
+## Belangrijkste brononderdelen
+
+```text
+cws_convertor/product.py          centrale naam en versie
+cws_convertor/project/model.py    Canonical Project Model 2.0
+cws_convertor/project/storage.py  .cwscproj ZIP+SQLite-opslag
+cws_convertor/project/baseline.py IFC/STEP-nulmeting en routekeuze
+cws_convertor/project/service.py  gedeelde GUI/CLI-projectservice
+cws_convertor/project/jobs.py     annuleerbare achtergrondtaken
+project_tab.py                    functionele Project/Productie-GUI
+cli.py                            conversie- en project-CLI
+```
+
+## Volgende bouwfase
+
+1. semantische IFC Strategy A-import met relaties, placements, properties, materialen, bouten en lassen;
+2. STEP Strategy A/B-import met product occurrences en losse solids;
+3. stabiele assembly-/part-identiteit en groepering;
+4. classificatie en BOM;
+5. daarna pas per-part/per-merk productie-export.

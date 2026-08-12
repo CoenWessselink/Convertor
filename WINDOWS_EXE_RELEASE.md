@@ -1,97 +1,52 @@
-# Windows x64 release v0.5.1
+# CWS Convertor 0.6.0-beta — Windows x64-release
 
-## Eindgebruikerspakket
-
-De eindgebruiker hoort uiteindelijk alleen deze bestanden te ontvangen:
+## Doelartefacten
 
 ```text
-NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe
-NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip
+CWS_Convertor_Setup_0.6.0-beta_x64.exe
+CWS_Convertor_Portable_0.6.0-beta_x64.zip
 SHA256SUMS.txt
 ```
 
-De installer bevat runtime en afhankelijkheden. Python, pip, een virtuele omgeving en terminalhandelingen zijn niet nodig.
+De eindgebruiker hoeft geen Python, pip, virtual environment of terminal te installeren.
 
-## Release-architectuur
+## Buildstraat
 
-1. Python 3.12 x64 bouwomgeving.
-2. Alle compile-, kern-, PDF-, AI-, maatgrafiek- en reviewtests uitvoeren.
-3. GUI-opstart en CLI-contract controleren.
-4. PyInstaller `onedir` bouwen via `NC1_STEP_Converter.spec`.
-5. Gebouwde GUI- en CLI-EXE controleren.
-6. Portable ZIP maken.
-7. Inno Setup compileert de volledige map naar één installer-EXE.
-8. Installer stil in een tijdelijke map installeren.
-9. Geinstalleerde CLI testen met een minimaal systeem-`PATH` zonder Python/pip/venv.
-10. Uninstaller stil uitvoeren.
-11. SHA-256 voor installer en portable ZIP genereren.
-12. Definitieve acceptatieset op een schone Windows x64-machine uitvoeren.
+1. Python 3.12 x64 op de Windows-buildrunner.
+2. Dependencies uit `requirements-build.lock.txt` installeren en met `pip check` controleren.
+3. Compilecontrole en alle kern-, PDF-, review- en projectsmokes uitvoeren.
+4. GUI en CLI als PyInstaller `onedir` bouwen via `CWS_Convertor.spec`.
+5. Portable ZIP maken.
+6. Eén installer-EXE maken via `installer/CWS_Convertor.iss`.
+7. Stil installeren in een tijdelijke map.
+8. CLI en `.cwscproj`-projectopslag testen met Python verwijderd uit `PATH`.
+9. Stil verwijderen.
+10. SHA-256 van installer en portable ZIP publiceren.
 
-`onedir` wordt bewust gebruikt: CadQuery/Open CASCADE, IfcOpenShell, PyMuPDF en Matplotlib bestaan uit veel DLL's en databestanden. Inno Setup levert toch één downloadbaar installatiebestand.
+De GitHub Actions-workflow staat in `.github/workflows/build-windows-exe.yml`. Lokaal kan een ontwikkelaar `build_windows_exe.bat` gebruiken.
 
-## GitHub Actions
+## Bestandskoppelingen
 
-Workflow:
+De installer kan koppelen:
 
-```text
-.github/workflows/build-windows-exe.yml
-```
+- `.cwscproj` → CWS-project;
+- `.nc` en `.nc1` → DSTV/NC1;
+- `.step` en `.stp` → STEP;
+- `.ifc` → IFC.
 
-De workflow:
+De standaard PDF-lezer wordt niet overgenomen. Er wordt alleen een contextmenuactie **Openen in CWS Convertor** toegevoegd.
 
-- gebruikt Python 3.12 x64;
-- installeert `requirements-build.txt` en voert `pip check` uit;
-- compileert alle modules;
-- draait fitting-, kern-, PDF-, AI-, review- en maatgrafieksmokes;
-- controleert CLI-versie en PDF-subcommando's;
-- start en sluit de GUI;
-- bouwt GUI plus CLI via de `.spec`;
-- bouwt de portable ZIP;
-- installeert Inno Setup op de runner;
-- bouwt één installer-EXE;
-- installeert en verwijdert de applicatie stil;
-- test de geinstalleerde CLI met Python verwijderd uit `PATH`;
-- maakt SHA-256-checksums;
-- uploadt één release-artifact.
+## Schone-machine-acceptatie
 
-De workflow bewijst de technische Windows-buildketen op de runner. Voor een publieke productie-release blijft daarnaast een aparte schone-machine-acceptatietest wenselijk.
+Voor een bewezen release moet minimaal op Windows 10/11 x64 zonder Python worden getest:
 
-## Lokaal bouwen voor ontwikkelaars
+1. installatie met dubbelklik;
+2. GUI-start via Startmenu;
+3. CLI `--version`;
+4. nieuw `.cwscproj` maken, opslaan, openen en verifiëren;
+5. Project / Productie-tab openen;
+6. NC1/STEP/IFC/PDF-kernsmokes;
+7. file associations;
+8. uninstall zonder achterblijvende programmabestanden.
 
-Dit is geen eindgebruikersstap. Op een Windows 10/11 x64-buildcomputer met Python Launcher en Inno Setup 6:
-
-```text
-build_windows_exe.bat
-```
-
-Het script maakt zelf `.venv-build`, installeert dependencies, voert tests uit en bouwt de release.
-
-## Installerfuncties
-
-- installatie onder Program Files;
-- Startmenu-snelkoppelingen voor GUI en CLI;
-- optionele bureaubladsnelkoppeling;
-- uninstaller;
-- optionele koppeling van `.nc`, `.nc1`, `.step`, `.stp` en `.ifc`;
-- PDF-contextmenu zonder de standaard PDF-lezer te wijzigen;
-- openen van gekoppelde bestanden via dubbelklik.
-
-## Verplichte schone-machine-test
-
-Voor vrijgave moet minimaal worden gecontroleerd:
-
-1. Windows 10/11 x64 zonder Python/pip/Conda.
-2. Installer start met dubbelklik.
-3. Applicatie opent via Startmenu.
-4. PDF/Tekening-tabblad en interactieve review openen zonder ontbrekende DLL/data.
-5. P1811 NC1 -> STEP en Trusted PDF.
-6. D20 STEP -> NC1 en Trusted PDF.
-7. Trusted PDF -> oorspronkelijke productieformaten.
-8. Gereviewde LO4-fixture -> NC1/STEP/IFC/PDF.
-9. IFC-openen en basisconversie.
-10. Excel-export.
-11. Dubbelklik op `.nc1` opent de juiste route.
-12. PDF-contextmenu opent de PDF in de converter zonder standaardlezer over te nemen.
-13. Verwijderen via Windows Instellingen laat geen programmafiles achter.
-
-Zolang deze Windows-test niet is uitgevoerd, mag de installerketen alleen als **build-ready** en niet als bewezen eindgebruikersrelease worden omschreven.
+Deze repository bevat de buildstraat, maar in de huidige Linuxomgeving is geen native Windows-installer gebouwd of als eindgebruikersrelease geclaimd.

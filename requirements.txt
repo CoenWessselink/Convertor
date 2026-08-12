@@ -1,8 +1,1 @@
-cadquery==2.8.0
-matplotlib==3.10.8
-numpy>=2.0,<3
-XlsxWriter==3.2.9
-ifcopenshell==0.8.5
-PyMuPDF==1.26.7
-pypdf==5.9.0
-reportlab==4.4.9
+-r requirements-runtime.lock.txt

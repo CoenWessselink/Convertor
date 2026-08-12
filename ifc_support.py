@@ -22,6 +22,8 @@ import subprocess
 import tempfile
 from typing import Any, Iterable
 
+from cws_convertor.product import APP_VERSION
+
 import cadquery as cq
 import numpy as np
 
@@ -445,7 +447,7 @@ def _minimal_step_canonical(
 ) -> CanonicalPart:
     metrics = _shape_metrics(shape)
     canonical = CanonicalPart(
-        converter_version="0.5.1",
+        converter_version=APP_VERSION,
         source_format="STEP",
         source_file=source.name,
         source_sha256=sha256_bytes(source.read_bytes()),

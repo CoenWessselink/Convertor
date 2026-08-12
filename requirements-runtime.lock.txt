@@ -1,0 +1,9 @@
+# CWS Convertor v0.6.0-beta — direct runtime dependency lock (Python 3.12 x64)
+cadquery==2.8.0
+matplotlib==3.10.8
+numpy==2.3.5
+XlsxWriter==3.2.9
+ifcopenshell==0.8.5
+PyMuPDF==1.26.7
+pypdf==5.9.0
+reportlab==4.4.9

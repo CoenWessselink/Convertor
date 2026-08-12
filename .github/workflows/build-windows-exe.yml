@@ -1,20 +1,23 @@
-name: Build Windows installer and portable package
+name: Build CWS Convertor Windows installer and portable package
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - v0.5-pdf-ai
-      - v0.5-pdf-review
+      - v0.6-project-foundation
     paths:
       - "*.py"
       - "*.json"
+      - "cws_project/**"
+      - "cws_convertor/**"
+      - "project_tab.py"
       - "templates/**"
       - "installer/**"
       - "tests/**"
+      - "validation/**"
       - "requirements*.txt"
-      - "NC1_STEP_Converter.spec"
+      - "CWS_Convertor.spec"
       - ".github/workflows/build-windows-exe.yml"
 
 jobs:
@@ -22,6 +25,9 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: read
+
+    env:
+      CWS_VERSION: 0.6.0-beta
 
     steps:
       - name: Checkout repository
@@ -38,23 +44,39 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements-build.txt
+          python -m pip install -r requirements-build.lock.txt
           python -m pip check
 
       - name: Compile and run safety regressions
         shell: pwsh
         run: |
-          python -m py_compile *.py tests/*.py validation/*.py
+          python -m compileall -q .
           python tests/analytic_fitting_smoke.py
           python tests/regression_smoke.py
           python tests/pdf_ai_smoke.py
           python tests/pdf_review_smoke.py
           python tests/dimension_graph_smoke.py
           python tests/review_workflow_smoke.py
+          python tests/project_model_smoke.py
+          python tests/project_storage_smoke.py
+          python tests/project_baseline_smoke.py
+          python tests/project_cli_smoke.py
+          python tests/project_jobs_smoke.py
+          python tests/project_service_smoke.py
+          python tests/project_reference_files_smoke.py
           python cli.py --version
           python cli.py pdf-analyze --help
-          python cli.py nc1-to-pdf --help
-          python cli.py pdf-to-nc1 --help
+          python cli.py project-new --help
+          python cli.py project-import-baseline --help
+          python cli.py project-migrate --help
+
+      - name: Project CLI contract smoke
+        shell: pwsh
+        run: |
+          $project = Join-Path $env:RUNNER_TEMP "ci_project.cwscproj"
+          python cli.py project-new $project --name "CI project" --client "CWS" --order "CI-001"
+          python cli.py project-info $project --json
+          if (-not (Test-Path $project)) { throw "CWS-projectbestand ontbreekt" }
 
       - name: GUI import smoke
         shell: pwsh
@@ -64,11 +86,11 @@ jobs:
       - name: Build onedir GUI and CLI
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean NC1_STEP_Converter.spec
-          if (-not (Test-Path "dist/NC1_STEP_Converter/NC1_STEP_Converter.exe")) { throw "GUI EXE ontbreekt" }
-          if (-not (Test-Path "dist/NC1_STEP_Converter/NC1_STEP_Converter_CLI.exe")) { throw "CLI EXE ontbreekt" }
-          & "dist/NC1_STEP_Converter/NC1_STEP_Converter_CLI.exe" --version
-          Compress-Archive -Path "dist/NC1_STEP_Converter" -DestinationPath "dist/NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip" -Force
+          pyinstaller --noconfirm --clean CWS_Convertor.spec
+          if (-not (Test-Path "dist/CWS_Convertor/CWS_Convertor.exe")) { throw "GUI EXE ontbreekt" }
+          if (-not (Test-Path "dist/CWS_Convertor/CWS_Convertor_CLI.exe")) { throw "CLI EXE ontbreekt" }
+          & "dist/CWS_Convertor/CWS_Convertor_CLI.exe" --version
+          Compress-Archive -Path "dist/CWS_Convertor" -DestinationPath "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip" -Force
 
       - name: Install Inno Setup
         shell: pwsh
@@ -79,30 +101,31 @@ jobs:
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { throw "ISCC.exe niet gevonden" }
-          & $iscc "installer/NC1_STEP_Converter.iss"
+          & $iscc "installer/CWS_Convertor.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup build mislukt" }
 
-      - name: Install and smoke-test packaged application without Python on PATH
+      - name: Install and smoke-test without Python on PATH
         shell: pwsh
         run: |
-          $installer = Resolve-Path "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe"
-          $installDir = Join-Path $env:RUNNER_TEMP "NC1_STEP_IFC_Converter_Installed"
+          $installer = Resolve-Path "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_x64.exe"
+          $installDir = Join-Path $env:RUNNER_TEMP "CWS_Convertor_Installed"
           & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR="$installDir"
           if ($LASTEXITCODE -ne 0) { throw "Stille installatie mislukt met exitcode $LASTEXITCODE" }
-          $gui = Join-Path $installDir "NC1_STEP_Converter.exe"
-          $cli = Join-Path $installDir "NC1_STEP_Converter_CLI.exe"
+          $gui = Join-Path $installDir "CWS_Convertor.exe"
+          $cli = Join-Path $installDir "CWS_Convertor_CLI.exe"
           if (-not (Test-Path $gui)) { throw "Geinstalleerde GUI EXE ontbreekt" }
           if (-not (Test-Path $cli)) { throw "Geinstalleerde CLI EXE ontbreekt" }
 
-          # De runner heeft Python voor de build, maar de eindgebruikers-smoke
-          # draait met een minimaal systeem-PATH zonder Python/pip/venv.
           $savedPath = $env:PATH
           try {
             $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
             & $cli --version
             if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde CLI --version faalde" }
-            & $cli pdf-analyze --help
-            if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde PDF CLI-smoke faalde" }
+            $project = Join-Path $env:RUNNER_TEMP "installed_smoke.cwscproj"
+            & $cli project-new $project --name "Installed smoke"
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $project)) { throw "Geinstalleerde projectopslag-smoke faalde" }
+            & $cli project-info $project
+            if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde project-info-smoke faalde" }
           } finally {
             $env:PATH = $savedPath
           }
@@ -116,8 +139,8 @@ jobs:
         shell: pwsh
         run: |
           $files = @(
-            "dist/NC1_STEP_IFC_Converter_Portable_0.5.1_x64.zip",
-            "dist_installer/NC1_STEP_IFC_Converter_Setup_0.5.1_x64.exe"
+            "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip",
+            "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_x64.exe"
           )
           $lines = foreach ($file in $files) {
             $hash = (Get-FileHash -Algorithm SHA256 $file).Hash.ToLowerInvariant()
@@ -131,7 +154,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NC1_STEP_IFC_Converter_0.5.1_Windows_x64
+          name: CWS_Convertor_0.6.0-beta_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+from cws_convertor.product import APP_NAME
 import json
 import tempfile
 from typing import Any, Iterable
@@ -284,7 +286,7 @@ def export_excel(
         {
             "title": "Hoeveelheden IFC / STEP",
             "subject": "Automatische hoeveelheden en materiaaleigenschappen",
-            "author": "NC1 STEP Converter",
+            "author": APP_NAME,
             "comments": "Controleer waarden voor productie tegen bronmodel, norm en materiaalcertificaat.",
         }
     )

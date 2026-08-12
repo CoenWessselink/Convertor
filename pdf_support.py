@@ -15,6 +15,8 @@ critical geometry is deterministically reconstructed or explicitly confirmed.
 """
 from __future__ import annotations
 
+from cws_branding import PRODUCT_NAME
+
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 import copy
@@ -852,7 +854,7 @@ def _draw_title_block(
     pdf.setFont("Helvetica", 6.4)
     if template.company_address:
         pdf.drawCentredString(x0 + 18.5 * mm, y0 + 25 * mm, template.company_address[:40])
-    pdf.drawCentredString(x0 + 18.5 * mm, y0 + 8 * mm, f"Converter v{DEFAULT_CONVERTER_VERSION}")
+    pdf.drawCentredString(x0 + 18.5 * mm, y0 + 8 * mm, f"CWS Convertor v{DEFAULT_CONVERTER_VERSION}")
 
     values = {
         "Onderwerp": _effective_title(part),
@@ -960,9 +962,9 @@ def render_part_pdf(
     output.parent.mkdir(parents=True, exist_ok=True)
     pdf = canvas.Canvas(str(output), pagesize=(page_width, page_height), pageCompression=1)
     pdf.setTitle(_effective_title(part))
-    pdf.setAuthor(active.company_name or "NC1 STEP IFC Converter")
+    pdf.setAuthor(active.company_name or PRODUCT_NAME)
     pdf.setSubject("Technical part drawing")
-    pdf.setCreator(f"NC1 STEP IFC Converter v{DEFAULT_CONVERTER_VERSION}")
+    pdf.setCreator(f"{PRODUCT_NAME} v{DEFAULT_CONVERTER_VERSION}")
 
     margin = 10 * mm
     title_height = 46 * mm
@@ -1293,9 +1295,9 @@ def create_trusted_pdf(
         writer.add_metadata(
             {
                 "/Title": _effective_title(prepared),
-                "/Author": (template.company_name if template else "") or "NC1 STEP IFC Converter",
-                "/Creator": f"NC1 STEP IFC Converter v{DEFAULT_CONVERTER_VERSION}",
-                "/Producer": f"NC1 STEP IFC Converter v{DEFAULT_CONVERTER_VERSION}",
+                "/Author": (template.company_name if template else "") or PRODUCT_NAME,
+                "/Creator": f"{PRODUCT_NAME} v{DEFAULT_CONVERTER_VERSION}",
+                "/Producer": f"{PRODUCT_NAME} v{DEFAULT_CONVERTER_VERSION}",
                 "/ConverterFormat": TRUSTED_PDF_FORMAT,
                 "/ConverterSchemaVersion": prepared.schema_version,
                 "/ConverterPartID": prepared.part_id,
@@ -2771,7 +2773,7 @@ def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
     header = part.header
     lines = [
         "ST",
-        f"** Generated from validated canonical model by Converter v{DEFAULT_CONVERTER_VERSION}",
+        f"** Generated from validated canonical model by CWS Convertor v{DEFAULT_CONVERTER_VERSION}",
         f"  {_ascii_safe(header.order_number, 'PDF')}",
         f"  {_ascii_safe(header.drawing_number or header.position_number or part.part_id, 'PART')}",
         "  1",

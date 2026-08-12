@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+
+from cws_convertor.product import APP_SLUG
 import json
 import math
 import os
@@ -18,10 +20,24 @@ def resource_path(filename: str) -> Path:
 
 
 def default_user_database_path() -> Path:
+    """Return the CWS user database path and preserve legacy profile data.
+
+    v0.5 stored the Linux/macOS user copy below ``~/.nc1_step_converter``.
+    The CWS product identity uses ``~/.cws_convertor`` from v0.6 onward, but
+    an existing legacy database is copied once instead of being silently lost.
+    Windows already uses the central product slug below ``%APPDATA%``.
+    """
+
     if os.name == "nt":
         base = Path(os.environ.get("APPDATA", Path.home()))
-        return base / "NC1_STEP_Converter" / "profiles.json"
-    return Path.home() / ".nc1_step_converter" / "profiles.json"
+        return base / APP_SLUG / "profiles.json"
+
+    target = Path.home() / ".cws_convertor" / "profiles.json"
+    legacy = Path.home() / ".nc1_step_converter" / "profiles.json"
+    if not target.exists() and legacy.is_file():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(legacy, target)
+    return target
 
 
 def normalise_name(text: str) -> str:
