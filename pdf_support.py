@@ -2634,14 +2634,79 @@ def pdf_to_ifc(
         target.write_bytes(ifc_bytes)
         route = "trusted-pdf->exact-ifc-attachment"
     else:
-        from ifc_support import dstv_to_ifc
+        from conversion import convert_nc1_to_step
+        from ifc_semantic import SemanticIFCError, write_semantic_plate_ifc
+        from ifc_support import dstv_to_ifc, load_ifc_geometry
+        from canonical_model import extract_part_from_ifc
 
         with tempfile.TemporaryDirectory(prefix="pdf_to_ifc_") as folder:
             nc1 = canonical_to_nc1(analysis.part, Path(folder) / "validated.nc1")
-            result = dstv_to_ifc(nc1, target, material=analysis.part.material or material)
-            if not result.outputs:
-                raise ValueError("PDF->IFC leverde geen uitvoerbestand")
-        route = "validated-pdf->canonical->nc1->ifc-payload"
+            generated_step = Path(folder) / "validated.step"
+            convert_nc1_to_step(nc1, generated_step)
+            shape = cq.importers.importStep(str(generated_step)).val()
+            if shape.Volume() <= 1e-6 or not shape.Solids():
+                raise ValueError("PDF->IFC tussencontrole leverde geen geldige plaat-solid")
+
+            export_part = analysis.part.clone()
+            export_part.add_attachment("nc1", nc1.name, "application/x-dstv", nc1.read_bytes())
+            export_part.add_attachment("step", generated_step.name, "model/step", generated_step.read_bytes())
+            box = shape.BoundingBox()
+            export_part.geometry.update(
+                {
+                    "volume_mm3": float(shape.Volume()),
+                    "area_mm2": float(shape.Area()),
+                    "bbox_mm": [float(box.xlen), float(box.ylen), float(box.zlen)],
+                    "solids": len(shape.Solids()),
+                }
+            )
+
+            semantic_error = ""
+            if export_part.header.profile_type == "B":
+                try:
+                    write_semantic_plate_ifc(export_part, shape, target)
+                    route = "validated-pdf->canonical->semantic-ifcplate-sweptsolid+payload"
+                except SemanticIFCError as exc:
+                    semantic_error = str(exc)
+                    result = dstv_to_ifc(nc1, target, material=analysis.part.material or material)
+                    if not result.outputs:
+                        raise ValueError("PDF->IFC leverde geen uitvoerbestand")
+                    route = "validated-pdf->canonical->nc1->ifc-tessellation-payload-fallback"
+            else:
+                result = dstv_to_ifc(nc1, target, material=analysis.part.material or material)
+                if not result.outputs:
+                    raise ValueError("PDF->IFC leverde geen uitvoerbestand")
+                route = "validated-pdf->canonical->nc1->ifc-payload"
+
+            restored = extract_part_from_ifc(target, strict=True)
+            if restored is None or restored.attachment_bytes("nc1") is None:
+                target.unlink(missing_ok=True)
+                raise ValueError("PDF->IFC payloadcontrole kon de exacte NC1-bijlage niet herstellen")
+            preview = load_ifc_geometry(target)
+            preview_volume = sum(item.volume_mm3 for item in preview.items)
+            delta = (preview_volume - float(shape.Volume())) / float(shape.Volume()) * 100.0
+            if abs(delta) > 1.0:
+                target.unlink(missing_ok=True)
+                raise ValueError(
+                    f"PDF->IFC previewvolume wijkt {delta:+.6f}% af; grens is 1,0%"
+                )
+        warnings = list(analysis.warnings)
+        if semantic_error:
+            warnings.append(
+                "Semantische IfcPlate/SweptSolid-route was niet toepasbaar; "
+                f"veilige tessellatiefallback gebruikt: {semantic_error}"
+            )
+        return PDFConversionResult(
+            source,
+            [target],
+            warnings,
+            details={
+                "route": route,
+                "pdf_mode": analysis.mode,
+                "ifc_class": "IfcPlate" if "semantic-ifcplate" in route else "fallback",
+                "preview_volume_delta_percent": delta,
+                "payload_schema": restored.schema_version,
+            },
+        )
     return PDFConversionResult(source, [target], analysis.warnings, details={"route": route, "pdf_mode": analysis.mode})
 
 
