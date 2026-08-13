@@ -21,6 +21,25 @@ Project / Part selection
 → release only supported formats
 ```
 
+## Implemented foundation
+
+The first bounded Part Workbench layer is now integrated in the existing
+`Project / Productie` screen:
+
+- project/part selection is synchronized with the classification grid;
+- every persisted edit uses `ProjectSession` start/update/undo/redo/review commands;
+- the source geometry hash remains immutable;
+- the workbench shows a read-only source envelope beside the analytical 3D/2D revision;
+- plate contours can be proposed explicitly from trustworthy imported bounding-box dimensions;
+- through holes can be added, updated and removed as a draft before one atomic apply;
+- properties, blocking validation, provenance and all required information tabs are present;
+- validation remains separate from release and cannot bypass roundtrip requirements;
+- Windows GUI smoke coverage exercises start, edit, validate, undo and redo.
+
+The center view does not yet claim exact source BREP isolation. It uses imported
+extents as a source envelope and marks unavailable dimensions as unavailable.
+Exact source/canonical mesh comparison belongs to the deterministic rebuild layer.
+
 ## Data model additions
 
 At minimum:
@@ -78,3 +97,11 @@ No production export unless all critical data is known or explicitly confirmed. 
 - screenshots of the actual running UI;
 - updated docs and checksums;
 - no claim of Windows installer success until built on Windows x64 without Python installed.
+
+## Next bounded implementation
+
+1. isolate the selected IFC/STEP source shape without changing the golden source;
+2. rebuild a deterministic canonical solid from the reviewed analytical revision;
+3. compare source and canonical volume, area, bounds and topology with tolerances;
+4. synchronize selected contour/feature highlighting across grids, 2D and exact 3D;
+5. add NC1/STEP/IFC/PDF roundtrip validation before any release path is enabled.

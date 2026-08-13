@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.0-alpha-dev - Part Workbench foundation
+
+- Versioned Part Workbench state added with immutable source geometry references.
+- Analytical part forms, production frame, reference sides, contours and features added.
+- Field provenance, validation issues, audit, undo/redo and artifact invalidation added.
+- Project Model schema raised to 2.4 with migration and save/reopen coverage.
+- Integrated Part Workbench added to the existing Project / Productie screen.
+- Synchronized part selection, sortable grid, property/validation panels and required detail tabs added.
+- Source-envelope and analytical 3D/2D comparison added without claiming an exact source BREP.
+- Plate bounding-box candidate and through-hole editing use one atomic service update.
+- GUI regression covers start, apply, validate, undo and redo; release remains roundtrip-blocked.
+- Windows build workflow now runs every `tests/*_smoke.py` file.
+
 ## 0.7.0-alpha — Semantische IFC/STEP-projectimport
 
 - Gedeelde, dependency-light ISO-10303-21-grafiekkern toegevoegd voor IFC en STEP.

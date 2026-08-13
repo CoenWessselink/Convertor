@@ -1,6 +1,6 @@
 #define MyAppName "CWS Convertor"
 #define MyAppVersion "0.8.0-alpha-dev"
-#define MyAppNumericVersion "0.7.0.0"
+#define MyAppNumericVersion "0.8.0.0"
 #define MyAppPublisher "CWS"
 #define MyAppExeName "CWS_Convertor.exe"
 #define MyCliExeName "CWS_Convertor_CLI.exe"

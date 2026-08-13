@@ -1,10 +1,10 @@
-# CWS Convertor 0.7.0-alpha — Windows x64-release
+# CWS Convertor 0.8.0-alpha-dev - Windows x64-release
 
 ## Doelartefacten
 
 ```text
-CWS_Convertor_Setup_0.7.0-alpha_x64.exe
-CWS_Convertor_Portable_0.7.0-alpha_x64.zip
+CWS_Convertor_Setup_0.8.0-alpha-dev_x64.exe
+CWS_Convertor_Portable_0.8.0-alpha-dev_x64.zip
 SHA256SUMS.txt
 ```
 
@@ -49,9 +49,13 @@ Voor een bewezen release moet minimaal op Windows 10/11 x64 zonder Python worden
 7. file associations;
 8. uninstall zonder achterblijvende programmabestanden.
 
-Deze repository bevat de buildstraat, maar in de huidige Linuxomgeving is geen native Windows-installer gebouwd of als eindgebruikersrelease geclaimd.
+Deze repository bevat de buildstraat. De lokale Windows-ontwikkelomgeving bevat
+geen Inno Setup; de GitHub Actions-runner bouwt en test daarom het installer-artefact.
 
 
-## Status van versie 0.7.0-alpha
+## Status van versie 0.8.0-alpha-dev
 
-De workflow en installerconfiguratie zijn aangepast aan CWS Convertor en Project Model 2.1. In de huidige Linux-validatieomgeving zijn de Windows binaries niet geproduceerd. Een installer-EXE of portable Windows-ZIP mag pas als vrijgegeven worden beschouwd na een native Windows x64-build, geïnstalleerde-app-smoke zonder Python in `PATH`, file-associationtest, uninstalltest en schone-machinecontrole.
+De workflow en installerconfiguratie zijn aangepast aan Project Model 2.4 en de
+Part Workbench. Een installer-EXE of portable Windows-ZIP mag pas als vrijgegeven
+worden beschouwd na een native Windows x64-build, geinstalleerde-app-smoke zonder
+Python in `PATH`, file-associationtest, uninstalltest en schone-machinecontrole.

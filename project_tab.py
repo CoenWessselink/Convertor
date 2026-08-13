@@ -26,6 +26,7 @@ from cws_convertor.project import (
     ProjectStore,
     write_baseline_report,
 )
+from cws_convertor.ui.part_workbench import PartWorkbenchPanel
 
 
 class CWSProjectTab(ttk.Frame):
@@ -186,8 +187,10 @@ class CWSProjectTab(ttk.Frame):
         self.workspace.grid(row=3, column=0, sticky="nsew", padx=16, pady=(0, 10))
         model_page = ttk.Frame(self.workspace)
         bom_page = ttk.Frame(self.workspace)
+        workbench_page = ttk.Frame(self.workspace)
         self.workspace.add(model_page, text="  Model & bronnen  ")
         self.workspace.add(bom_page, text="  Classificatie & BOM  ")
+        self.workspace.add(workbench_page, text="  Part Workbench  ")
 
         body = ttk.Panedwindow(model_page, orient="horizontal")
         body.pack(fill="both", expand=True)
@@ -334,6 +337,17 @@ class CWSProjectTab(ttk.Frame):
         self.part_details.configure(yscrollcommand=bom_detail_scroll.set)
         bom_body.add(bom_detail_frame, weight=2)
 
+        workbench_page.columnconfigure(0, weight=1)
+        workbench_page.rowconfigure(0, weight=1)
+        self.part_workbench = PartWorkbenchPanel(
+            workbench_page,
+            session_provider=lambda: self.session,
+            changed_callback=self._workbench_changed,
+            selection_callback=self._select_part_from_workbench,
+            status_callback=self._workbench_status,
+        )
+        self.part_workbench.grid(row=0, column=0, sticky="nsew")
+
         footer = ttk.Frame(self, padding=(16, 0, 16, 10))
         footer.grid(row=4, column=0, sticky="ew")
         footer.columnconfigure(1, weight=1)
@@ -343,7 +357,7 @@ class CWSProjectTab(ttk.Frame):
         self.status_label.grid(row=0, column=1, sticky="ew", padx=(10, 0))
         self.phase_label = ttk.Label(
             footer,
-            text="Fase 3: classificatie, BOM en inkoop",
+            text="Fase 4: Part Workbench",
             foreground="#64748b",
         )
         self.phase_label.grid(row=0, column=2, sticky="e")
@@ -791,6 +805,7 @@ class CWSProjectTab(ttk.Frame):
         self._source_rows.clear()
         self._part_rows.clear()
         if self.session is None:
+            self.part_workbench.clear()
             self.project_badge.configure(text="GEEN PROJECT", bg="#334155")
             self.project_path_label.configure(text="Maak of open een .cwscproj-project")
             self.card_values["sources"].configure(text="0")
@@ -980,6 +995,7 @@ class CWSProjectTab(ttk.Frame):
             }
 
         self._refresh_classification_grid()
+        self.part_workbench.refresh()
 
         self._set_details(
             f"PROJECT\n{project.project_name}\n\n"
@@ -1119,6 +1135,22 @@ class CWSProjectTab(ttk.Frame):
         self.part_details.delete("1.0", "end")
         self.part_details.insert("1.0", "\n".join(lines))
         self.part_details.configure(state="disabled")
+        self.part_workbench.select_part(part.internal_id, notify=False)
+
+    def _select_part_from_workbench(self, part_id: str) -> None:
+        if not self.part_grid.exists(part_id):
+            return
+        self.part_grid.selection_set(part_id)
+        self.part_grid.focus(part_id)
+        self.part_grid.see(part_id)
+        self._part_selected()
+
+    def _workbench_changed(self) -> None:
+        self.refresh()
+
+    def _workbench_status(self, message: str) -> None:
+        self.status_label.configure(text=message)
+        self.log_callback(message)
 
     def _source_selected(self, _event=None) -> None:
         selected = self.source_grid.selection()
@@ -1245,6 +1277,7 @@ class CWSProjectTab(ttk.Frame):
         self.cancel_button.configure(
             state="normal" if self._busy_cancellable else "disabled"
         )
+        self.part_workbench.set_busy(busy)
         if busy:
             self.progress.start(10)
         else:

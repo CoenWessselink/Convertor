@@ -7,14 +7,18 @@
 - hoeveelheden en Excel;
 - complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie **0.7.0-alpha** bouwt verder op de bewezen conversiekern en op Project Model 2.0 uit v0.6. De nieuwe fase materialiseert echte IFC-/STEP-semantiek als actieve assemblies, onderdelen, bouten en lassen in **Project Model 2.1**.
+Versie **0.8.0-alpha-dev** bouwt verder op de bewezen conversiekern en de
+semantische IFC-/STEP-projectimport. De actuele projectstructuur gebruikt
+**Project Model 2.4**.
 
 De huidige `v0.8-codex-handover`-ontwikkeling gebruikt **Project Model 2.4**.
 Daarin is de eerste Part Workbench-fundering aanwezig: een onveranderlijke
 brongeometrieverwijzing, bewerkbare analytische revisies, rechterhandige
 productie-assen, referentiezijden, contouren en bewerkingen, provenance,
 blokkerende validatie, undo/redo en automatische artefactinvalidatie. De
-interactieve 3D/2D-editor en productie-roundtrips zijn nog niet afgerond.
+interactieve analytische 3D/2D-editor is nu in de bestaande projecttab
+geintegreerd. Exacte source-BREP/canonical-solidvergelijking en
+productie-roundtrips zijn nog niet afgerond.
 
 ## Veiligheidsarchitectuur
 
@@ -226,12 +230,15 @@ CWS_Convertor_CLI.exe project-migrate oud.cwscproj -o nieuw.cwscproj
 De bijgewerkte buildstraat gebruikt Python 3.12 x64 op de **buildcomputer** en maakt:
 
 ```text
-CWS_Convertor_Setup_0.7.0-alpha_x64.exe
-CWS_Convertor_Portable_0.7.0-alpha_x64.zip
+CWS_Convertor_Setup_0.8.0-alpha-dev_x64.exe
+CWS_Convertor_Portable_0.8.0-alpha-dev_x64.zip
 SHA256SUMS.txt
 ```
 
-De eindgebruiker heeft geen Python, pip, venv of terminal nodig. In de huidige Linuxomgeving is geen native Windows-EXE gebouwd of op een schone Windows-pc getest; de workflow en Inno Setup-configuratie zijn wel bijgewerkt naar 0.7.
+De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De Windows
+workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.8.0-alpha-dev. Een
+artefact geldt pas als gebouwd nadat de native Windows CI-installatie-, CLI-,
+projectopslag- en uninstallsmokes zijn geslaagd.
 
 ## Belangrijkste modules
 
@@ -243,6 +250,7 @@ cws_convertor/importers/semantic.py         gedeeld resultaat-/importcontract
 cws_convertor/project/semantic_import.py    broncontrole, purge, indexes en gate
 cws_convertor/project/model.py              Canonical Project Model 2.4
 cws_convertor/project/workbench.py          partrevisies, validatie en undo/redo
+cws_convertor/ui/part_workbench.py          geintegreerde analytische Part Workbench
 cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
 cws_convertor/project/service.py            transactionele GUI/CLI-service
 project_tab.py                              Project / Productie-interface
@@ -251,8 +259,14 @@ cli.py                                      conversie- en project-CLI
 
 ## Volgende bouwfase
 
-1. Part Workbench aansluiten op de echte project/part-selectie en 3D-viewer;
-2. gesynchroniseerde eigenschappengrid, featurelijst en 2D-tekening;
-3. deterministische canonical-solid rebuild en bron/canonical-vergelijking;
+De analytische Part Workbench is nu aangesloten op de echte project-/partselectie.
+De UI bevat revisiecommando's, sorteerbare onderdelen, eigenschappen, validatie,
+provenance, contouren, gaten en een gecombineerde 3D/2D-preview. De grijze 3D-vorm
+is voorlopig uitsluitend de betrouwbare bronomhulling; exacte bron-BREP-isolatie
+en canonical-solidvergelijking zijn nog niet gereed.
+
+1. geselecteerde IFC/STEP-brongeometrie exact isoleren;
+2. deterministische canonical-solid rebuild en bron/canonical-vergelijking;
+3. featureselectie tussen grids, 2D en exacte 3D verder synchroniseren;
 4. NC1/STEP/IFC/PDF-roundtripvalidatie per ondersteunde onderdeelklasse;
 5. pas daarna per-part/per-merk productie-export vrijgeven.

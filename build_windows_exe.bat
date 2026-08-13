@@ -18,24 +18,12 @@ echo [2/7] Dependencies installeren...
 ".venv-build\Scripts\python.exe" -m pip check || goto :error
 
 echo [3/7] Regressie- en projecttests uitvoeren...
+set "PYTHONPATH=%CD%"
 ".venv-build\Scripts\python.exe" -m compileall -q . || goto :error
-".venv-build\Scripts\python.exe" tests\analytic_fitting_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\regression_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\pdf_ai_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\pdf_review_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\dimension_graph_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\review_workflow_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_model_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_storage_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_baseline_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_cli_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_jobs_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_service_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_reference_files_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\p21_graph_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\ifc_semantic_import_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\step_semantic_import_smoke.py || goto :error
-".venv-build\Scripts\python.exe" tests\project_semantic_service_smoke.py || goto :error
+for %%F in (tests\*_smoke.py) do (
+    echo   %%~nxF
+    ".venv-build\Scripts\python.exe" "%%F" || goto :error
+)
 ".venv-build\Scripts\python.exe" cli.py --version || goto :error
 ".venv-build\Scripts\python.exe" cli.py project-new --help >nul || goto :error
 ".venv-build\Scripts\python.exe" cli.py project-import-baseline --help >nul || goto :error

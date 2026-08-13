@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - v0.7-semantic-import
+      - v0.8-codex-handover
     paths:
       - "*.py"
       - "*.json"
@@ -50,24 +51,14 @@ jobs:
       - name: Compile and run safety regressions
         shell: pwsh
         run: |
+          $env:PYTHONPATH = (Get-Location).Path
           python -m compileall -q .
-          python tests/analytic_fitting_smoke.py
-          python tests/regression_smoke.py
-          python tests/pdf_ai_smoke.py
-          python tests/pdf_review_smoke.py
-          python tests/dimension_graph_smoke.py
-          python tests/review_workflow_smoke.py
-          python tests/project_model_smoke.py
-          python tests/project_storage_smoke.py
-          python tests/project_baseline_smoke.py
-          python tests/project_cli_smoke.py
-          python tests/project_jobs_smoke.py
-          python tests/project_service_smoke.py
-          python tests/project_reference_files_smoke.py
-          python tests/p21_graph_smoke.py
-          python tests/ifc_semantic_import_smoke.py
-          python tests/step_semantic_import_smoke.py
-          python tests/project_semantic_service_smoke.py
+          Get-ChildItem tests -Filter "*_smoke.py" |
+            Sort-Object Name |
+            ForEach-Object {
+              python $_.FullName
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
           python cli.py --version
           python cli.py pdf-analyze --help
           python cli.py project-new --help
