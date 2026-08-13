@@ -19,6 +19,9 @@ def main() -> int:
     spec = (ROOT / "CWS_Convertor.spec").read_text(encoding="utf-8")
     runtime_lock = (ROOT / "requirements-runtime.lock.txt").read_text(encoding="utf-8")
     runtime_hook = (ROOT / "pyinstaller_hooks" / "pyi_rth_casadi_dll_path.py").read_text(encoding="utf-8")
+    gui_entry = (ROOT / "app.py").read_text(encoding="utf-8")
+    cli_entry = (ROOT / "cli.py").read_text(encoding="utf-8")
+    packaged_smoke = (ROOT / "tests" / "packaged_runtime_smoke.py").read_text(encoding="utf-8")
 
     assert f'#define MyAppVersion "{APP_VERSION}"' in installer
     assert f'#define MyAppNumericVersion "{APP_VERSION_NUMERIC}"' in installer
@@ -39,6 +42,10 @@ def main() -> int:
     assert "casadi==3.7.2" in runtime_lock
     assert "os.add_dll_directory" in runtime_hook
     assert "libcasadi.dll" in runtime_hook
+    assert "multiprocessing.freeze_support()" in gui_entry
+    assert "multiprocessing.freeze_support()" in cli_entry
+    assert "project-inspect-source-geometry" in packaged_smoke
+    assert "triangulated_mesh" in packaged_smoke
     assert workflow.count("packaged_runtime_smoke.py") == 3
     assert "--label dist" in workflow
     assert "--label portable" in workflow

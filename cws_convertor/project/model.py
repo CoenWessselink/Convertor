@@ -875,6 +875,15 @@ class Part(ProjectEntity):
         return self.geometry_hash, self.manufacturing_hash
 
     def validate_hashes(self) -> None:
+        if isinstance(self.geometry_descriptor, Mapping) and self.geometry_descriptor.get(
+            "source_locator"
+        ):
+            from .source_geometry import SourceGeometryError, validate_source_locator
+
+            try:
+                validate_source_locator(self)
+            except SourceGeometryError as exc:
+                raise ProjectValidationError(exc.message, exc.details) from exc
         if self.workbench:
             from .workbench import validate_workbench_state
 

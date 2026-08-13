@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import multiprocessing
+import sys
+
+# PyInstaller child workers must exit through freeze_support before CadQuery
+# and IfcOpenShell can load conflicting native OpenCascade runtimes.
+multiprocessing.freeze_support()
+
 from dataclasses import dataclass
 from pathlib import Path
 import json
 import os
 import queue
 import subprocess
-import sys
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk

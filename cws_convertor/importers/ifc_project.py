@@ -34,6 +34,7 @@ from cws_convertor.project.model import (
     Weld,
     utc_now_iso,
 )
+from cws_convertor.project.source_geometry import build_ifc_source_locator
 
 from .p21 import P21Document, P21Entity, scalar_value
 from .semantic import (
@@ -1029,6 +1030,13 @@ def import_ifc_project(
         )
         type_name = indexes.object_type_names.get(entity.entity_id, "")
         representation = _representation_summary(document, entity.ref(6))
+        representation["source_locator"] = build_ifc_source_locator(
+            source,
+            source_entity_id=identity.source_entity_id,
+            global_id=identity.global_id,
+            representation_id=str(representation.get("source_representation_id") or ""),
+            source_geometry_hash=str(representation.get("source_geometry_hash") or ""),
+        )
         profile = _first_nonempty(
             profile_property,
             entity.string(3),

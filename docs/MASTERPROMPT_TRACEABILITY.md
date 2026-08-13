@@ -18,9 +18,9 @@ and must not be merged as an accidental substitute for the controlled handover.
 
 | Phase | Combined scope | Current evidence | Status |
 | ---: | --- | --- | --- |
-| 0 | Baseline, naming, repository, locks/SBOM, logging/errors, CI and Windows packaging proof | Machine-readable baseline, 31/31 smoke scripts, prior clean Windows runtime pipeline | Complete locally; branch CI gate required |
-| 1 | Project Model 2.x, storage/migrations/jobs and semantic IFC/STEP project import | Schema 2.4, `.cwscproj`, jobs, semantic import, source identity and tests exist; exact source-shape isolation and validated real-model results remain | Partial foundation |
-| 2 | Part Workbench plus deterministic canonical rebuild and all format gates | Versioned workbench state, axes, references, analytical features, undo/redo/audit and bounded rebuild exist; exact arcs/worked profiles/source BREP and roundtrips remain | Next core phase |
+| 0 | Baseline, naming, repository, locks/SBOM, logging/errors, CI and Windows packaging proof | Machine-readable baseline, 31/31 smoke scripts and successful Windows run `31708776534` | Complete |
+| 1 | Project Model 2.x, storage/migrations/jobs and semantic IFC/STEP project import | Schema 2.4, `.cwscproj`, jobs, semantic import, versioned source locators, exact single-solid STEP resolution, verified IFC entity meshes and large-model evidence | Complete locally; branch CI gate required |
+| 2 | Part Workbench plus deterministic canonical rebuild and all format gates | Versioned workbench state, axes, references, analytical features, undo/redo/audit and bounded rebuild exist; exact arcs/worked profiles, multi-solid source mapping and roundtrips remain | Next core phase |
 | 3 | Per-part/per-mark NC1/STEP/IFC/PDF outputs, BOMs and technical drawings | Guarded package export, BOM draft and Trusted PDF foundation exist; full released drawing and roundtrip coverage does not | Partial foundation |
 | 4 | Main-app UX and controlled CWS Viewer integration | Tk project/production UI exists; viewer handover, exact scene integration, selection synchronization and integration tests remain | Not integrated |
 | 5 | Geometry identity, deduplication, revisions, purchasing, 1D cutting and 2D nesting | Classification/BOM and hash foundations exist; production-grade optimization and revision UX remain | Mostly open |
@@ -65,7 +65,7 @@ removing any requirement or allowing unsafe parallel feature work.
 | 17 | Canonical to IFC to canonical | Open |
 | 18 | Canonical to Trusted PDF to canonical | Open |
 | 19 | Unsupported feature cannot disappear silently | Covered |
-| 20 | All old regressions remain green | Covered by the phase-0 full suite |
+| 20 | All old regressions remain green | Covered by the phase-0 full suite; phase-1 full-suite and Windows gates required before merge |
 
 ## Non-negotiable gates
 

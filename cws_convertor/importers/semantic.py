@@ -17,7 +17,7 @@ from cws_convertor.project.model import utc_now_iso
 if TYPE_CHECKING:
     from cws_convertor.project.model import ProjectModel, SourceFileRecord
 
-SEMANTIC_IMPORT_VERSION = "2.1"
+SEMANTIC_IMPORT_VERSION = "2.2"
 SemanticProgress = Callable[[float, str], None]
 SemanticCancelCheck = Callable[[], None]
 

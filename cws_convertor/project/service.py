@@ -13,6 +13,7 @@ callers do not have to manipulate package internals.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 import tempfile
@@ -51,6 +52,7 @@ from .workbench import (
 if TYPE_CHECKING:
     from cws_convertor.bom.models import BOMSnapshot
     from .canonical_rebuild import CanonicalRebuildResult
+    from .source_geometry import SourceGeometryInspection
 
 
 @dataclass
@@ -623,6 +625,78 @@ class ProjectSession:
         self.dirty = True
         return state
 
+    def inspect_part_source_geometry(
+        self,
+        part_id: str,
+        *,
+        user: str = "system",
+        persist: bool = True,
+        cancel_check: SemanticCancelCheck | None = None,
+    ) -> "SourceGeometryInspection":
+        """Resolve a selected part against re-verified source bytes."""
+
+        from .source_geometry import (
+            inspect_part_source_geometry,
+            persist_source_geometry_inspection,
+        )
+
+        if persist:
+            self._ensure_writable()
+        part = self.project.parts.get(part_id)
+        if part is None:
+            raise ProjectPackageError(
+                f"Onbekend onderdeel {part_id}",
+                code=ErrorCode.INVALID_INPUT,
+            )
+        source_id = part.source_identity.source_file_id
+        source = self.project.sources.get(source_id)
+        if source is None:
+            raise ProjectPackageError(
+                f"Onderdeel {part_id} verwijst naar een ontbrekende bron",
+                code=ErrorCode.PROJECT_INVALID,
+            )
+        source_path = self.resolve_source_path(source_id)
+        inspection = inspect_part_source_geometry(
+            part,
+            source,
+            source_path,
+            cancel_check=cancel_check,
+        )
+        if not persist:
+            return inspection
+
+        original_descriptor = deepcopy(part.geometry_descriptor)
+        original_geometry_hash = part.geometry_hash
+        original_manufacturing_hash = part.manufacturing_hash
+        original_modified_at = self.project.modified_at
+        original_audit_count = len(self.project.audit_log)
+        try:
+            persist_source_geometry_inspection(part, inspection)
+            self.project.audit(
+                "part.source_geometry_inspected",
+                user=user or "system",
+                entity_id=part_id,
+                before_hash=original_geometry_hash,
+                after_hash=part.geometry_hash,
+                details={
+                    "status": inspection.status,
+                    "scope": inspection.scope,
+                    "geometry_kind": inspection.geometry_kind,
+                    "selection_verified": inspection.selection_verified,
+                    "production_geometry_exact": inspection.production_geometry_exact,
+                },
+            )
+            self.project.validate()
+        except Exception:
+            part.geometry_descriptor = original_descriptor
+            part.geometry_hash = original_geometry_hash
+            part.manufacturing_hash = original_manufacturing_hash
+            del self.project.audit_log[original_audit_count:]
+            self.project.modified_at = original_modified_at
+            raise
+        self.dirty = True
+        return inspection
+
     def update_part_workbench(
         self,
         part_id: str,
@@ -1144,6 +1218,29 @@ class ProjectService:
                 revision_message=f"Part Workbench voor {part_id} gestart",
             )
             return state
+
+    def inspect_part_source_geometry(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        *,
+        user: str = "system",
+        embed_sources: bool = True,
+        cancel_check: SemanticCancelCheck | None = None,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            inspection = session.inspect_part_source_geometry(
+                part_id,
+                user=user,
+                persist=True,
+                cancel_check=cancel_check,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Brongeometrie van onderdeel {part_id} geinspecteerd",
+            )
+            return inspection.to_dict()
 
     def update_part_workbench(
         self,

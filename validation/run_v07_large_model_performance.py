@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
 
 from cws_convertor.product import APP_NAME, APP_VERSION
 from cws_convertor.project import ProjectSession
+from tests.reference_fixtures import find_reference_file
 
 REFERENCE_NAME = "Samenstel nieuw - 11881_Predeterminado (1).step"
 
@@ -89,6 +90,10 @@ def main() -> int:
 
     source = (args.reference_root / REFERENCE_NAME).resolve()
     if not source.is_file():
+        discovered = find_reference_file(REFERENCE_NAME)
+        if discovered is not None:
+            source = discovered
+    if not source.is_file():
         raise SystemExit(f"Referentiebestand ontbreekt: {source}")
 
     progress: list[dict[str, object]] = []
@@ -111,9 +116,16 @@ def main() -> int:
             }
         ),
     )[0]
+    part = next(iter(session.project.parts.values()), None)
+    resolution_started = time.perf_counter()
+    inspection = (
+        session.inspect_part_source_geometry(part.internal_id, persist=False)
+        if part is not None
+        else None
+    )
+    resolution_elapsed = time.perf_counter() - resolution_started
     elapsed = time.perf_counter() - started
     rss = max_rss_mb()
-    part = next(iter(session.project.parts.values()), None)
 
     checks = {
         "strategy_b": result.strategy == "B_separate_solids",
@@ -128,6 +140,13 @@ def main() -> int:
         ),
         "geometry_hash_present": bool(part and part.geometry_hash),
         "manufacturing_hash_present": bool(part and part.manufacturing_hash),
+        "source_shape_resolved_exact": bool(
+            inspection
+            and inspection.status == "resolved_exact"
+            and inspection.scope == "part"
+            and inspection.selection_verified
+            and inspection.production_geometry_exact
+        ),
         "production_gate_closed": session.project.production_gate().get("allowed") is False,
         "within_time_guardrail": elapsed <= args.max_seconds,
         "within_memory_guardrail": rss <= args.max_rss_mb,
@@ -138,6 +157,7 @@ def main() -> int:
         "reference": source.name,
         "size_bytes": source.stat().st_size,
         "elapsed_seconds": round(elapsed, 6),
+        "source_resolution_seconds": round(resolution_elapsed, 6),
         "max_rss_mb": round(rss, 3),
         "guardrails": {
             "max_seconds": args.max_seconds,
@@ -147,6 +167,7 @@ def main() -> int:
         "status": "passed" if all(checks.values()) else "failed",
         "semantic_result": result.to_dict(),
         "project_counts": session.project.entity_counts(),
+        "source_inspection": inspection.to_dict() if inspection else None,
         "progress": progress,
     }
     target = args.output.resolve()

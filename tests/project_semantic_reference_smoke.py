@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import sys
 import unittest
@@ -10,26 +9,25 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.project import ProjectSession
+from reference_fixtures import find_reference_file
 
-REFERENCE_ROOT = Path(os.environ.get("CWS_REFERENCE_ROOT", "/mnt/data"))
 IFC_NAME = "TAS_RVB Defensie onderbouw te Leeuwarden- Rev4 [definitief].ifc"
 STEP_NAMES = (
     "Samenstel nieuw - 11864_Predeterminado (1).step",
     "Samenstel nieuw - 11881_Predeterminado (1).step",
     "Samenstel nieuw - 2x voetplaat hoog.step",
 )
-ALL_PRESENT = (REFERENCE_ROOT / IFC_NAME).is_file() and all(
-    (REFERENCE_ROOT / name).is_file() for name in STEP_NAMES
-)
+IFC_REFERENCE = find_reference_file(IFC_NAME)
+STEP_REFERENCES = {name: find_reference_file(name) for name in STEP_NAMES}
+ALL_STEPS_PRESENT = all(path is not None for path in STEP_REFERENCES.values())
 
 
-@unittest.skipUnless(ALL_PRESENT, "Semantische referentiemodellen niet aanwezig")
 class ProjectSemanticReferenceTests(unittest.TestCase):
-    def test_real_ifc_and_step_sources_materialise_without_fiction(self) -> None:
-        sources = [REFERENCE_ROOT / IFC_NAME, *(REFERENCE_ROOT / name for name in STEP_NAMES)]
-        session = ProjectSession.new("Real semantic references")
+    @unittest.skipUnless(IFC_REFERENCE is not None, "Exacte Tekla IFC-referentie niet aanwezig")
+    def test_real_ifc_source_materialises_without_fiction(self) -> None:
+        session = ProjectSession.new("Real IFC semantic reference")
         registrations = session.register_sources(
-            sources,
+            [IFC_REFERENCE],
             include_step_geometry=False,
             user="reference-test",
         )
@@ -80,6 +78,28 @@ class ProjectSemanticReferenceTests(unittest.TestCase):
         self.assertEqual(len({item["geometry_hash"] for item in lo4}), 1)
         self.assertEqual(len({item["manufacturing_hash"] for item in lo4}), 1)
 
+        self.assertEqual(session.project.entity_counts()["assembly"], 353)
+        self.assertEqual(session.project.entity_counts()["part"], 2429)
+        self.assertEqual(session.project.entity_counts()["fastener"], 723)
+        self.assertEqual(session.project.entity_counts()["weld"], 2654)
+        self.assertFalse(session.project.production_gate()["allowed"])
+        session.project.validate()
+
+    @unittest.skipUnless(ALL_STEPS_PRESENT, "Exacte STEP-referenties niet volledig aanwezig")
+    def test_real_step_sources_materialise_without_fiction(self) -> None:
+        sources = [STEP_REFERENCES[name] for name in STEP_NAMES]
+        self.assertTrue(all(source is not None for source in sources))
+        session = ProjectSession.new("Real STEP semantic references")
+        registrations = session.register_sources(
+            sources,
+            include_step_geometry=False,
+            user="reference-test",
+        )
+        results = session.semantic_import_sources(
+            [item.source.source_id for item in registrations],
+            user="reference-test",
+        )
+        by_name = {item.file_name: item for item in results}
         for step_name in STEP_NAMES:
             with self.subTest(step=step_name):
                 step = by_name[step_name]
@@ -96,10 +116,10 @@ class ProjectSemanticReferenceTests(unittest.TestCase):
                         "deferred_large_model",
                     )
 
-        self.assertEqual(session.project.entity_counts()["assembly"], 353)
-        self.assertEqual(session.project.entity_counts()["part"], 2432)
-        self.assertEqual(session.project.entity_counts()["fastener"], 723)
-        self.assertEqual(session.project.entity_counts()["weld"], 2654)
+        self.assertEqual(session.project.entity_counts()["assembly"], 0)
+        self.assertEqual(session.project.entity_counts()["part"], 3)
+        self.assertEqual(session.project.entity_counts()["fastener"], 0)
+        self.assertEqual(session.project.entity_counts()["weld"], 0)
         self.assertFalse(session.project.production_gate()["allowed"])
         session.project.validate()
 

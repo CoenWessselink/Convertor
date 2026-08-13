@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import sys
 import unittest
@@ -10,8 +9,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.project import ImportStrategy, inspect_model_file
+from reference_fixtures import find_reference_file
 
-REFERENCE_ROOT = Path(os.environ.get("CWS_REFERENCE_ROOT", "/mnt/data"))
 IFC_NAME = "TAS_RVB Defensie onderbouw te Leeuwarden- Rev4 [definitief].ifc"
 STEP_EXPECTATIONS = {
     "Samenstel nieuw - 11864_Predeterminado (1).step": {
@@ -33,12 +32,17 @@ STEP_EXPECTATIONS = {
         "cylindrical_surfaces": 8,
     },
 }
+IFC_REFERENCE = find_reference_file(IFC_NAME)
+STEP_REFERENCES = {
+    name: find_reference_file(name) for name in STEP_EXPECTATIONS
+}
+ALL_STEPS_PRESENT = all(path is not None for path in STEP_REFERENCES.values())
 
 
-@unittest.skipUnless((REFERENCE_ROOT / IFC_NAME).is_file(), "Grote referentiebestanden niet aanwezig")
 class ProjectReferenceFileTests(unittest.TestCase):
+    @unittest.skipUnless(IFC_REFERENCE is not None, "Exacte Tekla IFC-referentie niet aanwezig")
     def test_tekla_ifc_reference_counts_and_search_evidence(self) -> None:
-        result = inspect_model_file(REFERENCE_ROOT / IFC_NAME)
+        result = inspect_model_file(IFC_REFERENCE)
         self.assertEqual(result.schema, "IFC2X3")
         self.assertEqual(result.import_strategy, ImportStrategy.SEMANTIC_STRUCTURE)
         expected = {
@@ -72,10 +76,12 @@ class ProjectReferenceFileTests(unittest.TestCase):
         self.assertEqual(result.entity_counts["IFCFACETEDBREP"], 328)
         self.assertTrue(any("gefacetteerde BREP" in item for item in result.warnings))
 
+    @unittest.skipUnless(ALL_STEPS_PRESENT, "Exacte STEP-referenties niet volledig aanwezig")
     def test_step_references_are_one_product_one_solid_without_fiction(self) -> None:
         for file_name, expected in STEP_EXPECTATIONS.items():
             with self.subTest(file_name=file_name):
-                source = REFERENCE_ROOT / file_name
+                source = STEP_REFERENCES[file_name]
+                self.assertIsNotNone(source)
                 self.assertTrue(source.is_file(), file_name)
                 result = inspect_model_file(source, include_geometry=False)
                 self.assertTrue(result.schema.startswith("AP242"))
@@ -91,8 +97,11 @@ class ProjectReferenceFileTests(unittest.TestCase):
                     self.assertEqual(result.class_summary[key], expected[key], key)
                 self.assertIn("één productrecord en één BREP-solid", result.strategy_reason)
 
+    @unittest.skipUnless(ALL_STEPS_PRESENT, "Exacte STEP-referenties niet volledig aanwezig")
     def test_two_footplates_name_does_not_trigger_automatic_split(self) -> None:
-        result = inspect_model_file(REFERENCE_ROOT / "Samenstel nieuw - 2x voetplaat hoog.step")
+        source = STEP_REFERENCES["Samenstel nieuw - 2x voetplaat hoog.step"]
+        self.assertIsNotNone(source)
+        result = inspect_model_file(source)
         self.assertEqual(result.product_count, 1)
         self.assertEqual(result.solid_count, 1)
         self.assertTrue(any("niet automatisch opsplitsen" in item for item in result.warnings))

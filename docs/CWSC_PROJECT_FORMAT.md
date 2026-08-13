@@ -123,3 +123,11 @@ spiegeling blijft dat wel.
 Project Model 2.0, 2.1, 2.2 en 2.3 worden expliciet naar 2.4 gemigreerd. Bij
 migratie wordt een lege Workbench-sectie toegevoegd; er worden geen
 productiefeatures of verwachte waarden verzonnen.
+
+## Broninspectie vanaf importer 2.2
+
+Een `geometry_descriptor` kan een versie-1 `source_locator` en
+`source_inspection` bevatten. Deze records zijn klein en deterministisch: de
+package bewaart selectors, hashes, meetwaarden, topologie en validatiestatus.
+CadQuery/OCP-shapes en IFC-meshvertices zijn uitsluitend runtimegegevens en
+worden niet in SQLite of ZIP opgeslagen.

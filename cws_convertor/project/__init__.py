@@ -46,6 +46,14 @@ from .workbench import (
     evaluate_workbench_revision,
     workbench_geometry_payload,
 )
+from .source_geometry import (
+    SOURCE_INSPECTION_SCHEMA_VERSION,
+    SOURCE_LOCATOR_SCHEMA_VERSION,
+    SourceGeometryError,
+    SourceGeometryInspection,
+    inspect_part_source_geometry,
+    source_locator_for_part,
+)
 
 __all__ = [
     "ProjectModel",
@@ -87,4 +95,10 @@ __all__ = [
     "WORKBENCH_SCHEMA_VERSION",
     "evaluate_workbench_revision",
     "workbench_geometry_payload",
+    "SOURCE_INSPECTION_SCHEMA_VERSION",
+    "SOURCE_LOCATOR_SCHEMA_VERSION",
+    "SourceGeometryError",
+    "SourceGeometryInspection",
+    "inspect_part_source_geometry",
+    "source_locator_for_part",
 ]

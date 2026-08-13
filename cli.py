@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import multiprocessing
+
+multiprocessing.freeze_support()
+
 import argparse
 from pathlib import Path
 import json
@@ -340,6 +344,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--filter", default="", help="Zoek in positie, naam, profiel, materiaal en categorie")
     p.add_argument("--limit", type=int, default=200, help="Maximaal aantal regels; 0 = onbeperkt")
     p.add_argument("--json", action="store_true", help="Schrijf de lijst als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser(
+        "project-inspect-source-geometry",
+        help="Isoleer en controleer de brongeometrie van één projectonderdeel",
+    )
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("part_id", help="Interne part-ID uit project-list-parts")
+    p.add_argument("--no-embed", action="store_true", help="Bewaar bronnen alleen als pad/hashreferentie")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true", help="Schrijf het inspectierapport als JSON")
     _report_arg(p)
 
     p = sub.add_parser("project-list-assemblies", help="Toon semantisch geïmporteerde assemblies/merken")
@@ -810,6 +825,49 @@ def main(argv: list[str] | None = None) -> int:
                 "error": _exception_payload(exc),
             }
             print(f"FOUT onderdelen lezen: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-inspect-source-geometry":
+        try:
+            inspection = service.inspect_part_source_geometry(
+                args.project,
+                args.part_id,
+                user=args.user or "cli",
+                embed_sources=not args.no_embed,
+            )
+            selection_verified = bool(inspection.get("selection_verified", False))
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed" if selection_verified else "review_required",
+                "project_file": str(Path(args.project).resolve()),
+                "inspection": inspection,
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(
+                    f"Brongeometrie {inspection['status']} | {inspection['scope']} | "
+                    f"{inspection['geometry_kind']}"
+                )
+                print(
+                    "Selectie geverifieerd: "
+                    f"{'ja' if selection_verified else 'nee'} | exacte productiegeometrie: "
+                    f"{'ja' if inspection.get('production_geometry_exact') else 'nee'}"
+                )
+                for reason in inspection.get("blocking_reasons", []):
+                    print(f"     BLOKKADE: {reason}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK if selection_verified else EXIT_REVIEW_REQUIRED
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT brongeometrie inspecteren: {exc}", file=sys.stderr)
             _write_aggregate_report(args.json_report, payload)
             return EXIT_FAILED
 

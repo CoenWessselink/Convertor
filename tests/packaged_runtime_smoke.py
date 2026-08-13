@@ -71,7 +71,14 @@ def _clean_runtime_environment() -> dict[str, str]:
     return environment
 
 
-def _run(command: list[str], *, environment: dict[str, str], cwd: Path, timeout: int = 180) -> subprocess.CompletedProcess[str]:
+def _run(
+    command: list[str],
+    *,
+    environment: dict[str, str],
+    cwd: Path,
+    timeout: int = 180,
+    accepted_returncodes: set[int] | None = None,
+) -> subprocess.CompletedProcess[str]:
     completed = subprocess.run(
         command,
         cwd=cwd,
@@ -81,7 +88,8 @@ def _run(command: list[str], *, environment: dict[str, str], cwd: Path, timeout:
         timeout=timeout,
         check=False,
     )
-    if completed.returncode != 0:
+    accepted = accepted_returncodes or {0}
+    if completed.returncode not in accepted:
         raise AssertionError(
             f"Opdracht faalde ({completed.returncode}): {command}\n"
             f"stdout:\n{completed.stdout}\nstderr:\n{completed.stderr}"
@@ -140,6 +148,70 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
         step = conversion_dir / "SAMPLE_PLATE.step"
         assert step.is_file() and step.stat().st_size > 1_000, f"STEP-uitvoer ontbreekt of is leeg: {step}"
 
+        _run([str(cli), "dstv-to-ifc", str(nc1), "-o", str(conversion_dir)], environment=environment, cwd=work)
+        ifc_files = sorted(conversion_dir.glob("*.ifc"))
+        assert len(ifc_files) == 1, f"Verwacht precies één IFC-uitvoer, gevonden: {ifc_files}"
+        ifc = ifc_files[0]
+        import_report = work / "semantic-import.json"
+        _run(
+            [
+                str(cli),
+                "project-import",
+                str(project),
+                str(ifc),
+                "--json-report",
+                str(import_report),
+            ],
+            environment=environment,
+            cwd=work,
+            accepted_returncodes={0, 3},
+        )
+        imported = json.loads(import_report.read_text(encoding="utf-8"))
+        assert imported["status"] == "review_required", imported
+        assert imported["project"]["entity_counts"]["part"] >= 1, imported["project"]
+
+        parts_report = work / "parts.json"
+        _run(
+            [
+                str(cli),
+                "project-list-parts",
+                str(project),
+                "--limit",
+                "1",
+                "--json-report",
+                str(parts_report),
+            ],
+            environment=environment,
+            cwd=work,
+        )
+        parts = json.loads(parts_report.read_text(encoding="utf-8"))
+        assert parts["returned"] == 1, parts
+        part_id = parts["parts"][0]["part_id"]
+        inspection_report = work / "source-geometry.json"
+        _run(
+            [
+                str(cli),
+                "project-inspect-source-geometry",
+                str(project),
+                part_id,
+                "--json-report",
+                str(inspection_report),
+            ],
+            environment=environment,
+            cwd=work,
+            timeout=240,
+        )
+        inspected = json.loads(inspection_report.read_text(encoding="utf-8"))
+        inspection = inspected["inspection"]
+        assert inspected["status"] == "passed", inspected
+        assert inspection["status"] == "resolved_mesh", inspection
+        assert inspection["scope"] == "part", inspection
+        assert inspection["geometry_kind"] == "triangulated_mesh", inspection
+        assert inspection["selection_verified"] is True, inspection
+        assert inspection["production_geometry_exact"] is False, inspection
+        assert inspection["metrics"]["volume_mm3"] > 0.0, inspection
+        _run([str(cli), "project-verify", str(project)], environment=environment, cwd=work)
+
         summary = {
             "application_version": APP_VERSION,
             "label": label,
@@ -152,6 +224,12 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             "cli_version": version.stdout.strip(),
             "project_smoke": "passed",
             "nc1_to_step_smoke": {"status": "passed", "step_bytes": step.stat().st_size},
+            "ifc_source_geometry_smoke": {
+                "status": "passed",
+                "geometry_kind": inspection["geometry_kind"],
+                "selection_verified": inspection["selection_verified"],
+                "production_geometry_exact": inspection["production_geometry_exact"],
+            },
         }
     summary_path = result_dir / f"{label}-packaged-runtime.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")

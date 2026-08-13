@@ -31,6 +31,7 @@ from cws_convertor.project.model import (
     SourceIdentity,
     Transform3D,
 )
+from cws_convertor.project.source_geometry import build_step_source_locator
 
 from .p21 import P21Document, P21Entity, P21ParseError
 from .semantic import (
@@ -529,6 +530,12 @@ class STEPSemanticProjectImporter:
         if name_suffix:
             base_name = f"{base_name} · {name_suffix}"
         descriptor = self._graph_descriptor(document, solid_ids)
+        descriptor["source_locator"] = build_step_source_locator(
+            source,
+            source_entity_id=identity.source_entity_id,
+            solid_root_entity_ids=solid_ids,
+            source_geometry_hash=str(descriptor.get("source_geometry_hash") or ""),
+        )
         if metrics:
             descriptor["cad_metrics"] = dict(metrics)
         if profile_suggestion:

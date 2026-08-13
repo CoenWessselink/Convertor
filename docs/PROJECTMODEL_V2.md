@@ -94,3 +94,17 @@ Iedere muterende serviceactie schrijft een auditregel met actor, actie, doel, ti
 Project Model 2.1 voegt geen tweede geometriekern toe, maar legt semantische IFC/STEP-materialisatie vast: bronklasse, bronentiteit, product occurrence, spatial container, local/global placement, propertysets, materiaalevidence, geometry-subgraafhash, relationele assemblykoppeling en semantische importstatus.
 
 External solids blijven `review_required` totdat zij via het Canonical Part Model en deterministische roundtripvalidatie productiegeschikt zijn verklaard.
+
+## Bronselectie in semantic importer 2.2
+
+Nieuw geimporteerde IFC/STEP-onderdelen bevatten een versie-1
+`source_locator`. Deze koppelt het onderdeel aan bron-ID, bronhash,
+bronentiteit, brongeometriehash en een formaatspecifieke selector. De bronbytes
+worden voor iedere geometrie-inspectie opnieuw gehasht.
+
+Een STEP-selector wordt alleen als exacte native BREP geaccepteerd wanneer een
+enkele semantische BREP-root ook precies een native solid oplevert. IFC wordt
+op entity-ID geselecteerd en aanvullend gecontroleerd met GlobalId en
+representation-ID. De IFC-vorm is een triangulated mesh en geldt niet als
+exacte productie-BREP. Persistente inspecties bevatten meetresultaten en bewijs,
+geen runtime-shape of meshvertices.

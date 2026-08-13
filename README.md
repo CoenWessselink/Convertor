@@ -277,6 +277,7 @@ cws_convertor/importers/ifc_project.py      semantische IFC-projectimport
 cws_convertor/importers/step_project.py     semantische STEP-projectimport
 cws_convertor/importers/semantic.py         gedeeld resultaat-/importcontract
 cws_convertor/project/semantic_import.py    broncontrole, purge, indexes en gate
+cws_convertor/project/source_geometry.py    geverifieerde part-bronselectie
 cws_convertor/project/model.py              Canonical Project Model 2.4
 cws_convertor/project/workbench.py          partrevisies, validatie en undo/redo
 cws_convertor/project/canonical_rebuild.py  canonical solid en bronmeetvergelijking
@@ -289,15 +290,16 @@ cli.py                                      conversie- en project-CLI
 
 ## Volgende bouwfase
 
-De analytische Part Workbench is aangesloten op de echte project-/partselectie.
-De eerste deterministic rebuildlaag en meetvergelijking zijn gereed voor rechte
-platen, rondstaf en onbewerkte exacte catalogusprofielen. De grijze 3D-vorm blijft
-voorlopig uitsluitend de betrouwbare bronomhulling; een geslaagde meetvergelijking
-is nog geen volledige source-BREP- of formaat-roundtripvalidatie.
+Fase 1 koppelt ieder nieuw semantisch IFC/STEP-onderdeel via een gehashte
+bronselector terug aan de opnieuw geverifieerde bronbytes. Een eenduidige
+single-solid STEP wordt als exacte native BREP geisoleerd; IFC wordt exact per
+entiteit geselecteerd maar blijft bewust een niet-exacte tessellatie. De
+productiegate blijft in beide gevallen gesloten totdat feature- en
+roundtripvalidatie zijn afgerond.
 
-1. geselecteerde IFC/STEP-brongeometrie exact isoleren;
-2. boogcontouren, custom doorsneden en profielbewerkingen veilig terugbouwen;
+1. boogcontouren, custom doorsneden en profielbewerkingen veilig terugbouwen;
+2. multi-solid STEP en exacte IFC-BREP-mapping toevoegen zonder volgordegok;
 3. featureselectie tussen grids, 2D en exacte 3D verder synchroniseren;
 4. NC1/STEP/IFC/PDF-roundtripvalidatie per ondersteunde onderdeelklasse;
-5. de gevalideerde referentiemodellen tegen dezelfde vergelijking laten lopen;
+5. gevalideerde referentiemodellen tegen dezelfde vergelijking laten lopen;
 6. pas daarna per-part/per-merk productie-export vrijgeven.
