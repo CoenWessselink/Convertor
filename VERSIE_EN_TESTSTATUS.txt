@@ -85,4 +85,4 @@ BELANGRIJKE GRENZEN
 - Optimalisatie en machinejobs blijven geblokkeerd.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
 - GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
-- De 0.8.2 dist-, portable- en installatieruntime moet nog door de Windows CI-gates.
+- Windows CI-run 31720996524: source, dist, portable, installer, geïnstalleerde runtime en uninstall geslaagd.

@@ -29,7 +29,7 @@ edit invalidates rebuild, roundtrip and output artifacts.
 
 ## Validation evidence
 
-- Focused Workbench/service/CLI/UI suite: 16/16 passed.
+- Focused Workbench/service/CLI/UI suite: 17/17 passed.
 - Complete smoke discovery: 118 tests passed, seven fixture-dependent skips.
 - Plate with through-hole: complete four-format matrix passed.
 - HEA 240 with a through web hole: complete four-format matrix passed.
@@ -47,6 +47,14 @@ No file under `reference-models` or `reference-models-local` was modified.
 The 481 local expected-result records remain `manual_validation_required` and
 are not claimed as engineering truth.
 
+Windows Actions run `31720996524` passed source, native roundtrip self-test,
+GUI smoke, PyInstaller dist, clean portable extraction, silent installer,
+installed runtime without external Python, uninstall and artifact publication.
+Artifact `9189885073` is named
+`CWS_Convertor_0.8.2-alpha-dev_Windows_x64`, is 671,285,731 bytes and has
+artifact digest
+`sha256:414ed1c73cdf28d559589ff6f152177233ff6d217ae91635d09773ec57bab916`.
+
 ## Explicit remaining limits
 
 - Selected external IFC geometry is triangulated and therefore cannot satisfy
@@ -56,5 +64,5 @@ are not claimed as engineering truth.
   rebuilt losslessly.
 - Custom cross-sections and explicit arc segments cannot yet be serialized to
   visible NC1 without loss and therefore do not pass the all-format gate.
-- Phase 2 remains a development snapshot until the Windows source, dist,
-  portable and installed-runtime CI gates pass.
+- The application remains a development snapshot until real engineering
+  reference results are manually validated and later release phases pass.

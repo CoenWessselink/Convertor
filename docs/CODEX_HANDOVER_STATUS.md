@@ -19,12 +19,15 @@ This remains a development snapshot, not a production release.
 - Phase 1 passed 32/32 local smoke scripts and 111 known unittest cases with
   seven explicit fixture-dependent skips; Windows run `31712333345` passed.
 - Phase 2 adds the strict Workbench rebuild and four-format roundtrip chain;
-  its branch CI evidence is still pending.
+  Windows run `31720996524` passed the full source/dist/portable/installer matrix.
 - The ignored local reference registry pairs 481 models with 481 expected
   result files; all remain `manual_validation_required` and none are treated as
   validated engineering truth.
 - GitHub Actions run `31708776534` passed the complete Windows source, dist,
   portable, installed-without-Python and uninstall matrix for commit `d6b855a`.
+- Phase 2 artifact `9189885073` (`CWS_Convertor_0.8.2-alpha-dev_Windows_x64`)
+  is 671,285,731 bytes with artifact digest
+  `sha256:414ed1c73cdf28d559589ff6f152177233ff6d217ae91635d09773ec57bab916`.
 
 See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 `docs/MASTERPROMPT_TRACEABILITY.md` for full prompt coverage.
