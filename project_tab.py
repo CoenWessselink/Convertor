@@ -391,7 +391,7 @@ class CWSProjectTab(ttk.Frame):
             parent=self,
             title="Nieuw CWS-project opslaan",
             defaultextension=PROJECT_FILE_EXTENSION,
-            filetypes=[("CWS Convertor-project", f"*{PROJECT_FILE_EXTENSION}")],
+            filetypes=[(f"{APP_NAME}-project", f"*{PROJECT_FILE_EXTENSION}")],
             initialfile=f"{name}{PROJECT_FILE_EXTENSION}",
         )
         if not path:
@@ -418,7 +418,7 @@ class CWSProjectTab(ttk.Frame):
             parent=self,
             title="CWS-project openen",
             filetypes=[
-                ("CWS Convertor-project", f"*{PROJECT_FILE_EXTENSION}"),
+                (f"{APP_NAME}-project", f"*{PROJECT_FILE_EXTENSION}"),
                 ("Alle bestanden", "*.*"),
             ],
         )
@@ -614,7 +614,7 @@ class CWSProjectTab(ttk.Frame):
             return
         if not messagebox.askyesno(
             "Onderdelen classificeren",
-            "CWS Convertor classificeert ieder object deterministisch als maakdeel, "
+            f"{APP_NAME} classificeert ieder object deterministisch als maakdeel, "
             "inkoopdeel, niet-staal, referentie of onbekend. Onzekere objecten blijven "
             "geblokkeerd. Doorgaan?",
             parent=self,
@@ -886,7 +886,7 @@ class CWSProjectTab(ttk.Frame):
                 bg="#eef4fa", fg="#334155",
             )
             self._set_details(
-                "CWS Convertor-projecten bewaren bronhashes, importstrategieën, "
+                f"{APP_NAME}-projecten bewaren bronhashes, importstrategieën, "
                 "auditgegevens en optioneel de volledige IFC/STEP-bronnen in één "
                 "draagbaar .cwscproj-bestand."
             )

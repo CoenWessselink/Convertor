@@ -25,11 +25,14 @@ from uuid import UUID, uuid4, uuid5
 from canonical_model import CanonicalPart, sha256_file
 from cws_convertor.errors import CWSError, ErrorCode
 from cws_convertor.product import APP_VERSION, PROJECT_SCHEMA_VERSION
+from cws_convertor.steel_model.tolerances import (
+    MATRIX_ROW_TOLERANCE,
+    ROTATION_TOLERANCE,
+)
 
 PROJECT_ID_NAMESPACE = UUID("bbd71aef-84df-4e31-bd22-c2c1c8b91c69")
 HASH_ALGORITHM_VERSION = "cws-geometry-v1"
 MANUFACTURING_HASH_VERSION = "cws-manufacturing-v1"
-ROTATION_TOLERANCE = 1e-6
 
 
 class ProjectValidationError(CWSError):
@@ -353,7 +356,10 @@ class Transform3D:
                 if not math.isfinite(float(item)):
                     raise ProjectValidationError("Placementmatrix bevat een niet-eindige waarde")
         expected = [0.0, 0.0, 0.0, 1.0]
-        if any(abs(float(a) - b) > 1e-9 for a, b in zip(self.matrix[3], expected)):
+        if any(
+            abs(float(a) - b) > MATRIX_ROW_TOLERANCE
+            for a, b in zip(self.matrix[3], expected)
+        ):
             raise ProjectValidationError("Laatste rij van placementmatrix moet [0,0,0,1] zijn")
 
         # Project placements are rigid, right-handed coordinate systems.  A

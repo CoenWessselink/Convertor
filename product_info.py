@@ -1,4 +1,4 @@
-"""Compatibility shim exposing the central CWS Convertor product constants."""
+"""Compatibility shim exposing the central SteelConverter product constants."""
 from cws_convertor.product import *  # noqa: F401,F403
 
 # Historical aliases used by the v0.5 conversion modules and build scripts.

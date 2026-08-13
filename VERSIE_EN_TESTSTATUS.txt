@@ -1,15 +1,22 @@
-CWS CONVERTOR — VERSIE- EN TESTSTATUS
+STEELCONVERTER — VERSIE- EN TESTSTATUS
 ====================================
 
-Product:             CWS Convertor
+Product:             SteelConverter
+Compatibiliteit:     CWS_Convertor binaries/installer/.cwscproj/ProgIDs behouden
 Versie:              0.8.3-beta-dev
 Project Model:       2.5
 Projectbestand:      .cwscproj
-Fase:                Vrijgegeven productiepakketten, BOM en technische tekeningen
+Fase:                Fase A fundament afgerond; fase B Viewer & Import Accuracy volgt
 Productiestatus:     BETA-DEV - synthetische releaseketen getest; golden projectvalidatie blijft vereist
 
 NIEUW IN DEZE VERSIE
 --------------------
+- SteelModel 1.0 als deterministische read-only adapter boven Project Model 2.5.
+- Centrale tolerantiepolicy voor exact, numeriek, variabele metadata en manual validation.
+- Stabiel viewer-hostcontract met source/SteelModel/node/geometry-ID-keten en aparte mesh-contenthash.
+- Capability-handshake en expliciete grens tussen app- en viewerverantwoordelijkheid.
+- SteelConverter zichtbaar, met behoud van bestaande CWS_Convertor-compatibiliteits-ID's.
+- CLI `project-export-steel-model` voor gecontroleerde GPT-vieweroverdracht.
 - Gedeelde ISO-10303-21-grafiekkern voor IFC en STEP.
 - IFC assemblies, parts, fasteners, lassen, placements, properties en materialen.
 - STEP products, product definitions, occurrences en BREP-roots.
@@ -75,7 +82,8 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts lokale ontwikkelrun:    34/34 scripts; 122 tests / 7 skips geslaagd
+Smoke-scripts lokale ontwikkelrun:    35/35 scripts; 129 tests / 7 skips geslaagd
+SteelModel fase-A contracttests:       7/7 geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Canonical rebuild-tests:               6/6 geslaagd
 Productiepakket-tests:                 4/4 geslaagd

@@ -15,6 +15,11 @@ import cadquery as cq
 import conversion
 import converter as nc1
 from profile_database import ProfileDatabase, ProfileDefinition, normalise_name
+from cws_convertor.steel_model.tolerances import (
+    AREA_RELATIVE_TOLERANCE,
+    BBOX_ABSOLUTE_TOLERANCE_MM,
+    VOLUME_RELATIVE_TOLERANCE,
+)
 
 from .model import Part, ProjectValidationError, stable_sha256
 from .workbench import (
@@ -26,11 +31,6 @@ from .workbench import (
 
 REBUILD_SCHEMA_VERSION = "1.0"
 BUILDER_VERSION = "cws-canonical-rebuild-v1"
-VOLUME_RELATIVE_TOLERANCE = 0.001
-AREA_RELATIVE_TOLERANCE = 0.001
-BBOX_ABSOLUTE_TOLERANCE_MM = 0.05
-
-
 class CanonicalRebuildError(ValueError):
     """Raised when the reviewed representation cannot be rebuilt safely."""
 

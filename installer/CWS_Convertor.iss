@@ -1,4 +1,4 @@
-#define MyAppName "CWS Convertor"
+#define MyAppName "SteelConverter"
 #define MyAppVersion "0.8.3-beta-dev"
 #define MyAppNumericVersion "0.8.3.0"
 #define MyAppPublisher "CWS"
@@ -35,20 +35,20 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Maak een snelkoppeling op het bureaublad"; GroupDescription: "Snelkoppelingen:"; Flags: unchecked
-Name: "fileassoc"; Description: "Koppel CWS-projecten, .nc, .nc1, .step, .stp en .ifc; voeg een PDF-contextmenu toe"; GroupDescription: "Bestandskoppelingen:"; Flags: checkedonce
+Name: "fileassoc"; Description: "Koppel SteelConverter-projecten, .nc, .nc1, .step, .stp en .ifc; voeg een PDF-contextmenu toe"; GroupDescription: "Bestandskoppelingen:"; Flags: checkedonce
 
 [Files]
 Source: "..\dist\CWS_Convertor\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{group}\CWS Convertor CLI"; Filename: "{app}\{#MyCliExeName}"
+Name: "{group}\SteelConverter CLI"; Filename: "{app}\{#MyCliExeName}"
 Name: "{group}\Verwijderen"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
 Root: HKCR; Subkey: ".cwscproj"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.Project"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.Project"; ValueType: string; ValueName: ""; ValueData: "CWS Convertor-project"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKCR; Subkey: "CWSConvertor.Project"; ValueType: string; ValueName: ""; ValueData: "SteelConverter-project"; Flags: uninsdeletekey; Tasks: fileassoc
 Root: HKCR; Subkey: "CWSConvertor.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
 Root: HKCR; Subkey: "CWSConvertor.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
@@ -69,8 +69,8 @@ Root: HKCR; Subkey: "CWSConvertor.IFC"; ValueType: string; ValueName: ""; ValueD
 Root: HKCR; Subkey: "CWSConvertor.IFC\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
 Root: HKCR; Subkey: "CWSConvertor.IFC\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
-; Laat de standaard PDF-lezer intact; voeg alleen een expliciete CWS-actie toe.
-Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\CWSConvertor"; ValueType: string; ValueName: ""; ValueData: "Openen in CWS Convertor"; Flags: uninsdeletekey; Tasks: fileassoc
+; Laat de standaard PDF-lezer intact; voeg alleen een expliciete SteelConverter-actie toe.
+Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\CWSConvertor"; ValueType: string; ValueName: ""; ValueData: "Openen in SteelConverter"; Flags: uninsdeletekey; Tasks: fileassoc
 Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\CWSConvertor\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
 [Run]

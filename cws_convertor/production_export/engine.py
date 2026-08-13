@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from cws_convertor.product import APP_NAME
+
 from .artifacts import ArtifactUnavailable, create_artifact, extension, media_type
 from .models import (
     ArtifactResult,
@@ -399,7 +401,7 @@ class ProductionExportEngine:
             ]
             manifest = ExportManifest(
                 schema_version=self.SCHEMA_VERSION,
-                product="CWS Convertor",
+                product=APP_NAME,
                 product_version=self.product_version,
                 export_id=export_id,
                 created_at_utc=utc_now_iso(),
@@ -429,7 +431,7 @@ class ProductionExportEngine:
             atomic_write(root / "manifest.json", canonical_json_bytes(manifest.to_dict()))
             self._write_summary_csv(root, items)
             atomic_write(root / "README.txt", (
-                "CWS Convertor productiepakket\n"
+                f"{APP_NAME} productiepakket\n"
                 "===============================\n"
                 "Controleer manifest.json en SHA256SUMS.txt vóór gebruik.\n"
                 "Een REVIEW_NIET_VRIJGEGEVEN-PDF is nooit een productieartefact.\n"

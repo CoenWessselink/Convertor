@@ -6,6 +6,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+from cws_convertor.product import APP_NAME
 from cws_convertor.production_export import ExportRequest, ProductionExportEngine, load_project_snapshot
 from cws_convertor.production_export.readiness import ReadinessGate
 from cws_convertor.production_export.utils import get_value, iter_values
@@ -204,11 +205,11 @@ class ExportCenterTab(ttk.Frame):
 
     def _start_export(self) -> None:
         if not self.project_path.get() or not self.output_path.get():
-            messagebox.showerror("CWS Convertor", "Kies eerst een project en uitvoermap.")
+            messagebox.showerror(APP_NAME, "Kies eerst een project en uitvoermap.")
             return
         selected = [key for key, variable in self.formats.items() if variable.get()]
         if not selected:
-            messagebox.showerror("CWS Convertor", "Selecteer minimaal één formaat.")
+            messagebox.showerror(APP_NAME, "Selecteer minimaal één formaat.")
             return
         self.export_button.configure(state="disabled")
         self.status.set("Productiegate controleren en pakket atomisch opbouwen…")
@@ -223,12 +224,12 @@ class ExportCenterTab(ttk.Frame):
             )
             summary = json.dumps(manifest.summary, ensure_ascii=False, indent=2)
             self.after(0, lambda: messagebox.showinfo(
-                "CWS Convertor",
+                APP_NAME,
                 f"Pakket gebouwd:\n{zip_path or root}\n\n{summary}",
             ))
             self.after(0, lambda: self.status.set("Pakket gereed. Controleer manifest en blokkades vóór vrijgave."))
         except Exception as exc:
-            self.after(0, lambda: messagebox.showerror("CWS Convertor", str(exc)))
+            self.after(0, lambda: messagebox.showerror(APP_NAME, str(exc)))
             self.after(0, lambda: self.status.set(f"Export mislukt: {exc}"))
         finally:
             self.after(0, lambda: self.export_button.configure(state="normal"))
@@ -236,7 +237,7 @@ class ExportCenterTab(ttk.Frame):
 
 def main() -> None:
     root = tk.Tk()
-    root.title("CWS Convertor — Productiepakketten")
+    root.title(f"{APP_NAME} - Productiepakketten")
     root.geometry("1120x800")
     root.minsize(900, 650)
     ExportCenterTab(root).pack(fill="both", expand=True)

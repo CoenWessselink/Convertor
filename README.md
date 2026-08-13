@@ -1,9 +1,9 @@
 # SteelConverter - CWS Convertor 0.8.3-beta-dev implementation snapshot
 
-**SteelConverter** is de leidende productrichting. De huidige compatibele
-desktopapplicatie, CLI en Windows-build heten nog **CWS Convertor
-0.8.3-beta-dev**. De naams- en modelmigratie gebeurt gecontroleerd, zonder
-bestaande projecten of bewezen conversiepaden te breken.
+**SteelConverter** is de leidende en zichtbare productnaam. De huidige
+compatibele executable-, installer-, project- en registeridentifiers blijven
+voor versie 0.8.3-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
+scripts en upgrades blijven werken.
 
 SteelConverter is een local-first productieomgeving voor veilige conversie en
 productievoorbereiding van:
@@ -306,6 +306,10 @@ cws_convertor/project/model.py              Canonical Project Model 2.5
 cws_convertor/project/workbench.py          partrevisies, validatie en undo/redo
 cws_convertor/project/canonical_rebuild.py  canonical solid en bronmeetvergelijking
 cws_convertor/project/roundtrip.py          NC1/STEP/IFC/PDF export-herimportmatrix
+cws_convertor/steel_model/contracts.py      SteelModel 1.0 read-only contract
+cws_convertor/steel_model/adapter.py        Project Model 2.5 compatibility adapter
+cws_convertor/steel_model/tolerances.py     central comparison policy
+cws_convertor/steel_model/viewer_boundary.py controlled GPT-viewer handover contract
 cws_convertor/ui/part_workbench.py          geintegreerde analytische Part Workbench
 cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
 cws_convertor/project/service.py            transactionele GUI/CLI-service
@@ -316,9 +320,9 @@ cli.py                                      conversie- en project-CLI
 ## Volgende bouwfase
 
 De eerder uitgevoerde kernfasen 0-3 blijven geldig als technisch bewijs. De
-voorwaartse roadmap gebruikt nu fasen A-F. Eerst worden de resterende fase-A
-contracten voor `SteelModel`, compatibiliteit en viewerintegratie gesloten.
-Daarna volgt fase B: Viewer & Import Accuracy.
+voorwaartse roadmap gebruikt nu fasen A-F. Fase A is afgerond met SteelModel
+1.0, centrale toleranties, compatibiliteitsidentiteit en het viewer-hostcontract.
+Nu volgt fase B: Viewer & Import Accuracy.
 
 1. maak `source ID -> SteelModel ID -> viewer mesh ID` stabiel en controleerbaar;
 2. bewijs units, transformaties, orientatie en toleranties op synthetische en

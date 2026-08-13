@@ -337,7 +337,7 @@ def main() -> int:
     run = Run(started_at=utc_stamp())
     print(f"[v0.7] Validatie-uitvoer: {output}", flush=True)
 
-    run.check("Productnaam", APP_NAME == "CWS Convertor", expected="CWS Convertor", actual=APP_NAME)
+    run.check("Productnaam", APP_NAME == "SteelConverter", expected="SteelConverter", actual=APP_NAME)
     run.check("Applicatieversie", APP_VERSION == EXPECTED_VERSION, expected=EXPECTED_VERSION, actual=APP_VERSION)
     run.check("Projectschema", PROJECT_SCHEMA_VERSION == EXPECTED_SCHEMA, expected=EXPECTED_SCHEMA, actual=PROJECT_SCHEMA_VERSION)
 

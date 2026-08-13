@@ -62,7 +62,7 @@ def _write_xlsx(path: Path, snapshot: BOMSnapshot) -> None:
     )
     workbook.set_properties({
         "title": f"{snapshot.project_name} — BOM",
-        "subject": "CWS Convertor classificatie, BOM en herkomst",
+        "subject": f"{APP_NAME} classificatie, BOM en herkomst",
         "author": APP_NAME,
         "company": "CWS",
         "comments": f"Gegenereerd met {APP_NAME} {APP_VERSION}",

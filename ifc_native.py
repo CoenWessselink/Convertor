@@ -19,6 +19,8 @@ from typing import Iterable, Iterator
 import cadquery as cq
 import numpy as np
 
+from cws_convertor.product import APP_NAME
+
 from canonical_model import (
     CanonicalPart,
     embed_part_in_ifc_text,
@@ -135,17 +137,17 @@ def write_native_ifc(
         "FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');",
         (
             f"FILE_NAME('{_escape_ifc(output.name)}','{timestamp}',"
-            "('CWS Convertor'),('CWS Convertor'),"
-            f"'CWS Convertor v{_escape_ifc(canonical.converter_version)}',"
-            f"'CWS Convertor v{_escape_ifc(canonical.converter_version)}','');"
+            f"('{_escape_ifc(APP_NAME)}'),('{_escape_ifc(APP_NAME)}'),"
+            f"'{_escape_ifc(APP_NAME)} v{_escape_ifc(canonical.converter_version)}',"
+            f"'{_escape_ifc(APP_NAME)} v{_escape_ifc(canonical.converter_version)}','');"
         ),
         "FILE_SCHEMA(('IFC4'));",
         "ENDSEC;",
         "DATA;",
         "#1=IFCPERSON($,$,'Converter',$,$,$,$,$);",
-        "#2=IFCORGANIZATION($,'CWS Convertor',$,$,$);",
+        f"#2=IFCORGANIZATION($,'{_escape_ifc(APP_NAME)}',$,$,$);",
         "#3=IFCPERSONANDORGANIZATION(#1,#2,$);",
-        f"#4=IFCAPPLICATION(#2,'{_escape_ifc(canonical.converter_version)}','CWS Convertor','CWSCONVERTOR');",
+        f"#4=IFCAPPLICATION(#2,'{_escape_ifc(canonical.converter_version)}','{_escape_ifc(APP_NAME)}','CWSCONVERTOR');",
         f"#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,{epoch});",
         "#6=IFCCARTESIANPOINT((0.,0.,0.));",
         "#7=IFCDIRECTION((0.,0.,1.));",

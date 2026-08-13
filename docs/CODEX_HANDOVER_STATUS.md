@@ -2,16 +2,17 @@
 
 ## Current identity
 
-- Target product: **SteelConverter**
-- Current compatible runtime/product label: **CWS Convertor**
+- Target and visible product: **SteelConverter**
+- Compatible executable/package identity: **CWS_Convertor**
 - Development snapshot: `0.8.3-beta-dev`
 - Project Model schema: `2.5`
 - Core baseline source: `d6b855a`
 - Active core phase branch: `feature/core-phase-3-production-package-drawings`
 
-This remains a development snapshot, not a production release. The target-name
-migration and project-wide `SteelModel` contract belong to revised phase A and
-must preserve existing projects, CLI contracts and release evidence.
+This remains a development snapshot, not a production release. Phase A supplies
+the project-wide read-only `SteelModel 1.0` adapter, central tolerances and
+viewer-host contract while preserving existing projects, CLI contracts and
+release evidence.
 
 The leading requirements are now:
 
@@ -37,6 +38,9 @@ not conflict with these sources.
   Windows run `31728698072` passed the full matrix.
 - Phase 3 local verification passes 34/34 smoke scripts and 122 tests with
   seven explicit fixture-dependent skips.
+- Revised phase A local verification passes 35/35 smoke scripts and 129 tests
+  with the same seven explicit fixture-dependent skips; application selftest
+  and GUI smoke pass under the visible SteelConverter identity.
 - Phase 3 artifact `9193020951` (`CWS_Convertor_0.8.3-beta-dev_Windows_x64`)
   is 677,358,200 bytes with digest
   `sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.
@@ -68,15 +72,18 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 - Part Workbench 1.1 with analytical arcs, custom sections, worked profiles,
   deterministic canonical rebuild and hash-bound NC1/STEP/IFC/PDF roundtrips;
 - GUI/CLI foundations;
-- working Windows x64 installer and portable package pipeline.
+- working Windows x64 installer and portable package pipeline;
+- deterministic SteelModel 1.0 snapshot and CLI export;
+- stable source/SteelModel/viewer binding contract and capability handshake;
+- central exact/tolerance/metadata/manual-validation comparison policy;
+- visible SteelConverter identity with retained `CWS_Convertor` executable,
+  installer, project and registry compatibility identifiers.
 
 These are proven implementation components. They are not a claim that the
 broader SteelConverter phases B-F are complete.
 
 ## Not complete
 
-- compatibility-preserving unification around a project-wide `SteelModel`;
-- stable source ID to `SteelModel` ID to viewer mesh ID traceability;
 - trustworthy central production viewer with synchronized tree, properties,
   measurements, sections, compare and Accuracy/Debug mode;
 - visual golden regression and representative large-model viewer evidence;
@@ -93,9 +100,9 @@ broader SteelConverter phases B-F are complete.
 
 ## Next core work
 
-Use revised phases A-F. Preserve the accepted phase-3 baseline, close the
-remaining phase-A `SteelModel` and viewer contracts, then implement the smallest
-end-to-end phase-B Viewer & Import Accuracy slice. It must prove source/model/mesh
+Use revised phases A-F. Phase A is complete; preserve the accepted phase-3 and
+phase-A baselines, then implement the smallest end-to-end phase-B Viewer &
+Import Accuracy slice. It must prove source/model/mesh
 identity, units/transforms, selection synchronization, visible validation and
 golden/visual regression before feature breadth grows.
 

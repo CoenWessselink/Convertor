@@ -857,7 +857,7 @@ def _draw_title_block(
     pdf.setFont("Helvetica", 6.4)
     if template.company_address:
         pdf.drawCentredString(x0 + 18.5 * mm, y0 + 25 * mm, template.company_address[:40])
-    pdf.drawCentredString(x0 + 18.5 * mm, y0 + 8 * mm, f"CWS Convertor v{DEFAULT_CONVERTER_VERSION}")
+    pdf.drawCentredString(x0 + 18.5 * mm, y0 + 8 * mm, f"{PRODUCT_NAME} v{DEFAULT_CONVERTER_VERSION}")
 
     values = {
         "Onderwerp": _effective_title(part),
@@ -2803,7 +2803,7 @@ def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
         raise ExternalPDFExportBlocked("Productie-export van een plaat vereist een gesloten contour")
     lines = [
         "ST",
-        f"** Generated from validated canonical model by CWS Convertor v{DEFAULT_CONVERTER_VERSION}",
+        f"** Generated from validated canonical model by {PRODUCT_NAME} v{DEFAULT_CONVERTER_VERSION}",
         f"  {_ascii_safe(header.order_number, 'PDF')}",
         f"  {_ascii_safe(header.drawing_number or header.position_number or part.part_id, 'PART')}",
         "  1",

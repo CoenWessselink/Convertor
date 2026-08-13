@@ -11,7 +11,7 @@ def main(argv: list[str] | None = None) -> int:
     import cli as legacy_cli
     legacy_main = getattr(legacy_cli, "main", None)
     if not callable(legacy_main):
-        raise RuntimeError("Bestaande CWS Convertor CLI bevat geen main()-functie")
+        raise RuntimeError("Bestaande SteelConverter CLI bevat geen main()-functie")
     try:
         result = legacy_main(arguments)
     except TypeError:

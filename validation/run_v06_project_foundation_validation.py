@@ -337,7 +337,7 @@ def _write_report(path: Path, run: ValidationRun, analyses: list[BaselineAnalysi
         "",
         "## Bewezen scope",
         "",
-        "- centrale productidentiteit **CWS Convertor**;",
+        f"- centrale productidentiteit **{APP_NAME}**;",
         "- Canonical Project Model 2.0 met stabiele bron- en entity-identiteit;",
         "- deterministische selectie van IFC/STEP-importstrategie A/B/C;",
         "- echte nulmeting op één groot Tekla IFC-model en drie AP242 STEP-modellen;",
@@ -414,7 +414,7 @@ def validate(args: argparse.Namespace) -> int:
     source_paths = [Path(item).expanduser().resolve() for item in args.inputs]
     run = ValidationRun(started_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
 
-    run.check("Productnaam", APP_NAME == "CWS Convertor", expected="CWS Convertor", actual=APP_NAME)
+    run.check("Productnaam", APP_NAME == "SteelConverter", expected="SteelConverter", actual=APP_NAME)
     run.check("Prereleaseversie", APP_VERSION == EXPECTED_VERSION, expected=EXPECTED_VERSION, actual=APP_VERSION)
     run.check(
         "Vier referentiebestanden aanwezig",
@@ -528,7 +528,7 @@ def validate(args: argparse.Namespace) -> int:
         "<svg xmlns='http://www.w3.org/2000/svg' width='960' height='540' viewBox='0 0 960 540'>"
         "<rect width='960' height='540' fill='#101820'/>"
         "<rect x='36' y='36' width='888' height='468' rx='22' fill='#17242f' stroke='#4aa3ff' stroke-width='2'/>"
-        "<text x='72' y='110' fill='white' font-family='Segoe UI,Arial' font-size='42' font-weight='700'>CWS Convertor</text>"
+        f"<text x='72' y='110' fill='white' font-family='Segoe UI,Arial' font-size='42' font-weight='700'>{APP_NAME}</text>"
         "<text x='72' y='157' fill='#a9c7df' font-family='Segoe UI,Arial' font-size='22'>Project Foundation — referentieproject</text>"
         "<text x='72' y='235' fill='white' font-family='Segoe UI,Arial' font-size='28'>4 bronmodellen veilig geïnventariseerd</text>"
         "<text x='72' y='287' fill='#9fb3c5' font-family='Segoe UI,Arial' font-size='20'>1 × Tekla IFC2X3  •  3 × STEP AP242</text>"

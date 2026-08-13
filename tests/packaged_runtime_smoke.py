@@ -219,6 +219,31 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
         assert inspection["metrics"]["volume_mm3"] > 0.0, inspection
         _run([str(cli), "project-verify", str(project)], environment=environment, cwd=work)
 
+        steel_model_path = work / "steel-model.json"
+        viewer_host_path = work / "viewer-host.json"
+        _run(
+            [
+                str(cli),
+                "project-export-steel-model",
+                str(project),
+                "--output",
+                str(steel_model_path),
+                "--viewer-output",
+                str(viewer_host_path),
+            ],
+            environment=environment,
+            cwd=work,
+        )
+        steel_model = json.loads(steel_model_path.read_text(encoding="utf-8"))
+        viewer_host = json.loads(viewer_host_path.read_text(encoding="utf-8"))
+        assert steel_model["schema_version"] == "1.0", steel_model
+        assert viewer_host["contract_version"] == "1.0", viewer_host
+        assert steel_model["project_id"] == viewer_host["project_id"], viewer_host
+        assert len(steel_model["entities"]) == len(viewer_host["bindings"]), viewer_host
+        assert len(steel_model["entities"]) >= 1, steel_model
+        assert len(steel_model["snapshot_sha256"]) == 64, steel_model
+        assert len(viewer_host["snapshot_sha256"]) == 64, viewer_host
+
         native_details = {
             check["name"]: dict(check.get("details") or {})
             for check in native_result["checks"]
@@ -234,6 +259,11 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             "gui_checks": {check["name"]: check["status"] for check in gui_result["checks"]},
             "cli_version": version.stdout.strip(),
             "project_smoke": "passed",
+            "steel_model_foundation_smoke": {
+                "status": "passed",
+                "entities": len(steel_model["entities"]),
+                "contract_version": viewer_host["contract_version"],
+            },
             "nc1_to_step_smoke": {"status": "passed", "step_bytes": step.stat().st_size},
             "ifc_source_geometry_smoke": {
                 "status": "passed",

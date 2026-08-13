@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from cws_convertor.product import PROJECT_FILE_EXTENSION
+from cws_convertor.product import APP_NAME, PROJECT_FILE_EXTENSION
 from cws_convertor.project import ProjectService
 
 PROJECT_COMMANDS = {
@@ -24,11 +24,12 @@ PROJECT_COMMANDS = {
     "project-import-semantic",
     "project-list-parts",
     "project-list-assemblies",
+    "project-export-steel-model",
 }
 
 
 def add_project_parsers(sub: argparse._SubParsersAction) -> None:
-    parser = sub.add_parser("project-create", help="Maak een CWS Convertor-projectpakket")
+    parser = sub.add_parser("project-create", help=f"Maak een {APP_NAME}-projectpakket")
     parser.add_argument("name")
     parser.add_argument("-o", "--output", required=True)
     parser.add_argument("--customer", default="")
@@ -83,6 +84,15 @@ def add_project_parsers(sub: argparse._SubParsersAction) -> None:
     parser.add_argument("project")
     parser.add_argument("--source-id", default="")
     parser.add_argument("--limit", type=int, default=200)
+    parser.add_argument("--json-report", default="")
+
+    parser = sub.add_parser(
+        "project-export-steel-model",
+        help="Exporteer SteelModel 1.0 en het viewer-hostcontract",
+    )
+    parser.add_argument("project")
+    parser.add_argument("-o", "--output", required=True)
+    parser.add_argument("--viewer-output", default="")
     parser.add_argument("--json-report", default="")
 
 
@@ -205,6 +215,40 @@ def handle_project_command(args: argparse.Namespace) -> tuple[int, dict[str, Any
             if args.limit > 0:
                 assemblies = assemblies[: args.limit]
             payload.update(status="passed", total_matching=total, assemblies=assemblies)
+        elif command == "project-export-steel-model":
+            from cws_convertor.steel_model.adapter import build_steel_model_snapshot
+            from cws_convertor.steel_model.viewer_boundary import build_viewer_host_snapshot
+
+            with service.open(args.project, read_only=True) as session:
+                steel_model = build_steel_model_snapshot(session.project)
+            viewer_host = build_viewer_host_snapshot(steel_model)
+            target = Path(args.output)
+            viewer_target = (
+                Path(args.viewer_output)
+                if args.viewer_output
+                else target.with_name(f"{target.stem}.viewer-host.json")
+            )
+            if target.resolve() == viewer_target.resolve():
+                raise ValueError("SteelModel- en viewer-uitvoer moeten verschillen")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            viewer_target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(steel_model.to_json_bytes())
+            viewer_target.write_bytes(viewer_host.to_json_bytes())
+            payload.update(
+                status="passed",
+                steel_model={
+                    "output": str(target),
+                    "schema_version": steel_model.schema_version,
+                    "snapshot_sha256": steel_model.snapshot_sha256,
+                    "entity_count": len(steel_model.entities),
+                },
+                viewer_host={
+                    "output": str(viewer_target),
+                    "contract_version": viewer_host.contract_version,
+                    "snapshot_sha256": viewer_host.snapshot_sha256,
+                    "binding_count": len(viewer_host.bindings),
+                },
+            )
         else:
             raise ValueError(f"Onbekend projectcommando {command!r}")
     except Exception as exc:

@@ -30,6 +30,10 @@ from canonical_model import (
 from ifc_native import extract_native_canonical, parse_native_ifc_meshes, write_native_ifc
 from pdf_support import canonical_to_nc1, create_trusted_pdf, load_trusted_pdf
 from profile_database import ProfileDatabase, normalise_name
+from cws_convertor.steel_model.tolerances import (
+    BBOX_ABSOLUTE_TOLERANCE_MM,
+    METRIC_RELATIVE_TOLERANCE,
+)
 
 from .canonical_rebuild import canonical_shape_metrics
 from .model import Part, ProjectValidationError, stable_sha256
@@ -38,10 +42,6 @@ from .workbench import REQUIRED_ROUNDTRIP_FORMATS, workbench_geometry_payload
 
 ROUNDTRIP_SCHEMA_VERSION = "1.0"
 ROUNDTRIP_VALIDATOR_VERSION = "cws-roundtrip-v1"
-METRIC_RELATIVE_TOLERANCE = 0.001
-BBOX_ABSOLUTE_TOLERANCE_MM = 0.05
-
-
 def _safe_name(value: str) -> str:
     clean = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip()).strip("._")
     return clean or "part"

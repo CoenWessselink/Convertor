@@ -1,4 +1,4 @@
-# CWS Convertor 0.8.3-beta-dev - Windows x64 release
+# SteelConverter 0.8.3-beta-dev - Windows x64 release
 
 ## Target artifacts
 
@@ -29,6 +29,7 @@ Every packaged environment must pass:
 6. CLI version and project create/read;
 7. actual NC1-to-STEP conversion.
 8. canonical NC1/STEP/IFC/Trusted-PDF release package creation and checksum verification.
+9. SteelModel 1.0 and viewer-hostcontract export from an installed project.
 
 The complete technical matrix is documented in `WINDOWS_RUNTIME_VALIDATION.md`.
 

@@ -5,6 +5,7 @@ import json
 import sys
 from pathlib import Path
 
+from cws_convertor.product import APP_NAME
 from cws_convertor.production_export import RELEASE_FORMATS
 from cws_convertor.production_export.verify import verify_export_directory, verify_export_zip
 from cws_convertor.project import ProjectService
@@ -13,7 +14,7 @@ from cws_convertor.project import ProjectService
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="CWS_Convertor_Export_CLI",
-        description="Veilige per-onderdeel- en per-merkexport voor CWS Convertor",
+        description=f"Veilige per-onderdeel- en per-merkexport voor {APP_NAME}",
     )
     sub = parser.add_subparsers(dest="command", required=True)
     export = sub.add_parser("project-export", help="Maak een gecontroleerd productie-/reviewpakket")

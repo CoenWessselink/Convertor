@@ -17,6 +17,7 @@ import math
 import re
 from typing import Any, Iterator
 
+from cws_convertor.product import APP_NAME
 from .model import ImportStrategy
 
 ANALYSIS_VERSION = "1.0"
@@ -525,7 +526,7 @@ def write_baseline_report(
     analyses: list[BaselineAnalysis],
     output_path: str | Path,
     *,
-    title: str = "CWS Convertor projectimport-nulmeting",
+    title: str = f"{APP_NAME} projectimport-nulmeting",
 ) -> Path:
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)

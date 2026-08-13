@@ -164,11 +164,13 @@ def collect_product_identity() -> dict:
     from cws_convertor.product import (
         APP_NAME,
         APP_VERSION,
+        LEGACY_APP_NAME,
         PROJECT_SCHEMA_VERSION,
     )
 
     return {
         "name": APP_NAME,
+        "compatibility_name": LEGACY_APP_NAME,
         "version": APP_VERSION,
         "project_schema": PROJECT_SCHEMA_VERSION,
     }

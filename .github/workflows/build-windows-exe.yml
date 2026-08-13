@@ -1,4 +1,4 @@
-name: Build CWS Convertor Windows installer and portable package
+name: Build SteelConverter Windows installer and portable package
 
 on:
   workflow_dispatch:
@@ -69,6 +69,7 @@ jobs:
           python cli.py project-import --help
           python cli.py project-tree --help
           python cli.py project-list-parts --help
+          python cli.py project-export-steel-model --help
           python cli.py project-rebuild-canonical --help
           python cli.py project-validate-roundtrips --help
           python cli.py project-export-parts --help
@@ -241,7 +242,7 @@ jobs:
           $manifest | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 release/WINDOWS_RELEASE_MANIFEST.json
           Copy-Item "$env:RUNTIME_RESULTS\*.json" release/
           @(
-            "## CWS Convertor Windows release $env:CWS_VERSION",
+            "## SteelConverter Windows release $env:CWS_VERSION",
             "",
             "Run: $env:GITHUB_RUN_ID  ",
             "Commit: ``$env:GITHUB_SHA``  ",

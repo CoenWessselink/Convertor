@@ -1,13 +1,17 @@
-"""Central product identity and compatibility constants for CWS Convertor.
+"""Central SteelConverter identity and compatibility constants.
 
 This module is the only source of truth for visible names, package names and
 version numbers.  Legacy payload markers intentionally stay unchanged so that
-v0.4/v0.5 IFC and Trusted PDF files remain readable.
+v0.4/v0.5 IFC and Trusted PDF files, installed shortcuts and automation remain
+readable during the product-name migration.
 """
 from __future__ import annotations
 
-APP_NAME = "CWS Convertor"
+APP_NAME = "SteelConverter"
 APP_SHORT_NAME = APP_NAME
+# Compatibility identifiers are intentionally not renamed in place. Existing
+# projects, scripts, upgrades and file associations continue to resolve them.
+LEGACY_APP_NAME = "CWS Convertor"
 APP_SLUG = "CWS_Convertor"
 APP_ID = "nl.cws.convertor"
 # Integration snapshot for Codex: semantic import, Part Workbench rebuild and
@@ -17,7 +21,7 @@ APP_VERSION = "0.8.3-beta-dev"
 APP_VERSION_NUMERIC = "0.8.3.0"
 APP_PUBLISHER = "CWS"
 APP_DESCRIPTION = (
-    "AI-ondersteunde NC1/DSTV-, STEP-, IFC- en technische PDF-convertor"
+    "Gevalideerde staalmodel-, productie- en conversieomgeving"
 )
 
 CLI_EXE_NAME = "CWS_Convertor_CLI.exe"

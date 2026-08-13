@@ -1166,7 +1166,7 @@ class ProjectProductionExportEngine:
             atomic_write(
                 root / "README.txt",
                 (
-                    "CWS Convertor vrijgegeven productiepakket\n"
+                    f"{APP_NAME} vrijgegeven productiepakket\n"
                     "========================================\n"
                     "Controleer manifest.json en SHA256SUMS.txt voor gebruik.\n"
                     "Alle part-productieformaten zijn tijdens deze export opnieuw gegenereerd en heringelezen.\n"

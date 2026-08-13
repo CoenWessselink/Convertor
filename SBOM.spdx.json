@@ -4,14 +4,14 @@
     {
       "annotationDate": "2026-08-13T00:00:00Z",
       "annotationType": "OTHER",
-      "annotator": "Tool: CWS Convertor Windows native runtime release",
+      "annotator": "Tool: SteelConverter Windows native runtime release",
       "comment": "Direct dependency SBOM generated from pinned lock files. The native Windows build publishes a second transitive wheel inventory."
     }
   ],
   "creationInfo": {
     "created": "2026-08-13T00:00:00Z",
     "creators": [
-      "Tool: CWS Convertor Windows native runtime release"
+      "Tool: SteelConverter Windows native runtime release"
     ]
   },
   "dataLicense": "CC0-1.0",
@@ -19,7 +19,7 @@
     "SPDXRef-Package-0-CWS-Convertor"
   ],
   "documentNamespace": "https://cws.local/spdx/CWS-Convertor-0.8.3-beta-dev-862a9b07-f947-4d04-9db8-aa135d34b7e6",
-  "name": "CWS Convertor 0.8.3-beta-dev direct dependency SBOM",
+  "name": "SteelConverter 0.8.3-beta-dev direct dependency SBOM",
   "packages": [
     {
       "SPDXID": "SPDXRef-Package-0-CWS-Convertor",
@@ -28,7 +28,7 @@
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
-      "name": "CWS-Convertor",
+      "name": "SteelConverter",
       "primaryPackagePurpose": "APPLICATION",
       "versionInfo": "0.8.3-beta-dev"
     },

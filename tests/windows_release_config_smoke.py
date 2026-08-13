@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from cws_convertor.product import APP_VERSION, APP_VERSION_NUMERIC
+from cws_convertor.product import APP_NAME, APP_VERSION, APP_VERSION_NUMERIC
 
 
 def main() -> int:
@@ -24,6 +24,8 @@ def main() -> int:
     packaged_smoke = (ROOT / "tests" / "packaged_runtime_smoke.py").read_text(encoding="utf-8")
 
     assert f'#define MyAppVersion "{APP_VERSION}"' in installer
+    assert f'#define MyAppName "{APP_NAME}"' in installer
+    assert '#define MyAppExeName "CWS_Convertor.exe"' in installer
     assert f'#define MyAppNumericVersion "{APP_VERSION_NUMERIC}"' in installer
     assert "VersionInfoVersion={#MyAppNumericVersion}" in installer
     assert "VersionInfoProductVersion={#MyAppNumericVersion}" in installer

@@ -250,7 +250,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser(
         "project-new",
         aliases=["project-create"],
-        help="Maak een nieuw draagbaar CWS Convertor-project",
+        help=f"Maak een nieuw draagbaar {APP_NAME}-project",
     )
     p.add_argument("project", help="Doelbestand; .cwscproj wordt zo nodig toegevoegd")
     p.add_argument("--name", required=True, help="Projectnaam")
@@ -426,6 +426,19 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("project-export-json", help="Exporteer het canonieke Project Model als JSON")
     p.add_argument("project", help=".cwscproj-projectbestand")
     p.add_argument("-o", "--output", required=True, help="Uitvoerbestand (.json)")
+    _report_arg(p)
+
+    p = sub.add_parser(
+        "project-export-steel-model",
+        help="Exporteer SteelModel 1.0 en het viewer-hostcontract",
+    )
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("-o", "--output", required=True, help="SteelModel JSON-uitvoerbestand")
+    p.add_argument(
+        "--viewer-output",
+        default="",
+        help="Viewer-hostcontract; standaard naast de SteelModel-export",
+    )
     _report_arg(p)
 
     p = sub.add_parser("project-extract-source", help="Pak een ingesloten IFC/STEP-bron veilig uit")
@@ -1185,6 +1198,58 @@ def main(argv: list[str] | None = None) -> int:
                 "error": _exception_payload(exc),
             }
             print(f"FOUT Project Model exporteren: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-export-steel-model":
+        try:
+            from cws_convertor.steel_model.adapter import build_steel_model_snapshot
+            from cws_convertor.steel_model.viewer_boundary import build_viewer_host_snapshot
+
+            with ProjectSession.open(args.project, read_only=True) as session:
+                steel_model = build_steel_model_snapshot(session.project)
+            viewer_host = build_viewer_host_snapshot(steel_model)
+            target = Path(args.output)
+            viewer_target = (
+                Path(args.viewer_output)
+                if args.viewer_output
+                else target.with_name(f"{target.stem}.viewer-host.json")
+            )
+            if target.resolve() == viewer_target.resolve():
+                raise ValueError("SteelModel- en viewer-uitvoer moeten verschillende bestanden zijn")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            viewer_target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(steel_model.to_json_bytes())
+            viewer_target.write_bytes(viewer_host.to_json_bytes())
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed",
+                "steel_model": {
+                    "output": str(target),
+                    "schema_version": steel_model.schema_version,
+                    "snapshot_sha256": steel_model.snapshot_sha256,
+                    "entity_count": len(steel_model.entities),
+                },
+                "viewer_host": {
+                    "output": str(viewer_target),
+                    "contract_version": viewer_host.contract_version,
+                    "snapshot_sha256": viewer_host.snapshot_sha256,
+                    "binding_count": len(viewer_host.bindings),
+                },
+            }
+            print(f"OK   SteelModel JSON: {target}")
+            print(f"OK   Viewer-hostcontract: {viewer_target}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT SteelModel exporteren: {exc}", file=sys.stderr)
             _write_aggregate_report(args.json_report, payload)
             return EXIT_FAILED
 

@@ -23,6 +23,8 @@ import math
 import uuid
 from typing import Iterable
 
+from cws_convertor.product import APP_NAME
+
 import cadquery as cq
 import numpy as np
 
@@ -246,14 +248,14 @@ def write_semantic_plate_ifc(
         "ISO-10303-21;",
         "HEADER;",
         "FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');",
-        f"FILE_NAME('{_escape(Path(output_path).name)}','{timestamp}',('CWS Convertor'),('CWS Convertor'),'CWS Convertor v{_escape(part.converter_version)}','CWS Convertor v{_escape(part.converter_version)}','');",
+        f"FILE_NAME('{_escape(Path(output_path).name)}','{timestamp}',('{_escape(APP_NAME)}'),('{_escape(APP_NAME)}'),'{_escape(APP_NAME)} v{_escape(part.converter_version)}','{_escape(APP_NAME)} v{_escape(part.converter_version)}','');",
         "FILE_SCHEMA(('IFC4'));",
         "ENDSEC;",
         "DATA;",
         "#1=IFCPERSON($,$,'Converter',$,$,$,$,$);",
-        "#2=IFCORGANIZATION($,'CWS Convertor',$,$,$);",
+        f"#2=IFCORGANIZATION($,'{_escape(APP_NAME)}',$,$,$);",
         "#3=IFCPERSONANDORGANIZATION(#1,#2,$);",
-        f"#4=IFCAPPLICATION(#2,'{_escape(part.converter_version)}','CWS Convertor','CWSCONVERTOR');",
+        f"#4=IFCAPPLICATION(#2,'{_escape(part.converter_version)}','{_escape(APP_NAME)}','CWSCONVERTOR');",
         f"#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,{owner_epoch});",
         "#6=IFCCARTESIANPOINT((0.,0.,0.));",
         "#7=IFCDIRECTION((0.,0.,1.));",

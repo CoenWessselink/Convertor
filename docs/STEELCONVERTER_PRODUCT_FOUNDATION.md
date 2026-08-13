@@ -114,7 +114,7 @@ area and is not hidden under technical control or machine output.
 
 | Phase | Scope | Current interpretation |
 | --- | --- | --- |
-| A - Foundation | Repository baseline, target identity migration, `SteelModel` contract, immutable sources, state and module boundaries | Partly proven; model unification, compatibility plan and viewer boundary remain |
+| A - Foundation | Repository baseline, target identity migration, `SteelModel` contract, immutable sources, state and module boundaries | **Complete**; read-only SteelModel 1.0 adapter, central tolerances, compatibility identity and viewer-host boundary are tested |
 | B - Viewer & Import Accuracy | Reliable import, source/model/mesh trace, viewer UX, measurements, sections, compare, debug mode, golden and large-model regressions | **Next priority**; existing import evidence is useful but this gate is not complete |
 | C - Production Editor | Parametric production edits, holes/slots/copes/cuts/bevels, scribing, preview, undo/redo and audit | Backend foundations exist; complete viewer-integrated workflow remains open |
 | D - BOM & Drawings | BOM/material/purchasing outputs plus overview, assembly/mark and part drawings | Initial packages and drawings exist; full model-driven drawing acceptance remains open |
@@ -139,8 +139,8 @@ count. It is accepted only when:
 - large models expose time, memory and crash behavior;
 - an Accuracy/Debug mode exposes IDs, units, deltas and validation status.
 
-The next implementation batch therefore closes the remaining phase-A model and
-viewer contracts, then delivers the smallest end-to-end phase-B accuracy slice.
+Phase A is closed. The next implementation batch delivers the smallest
+end-to-end phase-B accuracy slice while the viewer is developed in parallel.
 Purchasing, machine adapters and optimization do not advance ahead of this gate.
 
 ## Golden references and release gates

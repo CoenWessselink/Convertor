@@ -136,7 +136,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = tk.Tk()
-    root.title("CWS Convertor - Part Workbench validatie")
+    root.title("SteelConverter - Part Workbench validatie")
     root.geometry("1500x900+40+30")
     root.minsize(1220, 760)
     root.attributes("-topmost", True)

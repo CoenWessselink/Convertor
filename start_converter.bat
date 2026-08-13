@@ -5,7 +5,7 @@ set PYTHONUTF8=1
 
 if not exist ".venv\Scripts\python.exe" (
     if exist ".venv" rmdir /s /q ".venv"
-    echo CWS Convertor bronstart: lokale ontwikkelomgeving wordt aangemaakt.
+    echo SteelConverter bronstart: lokale ontwikkelomgeving wordt aangemaakt.
     py -3.12 -m venv .venv 2>nul
     if errorlevel 1 (
         python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3,12) else 1)" 2>nul

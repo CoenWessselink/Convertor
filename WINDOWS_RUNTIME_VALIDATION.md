@@ -2,7 +2,7 @@
 
 ## Release
 
-- Application: CWS Convertor 0.8.3-beta-dev
+- Application: SteelConverter 0.8.3-beta-dev
 - Platform: Windows 10/11 x64
 - Runtime: bundled CPython 3.12 via PyInstaller onedir
 - External requirements: no Python, pip, virtual environment or manual DLL install
@@ -29,7 +29,8 @@ failing GUI import chain.
 - `pyi_rth_casadi_dll_path.py` registers the bundled CasADi directory before app imports start.
 - `CWS_Convertor.exe --self-test` executes native and functional runtime checks.
 - `CWS_Convertor.exe --gui-smoke` creates the main window, processes the event loop and closes it.
-- The packaged regression performs an NC1-to-STEP conversion and project create/read cycle.
+- The packaged regression performs an NC1-to-STEP conversion, project create/read cycle and
+  SteelModel/viewer-hostcontract export.
 - The native runtime self-test releases and verifies a complete canonical production package.
 
 ## Native checks
@@ -59,12 +60,12 @@ separate dependency and license gate.
 
 The Windows workflow fails unless all of these environments pass independently:
 
-| Environment | Native selftest | GUI smoke | CLI | Project | NC1 to STEP | Python on child PATH |
-| --- | --- | --- | --- | --- | --- | --- |
-| Source | required | required | required | required | existing regressions | build Python |
-| PyInstaller dist | required | required | required | required | required | absent |
-| Fresh portable extraction | required | required | required | required | required | absent |
-| Installed application | required | required | required | required | required | absent |
+| Environment | Native selftest | GUI smoke | CLI | Project | SteelModel | NC1 to STEP | Python on child PATH |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Source | required | required | required | required | required | existing regressions | build Python |
+| PyInstaller dist | required | required | required | required | required | required | absent |
+| Fresh portable extraction | required | required | required | required | required | required | absent |
+| Installed application | required | required | required | required | required | required | absent |
 
 The workflow appends its run ID, commit and completed matrix to the copy shipped
 inside the release artifact. JSON reports for every environment are included
@@ -74,8 +75,8 @@ Actions job summary so they remain inspectable without downloading the artifact.
 
 ## Local Windows evidence
 
-On 2026-08-13 the `0.8.3-beta-dev` source suite completed 34/34 smoke scripts:
-122 tests passed with seven explicit fixture-dependent skips. The prior
+On 2026-08-13 the `0.8.3-beta-dev` source suite completed 35/35 smoke scripts:
+129 tests passed with seven explicit fixture-dependent skips. The prior
 `0.8.2-alpha-dev` Windows run `31720996524` passed native selftest, GUI smoke,
 CLI, project cycle and NC1-to-STEP conversion independently from `dist`, a
 fresh portable extraction and a fresh Inno Setup installation. The current

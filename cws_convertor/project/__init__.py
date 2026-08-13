@@ -55,6 +55,17 @@ from .source_geometry import (
     source_locator_for_part,
 )
 
+
+def build_steel_model_snapshot(project, *, tolerance_policy=None):
+    """Build the versioned read-only SteelModel adapter lazily."""
+
+    from cws_convertor.steel_model.adapter import build_steel_model_snapshot as build
+
+    return build(project) if tolerance_policy is None else build(
+        project,
+        tolerance_policy=tolerance_policy,
+    )
+
 __all__ = [
     "ProjectModel",
     "ProjectValidationError",
@@ -101,4 +112,5 @@ __all__ = [
     "SourceGeometryInspection",
     "inspect_part_source_geometry",
     "source_locator_for_part",
+    "build_steel_model_snapshot",
 ]
