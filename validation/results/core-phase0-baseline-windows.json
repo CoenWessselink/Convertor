@@ -1,0 +1,687 @@
+{
+  "baseline_status": "passed_with_declared_gaps",
+  "environment": {
+    "interpreter": ".venv/Scripts/python.exe",
+    "machine": "AMD64",
+    "packages": {
+      "Pillow": "12.3.0",
+      "PyMuPDF": "1.26.7",
+      "XlsxWriter": "3.2.9",
+      "cadquery": "2.8.0",
+      "cadquery-ocp": "7.9.3.1.1",
+      "casadi": "3.7.2",
+      "ifcopenshell": "0.8.5",
+      "matplotlib": "3.10.8",
+      "numpy": "2.3.5",
+      "pyinstaller": "6.15.0",
+      "pypdf": "5.9.0",
+      "reportlab": "4.4.9",
+      "scipy": "1.18.0"
+    },
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 198 Stepping 2, GenuineIntel",
+    "python": "3.12.0",
+    "python_implementation": "CPython",
+    "release": "11",
+    "system": "Windows"
+  },
+  "generated_at": "2026-08-13T14:08:39.409010+00:00",
+  "git": {
+    "baseline_source": "ba6744a834f79501c4a6a78c65eb8a85c1484d0e",
+    "branch": "feature/core-phase-0-baseline",
+    "clean_at_start": true,
+    "head": "1fde3301d64f4c40e69f3cb621b92edc9b5342f6",
+    "status_entries": 0,
+    "tags": [
+      "v0.5.1-baseline",
+      "v0.6.0-beta",
+      "v0.7.0-alpha",
+      "v0.8.0-alpha-dev-codex-handover"
+    ]
+  },
+  "handover": {
+    "bytes": 7722412,
+    "errors": [],
+    "manifest_entries": 315,
+    "name": "CWS_Convertor_CODEX_OVERDRACHT_COMPLEET_v0.8.zip",
+    "sha256": "76063d483fd111b98227f04725b1ed9b7616dcfec492a9207e308449728923e7",
+    "status": "passed",
+    "verified_entries": 315
+  },
+  "master_prompt": {
+    "byte_identical": false,
+    "differences": [
+      {
+        "line": 30,
+        "provided": "- Development snapshot: `0.8.0-alpha-dev`",
+        "repository": "- Development snapshot: `0.8.1-alpha-dev`"
+      }
+    ],
+    "differing_lines": 1,
+    "provided": {
+      "bytes": 95844,
+      "name": "CWS_Convertor_CODEX_MASTERPROMPT_COMPLEET.md",
+      "sha256": "2826b41fbb79eb1027b4ecea7a4839054b39139df5028c827a6703e8cc880e80"
+    },
+    "repository": {
+      "bytes": 99239,
+      "path": "docs/CODEX_MASTER_PROMPT_COMPLETE.md",
+      "sha256": "0b7142433173c06c4364bcd80b243435fb383bf80a59d61f3dc7670e58a05e87"
+    },
+    "text_identical": false
+  },
+  "phase": 0,
+  "product": {
+    "name": "CWS Convertor",
+    "project_schema": "2.4",
+    "version": "0.8.1-alpha-dev"
+  },
+  "quality_gates": {
+    "compileall": {
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "compileall",
+        "-q",
+        "-x",
+        "[\\\\/]\\.venv[\\\\/]",
+        "."
+      ],
+      "duration_seconds": 1.068,
+      "exit_code": 0,
+      "label": "compileall",
+      "output": "",
+      "skipped": 0,
+      "status": "passed",
+      "unittest_count": null
+    },
+    "known_unittest_count": 105,
+    "overall": "passed_with_declared_gaps",
+    "pip_check": {
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "duration_seconds": 0.502,
+      "exit_code": 0,
+      "label": "pip-check",
+      "output": "No broken requirements found.",
+      "skipped": 0,
+      "status": "passed",
+      "unittest_count": null
+    },
+    "skipped_tests": 9,
+    "smoke_results": [
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\analytic_fitting_smoke.py"
+        ],
+        "duration_seconds": 1.712,
+        "exit_code": 0,
+        "label": "analytic_fitting_smoke.py",
+        "output": "{\n  \"circle\": {\n    \"radius_mm\": 18.000001388765202,\n    \"rms_residual_mm\": 0.007071067975372017,\n    \"confidence\": 0.9934212904267251\n  },\n  \"collinear_points_before\": 9,\n  \"collinear_points_after\": 4,\n  \"cylinder\": {\n    \"diameter_mm\": 19.999999999325055,\n    \"length_mm\": 260.0000000126459,\n    \"rms_residual_mm\": 2.7465218740694006e-09,\n    \"volume_delta_percent\": -0.09322414532152029,\n    \"confidence\": 0.9913469140577951\n  },\n  \"box_recognition\": \"unconfirmed-cylinder\"\n}",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\canonical_rebuild_smoke.py"
+        ],
+        "duration_seconds": 1.854,
+        "exit_code": 0,
+        "label": "canonical_rebuild_smoke.py",
+        "output": "test_geometry_change_invalidates_the_record_and_missing_dimensions_block (__main__.CanonicalRebuildTests.test_geometry_change_invalidates_the_record_and_missing_dimensions_block) ... ok\ntest_known_mismatch_fails_with_expected_and_found_values (__main__.CanonicalRebuildTests.test_known_mismatch_fails_with_expected_and_found_values) ... ok\ntest_missing_or_unscoped_source_truth_requires_manual_validation (__main__.CanonicalRebuildTests.test_missing_or_unscoped_source_truth_requires_manual_validation) ... ok\ntest_plate_inner_contour_is_cut_and_compared (__main__.CanonicalRebuildTests.test_plate_inner_contour_is_cut_and_compared) ... ok\ntest_plate_rebuild_is_deterministic_compares_and_persists (__main__.CanonicalRebuildTests.test_plate_rebuild_is_deterministic_compares_and_persists) ... ok\ntest_round_bar_and_exact_catalogue_profile_build (__main__.CanonicalRebuildTests.test_round_bar_and_exact_catalogue_profile_build) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.362s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 6
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\core_phase0_baseline_smoke.py"
+        ],
+        "duration_seconds": 0.246,
+        "exit_code": 0,
+        "label": "core_phase0_baseline_smoke.py",
+        "output": "test_handover_manifest_verification_detects_tampering (__main__.CorePhase0BaselineTests.test_handover_manifest_verification_detects_tampering) ... ok\ntest_product_and_pinned_input_contract (__main__.CorePhase0BaselineTests.test_product_and_pinned_input_contract) ... ok\ntest_prompt_comparison_is_text_aware (__main__.CorePhase0BaselineTests.test_prompt_comparison_is_text_aware) ... ok\ntest_reference_inventory_keeps_manual_results_separate (__main__.CorePhase0BaselineTests.test_reference_inventory_keeps_manual_results_separate) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.132s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 4
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\dimension_graph_smoke.py"
+        ],
+        "duration_seconds": 1.728,
+        "exit_code": 0,
+        "label": "dimension_graph_smoke.py",
+        "output": "test_build_is_deterministic (__main__.DimensionGraphTests.test_build_is_deterministic) ... ok\ntest_external_lo4_graph_is_feature_linked_before_and_after_review (__main__.DimensionGraphTests.test_external_lo4_graph_is_feature_linked_before_and_after_review) ... ok\ntest_nc1_graph_covers_overall_plate_and_every_hole (__main__.DimensionGraphTests.test_nc1_graph_covers_overall_plate_and_every_hole) ... ok\ntest_tampered_dimension_value_is_rejected (__main__.DimensionGraphTests.test_tampered_dimension_value_is_rejected) ... ok\ntest_trusted_pdf_embeds_dimension_graph (__main__.DimensionGraphTests.test_trusted_pdf_embeds_dimension_graph) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.157s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 5
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\ifc_semantic_import_smoke.py"
+        ],
+        "duration_seconds": 0.148,
+        "exit_code": 0,
+        "label": "ifc_semantic_import_smoke.py",
+        "output": "test_ifc_hierarchy_properties_fastener_and_weld_are_materialised (__main__.IFCSemanticImportTests.test_ifc_hierarchy_properties_fastener_and_weld_are_materialised) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.009s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 1
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\p21_graph_smoke.py"
+        ],
+        "duration_seconds": 0.119,
+        "exit_code": 0,
+        "label": "p21_graph_smoke.py",
+        "output": "test_changed_geometry_changes_semantic_hash (__main__.P21GraphTests.test_changed_geometry_changes_semantic_hash) ... ok\ntest_duplicate_entity_id_is_rejected (__main__.P21GraphTests.test_duplicate_entity_id_is_rejected) ... ok\ntest_large_streaming_parse_can_be_cancelled_cooperatively (__main__.P21GraphTests.test_large_streaming_parse_can_be_cancelled_cooperatively) ... ok\ntest_semantic_hash_is_independent_from_numeric_entity_ids (__main__.P21GraphTests.test_semantic_hash_is_independent_from_numeric_entity_ids) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.009s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 4
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\packaged_runtime_smoke.py"
+        ],
+        "duration_seconds": 2.098,
+        "exit_code": 0,
+        "label": "packaged_runtime_smoke.py",
+        "output": "packaged_runtime_smoke: source fallback OK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\part_workbench_smoke.py"
+        ],
+        "duration_seconds": 0.41,
+        "exit_code": 0,
+        "label": "part_workbench_smoke.py",
+        "output": "test_analytical_arc_profile_and_round_bar_are_supported (__main__.PartWorkbenchTests.test_analytical_arc_profile_and_round_bar_are_supported) ... ok\ntest_left_handed_frame_and_source_mutation_are_rejected (__main__.PartWorkbenchTests.test_left_handed_frame_and_source_mutation_are_rejected) ... ok\ntest_negative_geometry_and_confidence_cases_remain_blocked (__main__.PartWorkbenchTests.test_negative_geometry_and_confidence_cases_remain_blocked) ... ok\ntest_placement_is_identity_neutral_but_mirror_is_distinct (__main__.PartWorkbenchTests.test_placement_is_identity_neutral_but_mirror_is_distinct) ... ok\ntest_plate_revision_artifacts_undo_redo_and_save_reopen (__main__.PartWorkbenchTests.test_plate_revision_artifacts_undo_redo_and_save_reopen) ... ok\ntest_stateless_service_uses_the_same_persisted_contract (__main__.PartWorkbenchTests.test_stateless_service_uses_the_same_persisted_contract) ... ok\n\n----------------------------------------------------------------------\nRan 6 tests in 0.282s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 6
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\part_workbench_ui_smoke.py"
+        ],
+        "duration_seconds": 2.33,
+        "exit_code": 0,
+        "label": "part_workbench_ui_smoke.py",
+        "output": "test_complete_editor_flow_uses_versioned_session_commands (__main__.PartWorkbenchUITests.test_complete_editor_flow_uses_versioned_session_commands) ... ok\ntest_selection_filter_and_sort_remain_synchronised (__main__.PartWorkbenchUITests.test_selection_filter_and_sort_remain_synchronised) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 1.572s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 2
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\pdf_ai_smoke.py"
+        ],
+        "duration_seconds": 2.428,
+        "exit_code": 0,
+        "label": "pdf_ai_smoke.py",
+        "output": "{\n  \"trusted_pdf\": \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\pdf_ai_smoke_sn0acu40\\\\P1811_trusted.pdf\",\n  \"trusted_exact\": true,\n  \"visible_hash\": \"048ba912726497ea8844dd46d97b875b6becbd0977247e929a4bd008dd286c0d\",\n  \"nc1_semantic_roundtrip\": true,\n  \"step_volume_delta_percent\": 0.0,\n  \"ifc_payload_schema\": \"1.1\",\n  \"tamper_blocked\": true,\n  \"external_lo4_fields\": {\n    \"position\": \"LO4\",\n    \"profile\": \"STRIP5*120\",\n    \"material\": \"S235JR\",\n    \"length\": 160.0,\n    \"quantity\": 4,\n    \"mark\": \"MLO4\",\n    \"scale\": \"1:2\",\n    \"total_quantity\": 4,\n    \"hole_callouts\": [\n      {\n        \"count\": 1,\n        \"diameter_mm\": 14.0,\n        \"page\": 1,\n        \"bbox\": [\n          500.0,\n          64.25,\n          528.3500366210938,\n          77.98999786376953\n        ],\n        \"source_text\": \"1*\ufffd14\"\n      }\n    ],\n    \"radius_callouts\": [\n      {\n        \"radius_mm\": 13.5,\n        \"page\": 1,\n        \"bbox\": [\n          500.0,\n          82.24996948242188,\n          529.4600219726562,\n          95.9899673461914\n        ],\n        \"source_text\": \"R 13,5\"\n      },\n      {\n        \"radius_mm\": 13.5,\n        \"page\": 1,\n        \"bbox\": [\n          500.0,\n          100.24996948242188,\n          529.4600219726562,\n          113.9899673461914\n        ],\n        \"source_text\": \"R 13,5\"\n      }\n    ],\n    \"subject\": \"LOSSE PLAAT\"\n  },\n  \"external_vector_geometry_detected\": true,\n  \"external_production_blocked_pending_review\": true,\n  \"cloud_ai_consent_required\": true,\n  \"cloud_ai_store\": false,\n  \"ai_geometry_guard\": true\n}",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\pdf_review_smoke.py"
+        ],
+        "duration_seconds": 2.229,
+        "exit_code": 0,
+        "label": "pdf_review_smoke.py",
+        "output": "test_geometry_hash_changes_only_when_production_geometry_changes (__main__.CanonicalSchemaTests.test_geometry_hash_changes_only_when_production_geometry_changes) ... ok\ntest_v10_payload_remains_readable_and_future_minor_fields_are_ignored (__main__.CanonicalSchemaTests.test_v10_payload_remains_readable_and_future_minor_fields_are_ignored) ... ok\ntest_ai_payload_rejects_product_geometry_or_machine_code (__main__.ExternalPDFAndAITests.test_ai_payload_rejects_product_geometry_or_machine_code) ... ok\ntest_cli_has_no_unsafe_validation_bypass (__main__.ExternalPDFAndAITests.test_cli_has_no_unsafe_validation_bypass) ... ok\ntest_explicit_review_unlocks_nc1_step_ifc_and_trusted_pdf_roundtrip (__main__.ExternalPDFAndAITests.test_explicit_review_unlocks_nc1_step_ifc_and_trusted_pdf_roundtrip) ... ok\ntest_local_rules_ai_only_adds_questions (__main__.ExternalPDFAndAITests.test_local_rules_ai_only_adds_questions) ... ok\ntest_openai_provider_contract_is_semantic_only_and_not_stored (__main__.ExternalPDFAndAITests.test_openai_provider_contract_is_semantic_only_and_not_stored) ... ok\ntest_openai_provider_requires_explicit_cloud_consent_before_api_key (__main__.ExternalPDFAndAITests.test_openai_provider_requires_explicit_cloud_consent_before_api_key) ... ok\ntest_synthetic_lo4_vector_fields_geometry_and_review_gate (__main__.ExternalPDFAndAITests.test_synthetic_lo4_vector_fields_geometry_and_review_gate) ... ok\ntest_written_hole_diameter_conflict_requires_separate_resolution (__main__.ExternalPDFAndAITests.test_written_hole_diameter_conflict_requires_separate_resolution) ... ok\ntest_corrupted_model_attachment_is_rejected (__main__.TrustedPDFTests.test_corrupted_model_attachment_is_rejected) ... ok\ntest_nc1_to_trusted_pdf_to_nc1_restores_exact_source_bytes (__main__.TrustedPDFTests.test_nc1_to_trusted_pdf_to_nc1_restores_exact_source_bytes) ... ok\ntest_partial_trusted_pdf_with_stripped_attachments_is_rejected (__main__.TrustedPDFTests.test_partial_trusted_pdf_with_stripped_attachments_is_rejected) ... ok\ntest_real_p1811_trusted_pdf_to_semantic_ifc_preserves_source_attachment (__main__.TrustedPDFTests.test_real_p1811_trusted_pdf_to_semantic_ifc_preserves_source_attachment) ... skipped 'P1811 handover fixture is not available'\ntest_real_p1811_trusted_roundtrip_is_exact (__main__.TrustedPDFTests.test_real_p1811_trusted_roundtrip_is_exact) ... skipped 'P1811 handover fixture is not available'\ntest_visible_tamper_is_rejected_and_not_downgraded_to_external_pdf (__main__.TrustedPDFTests.test_visible_tamper_is_rejected_and_not_downgraded_to_external_pdf) ... ok\n\n----------------------------------------------------------------------\nRan 16 tests in 0.597s\n\nOK (skipped=2)",
+        "skipped": 2,
+        "status": "passed",
+        "unittest_count": 16
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\production_export_negative_smoke.py"
+        ],
+        "duration_seconds": 0.11,
+        "exit_code": 0,
+        "label": "production_export_negative_smoke.py",
+        "output": "production_export_negative_smoke: OK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\production_export_smoke.py"
+        ],
+        "duration_seconds": 0.16,
+        "exit_code": 0,
+        "label": "production_export_smoke.py",
+        "output": "production_export_smoke: OK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_baseline_smoke.py"
+        ],
+        "duration_seconds": 0.115,
+        "exit_code": 0,
+        "label": "project_baseline_smoke.py",
+        "output": "test_argument_parser_handles_nested_typed_values (__main__.ProjectBaselineTests.test_argument_parser_handles_nested_typed_values) ... ok\ntest_ifc_baseline_selects_semantic_strategy (__main__.ProjectBaselineTests.test_ifc_baseline_selects_semantic_strategy) ... ok\ntest_single_step_solid_is_not_split_by_name (__main__.ProjectBaselineTests.test_single_step_solid_is_not_split_by_name) ... ok\ntest_statement_parser_handles_semicolon_in_string (__main__.ProjectBaselineTests.test_statement_parser_handles_semicolon_in_string) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.005s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 4
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_bom_smoke.py"
+        ],
+        "duration_seconds": 0.188,
+        "exit_code": 0,
+        "label": "project_bom_smoke.py",
+        "output": "test_bom_balances_and_traceability (__main__.BOMTests.test_bom_balances_and_traceability) ... ok\ntest_export_package_and_formula_injection_guard (__main__.BOMTests.test_export_package_and_formula_injection_guard) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.069s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 2
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_classification_reference_smoke.py"
+        ],
+        "duration_seconds": 0.113,
+        "exit_code": 0,
+        "label": "project_classification_reference_smoke.py",
+        "output": "test_bom_reference_counts_and_balances (__main__.ReferenceClassificationBOMTests.test_bom_reference_counts_and_balances) ... skipped 'CWS reference project not available'\ntest_classification_reference_counts (__main__.ReferenceClassificationBOMTests.test_classification_reference_counts) ... skipped 'CWS reference project not available'\ntest_lo4_is_one_group_of_four (__main__.ReferenceClassificationBOMTests.test_lo4_is_one_group_of_four) ... skipped 'CWS reference project not available'\n\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK (skipped=3)",
+        "skipped": 3,
+        "status": "passed",
+        "unittest_count": 3
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_classification_smoke.py"
+        ],
+        "duration_seconds": 0.115,
+        "exit_code": 0,
+        "label": "project_classification_smoke.py",
+        "output": "test_normalisation_is_conservative (__main__.ClassificationTests.test_normalisation_is_conservative) ... ok\ntest_rules_production_identity_and_manual_review (__main__.ClassificationTests.test_rules_production_identity_and_manual_review) ... ok\ntest_same_mark_different_geometry_is_blocking (__main__.ClassificationTests.test_same_mark_different_geometry_is_blocking) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.003s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 3
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_cli_smoke.py"
+        ],
+        "duration_seconds": 1.751,
+        "exit_code": 0,
+        "label": "project_cli_smoke.py",
+        "output": "test_full_project_command_contract (__main__.ProjectCLITests.test_full_project_command_contract) ... ok\ntest_version_identity (__main__.ProjectCLITests.test_version_identity) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 1.312s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 2
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_jobs_smoke.py"
+        ],
+        "duration_seconds": 0.134,
+        "exit_code": 0,
+        "label": "project_jobs_smoke.py",
+        "output": "test_cancellation_is_explicit (__main__.ProjectJobManagerTests.test_cancellation_is_explicit) ... ok\ntest_completed_job_reports_progress_and_result (__main__.ProjectJobManagerTests.test_completed_job_reports_progress_and_result) ... ok\ntest_failed_job_keeps_error_and_listener_failure_isolated (__main__.ProjectJobManagerTests.test_failed_job_keeps_error_and_listener_failure_isolated) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.007s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 3
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_model_smoke.py"
+        ],
+        "duration_seconds": 0.124,
+        "exit_code": 0,
+        "label": "project_model_smoke.py",
+        "output": "test_deep_assembly_cycle_is_rejected (__main__.ProjectModelTests.test_deep_assembly_cycle_is_rejected) ... ok\ntest_future_schema_is_rejected_instead_of_assumed_compatible (__main__.ProjectModelTests.test_future_schema_is_rejected_instead_of_assumed_compatible) ... ok\ntest_geometry_hash_is_placement_independent (__main__.ProjectModelTests.test_geometry_hash_is_placement_independent) ... ok\ntest_invalid_left_handed_transform_is_rejected (__main__.ProjectModelTests.test_invalid_left_handed_transform_is_rejected) ... ok\ntest_invalid_quantities_and_overreservation_are_rejected (__main__.ProjectModelTests.test_invalid_quantities_and_overreservation_are_rejected) ... ok\ntest_known_schema_versions_migrate_explicitly_to_24 (__main__.ProjectModelTests.test_known_schema_versions_migrate_explicitly_to_24) ... ok\ntest_manufacturing_hash_changes_for_material_and_mirror (__main__.ProjectModelTests.test_manufacturing_hash_changes_for_material_and_mirror) ... ok\ntest_part_assembly_relation_must_be_reciprocal (__main__.ProjectModelTests.test_part_assembly_relation_must_be_reciprocal) ... ok\ntest_roundtrip_summary_identity_and_gate (__main__.ProjectModelTests.test_roundtrip_summary_identity_and_gate) ... ok\ntest_scaled_or_sheared_transform_is_rejected (__main__.ProjectModelTests.test_scaled_or_sheared_transform_is_rejected) ... ok\ntest_semantic_completion_keeps_failed_validation_blocked (__main__.ProjectModelTests.test_semantic_completion_keeps_failed_validation_blocked) ... ok\ntest_stable_entity_id_is_repeatable (__main__.ProjectModelTests.test_stable_entity_id_is_repeatable) ... ok\ntest_streaming_canonical_json_matches_legacy_hash_contract (__main__.ProjectModelTests.test_streaming_canonical_json_matches_legacy_hash_contract) ... ok\n\n----------------------------------------------------------------------\nRan 13 tests in 0.009s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 13
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_reference_files_smoke.py"
+        ],
+        "duration_seconds": 0.106,
+        "exit_code": 0,
+        "label": "project_reference_files_smoke.py",
+        "output": "test_step_references_are_one_product_one_solid_without_fiction (__main__.ProjectReferenceFileTests.test_step_references_are_one_product_one_solid_without_fiction) ... skipped 'Grote referentiebestanden niet aanwezig'\ntest_tekla_ifc_reference_counts_and_search_evidence (__main__.ProjectReferenceFileTests.test_tekla_ifc_reference_counts_and_search_evidence) ... skipped 'Grote referentiebestanden niet aanwezig'\ntest_two_footplates_name_does_not_trigger_automatic_split (__main__.ProjectReferenceFileTests.test_two_footplates_name_does_not_trigger_automatic_split) ... skipped 'Grote referentiebestanden niet aanwezig'\n\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK (skipped=3)",
+        "skipped": 3,
+        "status": "passed",
+        "unittest_count": 3
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_semantic_reference_smoke.py"
+        ],
+        "duration_seconds": 0.105,
+        "exit_code": 0,
+        "label": "project_semantic_reference_smoke.py",
+        "output": "test_real_ifc_and_step_sources_materialise_without_fiction (__main__.ProjectSemanticReferenceTests.test_real_ifc_and_step_sources_materialise_without_fiction) ... skipped 'Semantische referentiemodellen niet aanwezig'\n\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK (skipped=1)",
+        "skipped": 1,
+        "status": "passed",
+        "unittest_count": 1
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_semantic_service_smoke.py"
+        ],
+        "duration_seconds": 1.624,
+        "exit_code": 0,
+        "label": "project_semantic_service_smoke.py",
+        "output": "test_batch_hash_failure_rolls_back_without_partial_entities (__main__.ProjectSemanticServiceTests.test_batch_hash_failure_rolls_back_without_partial_entities) ... ok\ntest_cooperative_cancel_rolls_back_complete_batch (__main__.ProjectSemanticServiceTests.test_cooperative_cancel_rolls_back_complete_batch) ... ok\ntest_progress_reports_internal_import_stages (__main__.ProjectSemanticServiceTests.test_progress_reports_internal_import_stages) ... ok\ntest_semantic_project_saves_reopens_and_reimports_stably (__main__.ProjectSemanticServiceTests.test_semantic_project_saves_reopens_and_reimports_stably) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 1.160s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 4
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_service_smoke.py"
+        ],
+        "duration_seconds": 0.324,
+        "exit_code": 0,
+        "label": "project_service_smoke.py",
+        "output": "test_duplicate_source_is_not_duplicated (__main__.ProjectServiceTests.test_duplicate_source_is_not_duplicated) ... ok\ntest_failed_batch_keeps_existing_package_byte_identical (__main__.ProjectServiceTests.test_failed_batch_keeps_existing_package_byte_identical) ... ok\ntest_failed_batch_rolls_back_live_session (__main__.ProjectServiceTests.test_failed_batch_rolls_back_live_session) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.195s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 3
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\project_storage_smoke.py"
+        ],
+        "duration_seconds": 0.808,
+        "exit_code": 0,
+        "label": "project_storage_smoke.py",
+        "output": "test_autosave_is_lightweight_and_recovery_restores_embedded_source (__main__.ProjectStorageTests.test_autosave_is_lightweight_and_recovery_restores_embedded_source) ... ok\ntest_corrupted_manifest_entry_is_rejected (__main__.ProjectStorageTests.test_corrupted_manifest_entry_is_rejected) ... ok\ntest_create_embed_open_extract_and_revision (__main__.ProjectStorageTests.test_create_embed_open_extract_and_revision) ... ok\ntest_find_autosave_requires_newer_snapshot (__main__.ProjectStorageTests.test_find_autosave_requires_newer_snapshot) ... ok\ntest_future_project_schema_in_manifest_is_rejected (__main__.ProjectStorageTests.test_future_project_schema_in_manifest_is_rejected) ... ok\ntest_previews_survive_open_edit_save_cycle (__main__.ProjectStorageTests.test_previews_survive_open_edit_save_cycle) ... ok\ntest_read_only_session_blocks_save (__main__.ProjectStorageTests.test_read_only_session_blocks_save) ... ok\ntest_schema_one_opens_read_only_and_migrates_to_copy (__main__.ProjectStorageTests.test_schema_one_opens_read_only_and_migrates_to_copy) ... ok\ntest_session_save_reuses_just_written_verified_snapshot (__main__.ProjectStorageTests.test_session_save_reuses_just_written_verified_snapshot) ... ok\ntest_unlisted_or_unsafe_archive_entries_are_rejected (__main__.ProjectStorageTests.test_unlisted_or_unsafe_archive_entries_are_rejected) ... ok\n\n----------------------------------------------------------------------\nRan 10 tests in 0.668s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 10
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\reference_models_smoke.py"
+        ],
+        "duration_seconds": 1.985,
+        "exit_code": 0,
+        "label": "reference_models_smoke.py",
+        "output": "{\"expected_results\": 481, \"manual_validation_required\": 481, \"models\": 481, \"validated\": 0}\ntest_catalog_pairing_and_validated_results (__main__.ReferenceModelTests.test_catalog_pairing_and_validated_results) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.261s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 1
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\regression_smoke.py"
+        ],
+        "duration_seconds": 2.102,
+        "exit_code": 0,
+        "label": "regression_smoke.py",
+        "output": "{\n  \"version\": \"0.8.1-alpha-dev\",\n  \"step\": \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\nc1_step_v04_smoke_sszs_yg9\\\\out\\\\SAMPLE_PLATE.step\",\n  \"reverse_nc1\": \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\nc1_step_v04_smoke_sszs_yg9\\\\out\\\\SAMPLE_PLATE_reverse.nc1\",\n  \"volume_delta_percent\": 2.2208244287476718e-14,\n  \"quantity_items\": 1,\n  \"excel\": \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\nc1_step_v04_smoke_sszs_yg9\\\\out\\\\hoeveelheden.xlsx\",\n  \"ifc\": \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\nc1_step_v04_smoke_sszs_yg9\\\\out\\\\SAMPLE_PLATE.ifc\",\n  \"ifc_items\": 1,\n  \"ifc_payload_verified\": true,\n  \"ifc_to_dstv_outputs\": [\n    \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\nc1_step_v04_smoke_sszs_yg9\\\\out\\\\dstv_from_ifc\\\\SAMPLE_PLATE.nc1\",\n    \"C:\\\\Users\\\\CE9AC~1.WES\\\\AppData\\\\Local\\\\Temp\\\\nc1_step_v04_smoke_sszs_yg9\\\\out\\\\dstv_from_ifc\\\\SAMPLE_PLATE_DSTV_manifest.json\"\n  ]\n}",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\review_workflow_smoke.py"
+        ],
+        "duration_seconds": 1.736,
+        "exit_code": 0,
+        "label": "review_workflow_smoke.py",
+        "output": "test_comma_decimal_correction_resolves_written_diameter_conflict (__main__.ReviewWorkflowTests.test_comma_decimal_correction_resolves_written_diameter_conflict) ... ok\ntest_review_payload_is_explicit_and_unlocks_only_after_validation (__main__.ReviewWorkflowTests.test_review_payload_is_explicit_and_unlocks_only_after_validation) ... ok\ntest_review_rows_map_detector_aliases_to_canonical_fields (__main__.ReviewWorkflowTests.test_review_rows_map_detector_aliases_to_canonical_fields) ... ok\ntest_unknown_confirmation_is_rejected (__main__.ReviewWorkflowTests.test_unknown_confirmation_is_rejected) ... ok\ntest_validated_in_memory_review_can_be_finalized_without_reanalysis (__main__.ReviewWorkflowTests.test_validated_in_memory_review_can_be_finalized_without_reanalysis) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.145s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 5
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\step_semantic_import_smoke.py"
+        ],
+        "duration_seconds": 1.554,
+        "exit_code": 0,
+        "label": "step_semantic_import_smoke.py",
+        "output": "test_ap242_occurrence_materialises_assembly_and_part_relation (__main__.StepSemanticImportTests.test_ap242_occurrence_materialises_assembly_and_part_relation) ... ok\ntest_missing_solid_uses_strategy_c_without_inventing_geometry (__main__.StepSemanticImportTests.test_missing_solid_uses_strategy_c_without_inventing_geometry) ... ok\ntest_reimport_is_idempotent_and_keeps_stable_hashes (__main__.StepSemanticImportTests.test_reimport_is_idempotent_and_keeps_stable_hashes) ... ok\ntest_single_product_single_solid_is_not_split_by_quantity_in_name (__main__.StepSemanticImportTests.test_single_product_single_solid_is_not_split_by_quantity_in_name) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 1.102s\n\nOK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": 4
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\windows_native_runtime_smoke.py"
+        ],
+        "duration_seconds": 2.156,
+        "exit_code": 0,
+        "label": "windows_native_runtime_smoke.py",
+        "output": "windows_native_runtime_smoke: OK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      },
+      {
+        "command": [
+          ".venv/Scripts/python.exe",
+          "C:\\CONVERTOR\\tests\\windows_release_config_smoke.py"
+        ],
+        "duration_seconds": 0.16,
+        "exit_code": 0,
+        "label": "windows_release_config_smoke.py",
+        "output": "windows_release_config_smoke: OK",
+        "skipped": 0,
+        "status": "passed",
+        "unittest_count": null
+      }
+    ],
+    "smoke_scripts_failed": 0,
+    "smoke_scripts_passed": 31,
+    "smoke_scripts_run": 31
+  },
+  "references": {
+    "bytes_by_format": {
+      "DSTV": 230754,
+      "IFC": 177093702,
+      "STEP": 90282238
+    },
+    "expected_result_count": 481,
+    "expected_results_by_location": {
+      "local": 481
+    },
+    "expected_results_by_status": {
+      "manual_validation_required": 481
+    },
+    "invalid_expected_results": 0,
+    "known_non_substitutes": [
+      {
+        "filename": "14542_01.pdf",
+        "for": "lo4_pdf",
+        "match_count": 1,
+        "matches": [
+          "reference-results-local/supporting-documents/14542_01.pdf"
+        ],
+        "present": true,
+        "reason": "supporting document; not the named LO4 binary"
+      },
+      {
+        "filename": "Samenstel nieuw - Part 18.step",
+        "for": "step_part18",
+        "match_count": 1,
+        "matches": [
+          "reference-models-local/STEP/samenstel-nieuw-zip/Samenstel nieuw - Part 18.step"
+        ],
+        "present": true,
+        "reason": "different source name; cannot be substituted silently"
+      },
+      {
+        "filename": "P1811_3_PLAAT_PL10_130.nc1",
+        "for": "pdf_review_p1811",
+        "match_count": 1,
+        "matches": [
+          "validation/v0.2_generated_nc1/P1811_3_PLAAT_PL10_130.nc1"
+        ],
+        "present": true,
+        "reason": "generated regression output; not the original named fixture"
+      }
+    ],
+    "legacy_flat_reference_root_set": false,
+    "model_bytes": 267606694,
+    "model_count": 481,
+    "models_by_confidentiality": {
+      "confidential": 481
+    },
+    "models_by_format": {
+      "DSTV": 183,
+      "IFC": 5,
+      "STEP": 293
+    },
+    "reference_project_count": 0,
+    "required_fixtures": [
+      {
+        "filename": "TAS_RVB Defensie onderbouw te Leeuwarden- Rev4 [definitief].ifc",
+        "id": "tekla_ifc",
+        "match_count": 0,
+        "matches": [],
+        "present": false,
+        "purpose": "required semantic IFC regression"
+      },
+      {
+        "filename": "Samenstel nieuw - 11864_Predeterminado (1).step",
+        "id": "step_11864",
+        "match_count": 1,
+        "matches": [
+          "reference-models-local/STEP/samenstel-nieuw-zip/Samenstel nieuw - 11864_Predeterminado (1).step"
+        ],
+        "present": true,
+        "purpose": "required STEP regression"
+      },
+      {
+        "filename": "Samenstel nieuw - 11881_Predeterminado (1).step",
+        "id": "step_11881",
+        "match_count": 1,
+        "matches": [
+          "reference-models-local/STEP/samenstel-nieuw-zip/Samenstel nieuw - 11881_Predeterminado (1).step"
+        ],
+        "present": true,
+        "purpose": "required STEP regression"
+      },
+      {
+        "filename": "Samenstel nieuw - 2x voetplaat hoog.step",
+        "id": "step_footplate_high",
+        "match_count": 1,
+        "matches": [
+          "reference-models-local/STEP/samenstel-nieuw-zip/Samenstel nieuw - 2x voetplaat hoog.step"
+        ],
+        "present": true,
+        "purpose": "required STEP regression"
+      },
+      {
+        "filename": "Pos LO4 - LOSSE PLAAT.pdf",
+        "id": "lo4_pdf",
+        "match_count": 0,
+        "matches": [],
+        "present": false,
+        "purpose": "required real binary PDF regression"
+      },
+      {
+        "filename": "Samenstel nieuw - D1500-0190_Predeterminado (1).step",
+        "id": "step_d1500",
+        "match_count": 1,
+        "matches": [
+          "reference-models-local/STEP/samenstel-nieuw-zip/Samenstel nieuw - D1500-0190_Predeterminado (1).step"
+        ],
+        "present": true,
+        "purpose": "older required STEP regression"
+      },
+      {
+        "filename": "Staalconstructie bordes c04 - Part 18.step",
+        "id": "step_part18",
+        "match_count": 0,
+        "matches": [],
+        "present": false,
+        "purpose": "older required STEP regression"
+      },
+      {
+        "filename": "P1811.nc1",
+        "id": "pdf_review_p1811",
+        "match_count": 0,
+        "matches": [],
+        "present": false,
+        "purpose": "real PDF review fixture expected by the legacy smoke test"
+      }
+    ]
+  },
+  "schema": "cws-core-phase0-baseline-v1",
+  "scope": "core application baseline; viewer implementation excluded",
+  "tracked_inputs": {
+    "SBOM.spdx.json": {
+      "bytes": 8577,
+      "present": true,
+      "sha256": "04633162cfe8c0888ffbcb5cdbb2edcc0ad799cb27d75cf8e1d7086140f047fe"
+    },
+    "requirements-build.lock.txt": {
+      "bytes": 55,
+      "present": true,
+      "sha256": "b766ea5e4c9ad902163b4afc41468011037f1323ff05aead3a45de95731eaf18"
+    },
+    "requirements-build.txt": {
+      "bytes": 32,
+      "present": true,
+      "sha256": "4bddbb2afed3891c211eadcb1262ffbf7700b772bc4fe7b82f784f5fef4dfcd0"
+    },
+    "requirements-runtime.lock.txt": {
+      "bytes": 234,
+      "present": true,
+      "sha256": "942ffe69afe5fcc8ef3ce193842283a347660a1a2a445d893d31242243700a66"
+    },
+    "requirements.txt": {
+      "bytes": 34,
+      "present": true,
+      "sha256": "6fe4c665e151ce67741f4818ac15bf53cde035a25a1105342440dae17b94444f"
+    }
+  }
+}
