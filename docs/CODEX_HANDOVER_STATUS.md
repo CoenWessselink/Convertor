@@ -51,6 +51,10 @@ not conflict with these sources.
   with seven explicit fixture-dependent skips. Its deterministic host manifest
   is byte-identical across repeated runs with SHA-256
   `e3a70ed8108d6a87e7ca59048c45bcac944ccd7036028d199fb22f8db7109b95`.
+- Phase B batch 1 Windows run `31744026521` passed the complete
+  source/dist/portable/installer/installed/uninstall matrix on commit `cfacbd3`.
+  Artifact `9198752611` is 727,134,039 bytes with digest
+  `sha256:a0ac861f536fe9b2dc17a6e3b6a23e42f3bf5a06def9d3f1a3d7f67fa0235ea5`.
 - The Viewer V2 handover archive and all 19 manifest entries were checksum
   verified. V2 was not activated because it supplies synthetic boxes rather
   than real project meshes and its Windows/PySide6/PyInstaller gate is open.

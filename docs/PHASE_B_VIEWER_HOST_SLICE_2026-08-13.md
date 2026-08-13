@@ -35,6 +35,11 @@ The main navigation labels now use the intended work-oriented areas:
 - Native application GUI smoke: passed.
 - Phase-B host manifest: two consecutive runs were byte-identical,
   SHA-256 `e3a70ed8108d6a87e7ca59048c45bcac944ccd7036028d199fb22f8db7109b95`.
+- Windows run `31744026521` passed source, GUI, dist, portable, installer,
+  installed-without-Python and uninstall checks on commit `cfacbd3`.
+- Windows artifact `9198752611`, named
+  `CWS_Convertor_0.8.3-beta-dev_Windows_x64`, is 727,134,039 bytes with
+  digest `sha256:a0ac861f536fe9b2dc17a6e3b6a23e42f3bf5a06def9d3f1a3d7f67fa0235ea5`.
 
 The committed manifest fixture contains one source, five bound entities and a
 selected approximate IFC part. It also proves that a manual-validation object
