@@ -1,6 +1,12 @@
-# CWS Convertor 0.8.3-beta-dev - Codex integration snapshot
+# SteelConverter - CWS Convertor 0.8.3-beta-dev implementation snapshot
 
-**CWS Convertor** is een local-first desktopapplicatie en CLI voor veilige conversie en productievoorbereiding van:
+**SteelConverter** is de leidende productrichting. De huidige compatibele
+desktopapplicatie, CLI en Windows-build heten nog **CWS Convertor
+0.8.3-beta-dev**. De naams- en modelmigratie gebeurt gecontroleerd, zonder
+bestaande projecten of bewezen conversiepaden te breken.
+
+SteelConverter is een local-first productieomgeving voor veilige conversie en
+productievoorbereiding van:
 
 - NC1/DSTV, STEP en IFC;
 - Trusted Converter PDF en gecontroleerde externe tekeningen;
@@ -23,6 +29,16 @@ kunnen deterministisch als canonical solid worden opgebouwd. Betrouwbare per-par
 volume, oppervlakte, bbox, solidcount en geldigheid vergeleken en gehasht in het
 project vastgelegd. Een productieonderdeel kan pas worden vrijgegeven nadat de
 NC1-, STEP-, IFC- en Trusted-PDF-roundtrips samen zijn geslaagd.
+
+De actuele productkoers en bouwvolgorde staan in:
+
+- `docs/STEELCONVERTER_PRODUCT_FOUNDATION.md`;
+- `docs/STEELCONVERTER_SUPERPROMPT.md`;
+- `docs/MASTERPROMPT_TRACEABILITY.md`.
+
+De bestaande Project Model- en Canonical Part-kern wordt daarin
+compatibiliteitsbehoudend onderdeel van een projectbreed `SteelModel`. De eerste
+nieuwe productpoort is een aantoonbaar betrouwbare viewer/importketen.
 
 ## Veiligheidsarchitectuur
 
@@ -299,16 +315,16 @@ cli.py                                      conversie- en project-CLI
 
 ## Volgende bouwfase
 
-Fase 1 koppelt ieder nieuw semantisch IFC/STEP-onderdeel via een gehashte
-bronselector terug aan de opnieuw geverifieerde bronbytes. Een eenduidige
-single-solid STEP wordt als exacte native BREP geisoleerd; IFC wordt exact per
-entiteit geselecteerd maar blijft bewust een niet-exacte tessellatie. De
-productiegate blijft in beide gevallen gesloten totdat feature- en
-roundtripvalidatie zijn afgerond.
+De eerder uitgevoerde kernfasen 0-3 blijven geldig als technisch bewijs. De
+voorwaartse roadmap gebruikt nu fasen A-F. Eerst worden de resterende fase-A
+contracten voor `SteelModel`, compatibiliteit en viewerintegratie gesloten.
+Daarna volgt fase B: Viewer & Import Accuracy.
 
-1. boogcontouren, custom doorsneden en profielbewerkingen veilig terugbouwen;
-2. multi-solid STEP en exacte IFC-BREP-mapping toevoegen zonder volgordegok;
-3. featureselectie tussen grids, 2D en exacte 3D verder synchroniseren;
-4. NC1/STEP/IFC/PDF-roundtripvalidatie per ondersteunde onderdeelklasse;
-5. gevalideerde referentiemodellen tegen dezelfde vergelijking laten lopen;
-6. pas daarna per-part/per-merk productie-export vrijgeven.
+1. maak `source ID -> SteelModel ID -> viewer mesh ID` stabiel en controleerbaar;
+2. bewijs units, transformaties, orientatie en toleranties op synthetische en
+   eigenaar-gevalideerde referenties;
+3. synchroniseer viewerselectie, modelboom, eigenschappen en validatieproblemen;
+4. voeg Accuracy/Debug mode, visuele regressie en grote-modelmetingen toe;
+5. behoud alle bestaande conversie-, Workbench-, roundtrip- en Windows-tests;
+6. bouw pas daarna de productie-editor, volledige tekeningen, adapters en
+   optimalisatie verder uit.

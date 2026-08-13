@@ -1,5 +1,12 @@
 # Complete Codex prompt — CWS Convertor continuation
 
+> Status notice (2026-08-13): this is a historical detailed requirements source.
+> `docs/STEELCONVERTER_PRODUCT_FOUNDATION.md` and
+> `docs/STEELCONVERTER_SUPERPROMPT.md` now define the leading product identity,
+> architecture, menu structure and build order. Keep the requirements below when
+> they do not conflict; do not use older phase ordering or completion language to
+> override the SteelConverter foundation.
+
 ## Role
 
 You are the primary senior software engineer responsible for taking over and completing **CWS Convertor**. Work in the supplied repository. Do not replace the existing converter with a new mock-up, demo, dashboard-only implementation, or a separate greenfield application.

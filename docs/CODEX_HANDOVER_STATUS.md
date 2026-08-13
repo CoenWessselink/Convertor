@@ -1,14 +1,26 @@
-# CWS Convertor Codex handover status
+# SteelConverter / CWS Convertor Codex handover status
 
 ## Current identity
 
-- Product: **CWS Convertor**
+- Target product: **SteelConverter**
+- Current compatible runtime/product label: **CWS Convertor**
 - Development snapshot: `0.8.3-beta-dev`
 - Project Model schema: `2.5`
 - Core baseline source: `d6b855a`
 - Active core phase branch: `feature/core-phase-3-production-package-drawings`
 
-This remains a development snapshot, not a production release.
+This remains a development snapshot, not a production release. The target-name
+migration and project-wide `SteelModel` contract belong to revised phase A and
+must preserve existing projects, CLI contracts and release evidence.
+
+The leading requirements are now:
+
+- `docs/STEELCONVERTER_PRODUCT_FOUNDATION.md`;
+- `docs/STEELCONVERTER_SUPERPROMPT.md`;
+- `docs/MASTERPROMPT_TRACEABILITY.md`.
+
+The earlier complete master prompt remains supporting detail only where it does
+not conflict with these sources.
 
 ## Verified baseline
 
@@ -58,10 +70,19 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 - GUI/CLI foundations;
 - working Windows x64 installer and portable package pipeline.
 
+These are proven implementation components. They are not a claim that the
+broader SteelConverter phases B-F are complete.
+
 ## Not complete
 
+- compatibility-preserving unification around a project-wide `SteelModel`;
+- stable source ID to `SteelModel` ID to viewer mesh ID traceability;
+- trustworthy central production viewer with synchronized tree, properties,
+  measurements, sections, compare and Accuracy/Debug mode;
+- visual golden regression and representative large-model viewer evidence;
 - exact selected IFC BREP and multi-solid STEP BREP isolation;
 - unsupported slots, pockets, chamfers and complex end operations in canonical rebuild;
+- production scribing proposal, preview, validation and adapter contracts;
 - true hidden-line removal, editable drawing layouts and complex section/detail views;
 - true LO4 and P1811 binary regressions in the active fixture layout;
 - validated engineering expectations for the local reference registry;
@@ -72,6 +93,11 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 
 ## Next core work
 
-After phase 3 passes its full local suite and Windows CI, continue with the
-controlled CWS Viewer integration phase. Do not start optimization or machine
-output before real owner-validated production references pass the release gate.
+Use revised phases A-F. Preserve the accepted phase-3 baseline, close the
+remaining phase-A `SteelModel` and viewer contracts, then implement the smallest
+end-to-end phase-B Viewer & Import Accuracy slice. It must prove source/model/mesh
+identity, units/transforms, selection synchronization, visible validation and
+golden/visual regression before feature breadth grows.
+
+Do not advance purchasing, optimization or machine output before the phase-B
+accuracy gate and owner-validated production references pass.
