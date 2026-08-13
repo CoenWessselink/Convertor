@@ -41,6 +41,7 @@ from project_tab import CWSProjectTab
 from quantities import QuantityAnalysis, analyze_files, export_excel
 from review_dialog import PDFReviewDialog
 from visualization import ComparisonViewer
+from runtime_diagnostics import run_native_self_test, write_diagnostics
 
 
 DIRECTION_LABELS = {
@@ -1458,5 +1459,49 @@ class ConverterApp(tk.Tk):
             messagebox.showerror("Excel export", str(exc))
 
 
+def _option_value(arguments: list[str], option: str) -> str | None:
+    if option not in arguments:
+        return None
+    index = arguments.index(option)
+    if index + 1 >= len(arguments):
+        raise ValueError(f"{option} vereist een bestandspad")
+    return arguments[index + 1]
+
+
+def _run_gui_smoke(output_path: str | None) -> int:
+    result = run_native_self_test()
+    gui_check = {"name": "gui", "status": "failed"}
+    try:
+        application = ConverterApp()
+        application.update_idletasks()
+        application.update()
+        application.after(100, application.destroy)
+        application.mainloop()
+        gui_check = {
+            "name": "gui",
+            "status": "passed",
+            "details": {"window_created": True, "event_loop_processed": True},
+        }
+    except Exception as exc:
+        gui_check["error"] = {"type": type(exc).__name__, "message": str(exc)}
+    result["checks"].append(gui_check)
+    result["status"] = "passed" if all(check["status"] == "passed" for check in result["checks"]) else "failed"
+    write_diagnostics(result, output_path)
+    return 0 if result["status"] == "passed" else 1
+
+
+def main(arguments: list[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if arguments is None else arguments)
+    if any(option in arguments for option in {"--self-test", "--diagnostics"}):
+        output_path = _option_value(arguments, "--output")
+        result = run_native_self_test()
+        write_diagnostics(result, output_path)
+        return 0 if result["status"] == "passed" else 1
+    if "--gui-smoke" in arguments:
+        return _run_gui_smoke(_option_value(arguments, "--output"))
+    returncode = ConverterApp(arguments).mainloop()
+    return 0 if returncode is None else int(returncode)
+
+
 if __name__ == "__main__":
-    ConverterApp(sys.argv[1:]).mainloop()
+    raise SystemExit(main())

@@ -16,6 +16,9 @@ def main() -> int:
     installer = (ROOT / "installer" / "CWS_Convertor.iss").read_text(encoding="utf-8")
     workflow = (ROOT / ".github" / "workflows" / "build-windows-exe.yml").read_text(encoding="utf-8")
     batch = (ROOT / "build_windows_exe.bat").read_text(encoding="utf-8")
+    spec = (ROOT / "CWS_Convertor.spec").read_text(encoding="utf-8")
+    runtime_lock = (ROOT / "requirements-runtime.lock.txt").read_text(encoding="utf-8")
+    runtime_hook = (ROOT / "pyinstaller_hooks" / "pyi_rth_casadi_dll_path.py").read_text(encoding="utf-8")
 
     assert f'#define MyAppVersion "{APP_VERSION}"' in installer
     assert f'#define MyAppNumericVersion "{APP_VERSION_NUMERIC}"' in installer
@@ -28,6 +31,21 @@ def main() -> int:
     assert "actions/checkout@v6" in workflow
     assert "actions/setup-python@v6" in workflow
     assert 'Get-ChildItem tests -Filter "*_smoke.py"' in workflow
+    assert '"casadi"' in spec
+    assert '"scipy"' in spec
+    assert "scipy._external.array_api_compat" in spec
+    assert "pyi_rth_casadi_dll_path.py" in spec
+    assert "hook-casadi.py" in workflow or "pyinstaller_hooks/**" in workflow
+    assert "casadi==3.7.2" in runtime_lock
+    assert "os.add_dll_directory" in runtime_hook
+    assert "libcasadi.dll" in runtime_hook
+    assert workflow.count("packaged_runtime_smoke.py") == 3
+    assert "--label dist" in workflow
+    assert "--label portable" in workflow
+    assert "--label installed" in workflow
+    assert "inspect_windows_native_dependencies.py" in workflow
+    assert "app.py --self-test" in workflow
+    assert "app.py --gui-smoke" in workflow
     assert "Start-Process -FilePath $installer.Path" in workflow
     assert "Start-Process -FilePath $uninstaller" in workflow
     assert workflow.count("-Wait -PassThru -WindowStyle Hidden") == 2
@@ -35,6 +53,7 @@ def main() -> int:
     assert "$uninstallProcess.ExitCode" in workflow
     assert f'set "CWS_VERSION={APP_VERSION}"' in batch
     assert "for %%F in (tests\\*_smoke.py)" in batch
+    assert batch.count("packaged_runtime_smoke.py") == 3
     lazy_import = subprocess.run(
         [
             sys.executable,

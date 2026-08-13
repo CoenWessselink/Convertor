@@ -3,7 +3,7 @@
 ## Snapshot identity
 
 - Product: **CWS Convertor**
-- Integration snapshot: **0.8.0-alpha-dev**
+- Integration snapshot: **0.8.1-alpha-dev**
 - Project Model schema: **2.3**
 - Git branch: `v0.8-codex-handover`
 - Based on verified history through tag `v0.7.0-alpha`
@@ -24,7 +24,7 @@ The previously announced v0.8 handover archive was not present in the runtime an
 
 ## Integration repairs made for this handover
 
-- central version changed to `0.8.0-alpha-dev`;
+- central version changed to `0.8.1-alpha-dev`;
 - Project Model version reconciled to schema `2.3`;
 - missing `cws_convertor.production_export.utils` added;
 - production-export public API completed;

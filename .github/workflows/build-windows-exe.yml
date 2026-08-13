@@ -13,6 +13,7 @@ on:
       - "cws_project/**"
       - "cws_convertor/**"
       - "project_tab.py"
+      - "pyinstaller_hooks/**"
       - "templates/**"
       - "installer/**"
       - "tests/**"
@@ -28,7 +29,8 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.8.0-alpha-dev
+      CWS_VERSION: 0.8.1-alpha-dev
+      RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:
       - name: Checkout repository
@@ -48,7 +50,7 @@ jobs:
           python -m pip install -r requirements-build.lock.txt
           python -m pip check
 
-      - name: Compile and run safety regressions
+      - name: Compile and run source regressions
         shell: pwsh
         run: |
           $env:PYTHONPATH = (Get-Location).Path
@@ -68,7 +70,7 @@ jobs:
           python cli.py project-list-parts --help
           python cli.py project-migrate --help
 
-      - name: Project CLI contract smoke
+      - name: Source project contract smoke
         shell: pwsh
         run: |
           $project = Join-Path $env:RUNNER_TEMP "ci_project.cwscproj"
@@ -76,10 +78,18 @@ jobs:
           python cli.py project-info $project --json
           if (-not (Test-Path $project)) { throw "CWS-projectbestand ontbreekt" }
 
-      - name: GUI import smoke
+      - name: Source native runtime self-test
         shell: pwsh
         run: |
-          python -c "from app import ConverterApp; app=ConverterApp(); app.update_idletasks(); app.destroy(); print('GUI smoke OK')"
+          New-Item -ItemType Directory -Path $env:RUNTIME_RESULTS -Force | Out-Null
+          python app.py --self-test --output "$env:RUNTIME_RESULTS\source-native-selftest.json"
+          if ($LASTEXITCODE -ne 0) { throw "Source native self-test faalde" }
+
+      - name: Source GUI smoke
+        shell: pwsh
+        run: |
+          python app.py --gui-smoke --output "$env:RUNTIME_RESULTS\source-gui-smoke.json"
+          if ($LASTEXITCODE -ne 0) { throw "Source GUI-smoke faalde" }
 
       - name: Build onedir GUI and CLI
         shell: pwsh
@@ -87,8 +97,38 @@ jobs:
           pyinstaller --noconfirm --clean CWS_Convertor.spec
           if (-not (Test-Path "dist/CWS_Convertor/CWS_Convertor.exe")) { throw "GUI EXE ontbreekt" }
           if (-not (Test-Path "dist/CWS_Convertor/CWS_Convertor_CLI.exe")) { throw "CLI EXE ontbreekt" }
-          & "dist/CWS_Convertor/CWS_Convertor_CLI.exe" --version
-          Compress-Archive -Path "dist/CWS_Convertor" -DestinationPath "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip" -Force
+
+      - name: Inspect packaged native dependencies
+        shell: pwsh
+        run: |
+          python validation/inspect_windows_native_dependencies.py dist/CWS_Convertor `
+            --output "$env:RUNTIME_RESULTS\dist-native-inventory.json"
+
+      - name: PyInstaller dist native, GUI, CLI and conversion smoke
+        shell: pwsh
+        run: |
+          python tests/packaged_runtime_smoke.py `
+            --runtime-dir dist/CWS_Convertor `
+            --label dist `
+            --result-dir $env:RUNTIME_RESULTS
+
+      - name: Create portable ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/CWS_Convertor" `
+            -DestinationPath "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip" -Force
+
+      - name: Extract and test portable runtime
+        shell: pwsh
+        run: |
+          $portableRoot = Join-Path $env:RUNNER_TEMP "CWS_Convertor_Portable_Clean"
+          if (Test-Path $portableRoot) { Remove-Item -LiteralPath $portableRoot -Recurse -Force }
+          Expand-Archive "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip" -DestinationPath $portableRoot
+          $runtime = Join-Path $portableRoot "CWS_Convertor"
+          python tests/packaged_runtime_smoke.py `
+            --runtime-dir $runtime `
+            --label portable `
+            --result-dir $env:RUNTIME_RESULTS
 
       - name: Install Inno Setup
         shell: pwsh
@@ -101,38 +141,36 @@ jobs:
           if (-not (Test-Path $iscc)) { throw "ISCC.exe niet gevonden" }
           & $iscc "installer/CWS_Convertor.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup build mislukt" }
+          if (-not (Test-Path "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_x64.exe")) {
+            throw "Installer ontbreekt"
+          }
 
-      - name: Install and smoke-test without Python on PATH
+      - name: Install application silently
         shell: pwsh
         run: |
           $installer = Resolve-Path "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_x64.exe"
           $installDir = Join-Path $env:RUNNER_TEMP "CWS_Convertor_Installed"
+          "CWS_INSTALL_DIR=$installDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $installProcess = Start-Process -FilePath $installer.Path `
             -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/DIR=$installDir") `
             -Wait -PassThru -WindowStyle Hidden
           if ($installProcess.ExitCode -ne 0) {
             throw "Stille installatie mislukt met exitcode $($installProcess.ExitCode)"
           }
-          $gui = Join-Path $installDir "CWS_Convertor.exe"
-          $cli = Join-Path $installDir "CWS_Convertor_CLI.exe"
-          if (-not (Test-Path $gui)) { throw "Geinstalleerde GUI EXE ontbreekt" }
-          if (-not (Test-Path $cli)) { throw "Geinstalleerde CLI EXE ontbreekt" }
+          if (-not (Test-Path (Join-Path $installDir "CWS_Convertor.exe"))) { throw "Geinstalleerde GUI ontbreekt" }
 
-          $savedPath = $env:PATH
-          try {
-            $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\Wbem"
-            & $cli --version
-            if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde CLI --version faalde" }
-            $project = Join-Path $env:RUNNER_TEMP "installed_smoke.cwscproj"
-            & $cli project-new $project --name "Installed smoke"
-            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $project)) { throw "Geinstalleerde projectopslag-smoke faalde" }
-            & $cli project-info $project
-            if ($LASTEXITCODE -ne 0) { throw "Geinstalleerde project-info-smoke faalde" }
-          } finally {
-            $env:PATH = $savedPath
-          }
+      - name: Installed native, GUI, CLI, project and conversion smoke without Python on child PATH
+        shell: pwsh
+        run: |
+          python tests/packaged_runtime_smoke.py `
+            --runtime-dir $env:CWS_INSTALL_DIR `
+            --label installed `
+            --result-dir $env:RUNTIME_RESULTS
 
-          $uninstaller = Join-Path $installDir "unins000.exe"
+      - name: Uninstall and verify removal
+        shell: pwsh
+        run: |
+          $uninstaller = Join-Path $env:CWS_INSTALL_DIR "unins000.exe"
           if (-not (Test-Path $uninstaller)) { throw "Uninstaller ontbreekt" }
           $uninstallProcess = Start-Process -FilePath $uninstaller `
             -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") `
@@ -140,8 +178,15 @@ jobs:
           if ($uninstallProcess.ExitCode -ne 0) {
             throw "Stille uninstall mislukt met exitcode $($uninstallProcess.ExitCode)"
           }
+          Start-Sleep -Seconds 2
+          if (Test-Path (Join-Path $env:CWS_INSTALL_DIR "CWS_Convertor.exe")) {
+            throw "GUI EXE bleef na uninstall achter"
+          }
+          if (Test-Path (Join-Path $env:CWS_INSTALL_DIR "CWS_Convertor_CLI.exe")) {
+            throw "CLI EXE bleef na uninstall achter"
+          }
 
-      - name: Create checksums
+      - name: Create checksums and validation evidence
         shell: pwsh
         run: |
           $files = @(
@@ -155,12 +200,21 @@ jobs:
           New-Item -ItemType Directory -Path release -Force | Out-Null
           Copy-Item $files release/
           $lines | Set-Content -Encoding ascii release/SHA256SUMS.txt
+          Copy-Item WINDOWS_RUNTIME_VALIDATION.md release/WINDOWS_RUNTIME_VALIDATION.md
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "`n## CI build evidence"
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md ""
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "- Run ID: $env:GITHUB_RUN_ID"
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "- Commit: $env:GITHUB_SHA"
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "- Dist runtime: passed"
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "- Extracted portable runtime: passed"
+          Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "- Installed runtime without Python on child PATH: passed"
+          Copy-Item "$env:RUNTIME_RESULTS\*.json" release/
           Get-Content release/SHA256SUMS.txt
 
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Convertor_0.8.0-alpha-dev_Windows_x64
+          name: CWS_Convertor_0.8.1-alpha-dev_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

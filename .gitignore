@@ -1,6 +1,8 @@
 .venv/
 build/
 dist/
+dist_installer/
+release/
 __pycache__/
 *.py[cod]
 *.spec
@@ -8,3 +10,4 @@ __pycache__/
 NC1_STEP_Output/
 reference-models-local/
 reference-results-local/
+validation/results/windows-runtime/

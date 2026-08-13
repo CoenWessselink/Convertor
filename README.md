@@ -1,4 +1,4 @@
-# CWS Convertor 0.8.0-alpha-dev — Codex integration snapshot
+# CWS Convertor 0.8.1-alpha-dev — Codex integration snapshot
 
 **CWS Convertor** is een local-first desktopapplicatie en CLI voor veilige conversie en productievoorbereiding van:
 
@@ -7,7 +7,7 @@
 - hoeveelheden en Excel;
 - complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie **0.8.0-alpha-dev** bouwt verder op de bewezen conversiekern en de
+Versie **0.8.1-alpha-dev** bouwt verder op de bewezen conversiekern en de
 semantische IFC-/STEP-projectimport. De actuele projectstructuur gebruikt
 **Project Model 2.4**.
 
@@ -48,7 +48,7 @@ BOM / productie-export / optimalisatie / machines
 
 AI mag documentsemantiek, classificatievoorstellen, confidence en controlevragen leveren. AI schrijft geen ongecontroleerde geometrie, NC1 of machinecode. Kritische onzekerheid sluit de productiepoort.
 
-## Nieuw in 0.8.0-alpha-dev
+## Nieuw in 0.8.1-alpha-dev
 
 - expliciete lengte-, plaatdikte- en diameterwaarden in de Workbench-revisie;
 - deterministische canonical-solid rebuild voor rechte platen, rondstaf en
@@ -250,19 +250,23 @@ CWS_Convertor_CLI.exe project-migrate oud.cwscproj -o nieuw.cwscproj
 De bijgewerkte buildstraat gebruikt Python 3.12 x64 op de **buildcomputer** en maakt:
 
 ```text
-CWS_Convertor_Setup_0.8.0-alpha-dev_x64.exe
-CWS_Convertor_Portable_0.8.0-alpha-dev_x64.zip
+CWS_Convertor_Setup_0.8.1-alpha-dev_x64.exe
+CWS_Convertor_Portable_0.8.1-alpha-dev_x64.zip
 SHA256SUMS.txt
+WINDOWS_RUNTIME_VALIDATION.md
 ```
 
 De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De Windows
-workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.8.0-alpha-dev. Een
-artefact geldt pas als gebouwd nadat de native Windows CI-installatie-, CLI-,
-projectopslag- en uninstallsmokes zijn geslaagd.
+workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.8.1-alpha-dev. Een
+artefact geldt pas als gebouwd nadat native selftests en de echte GUI vanuit
+`dist`, een schone portable extractie en de installatiemap zijn geslaagd zonder
+Python op de child-`PATH`. Iedere pakketvorm maakt daarnaast een project en
+voert een echte NC1-naar-STEP-conversie uit.
 
-Workflow `31685684421` op commit `2b003e4` is volledig geslaagd. Het geuploade
-artefact `9175668822` bevat de portable ZIP, installer-EXE en `SHA256SUMS.txt`.
-Dit bewijst de technische Windows-build; productie-export blijft afzonderlijk
+Workflow `31685684421` en artefact `9175668822` zijn ingetrokken als
+releasebewijs: die controles startten de verpakte GUI/CAD-stack niet en misten
+daardoor de CasADi-DLL-fout. De vervangende `0.8.1-alpha-dev`-build publiceert
+ook de volledige runtimevalidatie. Productie-export blijft afzonderlijk
 geblokkeerd door de nog ontbrekende formaat-roundtrips en golden validatie.
 
 ## Belangrijkste modules

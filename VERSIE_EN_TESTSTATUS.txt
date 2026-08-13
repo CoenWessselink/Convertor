@@ -2,7 +2,7 @@ CWS CONVERTOR — VERSIE- EN TESTSTATUS
 ====================================
 
 Product:             CWS Convertor
-Versie:              0.8.0-alpha-dev
+Versie:              0.8.1-alpha-dev
 Project Model:       2.4
 Projectbestand:      .cwscproj
 Fase:                Part Workbench - deterministic canonical rebuild en meetvergelijking
@@ -33,6 +33,8 @@ NIEUW IN DEZE VERSIE
 - `manual_validation_required` bij ontbrekende of niet-geisoleerde bronwaarden.
 - Canonical vergelijkingstab met verwacht, gevonden, delta en vermoedelijke oorzaak.
 - Windows-buildstraat voert automatisch alle smoke-scripts uit.
+- CasADi 3.7.2 en de volledige native DLL-keten zijn expliciet gebundeld.
+- Dist, portable en installer worden met native selftest, echte GUI en NC1-naar-STEP getest zonder Python op child-PATH.
 
 REFERENTIE-IFC
 --------------
@@ -64,7 +66,7 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts Windows ontwikkelrun:   28/28 geslaagd
+Smoke-scripts Windows ontwikkelrun:   30/30 geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Canonical rebuild-tests:               6/6 geslaagd
 Referentiemodelcatalogus:           481/481 gekoppeld
@@ -78,4 +80,5 @@ BELANGRIJKE GRENZEN
 - NC1/STEP/IFC/PDF-roundtripvalidatie is nog niet afgerond.
 - Optimalisatie en machinejobs blijven geblokkeerd.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
-- GitHub Windows-pipeline 31685684421 op commit 2b003e4 slaagde inclusief installer, installatie zonder Python op PATH, projectopslag en uninstall.
+- GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
+- Lokale 0.8.1 dist-, portable- en installatieruntime zijn volledig geslaagd; definitieve vrijgave wacht op de aangescherpte CI-run.

@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = Path(SPECPATH)
 
-packages = ["cadquery", "OCP", "matplotlib", "ifcopenshell", "xlsxwriter", "pymupdf", "pypdf", "reportlab"]
+packages = ["cadquery", "OCP", "casadi", "matplotlib", "numpy", "scipy", "PIL", "ifcopenshell", "xlsxwriter", "pymupdf", "pypdf", "reportlab"]
 binaries = []
 datas = [
     (str(ROOT / "profiles.json"), "."),
@@ -42,15 +42,17 @@ for package in packages:
     binaries += package_binaries
     hiddenimports += package_hidden
 hiddenimports += collect_submodules("ifcopenshell.api")
+hiddenimports += collect_submodules("scipy._external.array_api_compat")
+hiddenimports += collect_submodules("scipy._lib.array_api_compat")
 
 common = dict(
     pathex=[str(ROOT)],
     binaries=binaries,
     datas=datas,
     hiddenimports=sorted(set(hiddenimports)),
-    hookspath=[],
+    hookspath=[str(ROOT / "pyinstaller_hooks")],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=[str(ROOT / "pyinstaller_hooks" / "pyi_rth_casadi_dll_path.py")],
     excludes=[],
     noarchive=False,
     optimize=1,

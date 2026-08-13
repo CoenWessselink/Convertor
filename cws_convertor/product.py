@@ -13,8 +13,8 @@ APP_ID = "nl.cws.convertor"
 # Integration snapshot for Codex: semantic import, classification/BOM and
 # draft production-package export are merged. Part Workbench and complete
 # external-feature validation remain later release gates.
-APP_VERSION = "0.8.0-alpha-dev"
-APP_VERSION_NUMERIC = "0.8.0.0"
+APP_VERSION = "0.8.1-alpha-dev"
+APP_VERSION_NUMERIC = "0.8.1.0"
 APP_PUBLISHER = "CWS"
 APP_DESCRIPTION = (
     "AI-ondersteunde NC1/DSTV-, STEP-, IFC- en technische PDF-convertor"

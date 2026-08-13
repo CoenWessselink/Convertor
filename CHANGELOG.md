@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.1-alpha-dev - Windows native runtime repair
+
+- CasADi 3.7.2 is pinned and its complete native wheel is collected by PyInstaller.
+- A frozen-runtime hook registers CasADi's bundled DLL directory before CadQuery starts.
+- Native self-test and GUI-smoke modes exercise CasADi, CadQuery/OCP, IfcOpenShell, PyMuPDF, Matplotlib, NumPy, SciPy and Pillow.
+- Windows CI now validates the dist folder, a freshly extracted portable ZIP and the installed application without Python on the child PATH.
+- Each packaged runtime also creates a project and performs a real NC1-to-STEP conversion.
+- The earlier 0.8.0 Windows artifact is superseded because its packaged GUI/CAD stack was not exercised.
+
 ## 0.8.0-alpha-dev - Part Workbench foundation
 
 - Versioned Part Workbench state added with immutable source geometry references.
@@ -22,7 +31,7 @@
 - Six canonical rebuild regressions and updated GUI validation added; all 28 smoke scripts pass locally on Windows.
 - Production release remains blocked pending exact source isolation and NC1/STEP/IFC/PDF roundtrip validation.
 - Canonical builder loading is lazy so the packaged project CLI does not initialize CadQuery/CasADi for non-geometry commands.
-- Native Windows workflow 31685684421 passed PyInstaller, Inno Setup, installed-app smoke without Python on PATH, project storage, uninstall, checksums and artifact upload.
+- Native Windows workflow 31685684421 passed its then-current gates, which were later found insufficient because they did not start the packaged GUI/CAD stack.
 
 ## 0.7.0-alpha — Semantische IFC/STEP-projectimport
 
