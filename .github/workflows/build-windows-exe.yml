@@ -259,7 +259,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Convertor_0.8.2-alpha-dev_Windows_x64
+          name: CWS_Convertor_${{ env.CWS_VERSION }}_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

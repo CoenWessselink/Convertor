@@ -37,6 +37,10 @@ invented from file contents.
 - Reference registry: 481/481 paired, 0 validated and 481 `manual_validation_required`.
 - Windows source/dist/portable/installer workflow: pending push.
 
+Run `31726875251` passed all functional gates but is superseded as release
+evidence because its uploaded artifact retained the old `0.8.2-alpha-dev`
+label. The versioned artifact-name contract is now covered by regression.
+
 ## Explicit limits
 
 - Assembly views are deterministic vector edge projections, not true hidden-line drawings.

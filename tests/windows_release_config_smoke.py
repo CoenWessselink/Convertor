@@ -31,15 +31,18 @@ def main() -> int:
     assert re.fullmatch(r"\d+\.\d+\.\d+\.\d+", APP_VERSION_NUMERIC)
 
     assert f"CWS_VERSION: {APP_VERSION}" in workflow
+    assert "name: CWS_Convertor_${{ env.CWS_VERSION }}_Windows_x64" in workflow
     assert "actions/checkout@v6" in workflow
     assert "actions/setup-python@v6" in workflow
     assert 'Get-ChildItem tests -Filter "*_smoke.py"' in workflow
     assert '"casadi"' in spec
     assert '"scipy"' in spec
+    assert '"ezdxf"' in spec
     assert "scipy._external.array_api_compat" in spec
     assert "pyi_rth_casadi_dll_path.py" in spec
     assert "hook-casadi.py" in workflow or "pyinstaller_hooks/**" in workflow
     assert "casadi==3.7.2" in runtime_lock
+    assert "ezdxf==1.4.4" in runtime_lock
     assert "os.add_dll_directory" in runtime_hook
     assert "libcasadi.dll" in runtime_hook
     assert "multiprocessing.freeze_support()" in gui_entry
