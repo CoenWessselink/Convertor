@@ -46,12 +46,6 @@ from .workbench import (
     evaluate_workbench_revision,
     workbench_geometry_payload,
 )
-from .canonical_rebuild import (
-    BUILDER_VERSION,
-    CanonicalRebuildError,
-    CanonicalRebuildResult,
-    rebuild_and_compare,
-)
 
 __all__ = [
     "ProjectModel",
@@ -93,8 +87,4 @@ __all__ = [
     "WORKBENCH_SCHEMA_VERSION",
     "evaluate_workbench_revision",
     "workbench_geometry_payload",
-    "BUILDER_VERSION",
-    "CanonicalRebuildError",
-    "CanonicalRebuildResult",
-    "rebuild_and_compare",
 ]

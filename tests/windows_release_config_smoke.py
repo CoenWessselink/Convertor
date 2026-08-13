@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +35,22 @@ def main() -> int:
     assert "$uninstallProcess.ExitCode" in workflow
     assert f'set "CWS_VERSION={APP_VERSION}"' in batch
     assert "for %%F in (tests\\*_smoke.py)" in batch
+    lazy_import = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import sys; import cws_convertor.project; "
+                "assert 'cadquery' not in sys.modules; "
+                "assert 'cws_convertor.project.canonical_rebuild' not in sys.modules"
+            ),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert lazy_import.returncode == 0, lazy_import.stderr
     print("windows_release_config_smoke: OK")
     return 0
 

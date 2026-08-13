@@ -64,3 +64,8 @@ De visuele fixture is synthetisch en niet vertrouwelijk. Ze is geen golden
 reference voor de aangeleverde STEP-, IFC- of DSTV-modellen. Die 481 modellen
 blijven `manual_validation_required` totdat hun verwachte waarden afzonderlijk
 betrouwbaar zijn vastgesteld.
+
+De projectpackage importeert de CadQuery-builder lazy. Daardoor blijven lichte
+CLI-opdrachten zoals `--version` en projectinformatie onafhankelijk van het
+initialiseren van de geometriekern. De Windows release-configsmoke bewaakt dit
+importcontract; daarnaast is de lokaal gebundelde CLI expliciet gestart.

@@ -21,6 +21,7 @@
 - Canonical comparison tab added with expected, found, delta, result and blocking reason reporting.
 - Six canonical rebuild regressions and updated GUI validation added; all 28 smoke scripts pass locally on Windows.
 - Production release remains blocked pending exact source isolation and NC1/STEP/IFC/PDF roundtrip validation.
+- Canonical builder loading is lazy so the packaged project CLI does not initialize CadQuery/CasADi for non-geometry commands.
 
 ## 0.7.0-alpha — Semantische IFC/STEP-projectimport
 

@@ -39,7 +39,6 @@ from .classification import (
     classify_project as classify_project_model,
     set_manual_part_classification,
 )
-from .canonical_rebuild import CanonicalRebuildResult, rebuild_and_compare
 from .workbench import (
     record_canonical_rebuild as record_project_canonical_rebuild,
     redo_part_workbench as redo_project_part_workbench,
@@ -51,6 +50,7 @@ from .workbench import (
 )
 if TYPE_CHECKING:
     from cws_convertor.bom.models import BOMSnapshot
+    from .canonical_rebuild import CanonicalRebuildResult
 
 
 @dataclass
@@ -642,8 +642,10 @@ class ProjectSession:
         self.dirty = True
         return state
 
-    def rebuild_part_canonical(self, part_id: str, *, user: str) -> CanonicalRebuildResult:
+    def rebuild_part_canonical(self, part_id: str, *, user: str) -> "CanonicalRebuildResult":
         """Rebuild reviewed geometry, compare source metrics and persist the report."""
+
+        from .canonical_rebuild import rebuild_and_compare
 
         self._ensure_writable()
         part = self.project.parts.get(part_id)
