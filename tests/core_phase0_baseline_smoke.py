@@ -27,8 +27,8 @@ class CorePhase0BaselineTests(unittest.TestCase):
     def test_product_and_pinned_input_contract(self) -> None:
         product = collect_product_identity()
         self.assertEqual(product["name"], "CWS Convertor")
-        self.assertEqual(product["version"], "0.8.1-alpha-dev")
-        self.assertEqual(product["project_schema"], "2.4")
+        self.assertEqual(product["version"], "0.8.2-alpha-dev")
+        self.assertEqual(product["project_schema"], "2.5")
         self.assertEqual(REPORT_SCHEMA, "cws-core-phase0-baseline-v1")
 
         tracked = collect_tracked_input_hashes()

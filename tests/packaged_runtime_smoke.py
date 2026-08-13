@@ -127,7 +127,14 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
         _run([str(gui), "--self-test", "--output", str(selftest_path)], environment=environment, cwd=work)
         native_result = _read_passed_result(
             selftest_path,
-            {"casadi", "cadquery_ocp", "ifcopenshell", "pymupdf", "scientific_rendering"},
+            {
+                "casadi",
+                "cadquery_ocp",
+                "ifcopenshell",
+                "pymupdf",
+                "scientific_rendering",
+                "project_roundtrips",
+            },
         )
         _run([str(gui), "--gui-smoke", "--output", str(gui_path)], environment=environment, cwd=work)
         gui_result = _read_passed_result(gui_path, {"casadi", "cadquery_ocp", "gui"})

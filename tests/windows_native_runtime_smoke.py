@@ -22,6 +22,8 @@ def main() -> int:
     assert checks["ifcopenshell"]["project_count"] == 1
     assert checks["pymupdf"]["page_count"] == 1
     assert checks["scientific_rendering"]["rendered_bytes"] > 0
+    assert checks["project_roundtrips"]["status"] == "passed"
+    assert set(checks["project_roundtrips"]["formats"]) == {"nc1", "step", "ifc", "pdf"}
     print("windows_native_runtime_smoke: OK")
     return 0
 

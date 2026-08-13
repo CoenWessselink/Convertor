@@ -30,7 +30,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.8.1-alpha-dev
+      CWS_VERSION: 0.8.2-alpha-dev
       RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:
@@ -69,6 +69,8 @@ jobs:
           python cli.py project-import --help
           python cli.py project-tree --help
           python cli.py project-list-parts --help
+          python cli.py project-rebuild-canonical --help
+          python cli.py project-validate-roundtrips --help
           python cli.py project-migrate --help
 
       - name: Source project contract smoke
@@ -255,7 +257,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Convertor_0.8.1-alpha-dev_Windows_x64
+          name: CWS_Convertor_0.8.2-alpha-dev_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

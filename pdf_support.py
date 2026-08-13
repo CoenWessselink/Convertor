@@ -2768,9 +2768,9 @@ def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
             "Productie-export is geblokkeerd"
             + (": " + " | ".join(questions) if questions else ".")
         )
-    if not part.contours:
-        raise ExternalPDFExportBlocked("Productie-export vereist ten minste één gesloten contour")
     header = part.header
+    if not part.contours and header.profile_type.upper() == "B":
+        raise ExternalPDFExportBlocked("Productie-export van een plaat vereist een gesloten contour")
     lines = [
         "ST",
         f"** Generated from validated canonical model by CWS Convertor v{DEFAULT_CONVERTER_VERSION}",

@@ -10,11 +10,11 @@ APP_NAME = "CWS Convertor"
 APP_SHORT_NAME = APP_NAME
 APP_SLUG = "CWS_Convertor"
 APP_ID = "nl.cws.convertor"
-# Integration snapshot for Codex: semantic import, classification/BOM and
-# draft production-package export are merged. Part Workbench and complete
-# external-feature validation remain later release gates.
-APP_VERSION = "0.8.1-alpha-dev"
-APP_VERSION_NUMERIC = "0.8.1.0"
+# Integration snapshot for Codex: semantic import, Part Workbench rebuild and
+# per-part format roundtrips are merged. Complete feature coverage and validated
+# external golden models remain later release gates.
+APP_VERSION = "0.8.2-alpha-dev"
+APP_VERSION_NUMERIC = "0.8.2.0"
 APP_PUBLISHER = "CWS"
 APP_DESCRIPTION = (
     "AI-ondersteunde NC1/DSTV-, STEP-, IFC- en technische PDF-convertor"
@@ -28,7 +28,7 @@ DEFAULT_PROJECT_FOLDER = "CWS Convertor Projects"
 
 PROJECT_FILE_EXTENSION = ".cwscproj"
 PROJECT_PACKAGE_FORMAT = "CWS_CWSC_PROJECT_V1"
-PROJECT_SCHEMA_VERSION = "2.4"
+PROJECT_SCHEMA_VERSION = "2.5"
 PROJECT_STORAGE_VERSION = 1
 CANONICAL_PART_SCHEMA_VERSION = "1.1"
 

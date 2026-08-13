@@ -2350,19 +2350,76 @@ def migrate_project_dict(data: dict[str, Any]) -> dict[str, Any]:
         return raw
     if version == PROJECT_SCHEMA_VERSION:
         return raw
-    if version in {"2.0", "2.1", "2.2", "2.3"} and PROJECT_SCHEMA_VERSION == "2.4":
+    if version in {"2.0", "2.1", "2.2", "2.3", "2.4"} and PROJECT_SCHEMA_VERSION == "2.5":
         raw["schema_version"] = PROJECT_SCHEMA_VERSION
+        migration_timestamp = utc_now_iso()
         for part in dict(raw.get("parts") or {}).values():
             if isinstance(part, dict):
                 part.setdefault("workbench", {})
+                state = part.get("workbench")
+                if isinstance(state, dict) and state:
+                    state["schema_version"] = "1.1"
+
+                    def invalidate_revision(revision: Any) -> None:
+                        if not isinstance(revision, dict):
+                            return
+                        roundtrip = revision.get("roundtrip_validation")
+                        if not isinstance(roundtrip, dict):
+                            return
+                        if roundtrip.get("status") in {None, "", "not_run", "invalidated"}:
+                            return
+                        roundtrip["status"] = "invalidated"
+                        roundtrip["invalidated_at"] = migration_timestamp
+                        roundtrip["invalidated_reason"] = "workbench_hash_contract_upgraded"
+                        for result in dict(roundtrip.get("formats") or {}).values():
+                            if isinstance(result, dict):
+                                result["status"] = "invalidated"
+                        roundtrip.pop("report_sha256", None)
+                        roundtrip["report_sha256"] = stable_sha256(roundtrip)
+
+                    invalidate_revision(state.get("current_revision"))
+                    for command in list(state.get("commands") or []):
+                        if not isinstance(command, dict):
+                            continue
+                        invalidate_revision(command.get("before_revision"))
+                        invalidate_revision(command.get("after_revision"))
+                        command["before_sha256"] = stable_sha256(
+                            dict(command.get("before_revision") or {})
+                        )
+                        command["after_sha256"] = stable_sha256(
+                            dict(command.get("after_revision") or {})
+                        )
+                    for record in list(state.get("revision_history") or []):
+                        if not isinstance(record, dict):
+                            continue
+                        invalidate_revision(record.get("snapshot"))
+                        record["snapshot_sha256"] = stable_sha256(
+                            dict(record.get("snapshot") or {})
+                        )
+                    for artifact in dict(state.get("artifacts") or {}).values():
+                        if isinstance(artifact, dict):
+                            artifact["status"] = "invalidated"
+                            artifact["invalidated_at"] = migration_timestamp
+                            artifact["invalidated_reason"] = "workbench_hash_contract_upgraded"
+                    rebuild = state.get("canonical_rebuild")
+                    if isinstance(rebuild, dict) and rebuild:
+                        rebuild["status"] = "invalidated"
+                        rebuild["invalidated_at"] = migration_timestamp
+                        rebuild["invalidated_reason"] = "workbench_hash_contract_upgraded"
+                    part["geometry_hash"] = ""
+                    part["manufacturing_hash"] = ""
+                    part["production_identity_hash"] = ""
+                    part["bom_group_key"] = ""
+                    part["nc1_eligible"] = False
+                    part["export_status"] = "blocked_pending_roundtrip_validation"
         history = list(raw.get("migration_history") or [])
         history.append(
             {
                 "from": version,
                 "to": PROJECT_SCHEMA_VERSION,
-                "timestamp": utc_now_iso(),
+                "timestamp": migration_timestamp,
                 "reason": (
-                    "Part Workbench-revisies, commandohistorie en artefactinvalidatie toegevoegd."
+                    "Part Workbench 1.1 met herkenningshash en gebonden roundtripvalidatie toegevoegd."
                 ),
             }
         )

@@ -5,7 +5,7 @@ from copy import deepcopy
 import json
 import math
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 from typing import Any, Callable
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -31,6 +31,7 @@ def source_dimensions_mm(part: Part) -> tuple[float, float, float] | None:
     candidates = (
         descriptor.get("bbox_mm"),
         dict(descriptor.get("cad_metrics") or {}).get("bbox_mm"),
+        dict(descriptor.get("source_mesh_metrics") or {}).get("bbox_mm"),
         descriptor.get("bbox_sorted_mm"),
     )
     for raw in candidates:
@@ -150,6 +151,10 @@ class PartWorkbenchPanel(ttk.Frame):
         self.validate_button.pack(side="left", padx=(12, 0))
         self.rebuild_button = ttk.Button(toolbar, text="Opbouwen", command=self.rebuild_canonical)
         self.rebuild_button.pack(side="left", padx=(5, 0))
+        self.roundtrip_button = ttk.Button(toolbar, text="Roundtrips", command=self.validate_roundtrips)
+        self.roundtrip_button.pack(side="left", padx=(5, 0))
+        self.release_button = ttk.Button(toolbar, text="Vrijgeven", command=self.release)
+        self.release_button.pack(side="left", padx=(5, 0))
         ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=10)
         ttk.Button(toolbar, text="Passend", command=self.fit_view).pack(side="left")
         ttk.Button(toolbar, text="Iso", command=lambda: self.set_view(24, -58)).pack(side="left", padx=(5, 0))
@@ -720,6 +725,20 @@ class PartWorkbenchPanel(ttk.Frame):
             )
         if not checks and not list(report.get("blocking_reasons") or []):
             self.canonical_grid.insert("", "end", text="Status", values=("-", "-", "-", outcome))
+        roundtrip = dict(dict(state.get("current_revision") or {}).get("roundtrip_validation") or {})
+        for format_name in ("nc1", "step", "ifc", "pdf"):
+            result = dict(dict(roundtrip.get("formats") or {}).get(format_name) or {})
+            self.canonical_grid.insert(
+                "",
+                "end",
+                text=f"Roundtrip {format_name.upper()}",
+                values=(
+                    "passed",
+                    result.get("status", "not_run"),
+                    "-",
+                    _short(result.get("probable_cause") or result.get("artifact_path"), 120),
+                ),
+            )
 
     @staticmethod
     def _populate_matching_properties(grid: ttk.Treeview, properties: dict[str, Any], tokens: tuple[str, ...]) -> None:
@@ -771,11 +790,35 @@ class PartWorkbenchPanel(ttk.Frame):
         self.validate_button.configure(
             state=(
                 "normal"
-                if active and state and not issues and revision.get("review_status") != "validated"
+                if active and state and not issues and revision.get("review_status") not in {"validated", "released"}
                 else "disabled"
             )
         )
         self.rebuild_button.configure(state="normal" if active and state else "disabled")
+        rebuild = dict(state.get("canonical_rebuild") or {})
+        rebuild_report = dict(rebuild.get("report") or {})
+        roundtrip = dict(revision.get("roundtrip_validation") or {})
+        roundtrip_current = bool(
+            roundtrip.get("status") == "passed"
+            and roundtrip.get("manufacturing_hash") == (part.manufacturing_hash if part else "")
+            and rebuild.get("status") == "current"
+            and roundtrip.get("canonical_signature") == rebuild_report.get("canonical_signature")
+        )
+        self.roundtrip_button.configure(
+            state=(
+                "normal"
+                if active and state and not issues and rebuild.get("status") == "current"
+                and rebuild_report.get("status") == "passed"
+                else "disabled"
+            )
+        )
+        self.release_button.configure(
+            state=(
+                "normal"
+                if active and roundtrip_current and revision.get("review_status") != "released"
+                else "disabled"
+            )
+        )
 
     def set_busy(self, busy: bool) -> None:
         self._busy = bool(busy)
@@ -895,6 +938,49 @@ class PartWorkbenchPanel(ttk.Frame):
             self._notify_changed(f"Canonical rebuild uitgevoerd: {outcome}")
         except Exception as exc:
             self._show_error("Canonical solid opbouwen", exc)
+
+    def validate_roundtrips(self) -> None:
+        session, part = self._require_selection()
+        if session is None or part is None:
+            return
+        initial = session.path.parent if session.path is not None else None
+        folder = filedialog.askdirectory(
+            parent=self,
+            title="Map voor gevalideerde roundtripbestanden",
+            initialdir=str(initial) if initial else None,
+            mustexist=False,
+        )
+        if not folder:
+            return
+        self.set_busy(True)
+        self.update_idletasks()
+        try:
+            report = session.validate_part_roundtrips(
+                part.internal_id,
+                folder,
+                user=self._user(),
+            )
+            self._notify_changed(f"Roundtripmatrix uitgevoerd: {report.get('status', 'failed')}")
+        except Exception as exc:
+            self._show_error("Roundtripmatrix uitvoeren", exc)
+        finally:
+            self.set_busy(False)
+
+    def release(self) -> None:
+        session, part = self._require_selection()
+        if session is None or part is None:
+            return
+        if not messagebox.askyesno(
+            "Onderdeel vrijgeven",
+            f"Onderdeel {part.part_position or part.name} voor productie vrijgeven?",
+            parent=self,
+        ):
+            return
+        try:
+            session.review_part_workbench(part.internal_id, user=self._user(), release=True)
+            self._notify_changed("Onderdeel voor productie vrijgegeven")
+        except Exception as exc:
+            self._show_error("Onderdeel vrijgeven", exc)
 
     def use_source_bbox(self) -> None:
         part = self._current_part()

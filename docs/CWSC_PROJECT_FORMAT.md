@@ -97,9 +97,9 @@ Per bron worden strategie, importerversie, entitycounts, bronklassecounts, relat
 
 Schema 2.0 wordt als compatibele minor-versie gemigreerd. Een onbekende major-versie opent niet stil als schrijfbaar project.
 
-## Part Workbench in schema 2.4
+## Part Workbench in schema 2.5
 
-Schema 2.4 voegt per onderdeel een optionele `workbench`-sectie toe. Bestaande
+Schema 2.5 gebruikt per onderdeel een optionele `workbench`-sectie. Bestaande
 onderdelen zonder deze sectie behouden hun bestaande geometry- en manufacturing
 hashes. Een gestarte Workbench bewaart:
 
@@ -112,6 +112,8 @@ hashes. Een gestarte Workbench bewaart:
 - afgeleide artefacten met de manufacturing hash waarvoor ze zijn gemaakt;
 - een optioneel gehasht canonical rebuildrapport met bronmetingen, canonical
   metingen, vergelijkingsbeleid en de bijbehorende manufacturing hash.
+- een gehasht NC1/STEP/IFC/Trusted-PDF-roundtriprapport en alleen de artefacten
+  die samen tegen dezelfde canonical signature zijn geslaagd.
 
 Een wijziging in productiegeometrie of features berekent de part-hashes opnieuw.
 Artefacten met een andere manufacturing hash krijgen status `invalidated`.
@@ -120,9 +122,11 @@ ontbrekende bronwaarden alsnog als verwacht resultaat in te vullen.
 Globale projectplaatsing is geen onderdeel van de manufacturing identity;
 spiegeling blijft dat wel.
 
-Project Model 2.0, 2.1, 2.2 en 2.3 worden expliciet naar 2.4 gemigreerd. Bij
-migratie wordt een lege Workbench-sectie toegevoegd; er worden geen
-productiefeatures of verwachte waarden verzonnen.
+Project Model 2.0 tot en met 2.4 wordt expliciet naar 2.5 gemigreerd. Workbench
+1.0 wordt naar 1.1 opgewaardeerd zodat ook de herkenningskeuze in de
+manufacturing hash valt. Bestaande rebuild-, roundtrip- en productieartefacten
+worden daarbij ongeldig; er worden geen productiefeatures of verwachte waarden
+verzonnen.
 
 ## Broninspectie vanaf importer 2.2
 

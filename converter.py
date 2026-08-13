@@ -501,6 +501,21 @@ def build_plate(part: NC1Part) -> cq.Workplane:
         pts = [(0.0, 0.0), (h.length, 0.0), (h.length, h.dim1), (0.0, h.dim1)]
         part.warnings.append("Geen AK-contour; omhullende rechthoek gebruikt")
         solid = cq.Workplane("XY").polyline(pts).close().extrude(thickness)
+    inner_contours = part.contours_for("v", "IK") or part.contours_for("o", "IK")
+    for contour in inner_contours:
+        try:
+            wire = _contour_wire(contour).translate(cq.Vector(0.0, 0.0, -1.0))
+            cutter_shape = cq.Solid.extrudeLinear(
+                wire,
+                [],
+                cq.Vector(0.0, 0.0, thickness + 2.0),
+            )
+            before = float(solid.val().Volume())
+            solid = solid.cut(cq.Workplane("XY").newObject([cutter_shape]))
+            if before - float(solid.val().Volume()) <= 1e-6:
+                raise ValueError("binnencontour snijdt de plaat niet")
+        except Exception as exc:
+            raise ValueError(f"Plaat-binnencontour kon niet analytisch worden opgebouwd: {exc}") from exc
     return _apply_holes(part, solid, "B", h.dim1, h.length, thickness, thickness)
 
 

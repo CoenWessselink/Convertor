@@ -357,6 +357,29 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="Schrijf het inspectierapport als JSON")
     _report_arg(p)
 
+    p = sub.add_parser(
+        "project-rebuild-canonical",
+        help="Bouw een beoordeelde Part Workbench-revisie deterministisch terug",
+    )
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("part_id", help="Interne part-ID uit project-list-parts")
+    p.add_argument("--no-embed", action="store_true", help="Bewaar bronnen alleen als pad/hashreferentie")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true", help="Schrijf het rebuildrapport als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser(
+        "project-validate-roundtrips",
+        help="Valideer NC1, STEP, IFC en PDF tegen de actuele canonical rebuild",
+    )
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("part_id", help="Interne part-ID uit project-list-parts")
+    p.add_argument("-o", "--output", required=True, help="Uitvoermap voor gevalideerde artefacten")
+    p.add_argument("--no-embed", action="store_true", help="Bewaar bronnen alleen als pad/hashreferentie")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true", help="Schrijf de roundtripmatrix als JSON")
+    _report_arg(p)
+
     p = sub.add_parser("project-list-assemblies", help="Toon semantisch geïmporteerde assemblies/merken")
     p.add_argument("project", help=".cwscproj-projectbestand")
     p.add_argument("--source-id", default="", help="Beperk tot één bron-ID")
@@ -868,6 +891,78 @@ def main(argv: list[str] | None = None) -> int:
                 "error": _exception_payload(exc),
             }
             print(f"FOUT brongeometrie inspecteren: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-rebuild-canonical":
+        try:
+            report = service.rebuild_part_canonical(
+                args.project,
+                args.part_id,
+                user=args.user or "cli",
+                embed_sources=not args.no_embed,
+            )
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": report.get("status", "blocked"),
+                "project_file": str(Path(args.project).resolve()),
+                "report": report,
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(
+                    f"Canonical rebuild: {report.get('build_status', 'blocked')} | "
+                    f"bronvergelijking: {report.get('status', 'blocked')}"
+                )
+                for reason in report.get("blocking_reasons", []):
+                    print(f"     BLOKKADE: {reason}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK if report.get("status") == "passed" else EXIT_REVIEW_REQUIRED
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT canonical rebuild: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-validate-roundtrips":
+        try:
+            report = service.validate_part_roundtrips(
+                args.project,
+                args.part_id,
+                args.output,
+                user=args.user or "cli",
+                embed_sources=not args.no_embed,
+            )
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": report.get("status", "failed"),
+                "project_file": str(Path(args.project).resolve()),
+                "report": report,
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"Roundtripmatrix: {report.get('status', 'failed')}")
+                for format_name, result in dict(report.get("formats") or {}).items():
+                    print(f"     {format_name.upper()}: {result.get('status', 'failed')}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK if report.get("status") == "passed" else EXIT_REVIEW_REQUIRED
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT roundtripvalidatie: {exc}", file=sys.stderr)
             _write_aggregate_report(args.json_report, payload)
             return EXIT_FAILED
 

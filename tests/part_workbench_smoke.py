@@ -77,6 +77,30 @@ def valid_plate_changes(*, features: list[dict] | None = None) -> dict:
 
 
 class PartWorkbenchTests(unittest.TestCase):
+    def test_schema_24_workbench_10_migrates_with_new_recognition_hash(self) -> None:
+        session = self.make_session()
+        session.start_part_workbench("part-1", user="reviewer")
+        session.update_part_workbench(
+            "part-1",
+            valid_plate_changes(features=[]),
+            user="reviewer",
+            reason="Legacy plaat",
+        )
+        part = session.project.parts["part-1"]
+        part.workbench["schema_version"] = "1.0"
+        legacy_hash = part.recompute_hashes()[1]
+        raw = session.project.to_dict()
+        raw["schema_version"] = "2.4"
+
+        restored = ProjectModel.from_dict(raw)
+        migrated = restored.parts["part-1"]
+        self.assertEqual(restored.schema_version, "2.5")
+        self.assertEqual(migrated.workbench["schema_version"], "1.1")
+        self.assertNotEqual(migrated.manufacturing_hash, legacy_hash)
+        self.assertTrue(
+            any(item.get("from") == "2.4" and item.get("to") == "2.5" for item in restored.migration_history)
+        )
+
     def make_session(self, part_id: str = "part-1") -> ProjectSession:
         session = ProjectSession.new("Part Workbench", created_by="tester")
         part = Part(
@@ -193,6 +217,7 @@ class PartWorkbenchTests(unittest.TestCase):
                 "end": [0.0, 100.0],
                 "center": [50.0, 100.0],
                 "radius_mm": 50.0,
+                "clockwise": False,
             },
             line((0.0, 100.0), (0.0, 0.0)),
         ]

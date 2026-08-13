@@ -42,6 +42,7 @@ from .classification import (
 )
 from .workbench import (
     record_canonical_rebuild as record_project_canonical_rebuild,
+    record_roundtrip_validation as record_project_roundtrip_validation,
     redo_part_workbench as redo_project_part_workbench,
     register_part_artifact as register_project_part_artifact,
     review_part_workbench as review_project_part_workbench,
@@ -736,6 +737,58 @@ class ProjectSession:
         self.dirty = True
         return result
 
+    def validate_part_roundtrips(
+        self,
+        part_id: str,
+        output_directory: str | Path,
+        *,
+        user: str,
+        formats: Iterable[str] = ("NC1", "STEP", "IFC", "PDF"),
+    ) -> dict:
+        """Export, re-import and persist the strict four-format matrix."""
+
+        from .canonical_rebuild import rebuild_and_compare
+        from .roundtrip import validate_roundtrips
+
+        self._ensure_writable()
+        part = self.project.parts.get(part_id)
+        if part is None:
+            raise ValueError(f"Onbekend onderdeel {part_id}")
+        rebuild = dict(part.workbench.get("canonical_rebuild") or {}) if part.workbench else {}
+        rebuild_report = dict(rebuild.get("report") or {})
+        if rebuild.get("status") != "current" or rebuild_report.get("status") != "passed":
+            raise ValueError(
+                "Roundtripvalidatie vereist een actuele, volledig geslaagde canonical rebuild"
+            )
+        current = rebuild_and_compare(part)
+        if current.shape is None or current.report.get("status") != "passed":
+            raise ValueError("Canonical rebuild kon niet deterministisch worden herhaald")
+        if current.report.get("canonical_signature") != rebuild_report.get("canonical_signature"):
+            raise ValueError("Canonical signature veranderde sinds de opgeslagen rebuild")
+        report = validate_roundtrips(
+            part,
+            current.shape,
+            output_directory,
+            canonical_signature=str(rebuild_report["canonical_signature"]),
+            formats=formats,
+        )
+        try:
+            stored = record_project_roundtrip_validation(
+                self.project,
+                part_id,
+                report,
+                user=user,
+            )
+        except Exception:
+            if report.get("status") == "passed":
+                for result in dict(report.get("formats") or {}).values():
+                    path = Path(str(result.get("artifact_path") or ""))
+                    if path.is_file():
+                        path.unlink()
+            raise
+        self.dirty = True
+        return stored
+
     def undo_part_workbench(self, part_id: str, *, user: str) -> dict:
         self._ensure_writable()
         state = undo_project_part_workbench(self.project, part_id, user=user)
@@ -1282,6 +1335,30 @@ class ProjectService:
                 revision_message=f"Canonical rebuild voor {part_id} uitgevoerd",
             )
             return dict(result.report)
+
+    def validate_part_roundtrips(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        output_directory: str | Path,
+        *,
+        user: str,
+        formats: Iterable[str] = ("NC1", "STEP", "IFC", "PDF"),
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            report = session.validate_part_roundtrips(
+                part_id,
+                output_directory,
+                user=user,
+                formats=formats,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Roundtripmatrix voor {part_id} uitgevoerd",
+            )
+            return report
 
     def undo_part_workbench(
         self,

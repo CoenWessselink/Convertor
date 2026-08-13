@@ -2,11 +2,11 @@ CWS CONVERTOR — VERSIE- EN TESTSTATUS
 ====================================
 
 Product:             CWS Convertor
-Versie:              0.8.1-alpha-dev
-Project Model:       2.4
+Versie:              0.8.2-alpha-dev
+Project Model:       2.5
 Projectbestand:      .cwscproj
-Fase:                Part Workbench - deterministic canonical rebuild en meetvergelijking
-Productiestatus:     ALPHA - canonical laag getest, formaat-roundtrip en productie-export geblokkeerd
+Fase:                Part Workbench - deterministic rebuild en formaat-roundtrips
+Productiestatus:     ALPHA - per-part vrijgave getest; golden projectvalidatie blijft vereist
 
 NIEUW IN DEZE VERSIE
 --------------------
@@ -15,7 +15,7 @@ NIEUW IN DEZE VERSIE
 - STEP products, product definitions, occurrences en BREP-roots.
 - Transactionele herimport met bronhashcontrole en rollback.
 - Stabiele bron-ID, geometry hash en manufacturing hash.
-- Project Model 2.4 en uitgebreid .cwscproj-manifest.
+- Project Model 2.5 en uitgebreid .cwscproj-manifest.
 - Nieuwe CLI-projectimport, projectboom, partlijst en assemblylijst.
 - Project/Productie-GUI met semantische materialisatie en harde productiegate.
 - Veilige STEP-route C zonder solid-root: reviewobject, geen verzonnen geometrie.
@@ -32,6 +32,10 @@ NIEUW IN DEZE VERSIE
 - Gehasht rebuildrapport met automatische invalidatie na geometriewijzigingen.
 - `manual_validation_required` bij ontbrekende of niet-geisoleerde bronwaarden.
 - Canonical vergelijkingstab met verwacht, gevonden, delta en vermoedelijke oorzaak.
+- Analytische bogen, custom doorsneden en ondersteunde gaten in catalogusprofielen.
+- Verplichte NC1/STEP/IFC/Trusted-PDF export-herimportmatrix per onderdeel.
+- Hashgebonden roundtriprapporten, artefacten en automatische invalidatie.
+- CLI en Part Workbench-bediening voor rebuild, roundtrips en vrijgave.
 - Windows-buildstraat voert automatisch alle smoke-scripts uit.
 - CasADi 3.7.2 en de volledige native DLL-keten zijn expliciet gebundeld.
 - Dist, portable en installer worden met native selftest, echte GUI en NC1-naar-STEP getest zonder Python op child-PATH.
@@ -66,7 +70,7 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts Windows ontwikkelrun:   30/30 geslaagd
+Smoke-scripts lokale ontwikkelrun:   118 tests / 7 skips geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Canonical rebuild-tests:               6/6 geslaagd
 Referentiemodelcatalogus:           481/481 gekoppeld
@@ -75,10 +79,10 @@ Handmatige referentievalidering:       0/481 afgerond
 BELANGRIJKE GRENZEN
 -------------------
 - Externe IFC/STEP-parts zijn nog niet automatisch NC1-geschikt.
-- De huidige bronvergelijking gebruikt aantoonbare per-part meetwaarden; exacte source-BREP-isolatie volgt nog.
-- Boogcontouren, custom doorsneden en profielbewerkingen zijn nog rebuild-geblokkeerd.
-- NC1/STEP/IFC/PDF-roundtripvalidatie is nog niet afgerond.
+- De bronvergelijking vereist aantoonbare exacte per-part BREP; IFC-tessellatie blijft handmatige validatie.
+- Slots, pockets, chamfers en complexe eindbewerkingen zijn nog rebuild-geblokkeerd.
+- Custom doorsneden en expliciete boogsegmenten zijn nog niet verliesvrij naar NC1 te serialiseren.
 - Optimalisatie en machinejobs blijven geblokkeerd.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
 - GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
-- Lokale 0.8.1 dist-, portable- en installatieruntime zijn volledig geslaagd; definitieve vrijgave wacht op de aangescherpte CI-run.
+- De 0.8.2 dist-, portable- en installatieruntime moet nog door de Windows CI-gates.

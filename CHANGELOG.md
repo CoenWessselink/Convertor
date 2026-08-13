@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.2-alpha-dev - Part Workbench production roundtrips
+
+- Project Model 2.5 and Part Workbench 1.1 bind the recognition candidate to the manufacturing hash.
+- Existing 2.x projects migrate explicitly; old rebuild, roundtrip and production artifacts are invalidated.
+- Analytical arcs, custom cross-sections and worked catalogue profiles are rebuilt as exact CadQuery solids.
+- Self-intersecting contours and arcs without an explicit direction are blocked before rebuild.
+- NC1, STEP, IFC and Trusted PDF are exported, re-imported and compared as one required matrix.
+- Payload identity, features, volume, area, bounding box, solid count and validity are reported per format.
+- Reports and artifacts are hash-bound to the current manufacturing state and canonical signature.
+- Part Workbench UI and CLI expose canonical rebuild, roundtrip validation and guarded release.
+- Non-exact IFC meshes remain `manual_validation_required`; no engineering truth is inferred from tessellation.
+
 ## 0.8.1-alpha-dev - Windows native runtime repair
 
 - CasADi 3.7.2 is pinned and its complete native wheel is collected by PyInstaller.

@@ -3,10 +3,10 @@
 ## Current identity
 
 - Product: **CWS Convertor**
-- Development snapshot: `0.8.1-alpha-dev`
-- Project Model schema: `2.4`
+- Development snapshot: `0.8.2-alpha-dev`
+- Project Model schema: `2.5`
 - Core baseline source: `d6b855a`
-- Active core phase branch: `feature/core-phase-1-project-import`
+- Active core phase branch: `feature/core-phase-2-workbench-roundtrip`
 
 This remains a development snapshot, not a production release.
 
@@ -16,8 +16,10 @@ This remains a development snapshot, not a production release.
 - Runtime/build dependency locks and direct-dependency SPDX SBOM are present.
 - Phase 0 passed 31/31 smoke scripts locally and on Windows CI.
 - Fixture-dependent skips remain explicit and tracked as gaps.
-- Phase 1 passes 32/32 local smoke scripts and 111 known unittest cases with
-  seven explicit fixture-dependent skips; Windows branch CI is still pending.
+- Phase 1 passed 32/32 local smoke scripts and 111 known unittest cases with
+  seven explicit fixture-dependent skips; Windows run `31712333345` passed.
+- Phase 2 adds the strict Workbench rebuild and four-format roundtrip chain;
+  its branch CI evidence is still pending.
 - The ignored local reference registry pairs 481 models with 481 expected
   result files; all remain `manual_validation_required` and none are treated as
   validated engineering truth.
@@ -37,19 +39,18 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 - exact native BREP resolution for unambiguous single-solid STEP parts;
 - exact IFC entity selection with an explicitly non-exact triangulated shape;
 - isolated IFC geometry workers for the Windows native runtime;
-- Project Model 2.4 and `.cwscproj` storage/migrations/jobs;
+- Project Model 2.5 and `.cwscproj` storage/migrations/jobs;
 - deterministic classification and BOM draft;
 - guarded per-part/per-mark production-package export draft;
-- bounded Part Workbench and canonical rebuild foundation;
+- Part Workbench 1.1 with analytical arcs, custom sections, worked profiles,
+  deterministic canonical rebuild and hash-bound NC1/STEP/IFC/PDF roundtrips;
 - GUI/CLI foundations;
 - working Windows x64 installer and portable package pipeline.
 
 ## Not complete
 
 - exact selected IFC BREP and multi-solid STEP BREP isolation;
-- complete analytical arcs, custom cross-sections and worked profiles in the
-  deterministic canonical rebuild;
-- NC1/STEP/IFC/Trusted-PDF canonical roundtrip matrix;
+- unsupported slots, pockets, chamfers and complex end operations in canonical rebuild;
 - complete technical part and assembly drawings;
 - true LO4 and P1811 binary regressions in the active fixture layout;
 - validated engineering expectations for the local reference registry;

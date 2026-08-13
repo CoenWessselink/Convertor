@@ -27,7 +27,7 @@ The handover archive also contains the untouched v0.7 base source and the two ph
 ## Current technical identity
 
 - Product name: **CWS Convertor**
-- Development snapshot: `0.8.1-alpha-dev`
+- Development snapshot: `0.8.2-alpha-dev`
 - Canonical Project Model schema: `2.3`
 - Stable Git history exists through `v0.7.0-alpha`
 - The handover integration commit merges classification/BOM and production-package export drafts and fixes their immediate import defects.

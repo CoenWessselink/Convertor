@@ -87,6 +87,7 @@ def plate_metrics(*, volume_offset: float = 0.0, include_area: bool = True) -> d
     result = {
         "scope": "part",
         "cadquery_loaded": True,
+        "production_geometry_exact": True,
         "solid_count": 1,
         "volume_mm3": volume + volume_offset,
         "bbox_mm": [200.0, 100.0, 10.0],
@@ -196,6 +197,7 @@ class CanonicalRebuildTests(unittest.TestCase):
                 "solid_count": 1,
                 "cad_metrics": {
                     "scope": "part",
+                    "production_geometry_exact": True,
                     "solid_count": 1,
                     "volume_mm3": 76000.0,
                     "area_mm2": 19600.0,
@@ -238,6 +240,11 @@ class CanonicalRebuildTests(unittest.TestCase):
         self.assertEqual(report["status"], "passed")
         self.assertAlmostEqual(report["canonical_metrics"]["volume_mm3"], 76000.0)
         self.assertAlmostEqual(report["canonical_metrics"]["area_mm2"], 19600.0)
+        with tempfile.TemporaryDirectory(prefix="cws_inner_roundtrip_") as folder:
+            roundtrip = session.validate_part_roundtrips(
+                "inner", folder, user="reviewer"
+            )
+        self.assertEqual(roundtrip["status"], "passed", msg=str(roundtrip))
         session.close()
 
     def test_missing_or_unscoped_source_truth_requires_manual_validation(self) -> None:

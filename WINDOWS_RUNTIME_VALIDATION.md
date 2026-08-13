@@ -2,7 +2,7 @@
 
 ## Release
 
-- Application: CWS Convertor 0.8.1-alpha-dev
+- Application: CWS Convertor 0.8.2-alpha-dev
 - Platform: Windows 10/11 x64
 - Runtime: bundled CPython 3.12 via PyInstaller onedir
 - External requirements: no Python, pip, virtual environment or manual DLL install

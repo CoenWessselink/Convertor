@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 import math
 import sys
+import tempfile
 import tkinter as tk
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -41,6 +43,7 @@ class PartWorkbenchUITests(unittest.TestCase):
                 "source_geometry_hash": "b" * 64,
                 "cad_metrics": {
                     "scope": "part",
+                    "production_geometry_exact": True,
                     "bbox_mm": [200.0, 100.0, 10.0],
                     "volume_mm3": 200000.0 - math.pi * 7.0 * 7.0 * 10.0,
                     "area_mm2": 46000.0 - 2.0 * math.pi * 7.0 * 7.0 + 2.0 * math.pi * 7.0 * 10.0,
@@ -130,6 +133,16 @@ class PartWorkbenchUITests(unittest.TestCase):
         self.assertEqual(rebuild["status"], "current")
         self.assertEqual(rebuild["report"]["status"], "passed")
         self.assertGreaterEqual(len(self.panel.canonical_grid.get_children()), 5)
+
+        with tempfile.TemporaryDirectory(prefix="cws_ui_roundtrip_") as folder:
+            with patch(
+                "cws_convertor.ui.part_workbench.filedialog.askdirectory",
+                return_value=folder,
+            ):
+                self.panel.validate_roundtrips()
+            roundtrip = part.workbench["current_revision"]["roundtrip_validation"]
+            self.assertEqual(roundtrip["status"], "passed", msg=str(roundtrip))
+            self.assertEqual(set(roundtrip["formats"]), {"nc1", "step", "ifc", "pdf"})
 
         self.panel.validate()
         self.assertEqual(part.workbench["current_revision"]["review_status"], "validated")

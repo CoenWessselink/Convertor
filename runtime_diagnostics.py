@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import platform
 import sys
+import tempfile
 import traceback
 from typing import Any, Callable
 
@@ -177,6 +178,125 @@ def _scientific_rendering_check() -> dict[str, Any]:
     }
 
 
+def _project_roundtrip_check() -> dict[str, Any]:
+    from cws_convertor.project import Part, ProjectSession, SourceIdentity
+
+    width = 100.0
+    height = 50.0
+    thickness = 10.0
+    diameter = 10.0
+    radius = diameter / 2.0
+    volume = width * height * thickness - math.pi * radius * radius * thickness
+    area = (
+        2.0 * (width * height + width * thickness + height * thickness)
+        - 2.0 * math.pi * radius * radius
+        + 2.0 * math.pi * radius * thickness
+    )
+    points = ((0.0, 0.0), (width, 0.0), (width, height), (0.0, height))
+    segments = [
+        {
+            "kind": "line",
+            "start": list(point),
+            "end": list(points[(index + 1) % len(points)]),
+        }
+        for index, point in enumerate(points)
+    ]
+    session = ProjectSession.new("Packaged roundtrip probe", created_by="runtime-self-test")
+    try:
+        part = Part(
+            internal_id="runtime-plate",
+            name="Runtime plate",
+            part_position="RUNTIME-PLATE",
+            source_identity=SourceIdentity(
+                source_format="STEP",
+                source_sha256="a" * 64,
+                source_entity_id="#1",
+            ),
+            profile="PL10",
+            material="S355JR",
+            confidence=1.0,
+            profile_confidence=1.0,
+            geometry_descriptor={
+                "source_geometry_hash": "b" * 64,
+                "solid_count": 1,
+                "cad_metrics": {
+                    "scope": "exact_part",
+                    "production_geometry_exact": True,
+                    "solid_count": 1,
+                    "volume_mm3": volume,
+                    "area_mm2": area,
+                    "bbox_mm": [width, height, thickness],
+                    "valid": True,
+                },
+            },
+            properties={"source_solid_count": 1},
+        )
+        part.recompute_hashes()
+        session.project.add_entity(part, user="runtime-self-test")
+        session.start_part_workbench(part.internal_id, user="runtime-self-test")
+        session.update_part_workbench(
+            part.internal_id,
+            {
+                "part_form": "plate",
+                "recognition": {"candidate": "PL10", "confidence": 1.0, "confirmed": True},
+                "dimensions": {"length_mm": width, "thickness_mm": thickness},
+                "reference_sides": [
+                    {
+                        "side_id": "v",
+                        "label": "Top",
+                        "face_ref": "face:top",
+                        "confirmed": True,
+                    }
+                ],
+                "contours": [
+                    {
+                        "contour_id": "outer",
+                        "role": "outer",
+                        "closed": True,
+                        "segments": segments,
+                    }
+                ],
+                "features": [
+                    {
+                        "feature_id": "hole",
+                        "kind": "hole",
+                        "reference_side": "v",
+                        "parameters": {
+                            "x_mm": width / 2.0,
+                            "y_mm": height / 2.0,
+                            "diameter_mm": diameter,
+                            "through": True,
+                        },
+                    }
+                ],
+            },
+            user="runtime-self-test",
+            reason="Packaged roundtrip probe",
+        )
+        rebuild = session.rebuild_part_canonical(part.internal_id, user="runtime-self-test")
+        if rebuild.report.get("status") != "passed":
+            raise AssertionError(f"Canonical runtime probe faalde: {rebuild.report}")
+        with tempfile.TemporaryDirectory(prefix="cws_runtime_roundtrip_") as folder:
+            report = session.validate_part_roundtrips(
+                part.internal_id,
+                folder,
+                user="runtime-self-test",
+            )
+            if report.get("status") != "passed":
+                raise AssertionError(f"Roundtrip runtime probe faalde: {report}")
+            artifacts = {
+                name: Path(result["artifact_path"]).stat().st_size
+                for name, result in report["formats"].items()
+            }
+        return {
+            "status": report["status"],
+            "formats": {name: item["status"] for name, item in report["formats"].items()},
+            "artifact_bytes": artifacts,
+        }
+    finally:
+        session.close()
+
+
 def run_native_self_test() -> dict[str, Any]:
     checks = [
         _run_check("casadi", _casadi_check),
@@ -184,6 +304,7 @@ def run_native_self_test() -> dict[str, Any]:
         _run_check("ifcopenshell", _ifcopenshell_check),
         _run_check("pymupdf", _pdf_check),
         _run_check("scientific_rendering", _scientific_rendering_check),
+        _run_check("project_roundtrips", _project_roundtrip_check),
     ]
     return {
         "application": APP_NAME,

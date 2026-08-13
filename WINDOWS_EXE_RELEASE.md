@@ -1,10 +1,10 @@
-# CWS Convertor 0.8.1-alpha-dev - Windows x64 release
+# CWS Convertor 0.8.2-alpha-dev - Windows x64 release
 
 ## Target artifacts
 
 ```text
-CWS_Convertor_Setup_0.8.1-alpha-dev_x64.exe
-CWS_Convertor_Portable_0.8.1-alpha-dev_x64.zip
+CWS_Convertor_Setup_0.8.2-alpha-dev_x64.exe
+CWS_Convertor_Portable_0.8.2-alpha-dev_x64.zip
 SHA256SUMS.txt
 WINDOWS_RUNTIME_VALIDATION.md
 ```
@@ -44,6 +44,6 @@ distributed. It proved source GUI construction and packaged project-only CLI
 commands, but did not start the packaged GUI or load the installed CAD stack.
 The reported `_casadi` crash exposed that missing acceptance gate.
 
-Version `0.8.1-alpha-dev` is releasable only after its new workflow is fully
+Version `0.8.2-alpha-dev` is releasable only after its workflow is fully
 green. The artifact copy of `WINDOWS_RUNTIME_VALIDATION.md` records the exact
 run ID and commit, while `SHA256SUMS.txt` records both deliverable hashes.

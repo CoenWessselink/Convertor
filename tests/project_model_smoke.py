@@ -153,17 +153,17 @@ class ProjectModelTests(unittest.TestCase):
         self.assertFalse(restored.production_gate()["allowed"])
         self.assertEqual(len(restored.production_gate()["source_failures"]), 1)
 
-    def test_known_schema_versions_migrate_explicitly_to_24(self) -> None:
-        for legacy_version in ("2.0", "2.3"):
+    def test_known_schema_versions_migrate_explicitly_to_25(self) -> None:
+        for legacy_version in ("2.0", "2.3", "2.4"):
             with self.subTest(legacy_version=legacy_version):
                 raw = ProjectModel.new("Schema migration", created_by="test").to_dict()
                 raw["schema_version"] = legacy_version
                 raw["migration_history"] = []
                 restored = ProjectModel.from_dict(raw)
-                self.assertEqual(restored.schema_version, "2.4")
+                self.assertEqual(restored.schema_version, "2.5")
                 self.assertTrue(
                     any(
-                        item.get("from") == legacy_version and item.get("to") == "2.4"
+                        item.get("from") == legacy_version and item.get("to") == "2.5"
                         for item in restored.migration_history
                     )
                 )

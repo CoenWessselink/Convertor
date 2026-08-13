@@ -51,28 +51,76 @@ def _positive(value: Any, label: str) -> float:
     return number
 
 
-def _line_polygon(contour: Mapping[str, Any]) -> list[tuple[float, float]]:
+def _contour_wire(contour: Mapping[str, Any]) -> cq.Wire:
     segments = list(contour.get("segments") or [])
-    if not segments or any(str(segment.get("kind") or "") != "line" for segment in segments):
-        raise CanonicalRebuildError(
-            f"Contour {contour.get('contour_id') or '?'} bevat bogen of niet-ondersteunde segmenten"
-        )
-    points: list[tuple[float, float]] = []
+    if not segments:
+        raise CanonicalRebuildError(f"Contour {contour.get('contour_id') or '?'} is leeg")
+    edges: list[cq.Edge] = []
     for segment in segments:
-        raw = segment.get("start")
-        if not isinstance(raw, (list, tuple)) or len(raw) != 2:
+        start_raw = segment.get("start")
+        end_raw = segment.get("end")
+        if (
+            not isinstance(start_raw, (list, tuple))
+            or len(start_raw) != 2
+            or not isinstance(end_raw, (list, tuple))
+            or len(end_raw) != 2
+        ):
             raise CanonicalRebuildError("Contourpunt is onvolledig")
-        point = (float(raw[0]), float(raw[1]))
-        if not all(math.isfinite(value) for value in point):
+        start = (float(start_raw[0]), float(start_raw[1]))
+        end = (float(end_raw[0]), float(end_raw[1]))
+        if not all(math.isfinite(value) for value in (*start, *end)):
             raise CanonicalRebuildError("Contourpunt is niet eindig")
-        points.append(point)
-    if len(points) < 3:
-        raise CanonicalRebuildError("Contour bevat minder dan drie punten")
-    return points
+        kind = str(segment.get("kind") or "")
+        if kind == "line":
+            edges.append(
+                cq.Edge.makeLine(
+                    cq.Vector(start[0], start[1], 0.0),
+                    cq.Vector(end[0], end[1], 0.0),
+                )
+            )
+            continue
+        if kind != "arc":
+            raise CanonicalRebuildError(f"Contoursegment {kind or '?'} wordt niet ondersteund")
+        center_raw = segment.get("center")
+        if not isinstance(center_raw, (list, tuple)) or len(center_raw) != 2:
+            raise CanonicalRebuildError("Boogmiddelpunt is onvolledig")
+        if not isinstance(segment.get("clockwise"), bool):
+            raise CanonicalRebuildError("Boogrichting is niet expliciet vastgelegd")
+        center = (float(center_raw[0]), float(center_raw[1]))
+        radius = _positive(segment.get("radius_mm"), "Boogstraal")
+        start_angle = math.atan2(start[1] - center[1], start[0] - center[0])
+        end_angle = math.atan2(end[1] - center[1], end[0] - center[0])
+        if bool(segment.get("clockwise")):
+            extent = -((start_angle - end_angle) % (2.0 * math.pi))
+        else:
+            extent = (end_angle - start_angle) % (2.0 * math.pi)
+        if abs(extent) <= 1e-12:
+            raise CanonicalRebuildError("Volledige cirkelbogen moeten als aparte contour worden vastgelegd")
+        middle_angle = start_angle + extent / 2.0
+        middle = (
+            center[0] + radius * math.cos(middle_angle),
+            center[1] + radius * math.sin(middle_angle),
+        )
+        edges.append(
+            cq.Edge.makeThreePointArc(
+                cq.Vector(start[0], start[1], 0.0),
+                cq.Vector(middle[0], middle[1], 0.0),
+                cq.Vector(end[0], end[1], 0.0),
+            )
+        )
+    wire = cq.Wire.assembleEdges(edges)
+    if not wire.IsClosed() or not wire.isValid():
+        raise CanonicalRebuildError(
+            f"Contour {contour.get('contour_id') or '?'} vormt geen geldige gesloten wire"
+        )
+    return wire
 
 
-def _extruded_polygon(points: list[tuple[float, float]], z: float, height: float) -> cq.Shape:
-    return cq.Workplane("XY", origin=(0.0, 0.0, z)).polyline(points).close().extrude(height).val()
+def _extruded_contour(contour: Mapping[str, Any], z: float, height: float) -> cq.Shape:
+    wire = _contour_wire(contour)
+    if z:
+        wire = wire.translate(cq.Vector(0.0, 0.0, z))
+    return cq.Solid.extrudeLinear(wire, [], cq.Vector(0.0, 0.0, height))
 
 
 def _build_plate(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
@@ -82,10 +130,10 @@ def _build_plate(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
     outer = [item for item in contours if item.get("role") == "outer"]
     if len(outer) != 1:
         raise CanonicalRebuildError("Een plaat vereist exact een buitencontour")
-    shape = _extruded_polygon(_line_polygon(outer[0]), 0.0, thickness)
+    shape = _extruded_contour(outer[0], 0.0, thickness)
 
     for contour in (item for item in contours if item.get("role") == "inner"):
-        cutter = _extruded_polygon(_line_polygon(contour), -1.0, thickness + 2.0)
+        cutter = _extruded_contour(contour, -1.0, thickness + 2.0)
         before = float(shape.Volume())
         shape = shape.cut(cutter)
         if before - float(shape.Volume()) <= 1e-6:
@@ -170,10 +218,6 @@ def _profile_part(profile: ProfileDefinition, length: float) -> nc1.NC1Part:
 
 
 def _build_profile(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
-    if list(revision.get("features") or []):
-        raise CanonicalRebuildError(
-            "Bewerkingen in catalogusprofielen worden in deze canonical fase nog niet teruggebouwd"
-        )
     profile = _exact_profile(str(dict(revision.get("recognition") or {}).get("candidate") or ""))
     if profile.profile_type in {"B", "RU"}:
         raise CanonicalRebuildError(
@@ -181,6 +225,27 @@ def _build_profile(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
         )
     length = _positive(dict(revision.get("dimensions") or {}).get("length_mm"), "Profiellengte")
     source = _profile_part(profile, length)
+    for feature in list(revision.get("features") or []):
+        if feature.get("kind") != "hole":
+            raise CanonicalRebuildError(
+                f"Bewerking {feature.get('feature_id') or '?'} van type {feature.get('kind') or '?'} kan nog niet worden teruggebouwd"
+            )
+        parameters = dict(feature.get("parameters") or {})
+        if not bool(parameters.get("through", True)):
+            raise CanonicalRebuildError("Blinde gaten in catalogusprofielen worden nog niet ondersteund")
+        face = str(parameters.get("dstv_face") or feature.get("reference_side") or "").lower()
+        if face not in {"v", "h", "o", "u"}:
+            raise CanonicalRebuildError(
+                f"Gat {feature.get('feature_id') or '?'} mist een expliciete DSTV-vlakcode"
+            )
+        source.holes.append(
+            nc1.Hole(
+                face=face,
+                x=float(parameters.get("x_mm")),
+                q=float(parameters.get("y_mm")),
+                diameter=_positive(parameters.get("diameter_mm"), "Gatdiameter"),
+            )
+        )
     shape = conversion.build_shape(source).val()
     return shape, list(source.warnings)
 
@@ -197,6 +262,20 @@ def _build_round_bar(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
         cq.Vector(0.0, 0.0, 0.0),
         cq.Vector(1.0, 0.0, 0.0),
     )
+    return shape, []
+
+
+def _build_custom(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
+    if list(revision.get("features") or []):
+        raise CanonicalRebuildError("Bewerkingen in custom profielen worden nog niet teruggebouwd")
+    length = _positive(dict(revision.get("dimensions") or {}).get("length_mm"), "Profiellengte")
+    contours = list(revision.get("contours") or [])
+    outer = [item for item in contours if item.get("role") == "outer"]
+    if len(outer) != 1:
+        raise CanonicalRebuildError("Een custom profiel vereist exact een buitencontour")
+    shape = _extruded_contour(outer[0], 0.0, length)
+    for contour in (item for item in contours if item.get("role") == "inner"):
+        shape = shape.cut(_extruded_contour(contour, -1.0, length + 2.0))
     return shape, []
 
 
@@ -217,7 +296,7 @@ def build_canonical_shape(part: Part) -> tuple[cq.Shape, list[str], dict[str, An
     elif part_form == "round_bar":
         shape, warnings = _build_round_bar(revision)
     elif part_form == "custom":
-        raise CanonicalRebuildError("Custom profielen vereisen eerst een expliciete doorsnede")
+        shape, warnings = _build_custom(revision)
     else:
         raise CanonicalRebuildError("Onderdeelvorm is niet opbouwbaar")
     if not shape or shape.isNull() or not shape.isValid() or len(shape.Solids()) != 1:
@@ -252,7 +331,7 @@ def _number(raw: Mapping[str, Any], key: str) -> float | None:
 
 def source_metrics_for_part(part: Part) -> dict[str, Any]:
     descriptor = part.geometry_descriptor if isinstance(part.geometry_descriptor, Mapping) else {}
-    raw = dict(descriptor.get("cad_metrics") or {})
+    raw = dict(descriptor.get("cad_metrics") or descriptor.get("source_mesh_metrics") or {})
     if not raw:
         raw = dict(descriptor)
     reasons: list[str] = []
@@ -283,9 +362,16 @@ def source_metrics_for_part(part: Part) -> dict[str, Any]:
         except (TypeError, ValueError):
             bbox = None
     valid = raw.get("valid") if isinstance(raw.get("valid"), bool) else None
+    inspection = dict(descriptor.get("source_inspection") or {})
+    production_geometry_exact = bool(
+        raw.get("production_geometry_exact", inspection.get("production_geometry_exact", False))
+    )
+    if not production_geometry_exact:
+        reasons.append("Brongeometrie is niet als exacte productie-BREP vastgesteld")
     result = {
         "scope": scope,
         "scope_method": scope_method,
+        "production_geometry_exact": production_geometry_exact,
         "volume_mm3": _number(raw, "volume_mm3"),
         "area_mm2": _number(raw, "area_mm2"),
         "bbox_mm": bbox,
@@ -407,7 +493,11 @@ def compare_source_metrics(source: Mapping[str, Any], canonical: Mapping[str, An
     statuses = {str(check["status"]) for check in checks}
     if "failed" in statuses:
         status = "failed"
-    elif source.get("scope") != "part" or "manual_validation_required" in statuses:
+    elif (
+        source.get("scope") != "part"
+        or not source.get("production_geometry_exact")
+        or "manual_validation_required" in statuses
+    ):
         status = "manual_validation_required"
     else:
         status = "passed"

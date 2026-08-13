@@ -23,7 +23,7 @@ from .model import (
     utc_now_iso,
 )
 
-WORKBENCH_SCHEMA_VERSION = "1.0"
+WORKBENCH_SCHEMA_VERSION = "1.1"
 WORKBENCH_ISSUE_PREFIX = "CWS-WB-"
 SUPPORTED_PART_FORMS = {"plate", "profile", "round_bar", "custom"}
 SUPPORTED_FEATURE_KINDS = {
@@ -39,6 +39,7 @@ SUPPORTED_CONTOUR_SEGMENTS = {"line", "arc"}
 SUPPORTED_DIMENSION_KEYS = {"length_mm", "thickness_mm", "diameter_mm"}
 RECOGNITION_THRESHOLD = 0.8
 GEOMETRY_TOLERANCE_MM = 1e-6
+REQUIRED_ROUNDTRIP_FORMATS = ("nc1", "step", "ifc", "pdf")
 
 
 def _sha256(value: Any, label: str, *, required: bool = True) -> str:
@@ -224,11 +225,76 @@ def workbench_geometry_payload(state: Mapping[str, Any] | None) -> dict[str, Any
         "contours": revision.get("contours", []),
         "features": revision.get("features", []),
     }
+    if str(state.get("schema_version") or "") != "1.0":
+        payload["recognition"] = revision.get("recognition", {})
     # Keep pre-dimensions schema-1.0 projects hash-compatible. New revisions
     # explicitly contain this field and therefore include it in the geometry hash.
     if "dimensions" in revision:
         payload["dimensions"] = _normalise_dimensions(revision.get("dimensions"))
     return payload
+
+
+def _orientation(first: list[float], second: list[float], third: list[float]) -> float:
+    return (second[0] - first[0]) * (third[1] - first[1]) - (
+        second[1] - first[1]
+    ) * (third[0] - first[0])
+
+
+def _on_segment(first: list[float], point: list[float], second: list[float]) -> bool:
+    return (
+        min(first[0], second[0]) - GEOMETRY_TOLERANCE_MM
+        <= point[0]
+        <= max(first[0], second[0]) + GEOMETRY_TOLERANCE_MM
+        and min(first[1], second[1]) - GEOMETRY_TOLERANCE_MM
+        <= point[1]
+        <= max(first[1], second[1]) + GEOMETRY_TOLERANCE_MM
+    )
+
+
+def _line_segments_intersect(
+    first_start: list[float],
+    first_end: list[float],
+    second_start: list[float],
+    second_end: list[float],
+) -> bool:
+    values = (
+        _orientation(first_start, first_end, second_start),
+        _orientation(first_start, first_end, second_end),
+        _orientation(second_start, second_end, first_start),
+        _orientation(second_start, second_end, first_end),
+    )
+    if values[0] * values[1] < 0.0 and values[2] * values[3] < 0.0:
+        return True
+    return any(
+        abs(value) <= GEOMETRY_TOLERANCE_MM and _on_segment(start, point, end)
+        for value, start, point, end in (
+            (values[0], first_start, second_start, first_end),
+            (values[1], first_start, second_end, first_end),
+            (values[2], second_start, first_start, second_end),
+            (values[3], second_start, first_end, second_end),
+        )
+    )
+
+
+def _line_contour_self_intersects(segments: list[Mapping[str, Any]]) -> bool:
+    if len(segments) < 4 or any(str(item.get("kind") or "") != "line" for item in segments):
+        return False
+    lines = [
+        (
+            _point(segment.get("start"), "Contoursegment start"),
+            _point(segment.get("end"), "Contoursegment einde"),
+        )
+        for segment in segments
+    ]
+    last = len(lines) - 1
+    for first_index, (first_start, first_end) in enumerate(lines):
+        for second_index in range(first_index + 1, len(lines)):
+            if second_index == first_index + 1 or (first_index == 0 and second_index == last):
+                continue
+            second_start, second_end = lines[second_index]
+            if _line_segments_intersect(first_start, first_end, second_start, second_end):
+                return True
+    return False
 
 
 def _contour_polygon(contour: Mapping[str, Any]) -> list[list[float]] | None:
@@ -330,18 +396,53 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
             start = _point(segment.get("start"), "Contoursegment start")
             end = _point(segment.get("end"), "Contoursegment einde")
             if kind == "arc":
-                _point(segment.get("center"), "Boogmiddelpunt")
-                if _finite(segment.get("radius_mm", 0.0), "Boogstraal") <= 0.0:
+                center = _point(segment.get("center"), "Boogmiddelpunt")
+                radius = _finite(segment.get("radius_mm", 0.0), "Boogstraal")
+                if radius <= 0.0:
                     issues.append(_issue("ARC-RADIUS", "Boogstraal moet positief zijn.", f"contours.{index}.segments.{segment_index}.radius_mm"))
+                if not isinstance(segment.get("clockwise"), bool):
+                    issues.append(
+                        _issue(
+                            "ARC-DIRECTION",
+                            "Boogrichting moet expliciet clockwise true of false zijn.",
+                            f"contours.{index}.segments.{segment_index}.clockwise",
+                        )
+                    )
+                if radius > 0.0 and (
+                    abs(math.dist(start, center) - radius) > GEOMETRY_TOLERANCE_MM
+                    or abs(math.dist(end, center) - radius) > GEOMETRY_TOLERANCE_MM
+                ):
+                    issues.append(
+                        _issue(
+                            "ARC-GEOMETRY",
+                            "Boogeindpunten liggen niet op de opgegeven straal.",
+                            f"contours.{index}.segments.{segment_index}",
+                        )
+                    )
             if previous_end is not None and not _same_point(previous_end, start):
                 issues.append(_issue("OPEN-CONTOUR", f"Contour {contour_id or index} bevat een onderbreking.", f"contours.{index}.segments.{segment_index}"))
             first_start = first_start or start
             previous_end = end
         if first_start is not None and previous_end is not None and not _same_point(previous_end, first_start):
             issues.append(_issue("OPEN-CONTOUR", f"Contour {contour_id or index} sluit geometrisch niet.", f"contours.{index}"))
+        if _line_contour_self_intersects(segments):
+            issues.append(
+                _issue(
+                    "SELF-INTERSECTION",
+                    f"Contour {contour_id or index} snijdt zichzelf.",
+                    f"contours.{index}",
+                )
+            )
 
-    if part_form == "plate" and len(outer_contours) != 1:
-        issues.append(_issue("OUTER-CONTOUR", "Een plaat vereist exact een buitencontour.", "contours"))
+    if part_form in {"plate", "custom"} and len(outer_contours) != 1:
+        label = "plaat" if part_form == "plate" else "custom profiel"
+        issues.append(
+            _issue(
+                "OUTER-CONTOUR",
+                f"Een {label} vereist exact een buitencontour.",
+                "contours",
+            )
+        )
 
     feature_ids: set[str] = set()
     hole_keys: set[tuple[str, int, int, int]] = set()
@@ -439,6 +540,45 @@ def validate_workbench_state(part: Part, state: Mapping[str, Any]) -> None:
             raise ProjectValidationError("Part Workbench-artefact mist een ID")
         _sha256(artifact.get("sha256"), "Artefacthash")
         _sha256(artifact.get("manufacturing_hash"), "Artefact-manufacturing-hash")
+    roundtrip = dict(revision.get("roundtrip_validation") or {})
+    roundtrip_status = str(roundtrip.get("status") or "not_run")
+    if roundtrip_status not in {
+        "not_run",
+        "passed",
+        "failed",
+        "blocked",
+        "manual_validation_required",
+        "invalidated",
+    }:
+        raise ProjectValidationError("Roundtripvalidatiestatus is ongeldig")
+    if roundtrip.get("report_sha256"):
+        expected_roundtrip_hash = str(roundtrip.get("report_sha256"))
+        hash_payload = deepcopy(roundtrip)
+        hash_payload.pop("report_sha256", None)
+        if expected_roundtrip_hash != stable_sha256(hash_payload):
+            raise ProjectValidationError("Roundtripvalidatierapport heeft een ongeldige hash")
+        if roundtrip.get("part_id") != part.internal_id:
+            raise ProjectValidationError("Roundtripvalidatierapport hoort bij een ander onderdeel")
+        _sha256(roundtrip.get("manufacturing_hash"), "Roundtrip-manufacturing-hash")
+    elif roundtrip_status not in {"not_run", "invalidated"}:
+        raise ProjectValidationError("Roundtripvalidatierapport mist een rapporthash")
+    if roundtrip_status == "passed":
+        formats = dict(roundtrip.get("formats") or {})
+        if set(formats) != set(REQUIRED_ROUNDTRIP_FORMATS) or any(
+            dict(formats.get(name) or {}).get("status") != "passed"
+            for name in REQUIRED_ROUNDTRIP_FORMATS
+        ):
+            raise ProjectValidationError("Roundtripvalidatie is niet voor alle vereiste formaten geslaagd")
+        if roundtrip.get("manufacturing_hash") != part.manufacturing_hash:
+            raise ProjectValidationError("Roundtripvalidatie hoort niet bij de actuele manufacturing hash")
+        rebuild_for_roundtrip = dict(state.get("canonical_rebuild") or {})
+        rebuild_report_for_roundtrip = dict(rebuild_for_roundtrip.get("report") or {})
+        if (
+            rebuild_for_roundtrip.get("status") != "current"
+            or roundtrip.get("canonical_signature")
+            != rebuild_report_for_roundtrip.get("canonical_signature")
+        ):
+            raise ProjectValidationError("Roundtripvalidatie hoort niet bij de actuele canonical rebuild")
     rebuild = dict(state.get("canonical_rebuild") or {})
     if rebuild:
         report = dict(rebuild.get("report") or {})
@@ -494,9 +634,7 @@ def _sync_part_state(part: Part) -> None:
         part.export_status = "blocked_workbench_validation"
         part.nc1_eligible = False
     elif status in {ReviewStatus.VALIDATED.value, ReviewStatus.RELEASED.value}:
-        roundtrip_passed = (
-            dict(revision.get("roundtrip_validation") or {}).get("status") == "passed"
-        )
+        roundtrip_passed = roundtrip_is_current(part, revision)
         part.status = status
         part.export_status = (
             "reviewed_pending_project_gate"
@@ -511,8 +649,16 @@ def _sync_part_state(part: Part) -> None:
     _sync_part_issues(part, revision)
     for artifact in dict(state.get("artifacts") or {}).values():
         matches = artifact.get("manufacturing_hash") == part.manufacturing_hash
-        artifact["status"] = "current" if matches else "invalidated"
-        artifact["invalidated_reason"] = "" if matches else "manufacturing_hash_changed"
+        forced_invalid = bool(
+            artifact.get("status") == "invalidated"
+            and artifact.get("invalidated_reason")
+            and artifact.get("invalidated_reason") != "manufacturing_hash_changed"
+        )
+        artifact["status"] = "current" if matches and not forced_invalid else "invalidated"
+        if matches and not forced_invalid:
+            artifact["invalidated_reason"] = ""
+        elif not matches:
+            artifact["invalidated_reason"] = "manufacturing_hash_changed"
         if previous_hash != part.manufacturing_hash and not matches:
             artifact["invalidated_at"] = utc_now_iso()
     rebuild = dict(state.get("canonical_rebuild") or {})
@@ -524,6 +670,42 @@ def _sync_part_state(part: Part) -> None:
             rebuild["invalidated_at"] = utc_now_iso()
         state["canonical_rebuild"] = rebuild
     part.modified_at = utc_now_iso()
+
+
+def roundtrip_is_current(part: Part, revision: Mapping[str, Any] | None = None) -> bool:
+    current = dict(revision or dict(part.workbench.get("current_revision") or {}))
+    report = dict(current.get("roundtrip_validation") or {})
+    formats = dict(report.get("formats") or {})
+    rebuild = dict(part.workbench.get("canonical_rebuild") or {})
+    rebuild_report = dict(rebuild.get("report") or {})
+    artifacts = dict(part.workbench.get("artifacts") or {})
+    artifact_ids = [
+        str(dict(formats.get(name) or {}).get("artifact_id") or "")
+        for name in REQUIRED_ROUNDTRIP_FORMATS
+    ]
+    return bool(
+        report.get("status") == "passed"
+        and report.get("manufacturing_hash") == part.manufacturing_hash
+        and report.get("canonical_signature")
+        and report.get("canonical_signature") == rebuild_report.get("canonical_signature")
+        and rebuild.get("status") == "current"
+        and set(formats) == set(REQUIRED_ROUNDTRIP_FORMATS)
+        and all(
+            dict(formats.get(name) or {}).get("status") == "passed"
+            for name in REQUIRED_ROUNDTRIP_FORMATS
+        )
+        and all(
+            artifact_id
+            and dict(artifacts.get(artifact_id) or {}).get("manufacturing_hash")
+            == part.manufacturing_hash
+            and (
+                dict(artifacts.get(artifact_id) or {}).get("status") == "current"
+                or dict(artifacts.get(artifact_id) or {}).get("invalidated_reason")
+                == "manufacturing_hash_changed"
+            )
+            for artifact_id in artifact_ids
+        )
+    )
 
 
 def start_part_workbench(
@@ -604,6 +786,17 @@ def update_part_workbench(
             "reviewed_at": "",
         }
     )
+    roundtrip = deepcopy(dict(after.get("roundtrip_validation") or {}))
+    if changes and roundtrip.get("status") not in {None, "", "not_run", "invalidated"}:
+        roundtrip["status"] = "invalidated"
+        roundtrip["invalidated_at"] = timestamp
+        roundtrip["invalidated_reason"] = "manufacturing_geometry_changed"
+        for format_result in dict(roundtrip.get("formats") or {}).values():
+            if isinstance(format_result, dict):
+                format_result["status"] = "invalidated"
+        roundtrip.pop("report_sha256", None)
+        roundtrip["report_sha256"] = stable_sha256(roundtrip)
+        after["roundtrip_validation"] = roundtrip
     provenance = dict(after.get("field_provenance") or {})
     for key in changes:
         provenance[key] = asdict(
@@ -727,7 +920,7 @@ def review_part_workbench(
             "Part Workbench bevat blokkerende controles",
             {"issues": issues},
         )
-    if release and dict(current.get("roundtrip_validation") or {}).get("status") != "passed":
+    if release and not roundtrip_is_current(part, current):
         raise ProjectValidationError(
             "Productievrijgave vereist geslaagde NC1/STEP/IFC/PDF-roundtripvalidatie"
         )
@@ -852,6 +1045,125 @@ def record_canonical_rebuild(
     return deepcopy(record)
 
 
+def record_roundtrip_validation(
+    project: ProjectModel,
+    part_id: str,
+    report: Mapping[str, Any],
+    *,
+    user: str,
+) -> dict[str, Any]:
+    """Persist one hash-bound all-format roundtrip result as an auditable revision."""
+
+    part = project.parts.get(part_id)
+    if part is None or not part.workbench:
+        raise ProjectValidationError("Part Workbench is niet gestart voor dit onderdeel")
+    validate_workbench_state(part, part.workbench)
+    payload = deepcopy(dict(report or {}))
+    supplied_hash = str(payload.pop("report_sha256", ""))
+    if not supplied_hash or supplied_hash != stable_sha256(payload):
+        raise ProjectValidationError("Roundtripvalidatierapport heeft een ongeldige hash")
+    if payload.get("part_id") != part_id:
+        raise ProjectValidationError("Roundtripvalidatierapport hoort bij een ander onderdeel")
+    if payload.get("manufacturing_hash") != part.manufacturing_hash:
+        raise ProjectValidationError("Roundtripvalidatierapport hoort niet bij de huidige werkrevisie")
+    rebuild = dict(part.workbench.get("canonical_rebuild") or {})
+    rebuild_report = dict(rebuild.get("report") or {})
+    if (
+        rebuild.get("status") != "current"
+        or payload.get("canonical_signature") != rebuild_report.get("canonical_signature")
+    ):
+        raise ProjectValidationError("Roundtripvalidatie hoort niet bij de huidige canonical rebuild")
+    formats = dict(payload.get("formats") or {})
+    if payload.get("status") == "passed" and (
+        set(formats) != set(REQUIRED_ROUNDTRIP_FORMATS)
+        or any(
+            dict(formats.get(name) or {}).get("status") != "passed"
+            for name in REQUIRED_ROUNDTRIP_FORMATS
+        )
+    ):
+        raise ProjectValidationError("Niet alle vereiste roundtripformaten zijn geslaagd")
+
+    timestamp = utc_now_iso()
+    payload["report_sha256"] = supplied_hash
+    state = deepcopy(part.workbench)
+    before = deepcopy(dict(state.get("current_revision") or {}))
+    after = deepcopy(before)
+    after.update(
+        {
+            "revision_id": str(uuid4()),
+            "revision_number": int(before.get("revision_number", 0)) + 1,
+            "modified_at": timestamp,
+            "modified_by": user or "system",
+            "reason": "NC1/STEP/IFC/PDF-roundtripvalidatie",
+            "roundtrip_validation": payload,
+        }
+    )
+    after["validation_issues"] = evaluate_workbench_revision(after)
+    commands = list(state.get("commands") or [])[: int(state.get("command_cursor", 0))]
+    commands.append(
+        {
+            "command_id": str(uuid4()),
+            "sequence": len(commands) + 1,
+            "timestamp": timestamp,
+            "user": user or "system",
+            "action": "roundtrip_validate",
+            "reason": after["reason"],
+            "changed_fields": ["roundtrip_validation"],
+            "before_sha256": stable_sha256(before),
+            "after_sha256": stable_sha256(after),
+            "before_revision": before,
+            "after_revision": after,
+        }
+    )
+    state["commands"] = commands
+    state["command_cursor"] = len(commands)
+    state["current_revision"] = after
+    state["revision_history"] = list(state.get("revision_history") or []) + [
+        _revision_record(after, user=user)
+    ]
+    artifacts = dict(state.get("artifacts") or {})
+    if payload.get("status") != "passed":
+        for artifact in artifacts.values():
+            if (
+                isinstance(artifact, dict)
+                and str(artifact.get("artifact_id") or "").startswith("roundtrip:")
+                and artifact.get("manufacturing_hash") == part.manufacturing_hash
+            ):
+                artifact["status"] = "invalidated"
+                artifact["invalidated_at"] = timestamp
+                artifact["invalidated_reason"] = "roundtrip_revalidation_failed"
+    for format_name, format_result in formats.items():
+        if payload.get("status") != "passed":
+            continue
+        artifact_id = str(format_result.get("artifact_id") or "").strip()
+        if not artifact_id:
+            raise ProjectValidationError(f"Roundtripartefact voor {format_name} mist een ID")
+        artifacts[artifact_id] = {
+            "artifact_id": artifact_id,
+            "format": format_name,
+            "sha256": _sha256(format_result.get("artifact_sha256"), "Artefacthash"),
+            "path": str(format_result.get("artifact_path") or ""),
+            "manufacturing_hash": part.manufacturing_hash,
+            "status": "current",
+            "created_at": timestamp,
+            "created_by": user or "system",
+            "invalidated_at": "",
+            "invalidated_reason": "",
+        }
+    state["artifacts"] = artifacts
+    part.workbench = state
+    _sync_part_state(part)
+    validate_workbench_state(part, state)
+    project.audit(
+        "part_workbench.roundtrips_validated",
+        user=user,
+        entity_id=part_id,
+        after_hash=part.manufacturing_hash,
+        details={"status": payload.get("status"), "report_sha256": supplied_hash},
+    )
+    return deepcopy(payload)
+
+
 __all__ = [
     "WORKBENCH_SCHEMA_VERSION",
     "SUPPORTED_PART_FORMS",
@@ -867,4 +1179,6 @@ __all__ = [
     "review_part_workbench",
     "register_part_artifact",
     "record_canonical_rebuild",
+    "record_roundtrip_validation",
+    "roundtrip_is_current",
 ]
