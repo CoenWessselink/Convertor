@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - CWS Viewer Core
+
+- Dependency-free `cws_viewer` API and scene-contract package added without a renderer or duplicate importer.
+- Immutable scene, geometry, camera, selection, section, measurement, compare and viewpoint contracts added.
+- Deterministic scene serialization, SHA-256 verification and strict stable-ID/reference/transform validation added.
+- Viewer edit requests are isolated from canonical mutations behind a framework-neutral controller protocol.
+- Viewer V0 contract regressions and architecture decision record added.
+
 ## 0.8.1-alpha-dev - Windows native runtime repair
 
 - CasADi 3.7.2 is pinned and its complete native wheel is collected by PyInstaller.
