@@ -39,7 +39,9 @@ from .classification import (
     classify_project as classify_project_model,
     set_manual_part_classification,
 )
+from .canonical_rebuild import CanonicalRebuildResult, rebuild_and_compare
 from .workbench import (
+    record_canonical_rebuild as record_project_canonical_rebuild,
     redo_part_workbench as redo_project_part_workbench,
     register_part_artifact as register_project_part_artifact,
     review_part_workbench as review_project_part_workbench,
@@ -640,6 +642,24 @@ class ProjectSession:
         self.dirty = True
         return state
 
+    def rebuild_part_canonical(self, part_id: str, *, user: str) -> CanonicalRebuildResult:
+        """Rebuild reviewed geometry, compare source metrics and persist the report."""
+
+        self._ensure_writable()
+        part = self.project.parts.get(part_id)
+        if part is None:
+            raise ValueError(f"Onbekend onderdeel {part_id}")
+        result = rebuild_and_compare(part)
+        record = record_project_canonical_rebuild(
+            self.project,
+            part_id,
+            result.report,
+            user=user,
+        )
+        result.report = dict(record["report"])
+        self.dirty = True
+        return result
+
     def undo_part_workbench(self, part_id: str, *, user: str) -> dict:
         self._ensure_writable()
         state = undo_project_part_workbench(self.project, part_id, user=user)
@@ -1146,6 +1166,23 @@ class ProjectService:
                 revision_message=reason or f"Part Workbench voor {part_id} gewijzigd",
             )
             return state
+
+    def rebuild_part_canonical(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        *,
+        user: str,
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            result = session.rebuild_part_canonical(part_id, user=user)
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Canonical rebuild voor {part_id} uitgevoerd",
+            )
+            return dict(result.report)
 
     def undo_part_workbench(
         self,

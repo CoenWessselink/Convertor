@@ -36,6 +36,7 @@ SUPPORTED_FEATURE_KINDS = {
     "end_cut",
 }
 SUPPORTED_CONTOUR_SEGMENTS = {"line", "arc"}
+SUPPORTED_DIMENSION_KEYS = {"length_mm", "thickness_mm", "diameter_mm"}
 RECOGNITION_THRESHOLD = 0.8
 GEOMETRY_TOLERANCE_MM = 1e-6
 
@@ -114,6 +115,7 @@ def _new_revision(part: Part, *, user: str, source_geometry_hash: str) -> dict[s
             "confirmed": False,
         },
         "production_frame": asdict(Transform3D.identity()),
+        "dimensions": {},
         "reference_sides": [
             {
                 "side_id": str(side),
@@ -166,6 +168,7 @@ def create_workbench_state(
         "commands": [],
         "command_cursor": 0,
         "artifacts": {},
+        "canonical_rebuild": {},
     }
     revision["validation_issues"] = evaluate_workbench_revision(revision)
     state["revision_history"].append(_revision_record(revision, user=user))
@@ -185,6 +188,23 @@ def _normalise_frame(value: Any) -> dict[str, Any]:
     return asdict(frame)
 
 
+def _normalise_dimensions(value: Any) -> dict[str, float]:
+    if value in (None, ""):
+        return {}
+    if not isinstance(value, Mapping):
+        raise ProjectValidationError("Maakafmetingen moeten als object zijn vastgelegd")
+    unknown = sorted(set(value) - SUPPORTED_DIMENSION_KEYS)
+    if unknown:
+        raise ProjectValidationError(f"Onbekende maakafmetingen: {', '.join(unknown)}")
+    result: dict[str, float] = {}
+    for key in sorted(value):
+        number = _finite(value[key], key)
+        if number < 0.0:
+            raise ProjectValidationError(f"{key} mag niet negatief zijn")
+        result[key] = number
+    return result
+
+
 def workbench_geometry_payload(state: Mapping[str, Any] | None) -> dict[str, Any]:
     if not state:
         return {}
@@ -195,7 +215,7 @@ def workbench_geometry_payload(state: Mapping[str, Any] | None) -> dict[str, Any
     matrix[1][3] = 0.0
     matrix[2][3] = 0.0
     source = dict(state.get("source_geometry") or {})
-    return {
+    payload = {
         "schema_version": state.get("schema_version"),
         "source_geometry_hash": source.get("source_geometry_hash", ""),
         "part_form": revision.get("part_form", "unknown"),
@@ -204,6 +224,11 @@ def workbench_geometry_payload(state: Mapping[str, Any] | None) -> dict[str, Any
         "contours": revision.get("contours", []),
         "features": revision.get("features", []),
     }
+    # Keep pre-dimensions schema-1.0 projects hash-compatible. New revisions
+    # explicitly contain this field and therefore include it in the geometry hash.
+    if "dimensions" in revision:
+        payload["dimensions"] = _normalise_dimensions(revision.get("dimensions"))
+    return payload
 
 
 def _contour_polygon(contour: Mapping[str, Any]) -> list[list[float]] | None:
@@ -254,6 +279,8 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
         )
 
     _normalise_frame(revision.get("production_frame"))
+    if "dimensions" in revision:
+        _normalise_dimensions(revision.get("dimensions"))
 
     side_ids: set[str] = set()
     confirmed_sides: set[str] = set()
@@ -412,6 +439,23 @@ def validate_workbench_state(part: Part, state: Mapping[str, Any]) -> None:
             raise ProjectValidationError("Part Workbench-artefact mist een ID")
         _sha256(artifact.get("sha256"), "Artefacthash")
         _sha256(artifact.get("manufacturing_hash"), "Artefact-manufacturing-hash")
+    rebuild = dict(state.get("canonical_rebuild") or {})
+    if rebuild:
+        report = dict(rebuild.get("report") or {})
+        if rebuild.get("report_sha256") != stable_sha256(report):
+            raise ProjectValidationError("Canonical rebuild-rapport heeft een ongeldige hash")
+        if report.get("part_id") != part.internal_id:
+            raise ProjectValidationError("Canonical rebuild-rapport hoort bij een ander onderdeel")
+        if report.get("source_geometry_hash") != source.get("source_geometry_hash"):
+            raise ProjectValidationError("Canonical rebuild-rapport verwijst naar gewijzigde brongeometrie")
+        manufacturing_hash = _sha256(
+            report.get("manufacturing_hash"),
+            "Canonical rebuild-manufacturing-hash",
+        )
+        if rebuild.get("manufacturing_hash") != manufacturing_hash:
+            raise ProjectValidationError("Canonical rebuild-wrapper bevat een afwijkende manufacturing hash")
+        if rebuild.get("status") not in {"current", "invalidated"}:
+            raise ProjectValidationError("Canonical rebuild-status is ongeldig")
 
 
 def _sync_part_issues(part: Part, revision: Mapping[str, Any]) -> None:
@@ -471,6 +515,14 @@ def _sync_part_state(part: Part) -> None:
         artifact["invalidated_reason"] = "" if matches else "manufacturing_hash_changed"
         if previous_hash != part.manufacturing_hash and not matches:
             artifact["invalidated_at"] = utc_now_iso()
+    rebuild = dict(state.get("canonical_rebuild") or {})
+    if rebuild:
+        matches = rebuild.get("manufacturing_hash") == part.manufacturing_hash
+        rebuild["status"] = "current" if matches else "invalidated"
+        rebuild["invalidated_reason"] = "" if matches else "manufacturing_hash_changed"
+        if previous_hash != part.manufacturing_hash and not matches:
+            rebuild["invalidated_at"] = utc_now_iso()
+        state["canonical_rebuild"] = rebuild
     part.modified_at = utc_now_iso()
 
 
@@ -519,6 +571,7 @@ def update_part_workbench(
         "part_form",
         "recognition",
         "production_frame",
+        "dimensions",
         "reference_sides",
         "contours",
         "features",
@@ -532,7 +585,12 @@ def update_part_workbench(
     before = deepcopy(state["current_revision"])
     after = deepcopy(before)
     for key, value in changes.items():
-        after[key] = _normalise_frame(value) if key == "production_frame" else deepcopy(value)
+        if key == "production_frame":
+            after[key] = _normalise_frame(value)
+        elif key == "dimensions":
+            after[key] = _normalise_dimensions(value)
+        else:
+            after[key] = deepcopy(value)
     timestamp = utc_now_iso()
     after.update(
         {
@@ -741,6 +799,59 @@ def register_part_artifact(
     return deepcopy(artifact)
 
 
+def record_canonical_rebuild(
+    project: ProjectModel,
+    part_id: str,
+    report: Mapping[str, Any],
+    *,
+    user: str,
+) -> dict[str, Any]:
+    """Persist a deterministic rebuild report without changing the work revision."""
+
+    part = project.parts.get(part_id)
+    if part is None or not part.workbench:
+        raise ProjectValidationError("Part Workbench is niet gestart voor dit onderdeel")
+    validate_workbench_state(part, part.workbench)
+    payload = deepcopy(dict(report or {}))
+    if payload.get("part_id") != part_id:
+        raise ProjectValidationError("Canonical rebuild-rapport hoort bij een ander onderdeel")
+    source_hash = _sha256(payload.get("source_geometry_hash"), "Brongeometriehash")
+    expected_source_hash = part.workbench["source_geometry"]["source_geometry_hash"]
+    if source_hash != expected_source_hash:
+        raise ProjectValidationError("Canonical rebuild-rapport verwijst niet naar de huidige bron")
+    manufacturing_hash = _sha256(
+        payload.get("manufacturing_hash"),
+        "Canonical rebuild-manufacturing-hash",
+    )
+    if manufacturing_hash != part.manufacturing_hash:
+        raise ProjectValidationError("Canonical rebuild-rapport hoort niet bij de huidige werkrevisie")
+    record = {
+        "status": "current",
+        "manufacturing_hash": manufacturing_hash,
+        "report_sha256": stable_sha256(payload),
+        "report": payload,
+        "recorded_at": utc_now_iso(),
+        "recorded_by": user or "system",
+        "invalidated_at": "",
+        "invalidated_reason": "",
+    }
+    part.workbench["canonical_rebuild"] = record
+    part.modified_at = utc_now_iso()
+    validate_workbench_state(part, part.workbench)
+    project.audit(
+        "part_workbench.canonical_rebuilt",
+        user=user,
+        entity_id=part_id,
+        after_hash=part.manufacturing_hash,
+        details={
+            "result": payload.get("status", "unknown"),
+            "build_status": payload.get("build_status", "unknown"),
+            "report_sha256": record["report_sha256"],
+        },
+    )
+    return deepcopy(record)
+
+
 __all__ = [
     "WORKBENCH_SCHEMA_VERSION",
     "SUPPORTED_PART_FORMS",
@@ -755,4 +866,5 @@ __all__ = [
     "redo_part_workbench",
     "review_part_workbench",
     "register_part_artifact",
+    "record_canonical_rebuild",
 ]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import math
 import sys
 import tkinter as tk
 import unittest
@@ -39,8 +40,12 @@ class PartWorkbenchUITests(unittest.TestCase):
             geometry_descriptor={
                 "source_geometry_hash": "b" * 64,
                 "cad_metrics": {
+                    "scope": "part",
                     "bbox_mm": [200.0, 100.0, 10.0],
-                    "volume_mm3": 200000.0,
+                    "volume_mm3": 200000.0 - math.pi * 7.0 * 7.0 * 10.0,
+                    "area_mm2": 46000.0 - 2.0 * math.pi * 7.0 * 7.0 + 2.0 * math.pi * 7.0 * 10.0,
+                    "solid_count": 1,
+                    "valid": True,
                 },
             },
         )
@@ -76,6 +81,7 @@ class PartWorkbenchUITests(unittest.TestCase):
             [
                 "Algemeen",
                 "Extra info",
+                "Canonical vergelijking",
                 "Bewerkingen",
                 "Hoeken / contouren",
                 "Gaten",
@@ -116,7 +122,14 @@ class PartWorkbenchUITests(unittest.TestCase):
         self.assertEqual(str(self.panel.validate_button["state"]), "normal")
         self.assertEqual(revision["contours"][0]["role"], "outer")
         self.assertEqual(revision["features"][0]["parameters"]["diameter_mm"], 14.0)
+        self.assertEqual(revision["dimensions"]["thickness_mm"], 10.0)
         applied_hash = part.manufacturing_hash
+
+        self.panel.rebuild_canonical()
+        rebuild = part.workbench["canonical_rebuild"]
+        self.assertEqual(rebuild["status"], "current")
+        self.assertEqual(rebuild["report"]["status"], "passed")
+        self.assertGreaterEqual(len(self.panel.canonical_grid.get_children()), 5)
 
         self.panel.validate()
         self.assertEqual(part.workbench["current_revision"]["review_status"], "validated")

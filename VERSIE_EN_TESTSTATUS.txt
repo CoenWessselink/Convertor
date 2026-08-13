@@ -5,8 +5,8 @@ Product:             CWS Convertor
 Versie:              0.8.0-alpha-dev
 Project Model:       2.4
 Projectbestand:      .cwscproj
-Fase:                Part Workbench - geintegreerde analytische editor
-Productiestatus:     ALPHA - Workbench gevalideerd, roundtrip en productie-export geblokkeerd
+Fase:                Part Workbench - deterministic canonical rebuild en meetvergelijking
+Productiestatus:     ALPHA - canonical laag getest, formaat-roundtrip en productie-export geblokkeerd
 
 NIEUW IN DEZE VERSIE
 --------------------
@@ -26,6 +26,12 @@ NIEUW IN DEZE VERSIE
 - Geintegreerde partselectie, eigenschappen, validatie en 3D/2D-preview.
 - Contour- en gatbewerking via transactionele ProjectSession-commando's.
 - Undo/redo, veldherkomst, audit en artefactinvalidatie.
+- Expliciete maakafmetingen: lengte, plaatdikte en diameter.
+- Deterministische solids voor rechte platen, rondstaf en onbewerkte catalogusprofielen.
+- Bronvergelijking voor volume, oppervlakte, bbox, solidcount en geldigheid.
+- Gehasht rebuildrapport met automatische invalidatie na geometriewijzigingen.
+- `manual_validation_required` bij ontbrekende of niet-geisoleerde bronwaarden.
+- Canonical vergelijkingstab met verwacht, gevonden, delta en vermoedelijke oorzaak.
 - Windows-buildstraat voert automatisch alle smoke-scripts uit.
 
 REFERENTIE-IFC
@@ -58,16 +64,18 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts Windows ontwikkelrun:   27/27 geslaagd
+Smoke-scripts Windows ontwikkelrun:   28/28 geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
+Canonical rebuild-tests:               6/6 geslaagd
 Referentiemodelcatalogus:           481/481 gekoppeld
 Handmatige referentievalidering:       0/481 afgerond
 
 BELANGRIJKE GRENZEN
 -------------------
 - Externe IFC/STEP-parts zijn nog niet automatisch NC1-geschikt.
-- Exacte source-BREP/canonical-solidvergelijking volgt in de volgende fase.
+- De huidige bronvergelijking gebruikt aantoonbare per-part meetwaarden; exacte source-BREP-isolatie volgt nog.
+- Boogcontouren, custom doorsneden en profielbewerkingen zijn nog rebuild-geblokkeerd.
 - NC1/STEP/IFC/PDF-roundtripvalidatie is nog niet afgerond.
 - Optimalisatie en machinejobs blijven geblokkeerd.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
-- Geen lokaal Inno Setup-artefact of schone-machinevrijgave geclaimd.
+- De vorige GitHub Windows-pipeline 31680546892 slaagde; deze nieuwe wijziging krijgt opnieuw CI-validatie voor vrijgave.

@@ -17,8 +17,12 @@ brongeometrieverwijzing, bewerkbare analytische revisies, rechterhandige
 productie-assen, referentiezijden, contouren en bewerkingen, provenance,
 blokkerende validatie, undo/redo en automatische artefactinvalidatie. De
 interactieve analytische 3D/2D-editor is nu in de bestaande projecttab
-geintegreerd. Exacte source-BREP/canonical-solidvergelijking en
-productie-roundtrips zijn nog niet afgerond.
+geintegreerd. Rechte platen met binnencontouren en doorgaande gaten, massief
+rond en exacte catalogusprofielen zonder bewerkingen kunnen deterministisch als
+canonical solid worden opgebouwd. Betrouwbare per-part bronmetingen worden op
+volume, oppervlakte, bbox, solidcount en geldigheid vergeleken en gehasht in het
+project vastgelegd. Exacte source-BREP-isolatie en productie-roundtrips zijn nog
+niet afgerond.
 
 ## Veiligheidsarchitectuur
 
@@ -43,6 +47,21 @@ BOM / productie-export / optimalisatie / machines
 ```
 
 AI mag documentsemantiek, classificatievoorstellen, confidence en controlevragen leveren. AI schrijft geen ongecontroleerde geometrie, NC1 of machinecode. Kritische onzekerheid sluit de productiepoort.
+
+## Nieuw in 0.8.0-alpha-dev
+
+- expliciete lengte-, plaatdikte- en diameterwaarden in de Workbench-revisie;
+- deterministische canonical-solid rebuild voor rechte platen, rondstaf en
+  exacte catalogusprofielen zonder bewerkingen;
+- tolerantievergelijking voor volume, oppervlakte en bbox plus exacte controle
+  van solidcount en geldigheid;
+- `manual_validation_required` wanneer bronwaarden ontbreken of niet aantoonbaar
+  tot het geselecteerde onderdeel zijn geisoleerd;
+- gehasht rebuildrapport met manufacturing-hashkoppeling en automatische
+  invalidatie na geometriewijzigingen;
+- geintegreerd tabblad **Canonical vergelijking** met verwacht, gevonden, delta
+  en resultaat;
+- productiepoort blijft gesloten tot de formaat-roundtrips slagen.
 
 ## Nieuw in 0.7.0-alpha
 
@@ -111,7 +130,8 @@ Het bestaande tabblad heeft nu een echte actie **Semantisch importeren**. De int
 - een actieve **Annuleren**-knop met volledige rollback;
 - details van MLO4/LO4, STEP-producten en blokkades.
 
-De uitgebreidere onderdeeleditor, versleepbare eigenschappengrid en 3D-isolatie per part horen bij de volgende classificatie-/BOM-interfacefase.
+Exacte 3D-bronisoleratie, featureselectie in de viewer en verdere
+classificatie-/BOM-interactie horen bij de volgende begrensde interfacefase.
 
 ## Bewezen referentie-import
 
@@ -250,6 +270,7 @@ cws_convertor/importers/semantic.py         gedeeld resultaat-/importcontract
 cws_convertor/project/semantic_import.py    broncontrole, purge, indexes en gate
 cws_convertor/project/model.py              Canonical Project Model 2.4
 cws_convertor/project/workbench.py          partrevisies, validatie en undo/redo
+cws_convertor/project/canonical_rebuild.py  canonical solid en bronmeetvergelijking
 cws_convertor/ui/part_workbench.py          geintegreerde analytische Part Workbench
 cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
 cws_convertor/project/service.py            transactionele GUI/CLI-service
@@ -259,14 +280,15 @@ cli.py                                      conversie- en project-CLI
 
 ## Volgende bouwfase
 
-De analytische Part Workbench is nu aangesloten op de echte project-/partselectie.
-De UI bevat revisiecommando's, sorteerbare onderdelen, eigenschappen, validatie,
-provenance, contouren, gaten en een gecombineerde 3D/2D-preview. De grijze 3D-vorm
-is voorlopig uitsluitend de betrouwbare bronomhulling; exacte bron-BREP-isolatie
-en canonical-solidvergelijking zijn nog niet gereed.
+De analytische Part Workbench is aangesloten op de echte project-/partselectie.
+De eerste deterministic rebuildlaag en meetvergelijking zijn gereed voor rechte
+platen, rondstaf en onbewerkte exacte catalogusprofielen. De grijze 3D-vorm blijft
+voorlopig uitsluitend de betrouwbare bronomhulling; een geslaagde meetvergelijking
+is nog geen volledige source-BREP- of formaat-roundtripvalidatie.
 
 1. geselecteerde IFC/STEP-brongeometrie exact isoleren;
-2. deterministische canonical-solid rebuild en bron/canonical-vergelijking;
+2. boogcontouren, custom doorsneden en profielbewerkingen veilig terugbouwen;
 3. featureselectie tussen grids, 2D en exacte 3D verder synchroniseren;
 4. NC1/STEP/IFC/PDF-roundtripvalidatie per ondersteunde onderdeelklasse;
-5. pas daarna per-part/per-merk productie-export vrijgeven.
+5. de gevalideerde referentiemodellen tegen dezelfde vergelijking laten lopen;
+6. pas daarna per-part/per-merk productie-export vrijgeven.

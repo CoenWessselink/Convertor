@@ -112,6 +112,9 @@ class PartWorkbenchPanel(ttk.Frame):
         self.part_form_var = tk.StringVar(value="unknown")
         self.candidate_var = tk.StringVar(value="")
         self.confidence_var = tk.StringVar(value="0.000")
+        self.length_var = tk.StringVar(value="0.000")
+        self.thickness_var = tk.StringVar(value="0.000")
+        self.diameter_var = tk.StringVar(value="0.000")
         self.recognition_confirmed_var = tk.BooleanVar(value=False)
         self.side_id_var = tk.StringVar(value="top")
         self.side_label_var = tk.StringVar(value="Bovenzijde")
@@ -122,6 +125,7 @@ class PartWorkbenchPanel(ttk.Frame):
         self.hole_diameter_var = tk.StringVar(value="14.000")
         self.hole_side_var = tk.StringVar(value="top")
         self.status_var = tk.StringVar(value="Geen onderdeel geselecteerd")
+        self.canonical_status_var = tk.StringVar(value="Nog niet opgebouwd")
 
         self._build_ui()
         self.clear()
@@ -144,6 +148,8 @@ class PartWorkbenchPanel(ttk.Frame):
         self.redo_button.pack(side="left", padx=(5, 0))
         self.validate_button = ttk.Button(toolbar, text="Valideren", command=self.validate)
         self.validate_button.pack(side="left", padx=(12, 0))
+        self.rebuild_button = ttk.Button(toolbar, text="Opbouwen", command=self.rebuild_canonical)
+        self.rebuild_button.pack(side="left", padx=(5, 0))
         ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=10)
         ttk.Button(toolbar, text="Passend", command=self.fit_view).pack(side="left")
         ttk.Button(toolbar, text="Iso", command=lambda: self.set_view(24, -58)).pack(side="left", padx=(5, 0))
@@ -274,6 +280,7 @@ class PartWorkbenchPanel(ttk.Frame):
         self.editor_tabs.grid(row=0, column=0, sticky="nsew", padx=6, pady=(4, 6))
         self._build_general_tab()
         self._build_extra_tab()
+        self._build_canonical_tab()
         self._build_operations_tab()
         self._build_contours_tab()
         self._build_holes_tab()
@@ -294,23 +301,26 @@ class PartWorkbenchPanel(ttk.Frame):
             ("Zijde-ID", ttk.Entry(page, textvariable=self.side_id_var)),
             ("Zijdelabel", ttk.Entry(page, textvariable=self.side_label_var)),
             ("Bronvlak", ttk.Entry(page, textvariable=self.face_ref_var)),
+            ("Lengte mm", ttk.Entry(page, textvariable=self.length_var)),
+            ("Plaatdikte mm", ttk.Entry(page, textvariable=self.thickness_var)),
+            ("Diameter mm", ttk.Entry(page, textvariable=self.diameter_var)),
         )
         for index, (label, widget) in enumerate(fields):
             row, pair = divmod(index, 3)
             ttk.Label(page, text=label).grid(row=row, column=pair * 2, sticky="w", padx=(0, 5), pady=4)
             widget.grid(row=row, column=pair * 2 + 1, sticky="ew", padx=(0, 14), pady=4)
         ttk.Checkbutton(page, text="Herkenning bevestigd", variable=self.recognition_confirmed_var).grid(
-            row=2, column=0, columnspan=2, sticky="w", pady=(7, 0)
+            row=3, column=0, columnspan=2, sticky="w", pady=(7, 0)
         )
         ttk.Checkbutton(page, text="Referentiezijde bevestigd", variable=self.side_confirmed_var).grid(
-            row=2, column=2, columnspan=2, sticky="w", pady=(7, 0)
+            row=3, column=2, columnspan=2, sticky="w", pady=(7, 0)
         )
-        ttk.Label(page, text="Reden").grid(row=3, column=0, sticky="w", pady=(8, 0))
+        ttk.Label(page, text="Reden").grid(row=4, column=0, sticky="w", pady=(8, 0))
         ttk.Entry(page, textvariable=self.reason_var).grid(
-            row=3, column=1, columnspan=4, sticky="ew", padx=(0, 14), pady=(8, 0)
+            row=4, column=1, columnspan=3, sticky="ew", padx=(0, 14), pady=(8, 0)
         )
-        ttk.Label(page, text="Gebruiker").grid(row=3, column=4, sticky="e", padx=(0, 5), pady=(8, 0))
-        ttk.Entry(page, textvariable=self.user_var, width=14).grid(row=3, column=5, sticky="ew", pady=(8, 0))
+        ttk.Label(page, text="Gebruiker").grid(row=4, column=4, sticky="e", padx=(0, 5), pady=(8, 0))
+        ttk.Entry(page, textvariable=self.user_var, width=14).grid(row=4, column=5, sticky="ew", pady=(8, 0))
 
     def _build_extra_tab(self) -> None:
         page = ttk.Frame(self.editor_tabs, padding=6)
@@ -325,6 +335,31 @@ class PartWorkbenchPanel(ttk.Frame):
         self.extra_grid.column("value", width=180)
         self.extra_grid.column("source", width=240)
         self.extra_grid.grid(row=0, column=0, sticky="nsew")
+
+    def _build_canonical_tab(self) -> None:
+        page = ttk.Frame(self.editor_tabs, padding=6)
+        self.editor_tabs.add(page, text="Canonical vergelijking")
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(1, weight=1)
+        ttk.Label(page, textvariable=self.canonical_status_var, font=("Segoe UI", 9, "bold")).grid(
+            row=0, column=0, sticky="w", pady=(0, 5)
+        )
+        self.canonical_grid = ttk.Treeview(
+            page,
+            columns=("expected", "found", "delta", "status"),
+            show="tree headings",
+        )
+        self.canonical_grid.heading("#0", text="Eigenschap")
+        self.canonical_grid.heading("expected", text="Bron / verwacht")
+        self.canonical_grid.heading("found", text="Canonical / gevonden")
+        self.canonical_grid.heading("delta", text="Verschil")
+        self.canonical_grid.heading("status", text="Resultaat")
+        self.canonical_grid.column("#0", width=180, minwidth=110)
+        self.canonical_grid.column("expected", width=185, minwidth=100)
+        self.canonical_grid.column("found", width=185, minwidth=100)
+        self.canonical_grid.column("delta", width=150, minwidth=90)
+        self.canonical_grid.column("status", width=150, minwidth=110)
+        self.canonical_grid.grid(row=1, column=0, sticky="nsew")
 
     def _build_operations_tab(self) -> None:
         page = ttk.Frame(self.editor_tabs, padding=6)
@@ -446,6 +481,7 @@ class PartWorkbenchPanel(ttk.Frame):
         self._reference_sides = []
         self._set_controls_enabled(False)
         self.status_var.set("Geen onderdeel geselecteerd")
+        self.canonical_status_var.set("Nog niet opgebouwd")
         self._set_badge("idle")
         for grid in self._all_detail_grids():
             grid.delete(*grid.get_children())
@@ -456,6 +492,7 @@ class PartWorkbenchPanel(ttk.Frame):
             self.property_grid,
             self.issue_grid,
             self.extra_grid,
+            self.canonical_grid,
             self.operation_grid,
             self.contour_grid,
             self.hole_grid,
@@ -546,6 +583,14 @@ class PartWorkbenchPanel(ttk.Frame):
         self.part_form_var.set(str(revision.get("part_form") or "unknown"))
         self.candidate_var.set(str(recognition.get("candidate") or part.normalized_profile or part.profile or ""))
         self.confidence_var.set(f"{float(recognition.get('confidence', part.profile_confidence or part.confidence or 0.0)):.3f}")
+        dimensions = dict(revision.get("dimensions") or {})
+        source_dimensions = source_dimensions_mm(part)
+        source_sorted = sorted(source_dimensions, reverse=True) if source_dimensions else []
+        fallback_length = part.length_mm or (source_sorted[0] if source_sorted else 0.0)
+        fallback_thickness = source_sorted[-1] if source_sorted else 0.0
+        self.length_var.set(f"{float(dimensions.get('length_mm', fallback_length) or 0.0):.3f}")
+        self.thickness_var.set(f"{float(dimensions.get('thickness_mm', fallback_thickness) or 0.0):.3f}")
+        self.diameter_var.set(f"{float(dimensions.get('diameter_mm', 0.0) or 0.0):.3f}")
         self.recognition_confirmed_var.set(bool(recognition.get("confirmed", False)))
         self._reference_sides = deepcopy(list(revision.get("reference_sides") or []))
         side = self._reference_sides[0] if self._reference_sides else {}
@@ -633,6 +678,48 @@ class PartWorkbenchPanel(ttk.Frame):
             )
         if not provenance:
             self.provenance_grid.insert("", "end", text="Nog geen gebruikerswijzigingen", values=("-", "-", "-", "-"))
+        self._populate_canonical_result(state)
+
+    def _populate_canonical_result(self, state: dict[str, Any]) -> None:
+        record = dict(state.get("canonical_rebuild") or {})
+        report = dict(record.get("report") or {})
+        if not report:
+            self.canonical_status_var.set("Nog niet opgebouwd")
+            self.canonical_grid.insert(
+                "", "end", text="Status", values=("-", "-", "-", "niet uitgevoerd")
+            )
+            return
+        outcome = str(report.get("status") or "unknown")
+        currency = str(record.get("status") or "invalidated")
+        if currency != "current":
+            self.canonical_status_var.set("ONGELDIG - werkrevisie is gewijzigd")
+        elif outcome == "passed":
+            self.canonical_status_var.set("GESLAAGD - canonical solid komt binnen tolerantie overeen")
+        elif outcome == "failed":
+            self.canonical_status_var.set("AFWIJKING - bron en canonical solid verschillen")
+        elif outcome == "manual_validation_required":
+            self.canonical_status_var.set("HANDMATIGE VALIDATIE VEREIST")
+        else:
+            self.canonical_status_var.set("GEBLOKKEERD - canonical solid niet opgebouwd")
+        checks = list(dict(report.get("comparison") or {}).get("checks") or [])
+        for check in checks:
+            self.canonical_grid.insert(
+                "",
+                "end",
+                text=str(check.get("property") or "?"),
+                values=(
+                    _short(check.get("expected"), 80),
+                    _short(check.get("found"), 80),
+                    _short(check.get("delta"), 80),
+                    str(check.get("status") or "?"),
+                ),
+            )
+        for reason in list(report.get("blocking_reasons") or []):
+            self.canonical_grid.insert(
+                "", "end", text="Blokkade", values=("-", "-", "-", _short(reason, 120))
+            )
+        if not checks and not list(report.get("blocking_reasons") or []):
+            self.canonical_grid.insert("", "end", text="Status", values=("-", "-", "-", outcome))
 
     @staticmethod
     def _populate_matching_properties(grid: ttk.Treeview, properties: dict[str, Any], tokens: tuple[str, ...]) -> None:
@@ -688,6 +775,7 @@ class PartWorkbenchPanel(ttk.Frame):
                 else "disabled"
             )
         )
+        self.rebuild_button.configure(state="normal" if active and state else "disabled")
 
     def set_busy(self, busy: bool) -> None:
         self._busy = bool(busy)
@@ -723,6 +811,11 @@ class PartWorkbenchPanel(ttk.Frame):
             confidence = float(self.confidence_var.get().replace(",", "."))
             if not 0.0 <= confidence <= 1.0:
                 raise ValueError("Confidence moet tussen 0 en 1 liggen")
+            dimensions = {
+                "length_mm": self._nonnegative_dimension(self.length_var.get(), "Lengte"),
+                "thickness_mm": self._nonnegative_dimension(self.thickness_var.get(), "Plaatdikte"),
+                "diameter_mm": self._nonnegative_dimension(self.diameter_var.get(), "Diameter"),
+            }
             sides = deepcopy(self._reference_sides)
             current_side = {
                 "side_id": self.side_id_var.get().strip(),
@@ -743,6 +836,7 @@ class PartWorkbenchPanel(ttk.Frame):
                         "confidence": confidence,
                         "confirmed": self.recognition_confirmed_var.get(),
                     },
+                    "dimensions": dimensions,
                     "reference_sides": sides,
                     "contours": deepcopy(self._contours),
                     "features": deepcopy(self._features),
@@ -754,6 +848,16 @@ class PartWorkbenchPanel(ttk.Frame):
             self._notify_changed(f"Werkrevisie toegepast; {issue_count} blokkade(n)")
         except Exception as exc:
             self._show_error("Part Workbench bijwerken", exc)
+
+    @staticmethod
+    def _nonnegative_dimension(value: str, label: str) -> float:
+        try:
+            number = float(value.replace(",", "."))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{label} moet numeriek zijn") from exc
+        if not math.isfinite(number) or number < 0.0:
+            raise ValueError(f"{label} moet nul of positief en eindig zijn")
+        return number
 
     def undo(self) -> None:
         self._run_history_action("Ongedaan maken", lambda session, part: session.undo_part_workbench(part.internal_id, user=self._user()))
@@ -781,6 +885,17 @@ class PartWorkbenchPanel(ttk.Frame):
         except Exception as exc:
             self._show_error("Part Workbench valideren", exc)
 
+    def rebuild_canonical(self) -> None:
+        session, part = self._require_selection()
+        if session is None or part is None:
+            return
+        try:
+            result = session.rebuild_part_canonical(part.internal_id, user=self._user())
+            outcome = str(result.report.get("status") or "unknown")
+            self._notify_changed(f"Canonical rebuild uitgevoerd: {outcome}")
+        except Exception as exc:
+            self._show_error("Canonical solid opbouwen", exc)
+
     def use_source_bbox(self) -> None:
         part = self._current_part()
         if part is None:
@@ -790,6 +905,8 @@ class PartWorkbenchPanel(ttk.Frame):
             self._show_error("Bron-bbox", ValueError("Dit onderdeel bevat geen betrouwbare bronafmetingen"))
             return
         width, height = sorted(dimensions, reverse=True)[:2]
+        self.length_var.set(f"{max(dimensions):.3f}")
+        self.thickness_var.set(f"{min(dimensions):.3f}")
         self._contours = [item for item in self._contours if item.get("role") != "outer"]
         self._contours.insert(0, rectangle_contour(width, height))
         self.part_form_var.set("plate")
@@ -927,8 +1044,14 @@ class PartWorkbenchPanel(ttk.Frame):
         polygon = self._outer_polygon()
         issues = list(dict(part.workbench.get("current_revision") or {}).get("validation_issues") or [])
         color = "#b42318" if issues else "#16835f"
+        try:
+            reviewed_thickness = float(self.thickness_var.get().replace(",", "."))
+        except (TypeError, ValueError):
+            reviewed_thickness = 0.0
         if polygon:
-            thickness = min(dimensions) if dimensions is not None else 0.0
+            thickness = reviewed_thickness if reviewed_thickness > 0.0 else (
+                min(dimensions) if dimensions is not None else 0.0
+            )
             z = thickness if thickness > 0.0 else 0.0
             vertices = [(x, y, z) for x, y in polygon[:-1]]
             self.axis_3d.add_collection3d(
@@ -949,7 +1072,9 @@ class PartWorkbenchPanel(ttk.Frame):
                 continue
             circle_x = [x + radius * math.cos(index * math.tau / 48.0) for index in range(49)]
             circle_y = [y + radius * math.sin(index * math.tau / 48.0) for index in range(49)]
-            z = min(dimensions) if dimensions is not None else 0.0
+            z = reviewed_thickness if reviewed_thickness > 0.0 else (
+                min(dimensions) if dimensions is not None else 0.0
+            )
             self.axis_3d.plot(circle_x, circle_y, [z] * len(circle_x), color="#2563a6", linewidth=1.5)
             self.axis_2d.plot(circle_x, circle_y, color="#2563a6", linewidth=1.5)
         self._fit_axes(dimensions, polygon)

@@ -13,6 +13,14 @@
 - GUI regression covers start, apply, validate, undo and redo; release remains roundtrip-blocked.
 - Windows build workflow now runs every `tests/*_smoke.py` file.
 - Windows release configuration smoke prevents non-numeric Inno version metadata.
+- Explicit reviewed length, plate thickness and diameter values added to Workbench revisions.
+- Deterministic canonical-solid rebuild added for straight plates with inner contours and through holes, solid round bars and unworked exact catalogue profiles.
+- Source comparison added for volume, area and bounding dimensions with tolerances, plus exact solid-count and validity checks.
+- Missing or non-part-scoped source measurements now produce `manual_validation_required` instead of invented expectations.
+- Hashed rebuild reports are persisted beside the revision and invalidated when the manufacturing hash changes.
+- Canonical comparison tab added with expected, found, delta, result and blocking reason reporting.
+- Six canonical rebuild regressions and updated GUI validation added; all 28 smoke scripts pass locally on Windows.
+- Production release remains blocked pending exact source isolation and NC1/STEP/IFC/PDF roundtrip validation.
 
 ## 0.7.0-alpha — Semantische IFC/STEP-projectimport
 

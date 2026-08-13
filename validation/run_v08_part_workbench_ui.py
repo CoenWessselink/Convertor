@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 import sys
 import tkinter as tk
@@ -24,6 +25,22 @@ def build_demo_session() -> ProjectSession:
         ("part-review", "P102", "Kopplaat", "PL12", "S235", (300.0, 180.0, 12.0)),
     )
     for index, (part_id, position, name, profile, material, bbox) in enumerate(samples, start=1):
+        cad_metrics = {"bbox_mm": list(bbox), "valid": True}
+        if part_id == "part-plate":
+            radius = 11.0
+            hole_count = 4
+            length, width, thickness = bbox
+            cad_metrics.update(
+                {
+                    "scope": "part",
+                    "solid_count": 1,
+                    "volume_mm3": length * width * thickness
+                    - hole_count * math.pi * radius * radius * thickness,
+                    "area_mm2": 2.0 * (length * width + length * thickness + width * thickness)
+                    - 2.0 * hole_count * math.pi * radius * radius
+                    + hole_count * 2.0 * math.pi * radius * thickness,
+                }
+            )
         part = Part(
             internal_id=part_id,
             name=name,
@@ -43,9 +60,10 @@ def build_demo_session() -> ProjectSession:
             profile_confidence=0.94,
             geometry_descriptor={
                 "source_geometry_hash": str(index + 3) * 64,
-                "cad_metrics": {"bbox_mm": list(bbox), "valid": True},
+                "cad_metrics": cad_metrics,
                 "solid_count": 1,
             },
+            properties={"source_solid_count": 1},
         )
         part.recompute_hashes()
         session.project.add_entity(part, user="validation")
@@ -56,6 +74,7 @@ def build_demo_session() -> ProjectSession:
         {
             "part_form": "plate",
             "recognition": {"candidate": "PL15", "confidence": 0.94, "confirmed": True},
+            "dimensions": {"length_mm": 420.0, "thickness_mm": 15.0, "diameter_mm": 0.0},
             "reference_sides": [
                 {"side_id": "top", "label": "Bovenzijde", "face_ref": "face:top", "confirmed": True}
             ],
@@ -87,6 +106,7 @@ def build_demo_session() -> ProjectSession:
         user="validation",
         reason="Visuele Workbench-validatie",
     )
+    session.rebuild_part_canonical("part-plate", user="validation")
     return session
 
 
@@ -128,6 +148,7 @@ def main() -> int:
     tab.refresh()
     tab.workspace.select(2)
     tab.part_workbench.select_part("part-plate", notify=False)
+    tab.part_workbench.editor_tabs.select(2)
 
     def capture() -> None:
         if args.screenshot is None:

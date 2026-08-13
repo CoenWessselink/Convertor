@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "application_version": "0.8.0-alpha-dev",
+  "captured_at_utc": "2026-08-13T08:58:21Z",
+  "platform": "Windows",
+  "python_version": "3.12.0",
+  "fixture": "synthetic_non_confidential_plate_420x260x15_four_d22_holes",
+  "golden_reference_claimed": false,
+  "result": {
+    "status": "passed",
+    "build_status": "built",
+    "builder_version": "cws-canonical-rebuild-v1",
+    "canonical_signature": "b7321f785d3731999d3adcfb37c8b79ff44d9cd35e13714da8f671e95a953995",
+    "report_sha256": "829acb5827e5d63dc3088f2ff3e68f953b56b0cf1c55096abba8365f539271ce",
+    "canonical_metrics": {
+      "volume_mm3": 1615192.0373349376,
+      "area_mm2": 239905.84061406355,
+      "bbox_mm": [
+        420.0,
+        260.0,
+        15.0
+      ],
+      "solid_count": 1,
+      "valid": true,
+      "topology": {
+        "faces": 10,
+        "edges": 24,
+        "vertices": 16
+      }
+    },
+    "source_metrics": {
+      "scope": "part",
+      "scope_method": "declared",
+      "volume_mm3": 1615192.037334938,
+      "area_mm2": 239905.8406140636,
+      "bbox_mm": [
+        420.0,
+        260.0,
+        15.0
+      ],
+      "solid_count": 1,
+      "valid": true,
+      "reasons": []
+    },
+    "comparison": {
+      "status": "passed",
+      "checks": [
+        {
+          "property": "volume_mm3",
+          "comparison_type": "numerical_tolerance",
+          "expected": 1615192.037334938,
+          "found": 1615192.0373349376,
+          "delta": -4.656612873077393e-10,
+          "tolerance": {
+            "absolute": 1615.192037334938,
+            "relative": 0.001
+          },
+          "status": "passed",
+          "probable_cause": ""
+        },
+        {
+          "property": "area_mm2",
+          "comparison_type": "numerical_tolerance",
+          "expected": 239905.8406140636,
+          "found": 239905.84061406355,
+          "delta": -5.820766091346741e-11,
+          "tolerance": {
+            "absolute": 239.9058406140636,
+            "relative": 0.001
+          },
+          "status": "passed",
+          "probable_cause": ""
+        },
+        {
+          "property": "bbox_mm",
+          "comparison_type": "numerical_tolerance",
+          "expected": [
+            420.0,
+            260.0,
+            15.0
+          ],
+          "found": [
+            420.0,
+            260.0,
+            15.0
+          ],
+          "delta": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "tolerance": {
+            "absolute_mm": 0.05
+          },
+          "status": "passed",
+          "probable_cause": ""
+        },
+        {
+          "property": "solid_count",
+          "comparison_type": "exact",
+          "expected": 1,
+          "found": 1,
+          "delta": null,
+          "tolerance": null,
+          "status": "passed",
+          "probable_cause": ""
+        },
+        {
+          "property": "valid",
+          "comparison_type": "exact",
+          "expected": true,
+          "found": true,
+          "delta": null,
+          "tolerance": null,
+          "status": "passed",
+          "probable_cause": ""
+        }
+      ],
+      "source_scope": "part",
+      "source_scope_method": "declared",
+      "notes": []
+    }
+  },
+  "checks": {
+    "build_status_built": true,
+    "comparison_passed": true,
+    "single_valid_solid": true,
+    "all_measures_passed": true,
+    "deterministic_report": true,
+    "deterministic_report_hash": true,
+    "production_release_still_blocked": true
+  },
+  "automated_tests": {
+    "canonical_rebuild_tests_passed": 6,
+    "part_workbench_tests_passed": 6,
+    "part_workbench_ui_tests_passed": 2,
+    "smoke_scripts_passed": 28,
+    "smoke_scripts_failed": 0,
+    "known_optional_fixture_skips": 9
+  },
+  "release_gate": "blocked_pending_nc1_step_ifc_pdf_roundtrip_validation",
+  "screenshot": {
+    "path": "validation/results/v08-canonical-rebuild-ui-windows.png",
+    "sha256": "c35eb0653aa544d5b18428514518c04b41fd7bb11944dfe26b91c7e042ce5a59",
+    "size_bytes": 81084
+  }
+}

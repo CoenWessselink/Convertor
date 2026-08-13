@@ -1,6 +1,7 @@
 # Part Workbench foundation
 
-Status: eerste backend-fundering, niet de volledige Part Workbench-fase.
+Status: geintegreerde Workbench plus eerste deterministic canonical rebuildlaag;
+niet de volledige Part Workbench- of roundtripfase.
 
 Project Model: `2.4`
 
@@ -22,6 +23,13 @@ Workbench-schema: `1.0`
 - invalidatie van afgeleide artefacten na een manufacturing-wijziging;
 - opslag en heropening in `.cwscproj`;
 - stateful `ProjectSession`- en stateless `ProjectService`-API's.
+- expliciete lengte-, plaatdikte- en diameterwaarden in de werkrevisie;
+- canonical solids voor rechte platen met binnencontouren en doorgaande gaten;
+- canonical solids voor massief rond en exacte onbewerkte catalogusprofielen;
+- vergelijking van volume, oppervlakte en bbox met tolerantie;
+- exacte vergelijking van solidcount en geometrische geldigheid;
+- gehasht rebuildrapport met manufacturing-hashkoppeling en invalidatie;
+- geintegreerde UI met een afzonderlijk canonical vergelijkingstabblad.
 
 ## Harde controles
 
@@ -39,7 +47,7 @@ De fundering blokkeert of weigert onder meer:
 
 ## Regressiedekking
 
-`tests/part_workbench_smoke.py` dekt:
+`tests/part_workbench_smoke.py` en `tests/canonical_rebuild_smoke.py` dekken:
 
 - rechte plaat met doorgaand gat;
 - plaat met analytische boog;
@@ -48,18 +56,23 @@ De fundering blokkeert of weigert onder meer:
 - plaatsingsonafhankelijke en spiegelafhankelijke manufacturing identity;
 - featurewijziging, artefactinvalidatie, undo en redo;
 - audit, save/reopen en de stateless servicefacade.
+- deterministische herhaalde rebuild en stabiele rapporthash;
+- exact verwachte en gevonden meetwaarden voor een synthetische testplaat;
+- afwijkingen, tolerantie en vermoedelijke oorzaak per eigenschap;
+- `manual_validation_required` bij ontbrekende of niet-geisoleerde bronmetingen;
+- automatische invalidatie bij wijziging van maakafmetingen;
+- solid round bar en exacte `HEA240`-catalogusopbouw.
 
 ## Nog niet gebouwd
 
-- geintegreerde Workbench-GUI met projectboom, property grid en featuretabs;
-- interactieve 3D-bron/canonical-vergelijking en 2D-tekening;
 - automatische kandidaatherkenning vanuit echte BREP-geometrie;
-- deterministische canonical-solid rebuild vanuit de Workbench-revisie;
+- exacte source-BREP-isolatie en mesh/topologievergelijking per geselecteerd part;
+- canonical rebuild van boogcontouren, custom doorsneden en profielbewerkingen;
+- directe featurehighlighting tussen grids, 2D en 3D;
 - volledige canonical naar NC1/STEP/IFC/PDF naar canonical roundtrips;
 - performance- en geheugentests voor interactieve bewerking van grote modellen;
-- screenshots van de uiteindelijke Workbench-UI;
 - vrijgave van productie-export;
-- nieuwe Windows installer en test op een schone Windows x64-machine.
+- nieuwe Windows installer van deze wijziging en test op een schone Windows x64-machine.
 
 Productie-export blijft gesloten totdat deze resterende stappen per ondersteund
 onderdeeltype aantoonbaar zijn gevalideerd.
@@ -67,19 +80,27 @@ onderdeeltype aantoonbaar zijn gevalideerd.
 ## Windows-validatie 2026-08-13
 
 - `compileall`: PASS;
-- smoke-scripts: 25 uitgevoerd, 25 PASS, 0 FAIL;
+- smoke-scripts: 28 uitgevoerd, 28 PASS, 0 FAIL;
 - Part Workbench: 6 tests PASS;
+- canonical rebuild: 6 tests PASS;
 - repository plus lokale referentiecatalogus: 481 modellen gekoppeld aan 481
   expected-results;
 - inhoudelijk gevalideerde lokale golden baselines: 0;
 - `manual_validation_required`: 481, bewust niet inhoudelijk vergeleken;
-- bekende skips: 5, gelijk aan de pre-feature baseline.
+- bekende optionele fixture-skips: 9.
 - grootste verpakte STEP-referentie: 9.224.690 bytes, 3,586 seconden en
   175,535 MB peak working set; alle functionele en performancechecks PASS.
 
-De twee PDF-skips missen het verwachte echte P1811-pad. De drie
-classificatiereferentieskips missen het niet meegeleverde `.cwscproj`-project.
-De grote verpakte IFC- en drie STEP-referentietests zijn wel uitgevoerd.
+De skips betreffen niet meegeleverde PDF-, classificatie- en grote semantische
+referentiefixtures. De afzonderlijke large-modelvalidatie uit de vorige stabiele
+Windows-ronde blijft als onafhankelijk bewijs bewaard.
 Het machineleesbare large-modelresultaat staat in
 `validation/results/v08-large-step-windows.json` (SHA-256
 `2A1C29FF48AD88930F5CA818BC3A77CA20EAB14F850F82C3739D2B86BDB9317F`).
+
+De canonical rebuild-evidence staat in
+`validation/results/v08-canonical-rebuild-windows.json`. De bijbehorende
+Windows-screenshot staat in
+`validation/results/v08-canonical-rebuild-ui-windows.png`. De gebruikte plaat is
+synthetisch en niet vertrouwelijk; dit resultaat valideert geen aangeleverd
+referentiemodel en verhoogt de golden-baselinecount daarom niet.

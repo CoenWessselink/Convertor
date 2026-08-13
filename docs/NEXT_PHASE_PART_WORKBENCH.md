@@ -35,10 +35,18 @@ The first bounded Part Workbench layer is now integrated in the existing
 - properties, blocking validation, provenance and all required information tabs are present;
 - validation remains separate from release and cannot bypass roundtrip requirements;
 - Windows GUI smoke coverage exercises start, edit, validate, undo and redo.
+- reviewed make dimensions are part of the manufacturing fingerprint;
+- straight plates with inner contours and through holes can be rebuilt as one deterministic solid;
+- solid round bars and exact unworked catalogue profiles can be rebuilt;
+- part-scoped source metrics are compared with explicit exact/tolerance policies;
+- unavailable or unproven source metrics remain `manual_validation_required`;
+- the hashed report persists in `.cwscproj` and invalidates after a manufacturing change;
+- the integrated comparison tab reports expected, found, delta and result.
 
 The center view does not yet claim exact source BREP isolation. It uses imported
 extents as a source envelope and marks unavailable dimensions as unavailable.
-Exact source/canonical mesh comparison belongs to the deterministic rebuild layer.
+The completed first rebuild layer compares trustworthy per-part measurements;
+exact source/canonical mesh and feature comparison remains separate.
 
 ## Data model additions
 
@@ -101,7 +109,7 @@ No production export unless all critical data is known or explicitly confirmed. 
 ## Next bounded implementation
 
 1. isolate the selected IFC/STEP source shape without changing the golden source;
-2. rebuild a deterministic canonical solid from the reviewed analytical revision;
-3. compare source and canonical volume, area, bounds and topology with tolerances;
-4. synchronize selected contour/feature highlighting across grids, 2D and exact 3D;
+2. support explicit arcs, custom cross-sections and worked catalogue profiles;
+3. synchronize selected contour/feature highlighting across grids, 2D and exact 3D;
+4. run validated repository/local reference models through the same comparison;
 5. add NC1/STEP/IFC/PDF roundtrip validation before any release path is enabled.
