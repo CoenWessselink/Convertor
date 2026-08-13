@@ -35,11 +35,15 @@ invented from file contents.
 - Trusted PDF, dimension graph and native runtime tests: passed locally.
 - PDF visual QA: part drawing and both A3 assembly pages rendered and inspected.
 - Reference registry: 481/481 paired, 0 validated and 481 `manual_validation_required`.
-- Windows source/dist/portable/installer workflow: pending push.
+- Windows source/dist/portable/installer workflow `31728698072`: passed.
 
 Run `31726875251` passed all functional gates but is superseded as release
 evidence because its uploaded artifact retained the old `0.8.2-alpha-dev`
 label. The versioned artifact-name contract is now covered by regression.
+
+The accepted run is `31728698072` on commit `b96e58c`. Artifact
+`CWS_Convertor_0.8.3-beta-dev_Windows_x64` is 677,358,200 bytes and has digest
+`sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.
 
 ## Explicit limits
 

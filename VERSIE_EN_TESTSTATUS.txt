@@ -93,5 +93,6 @@ BELANGRIJKE GRENZEN
 - DXF-export is beperkt tot ondersteunde analytische plaatcontouren.
 - Grote productie-export wacht op een door de eigenaar gevalideerd, vrijgegeven groot model.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
+- Windows CI-run 31728698072: fase 3 source, dist, portable, installer, installed runtime, productiepakket en uninstall geslaagd.
 - GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
 - Windows CI-run 31720996524: source, dist, portable, installer, geïnstalleerde runtime en uninstall geslaagd.

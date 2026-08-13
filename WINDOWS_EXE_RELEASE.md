@@ -48,3 +48,7 @@ The reported `_casadi` crash exposed that missing acceptance gate.
 Version `0.8.3-beta-dev` is releasable only after its workflow is fully
 green. The artifact copy of `WINDOWS_RUNTIME_VALIDATION.md` records the exact
 run ID and commit, while `SHA256SUMS.txt` records both deliverable hashes.
+
+Accepted Windows validation: run `31728698072`, commit `b96e58c`, artifact
+`CWS_Convertor_0.8.3-beta-dev_Windows_x64`, digest
+`sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.

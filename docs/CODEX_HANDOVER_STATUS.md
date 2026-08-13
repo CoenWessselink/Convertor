@@ -21,10 +21,13 @@ This remains a development snapshot, not a production release.
 - Phase 2 adds the strict Workbench rebuild and four-format roundtrip chain;
   Windows run `31720996524` passed the full source/dist/portable/installer matrix.
 - Phase 3 adds atomic per-part/per-mark release packages, fresh four-format
-  validation, technical drawings, BOM extracts and release traceability; its
-  Windows run is pending.
+  validation, technical drawings, BOM extracts and release traceability;
+  Windows run `31728698072` passed the full matrix.
 - Phase 3 local verification passes 34/34 smoke scripts and 122 tests with
   seven explicit fixture-dependent skips.
+- Phase 3 artifact `9193020951` (`CWS_Convertor_0.8.3-beta-dev_Windows_x64`)
+  is 677,358,200 bytes with digest
+  `sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.
 - The ignored local reference registry pairs 481 models with 481 expected
   result files; all remain `manual_validation_required` and none are treated as
   validated engineering truth.

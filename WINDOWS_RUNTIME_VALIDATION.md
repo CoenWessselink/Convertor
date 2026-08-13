@@ -79,7 +79,10 @@ On 2026-08-13 the `0.8.3-beta-dev` source suite completed 34/34 smoke scripts:
 `0.8.2-alpha-dev` Windows run `31720996524` passed native selftest, GUI smoke,
 CLI, project cycle and NC1-to-STEP conversion independently from `dist`, a
 fresh portable extraction and a fresh Inno Setup installation. The current
-`0.8.3-beta-dev` packaged matrix remains pending until its workflow completes.
+`0.8.3-beta-dev` packaged matrix passed as run `31728698072` on commit
+`b96e58c`, including production-package creation in dist, portable and installed
+runtime. Artifact `CWS_Convertor_0.8.3-beta-dev_Windows_x64` has digest
+`sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.
 
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the

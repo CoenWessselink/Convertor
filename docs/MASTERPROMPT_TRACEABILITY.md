@@ -21,7 +21,7 @@ and must not be merged as an accidental substitute for the controlled handover.
 | 0 | Baseline, naming, repository, locks/SBOM, logging/errors, CI and Windows packaging proof | Machine-readable baseline, 31/31 smoke scripts and successful Windows run `31708776534` | Complete |
 | 1 | Project Model 2.x, storage/migrations/jobs and semantic IFC/STEP project import | Schema 2.4, `.cwscproj`, jobs, semantic import, versioned source locators, exact single-solid STEP resolution, verified IFC entity meshes and large-model evidence | Complete; Windows run `31712333345` passed |
 | 2 | Part Workbench plus deterministic canonical rebuild and all format gates | Schema 2.5/Workbench 1.1, exact arcs, custom sections, worked profiles, source comparison and hash-bound NC1/STEP/IFC/PDF matrix | Complete; Windows run `31720996524` passed |
-| 3 | Per-part/per-mark NC1/STEP/IFC/PDF outputs, BOMs and technical drawings | Atomic released packages, fresh four-format roundtrips, part/assembly drawings, assembly STEP/IFC, BOM extracts, labels, QR/hash manifests and runtime regression | Complete locally; Windows CI pending |
+| 3 | Per-part/per-mark NC1/STEP/IFC/PDF outputs, BOMs and technical drawings | Atomic released packages, fresh four-format roundtrips, part/assembly drawings, assembly STEP/IFC, BOM extracts, labels, QR/hash manifests and runtime regression | Complete; Windows run `31728698072` passed |
 | 4 | Main-app UX and controlled CWS Viewer integration | Tk project/production UI exists; viewer handover, exact scene integration, selection synchronization and integration tests remain | Not integrated |
 | 5 | Geometry identity, deduplication, revisions, purchasing, 1D cutting and 2D nesting | Classification/BOM and hash foundations exist; production-grade optimization and revision UX remain | Mostly open |
 | 6 | Stock, remnants, routes, machine profiles, postprocessors, planning, labels and traceability | Model scaffolding exists; validated machine capability/postprocessor chain is not implemented | Open and safety-blocked |
@@ -65,7 +65,7 @@ removing any requirement or allowing unsafe parallel feature work.
 | 17 | Canonical to IFC to canonical | Covered for validated plate and worked HEA fixtures |
 | 18 | Canonical to Trusted PDF to canonical | Covered for validated plate and worked HEA fixtures |
 | 19 | Unsupported feature cannot disappear silently | Covered |
-| 20 | All old regressions remain green | 34/34 smoke scripts, 122 local tests with seven explicit fixture skips; phase 3 Windows run pending |
+| 20 | All old regressions remain green | 34/34 smoke scripts, 122 local tests with seven explicit fixture skips; Windows run `31728698072` passed |
 
 ## Non-negotiable gates
 
