@@ -12,6 +12,7 @@ from .models import (
 from .readiness import ReadinessAssessment, ReadinessGate
 from .project_loader import LoadedProject, ProjectLoadError, load_project_snapshot
 from .verify import ExportVerificationError, verify_export_directory, verify_export_zip
+from .release import CORE_FORMATS, RELEASE_FORMATS, ProjectProductionExportEngine
 
 __all__ = [
     "ArtifactResult", "ArtifactStatus", "AssemblyPackageResult",
@@ -20,5 +21,6 @@ __all__ = [
     "LoadedProject", "ProductionExportEngine", "ProjectLoadError",
     "ReadinessAssessment", "ReadinessGate", "SUPPORTED_FORMATS",
     "load_project_snapshot",
+    "CORE_FORMATS", "RELEASE_FORMATS", "ProjectProductionExportEngine",
     "verify_export_directory", "verify_export_zip",
 ]

@@ -219,6 +219,10 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
         assert inspection["metrics"]["volume_mm3"] > 0.0, inspection
         _run([str(cli), "project-verify", str(project)], environment=environment, cwd=work)
 
+        native_details = {
+            check["name"]: dict(check.get("details") or {})
+            for check in native_result["checks"]
+        }
         summary = {
             "application_version": APP_VERSION,
             "label": label,
@@ -237,6 +241,9 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
                 "selection_verified": inspection["selection_verified"],
                 "production_geometry_exact": inspection["production_geometry_exact"],
             },
+            "production_package_smoke": native_details.get("project_roundtrips", {}).get(
+                "production_package", {"status": "missing"}
+            ),
         }
     summary_path = result_dir / f"{label}-packaged-runtime.json"
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")

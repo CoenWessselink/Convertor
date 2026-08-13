@@ -3,7 +3,7 @@ setlocal EnableExtensions
 set PYTHONUTF8=1
 cd /d "%~dp0"
 
-set "CWS_VERSION=0.8.2-alpha-dev"
+set "CWS_VERSION=0.8.3-beta-dev"
 set "CWS_DIST=CWS_Convertor"
 set "CWS_RESULTS=%CD%\validation\results\windows-runtime"
 set "CWS_PORTABLE=%TEMP%\CWS_Convertor_Portable_Clean"

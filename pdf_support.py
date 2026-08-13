@@ -48,6 +48,9 @@ from reportlab.lib.pagesizes import A1, A2, A3, A4, landscape, portrait
 from reportlab.lib.units import mm
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
+from reportlab.graphics import renderPDF
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing
 
 from ai_support import AIInterpretation, AISettings, interpret_drawing
 from canonical_model import (
@@ -927,6 +930,7 @@ def _draw_part_table(
         pdf.setFont("Helvetica-Bold", 6)
         pdf.drawCentredString(current + cell_width / 2, y + row_height + 2.3 * mm, header)
         current += cell_width
+
     values = [
         part.header.position_number or part.part_id,
         part.header.profile,
@@ -941,6 +945,31 @@ def _draw_part_table(
         pdf.setFont("Helvetica", 6.3)
         pdf.drawCentredString(current + cell_width / 2, y + 2.3 * mm, str(value)[:24])
         current += cell_width
+
+
+def _draw_part_trace_qr(pdf: canvas.Canvas, part: CanonicalPart, x: float, y: float) -> None:
+    uri = f"cws://part/{part.part_id}?geometry={part.geometry_sha256()[:16]}"
+    qr = QrCodeWidget(uri)
+    bounds = qr.getBounds()
+    size = 18 * mm
+    drawing = Drawing(
+        size,
+        size,
+        transform=[
+            size / (bounds[2] - bounds[0]),
+            0,
+            0,
+            size / (bounds[3] - bounds[1]),
+            0,
+            0,
+        ],
+    )
+    drawing.add(qr)
+    renderPDF.draw(drawing, pdf, x, y)
+    pdf.setFont("Helvetica", 5.2)
+    pdf.setFillColorRGB(0.15, 0.20, 0.25)
+    pdf.drawString(x + 20 * mm, y + 8 * mm, f"ID {part.part_id[:28]}")
+    pdf.drawString(x + 20 * mm, y + 4.5 * mm, f"Geometry {part.geometry_sha256()[:20]}")
 
 
 def render_part_pdf(
@@ -1095,6 +1124,7 @@ def render_part_pdf(
     pdf.drawString(margin + 3 * mm, table_y - 5 * mm, f"Totaal aantal keer uit te voeren: {int(part.header.quantity or 1)}")
 
     _draw_title_block(pdf, part, active, page_width, page_height, scale_label=scale_label)
+    _draw_part_trace_qr(pdf, part, margin + 3 * mm, margin + 3 * mm)
 
     warnings = list(dict.fromkeys(part.validation.warnings + part.warnings))
     questions = [item for item in part.validation.unresolved_questions if item.status == "open"]

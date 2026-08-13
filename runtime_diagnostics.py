@@ -288,10 +288,40 @@ def _project_roundtrip_check() -> dict[str, Any]:
                 name: Path(result["artifact_path"]).stat().st_size
                 for name, result in report["formats"].items()
             }
+            session.review_part_workbench(part.internal_id, user="runtime-self-test")
+            session.review_part_workbench(
+                part.internal_id,
+                user="runtime-self-test",
+                release=True,
+            )
+            from cws_convertor.production_export import (
+                ExportRequest,
+                ProjectProductionExportEngine,
+                RELEASE_FORMATS,
+                verify_export_directory,
+            )
+
+            package, package_root, _ = ProjectProductionExportEngine().export_project(
+                session.project,
+                ExportRequest(
+                    output_dir=Path(folder) / "release",
+                    formats=list(RELEASE_FORMATS),
+                    create_zip=False,
+                ),
+            )
+            verification = verify_export_directory(package_root)
+            if not package.summary.get("production_ready") or not verification.get("valid"):
+                raise AssertionError(f"Productiepakket runtime probe faalde: {package.to_dict()}")
         return {
             "status": report["status"],
             "formats": {name: item["status"] for name, item in report["formats"].items()},
             "artifact_bytes": artifacts,
+            "production_package": {
+                "status": "passed",
+                "formats": list(RELEASE_FORMATS),
+                "manifest_sha256": package.manifest_sha256,
+                "checked_files": verification["checked_files"],
+            },
         }
     finally:
         session.close()

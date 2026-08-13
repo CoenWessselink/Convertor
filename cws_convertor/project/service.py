@@ -875,6 +875,52 @@ class ProjectSession:
         outputs = export_bom_package(snapshot, output_dir, package_name=package_name)
         return snapshot, outputs
 
+    def export_production_package(
+        self,
+        output_dir: str | Path,
+        *,
+        formats: Iterable[str] | None = None,
+        part_ids: Iterable[str] = (),
+        assembly_marks: Iterable[str] = (),
+        filename_template: str = "{project}_{assembly_mark}_{part_position}_{profile}_{revision}_{identity}",
+        create_zip: bool = True,
+        include_blocked_review_files: bool = True,
+        user: str = "system",
+    ):
+        """Build one atomic, freshly roundtripped production release package."""
+
+        from cws_convertor.production_export import (
+            ExportRequest,
+            ProjectProductionExportEngine,
+            RELEASE_FORMATS,
+        )
+
+        self._ensure_writable()
+        request = ExportRequest(
+            output_dir=Path(output_dir),
+            formats=list(formats or RELEASE_FORMATS),
+            part_ids={str(item) for item in part_ids if str(item)},
+            assembly_marks={str(item) for item in assembly_marks if str(item)},
+            create_zip=create_zip,
+            filename_template=filename_template,
+            include_blocked_review_files=include_blocked_review_files,
+        )
+        manifest, root, zip_path = ProjectProductionExportEngine().export_project(
+            self.project, request
+        )
+        self.project.audit(
+            "project.production_package_exported",
+            user=user,
+            after_hash=manifest.manifest_sha256,
+            details={
+                "export_id": manifest.export_id,
+                "output": str(zip_path or root),
+                "summary": manifest.summary,
+            },
+        )
+        self.dirty = True
+        return manifest, root, zip_path
+
     def save(
         self,
         path: str | Path | None = None,
@@ -1442,6 +1488,38 @@ class ProjectService:
                 revision_message="BOM, inkooplijst en herkomstsnapshot bijgewerkt",
             )
             return snapshot, outputs
+
+    def export_production_package(
+        self,
+        project_path: str | Path,
+        output_dir: str | Path,
+        *,
+        formats: Iterable[str] | None = None,
+        part_ids: Iterable[str] = (),
+        assembly_marks: Iterable[str] = (),
+        filename_template: str = "{project}_{assembly_mark}_{part_position}_{profile}_{revision}_{identity}",
+        create_zip: bool = True,
+        include_blocked_review_files: bool = True,
+        user: str = "system",
+        embed_sources: bool = True,
+    ):
+        with ProjectSession.open(project_path, store=self.store) as session:
+            result = session.export_production_package(
+                output_dir,
+                formats=formats,
+                part_ids=part_ids,
+                assembly_marks=assembly_marks,
+                filename_template=filename_template,
+                create_zip=create_zip,
+                include_blocked_review_files=include_blocked_review_files,
+                user=user,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message="Vrijgegeven productie-exportpakket gebouwd",
+            )
+            return result
 
     def project_info(self, project_path: str | Path) -> dict:
         with ProjectSession.open(project_path, read_only=True, store=self.store) as session:

@@ -42,6 +42,11 @@ class ArtifactResult:
     media_type: str = "application/octet-stream"
     production_artifact: bool = False
     source: str = ""
+    object_id: str = ""
+    revision: str = ""
+    manufacturing_hash: str = ""
+    canonical_signature: str = ""
+    roundtrip_report_sha256: str = ""
     messages: list[GateMessage] = dataclass_field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -62,6 +67,11 @@ class ExportItemResult:
     messages: list[GateMessage] = dataclass_field(default_factory=list)
     source_entity_id: str = ""
     source_file_id: str = ""
+    quantity_total: int = 1
+    revision: str = ""
+    manufacturing_hash: str = ""
+    canonical_signature: str = ""
+    roundtrip_report_sha256: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -73,6 +83,11 @@ class ExportItemResult:
             "status": self.status.value,
             "source_entity_id": self.source_entity_id,
             "source_file_id": self.source_file_id,
+            "quantity_total": self.quantity_total,
+            "revision": self.revision,
+            "manufacturing_hash": self.manufacturing_hash,
+            "canonical_signature": self.canonical_signature,
+            "roundtrip_report_sha256": self.roundtrip_report_sha256,
             "messages": [m.to_dict() for m in self.messages],
             "artifacts": [a.to_dict() for a in self.artifacts],
         }
@@ -86,11 +101,15 @@ class AssemblyPackageResult:
     status: ExportStatus
     relative_path: str = ""
     sha256: str = ""
+    revision: str = ""
+    composition_sha256: str = ""
+    artifacts: list[ArtifactResult] = dataclass_field(default_factory=list)
     messages: list[GateMessage] = dataclass_field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["status"] = self.status.value
+        data["artifacts"] = [item.to_dict() for item in self.artifacts]
         return data
 
 

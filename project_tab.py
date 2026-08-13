@@ -128,6 +128,13 @@ class CWSProjectTab(ttk.Frame):
             style="CWS.Primary.TButton",
         )
         self.bom_button.pack(side="left", padx=(6, 0))
+        self.production_button = ttk.Button(
+            toolbar,
+            text="Productiepakket",
+            command=self.export_production_package,
+            style="CWS.Primary.TButton",
+        )
+        self.production_button.pack(side="left", padx=(6, 0))
         self.cancel_button = ttk.Button(
             toolbar,
             text="Annuleren",
@@ -685,6 +692,67 @@ class CWSProjectTab(ttk.Frame):
                 self.events.put(("error", ("BOM / Excel", str(exc))))
 
         threading.Thread(target=worker, daemon=True, name="cws-project-bom").start()
+
+    def export_production_package(self) -> None:
+        if self.session is None or not self.session.project.parts:
+            messagebox.showinfo(
+                "Productiepakket",
+                "Open eerst een project met vrijgegeven maakdelen.",
+                parent=self,
+            )
+            return
+        if self._busy or self.session.path is None:
+            return
+        output_dir = filedialog.askdirectory(
+            parent=self,
+            title="Map voor vrijgegeven productiepakketten",
+        )
+        if not output_dir:
+            return
+        try:
+            if self.session.dirty:
+                self.session.save(
+                    embed_sources=self.embed_sources.get(),
+                    user="gui",
+                    revision_message="Voor productie-export",
+                )
+        except Exception as exc:
+            messagebox.showerror("Project opslaan", str(exc), parent=self)
+            return
+        self._set_busy(
+            True,
+            "Vrijgaven controleren, alle partformaten opnieuw valideren en merkpakketten bouwen...",
+        )
+        project_path = Path(self.session.path)
+        embed_sources = self.embed_sources.get()
+
+        def worker() -> None:
+            working: ProjectSession | None = None
+            try:
+                working = ProjectSession.open(project_path, store=self.store)
+                manifest, root, zip_path = working.export_production_package(
+                    output_dir,
+                    user="gui",
+                )
+                working.save(
+                    embed_sources=embed_sources,
+                    user="gui",
+                    revision_message="Vrijgegeven productie-exportpakket gebouwd",
+                )
+                self.events.put(
+                    ("production_export_ok", (working, manifest, root, zip_path))
+                )
+                working = None
+            except Exception as exc:
+                if working is not None:
+                    working.close()
+                self.events.put(("error", ("Productiepakket", str(exc))))
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+            name="cws-project-production-export",
+        ).start()
 
     def confirm_selected_classification(self) -> None:
         selected = list(self.part_grid.selection())
@@ -1270,6 +1338,7 @@ class CWSProjectTab(ttk.Frame):
             self.semantic_button,
             self.classify_button,
             self.bom_button,
+            self.production_button,
             self.report_button,
             self.extract_button,
         ):
@@ -1351,6 +1420,24 @@ class CWSProjectTab(ttk.Frame):
                         f"Inkoopgroepen: {snapshot.summary['purchase_group_count']}\n"
                         f"Blokkerende conflicten: {snapshot.summary['blocking_conflict_count']}\n\n"
                         f"Pakket: {package or 'uitvoermap'}",
+                        parent=self,
+                    )
+                elif event == "production_export_ok":
+                    session, manifest, root, zip_path = payload
+                    self._replace_session(session)
+                    ready = bool(manifest.summary.get("production_ready"))
+                    self._set_busy(
+                        False,
+                        "Productiepakket gereed" if ready else "Productiepakket bevat blokkades",
+                    )
+                    self.refresh()
+                    messagebox.showinfo(
+                        "Productiepakket gereed",
+                        f"Onderdelen: {manifest.summary['selected_parts']}\n"
+                        f"Merkpakketten: {manifest.summary['assemblies']}\n"
+                        f"Productieartefacten: {manifest.summary['production_artifacts_exported']}\n"
+                        f"Status: {'VRIJGEGEVEN' if ready else 'GEBLOKKEERD / REVIEW'}\n\n"
+                        f"Pakket: {zip_path or root}",
                         parent=self,
                     )
                 elif event == "semantic_cancelled":

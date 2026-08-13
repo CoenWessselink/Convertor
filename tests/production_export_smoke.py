@@ -4,6 +4,11 @@ import json
 import tempfile
 import zipfile
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.production_export import ExportRequest, ProductionExportEngine
 from cws_convertor.production_export.project_loader import load_project_snapshot

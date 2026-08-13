@@ -346,6 +346,31 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="Schrijf de lijst als JSON")
     _report_arg(p)
 
+    for command, help_text in (
+        ("project-export-parts", "Exporteer vrijgegeven onderdelen met verse roundtripcontrole"),
+        ("project-export-assemblies", "Exporteer vrijgegeven merk-/assemblypakketten"),
+    ):
+        p = sub.add_parser(command, help=help_text)
+        p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+        p.add_argument("-o", "--output", required=True, help="Uitvoermap voor productiepaketten")
+        p.add_argument(
+            "--format",
+            default="nc1,step,ifc,production_pdf,dxf,csv,label_pdf,preview_png,json",
+            help="Komma-gescheiden partformaten",
+        )
+        p.add_argument("--part-id", action="append", default=[], help="Beperk tot part-ID; herhaalbaar")
+        p.add_argument("--assembly-mark", action="append", default=[], help="Beperk tot merk; herhaalbaar")
+        p.add_argument(
+            "--name-template",
+            default="{project}_{assembly_mark}_{part_position}_{profile}_{revision}_{identity}",
+            help="Conflictveilig bestandsnaamsjabloon",
+        )
+        p.add_argument("--no-zip", action="store_true", help="Maak alleen de gecontroleerde map")
+        p.add_argument("--no-embed", action="store_true")
+        p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+        p.add_argument("--json", action="store_true", help="Schrijf exportmanifest als JSON")
+        _report_arg(p)
+
     p = sub.add_parser(
         "project-inspect-source-geometry",
         help="Isoleer en controleer de brongeometrie van één projectonderdeel",
@@ -631,6 +656,50 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             payload = {"converter_version": APP_VERSION, "command": args.command, "status": "failed", "error": _exception_payload(exc)}
             print(f"FOUT handmatige classificatie: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command in {"project-export-parts", "project-export-assemblies"}:
+        try:
+            formats = [item.strip() for item in args.format.split(",") if item.strip()]
+            manifest, root, zip_path = service.export_production_package(
+                args.project,
+                args.output,
+                formats=formats,
+                part_ids=args.part_id,
+                assembly_marks=args.assembly_mark,
+                filename_template=args.name_template,
+                create_zip=not args.no_zip,
+                user=args.user or "cli",
+                embed_sources=not args.no_embed,
+            )
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "passed" if manifest.summary.get("production_ready") else "review_required",
+                "output_directory": str(root),
+                "zip": str(zip_path) if zip_path else "",
+                "manifest_sha256": manifest.manifest_sha256,
+                "summary": manifest.summary,
+                "items": [item.to_dict() for item in manifest.items],
+                "assemblies": [item.to_dict() for item in manifest.assemblies],
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"Productiepakket: {zip_path or root}")
+                print(f"Onderdelen: {manifest.summary['selected_parts']} | Merken: {manifest.summary['assemblies']}")
+                print(f"Vrijgave: {'GEREED' if manifest.summary.get('production_ready') else 'GEBLOKKEERD / REVIEW'}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK if manifest.summary.get("production_ready") else EXIT_REVIEW_REQUIRED
+        except Exception as exc:
+            payload = {
+                "converter_version": APP_VERSION,
+                "command": args.command,
+                "status": "failed",
+                "error": _exception_payload(exc),
+            }
+            print(f"FOUT productie-export: {exc}", file=sys.stderr)
             _write_aggregate_report(args.json_report, payload)
             return EXIT_FAILED
 

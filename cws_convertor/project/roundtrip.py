@@ -15,6 +15,7 @@ import converter as nc1
 from canonical_model import (
     CanonicalContour,
     CanonicalContourPoint,
+    CanonicalDrawingData,
     CanonicalHeader,
     CanonicalHole,
     CanonicalPart,
@@ -195,7 +196,22 @@ def canonical_part_from_workbench(
         properties={
             "manufacturing_hash": part.manufacturing_hash,
             "source_geometry_hash": part.workbench["source_geometry"]["source_geometry_hash"],
+            "assembly_ids": sorted(part.assembly_ids),
+            "quantity_total": max(1, int(part.quantity_total or 1)),
+            "revision": part.revision,
         },
+        drawing=CanonicalDrawingData(
+            drawing_status=(
+                "released"
+                if str(revision.get("review_status") or "") == "released"
+                else "review"
+            ),
+            title_block={
+                "subject": part.name or part.part_position or part.internal_id,
+                "revision": part.revision,
+                "assembly_ids": sorted(part.assembly_ids),
+            },
+        ),
     )
     canonical.validation.export_status = "validated"
     canonical.validate()

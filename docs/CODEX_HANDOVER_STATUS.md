@@ -3,10 +3,10 @@
 ## Current identity
 
 - Product: **CWS Convertor**
-- Development snapshot: `0.8.2-alpha-dev`
+- Development snapshot: `0.8.3-beta-dev`
 - Project Model schema: `2.5`
 - Core baseline source: `d6b855a`
-- Active core phase branch: `feature/core-phase-2-workbench-roundtrip`
+- Active core phase branch: `feature/core-phase-3-production-package-drawings`
 
 This remains a development snapshot, not a production release.
 
@@ -20,6 +20,11 @@ This remains a development snapshot, not a production release.
   seven explicit fixture-dependent skips; Windows run `31712333345` passed.
 - Phase 2 adds the strict Workbench rebuild and four-format roundtrip chain;
   Windows run `31720996524` passed the full source/dist/portable/installer matrix.
+- Phase 3 adds atomic per-part/per-mark release packages, fresh four-format
+  validation, technical drawings, BOM extracts and release traceability; its
+  Windows run is pending.
+- Phase 3 local verification passes 34/34 smoke scripts and 122 tests with
+  seven explicit fixture-dependent skips.
 - The ignored local reference registry pairs 481 models with 481 expected
   result files; all remain `manual_validation_required` and none are treated as
   validated engineering truth.
@@ -44,7 +49,7 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 - isolated IFC geometry workers for the Windows native runtime;
 - Project Model 2.5 and `.cwscproj` storage/migrations/jobs;
 - deterministic classification and BOM draft;
-- guarded per-part/per-mark production-package export draft;
+- guarded per-part/per-mark production-package export with fresh roundtrips;
 - Part Workbench 1.1 with analytical arcs, custom sections, worked profiles,
   deterministic canonical rebuild and hash-bound NC1/STEP/IFC/PDF roundtrips;
 - GUI/CLI foundations;
@@ -54,7 +59,7 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 
 - exact selected IFC BREP and multi-solid STEP BREP isolation;
 - unsupported slots, pockets, chamfers and complex end operations in canonical rebuild;
-- complete technical part and assembly drawings;
+- true hidden-line removal, editable drawing layouts and complex section/detail views;
 - true LO4 and P1811 binary regressions in the active fixture layout;
 - validated engineering expectations for the local reference registry;
 - controlled CWS Viewer handover and main-app integration;
@@ -64,7 +69,6 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 
 ## Next core work
 
-After phase 1 passes its full local suite and Windows CI, continue with the
-bounded Part Workbench/canonical rebuild and per-format roundtrip gaps. Do not
-start optimization or machine output before the production-feature and
-roundtrip gates are reliable.
+After phase 3 passes its full local suite and Windows CI, continue with the
+controlled CWS Viewer integration phase. Do not start optimization or machine
+output before real owner-validated production references pass the release gate.

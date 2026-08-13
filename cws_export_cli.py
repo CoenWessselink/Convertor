@@ -5,8 +5,9 @@ import json
 import sys
 from pathlib import Path
 
-from cws_convertor.production_export import ExportRequest, ProductionExportEngine, load_project_snapshot
+from cws_convertor.production_export import RELEASE_FORMATS
 from cws_convertor.production_export.verify import verify_export_directory, verify_export_zip
+from cws_convertor.project import ProjectService
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -18,11 +19,15 @@ def _parser() -> argparse.ArgumentParser:
     export = sub.add_parser("project-export", help="Maak een gecontroleerd productie-/reviewpakket")
     export.add_argument("project")
     export.add_argument("--output", required=True)
-    export.add_argument("--formats", default="json,review_pdf,nc1,step,ifc,production_pdf")
+    export.add_argument("--formats", default=",".join(RELEASE_FORMATS))
     export.add_argument("--part-id", action="append", default=[])
     export.add_argument("--assembly-mark", action="append", default=[])
     export.add_argument("--no-zip", action="store_true")
     export.add_argument("--no-blocked-review", action="store_true")
+    export.add_argument(
+        "--name-template",
+        default="{project}_{assembly_mark}_{part_position}_{profile}_{revision}_{identity}",
+    )
     export.add_argument("--json", action="store_true", dest="json_output")
 
     verify = sub.add_parser("project-export-verify", help="Controleer manifest, CRC en SHA-256")
@@ -34,20 +39,21 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "project-export":
-        loaded = load_project_snapshot(args.project)
-        request = ExportRequest(
-            output_dir=Path(args.output),
+        manifest, root, zip_path = ProjectService().export_production_package(
+            args.project,
+            Path(args.output),
             formats=[f.strip() for f in args.formats.split(",") if f.strip()],
-            part_ids=set(args.part_id),
-            assembly_marks=set(args.assembly_mark),
-            include_blocked_review_files=not args.no_blocked_review,
+            part_ids=args.part_id,
+            assembly_marks=args.assembly_mark,
+            filename_template=args.name_template,
             create_zip=not args.no_zip,
+            include_blocked_review_files=not args.no_blocked_review,
+            user="export-cli",
         )
-        manifest, root, zip_path = ProductionExportEngine().export_project(loaded.snapshot, request)
         result = {
             "output_directory": str(root),
             "zip": str(zip_path) if zip_path else "",
-            "source_sha256": loaded.source_sha256,
+            "project_state_hash": manifest.project_state_hash,
             "summary": manifest.summary,
             "manifest_sha256": manifest.manifest_sha256,
         }

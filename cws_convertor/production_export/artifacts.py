@@ -45,6 +45,14 @@ def media_type(fmt: str) -> str:
         "production_pdf": "application/pdf",
         "review_pdf": "application/pdf",
         "json": "application/json",
+        "csv": "text/csv",
+        "dxf": "image/vnd.dxf",
+        "label_pdf": "application/pdf",
+        "preview_png": "image/png",
+        "assembly_pdf": "application/pdf",
+        "assembly_step": "model/step",
+        "assembly_ifc": "application/x-step",
+        "assembly_zip": "application/zip",
         "source": "application/octet-stream",
     }.get(fmt, "application/octet-stream")
 
@@ -58,6 +66,10 @@ def extension(fmt: str) -> str:
         "production_pdf": ".pdf",
         "review_pdf": ".pdf",
         "json": ".json",
+        "csv": ".csv",
+        "dxf": ".dxf",
+        "label_pdf": ".pdf",
+        "preview_png": ".png",
         "source": ".bin",
     }.get(fmt, f".{fmt}")
 

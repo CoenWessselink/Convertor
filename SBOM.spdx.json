@@ -18,8 +18,8 @@
   "documentDescribes": [
     "SPDXRef-Package-0-CWS-Convertor"
   ],
-  "documentNamespace": "https://cws.local/spdx/CWS-Convertor-0.8.2-alpha-dev-1475157a-2c33-4dc7-9bed-892cb9c8c7fe",
-  "name": "CWS Convertor 0.8.2-alpha-dev direct dependency SBOM",
+  "documentNamespace": "https://cws.local/spdx/CWS-Convertor-0.8.3-beta-dev-862a9b07-f947-4d04-9db8-aa135d34b7e6",
+  "name": "CWS Convertor 0.8.3-beta-dev direct dependency SBOM",
   "packages": [
     {
       "SPDXID": "SPDXRef-Package-0-CWS-Convertor",
@@ -30,7 +30,7 @@
       "licenseDeclared": "NOASSERTION",
       "name": "CWS-Convertor",
       "primaryPackagePurpose": "APPLICATION",
-      "versionInfo": "0.8.2-alpha-dev"
+      "versionInfo": "0.8.3-beta-dev"
     },
     {
       "SPDXID": "SPDXRef-Package-1-cadquery",
@@ -211,6 +211,24 @@
       "name": "casadi",
       "primaryPackagePurpose": "LIBRARY",
       "versionInfo": "3.7.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-11-ezdxf",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/ezdxf@1.4.4",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "ezdxf",
+      "primaryPackagePurpose": "LIBRARY",
+      "versionInfo": "1.4.4"
     }
   ],
   "relationships": [
@@ -261,6 +279,11 @@
     },
     {
       "relatedSpdxElement": "SPDXRef-Package-10-casadi",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-11-ezdxf",
       "relationshipType": "DEPENDS_ON",
       "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
     }

@@ -8,6 +8,7 @@ __pycache__/
 *.spec
 *.log
 NC1_STEP_Output/
+output/
 reference-models-local/
 reference-results-local/
 validation/results/windows-runtime/

@@ -619,6 +619,15 @@ def _sync_part_issues(part: Part, revision: Mapping[str, Any]) -> None:
 def _sync_part_state(part: Part) -> None:
     state = part.workbench
     revision = dict(state.get("current_revision") or {})
+    dimensions = dict(revision.get("dimensions") or {})
+    recognition = dict(revision.get("recognition") or {})
+    length = dimensions.get("length_mm")
+    if isinstance(length, (int, float)) and not isinstance(length, bool) and float(length) > 0.0:
+        part.length_mm = float(length)
+    candidate = str(recognition.get("candidate") or "").strip()
+    if candidate and bool(recognition.get("confirmed")):
+        part.profile = candidate
+        part.normalized_profile = candidate
     part.production_features = deepcopy(list(revision.get("features") or []))
     part.reference_sides = [
         str(item.get("side_id"))
@@ -1028,6 +1037,24 @@ def record_canonical_rebuild(
         "invalidated_at": "",
         "invalidated_reason": "",
     }
+    metrics = dict(payload.get("canonical_metrics") or {})
+    area_mm2 = metrics.get("area_mm2")
+    volume_mm3 = metrics.get("volume_mm3")
+    if isinstance(area_mm2, (int, float)) and not isinstance(area_mm2, bool):
+        part.surface_area_each_m2 = float(area_mm2) / 1_000_000.0
+    if isinstance(volume_mm3, (int, float)) and not isinstance(volume_mm3, bool):
+        from material_database import MaterialDatabase, normalise_material
+
+        material_key = normalise_material(
+            part.normalized_material or part.material_grade or part.material
+        )
+        matches = [
+            item
+            for item in MaterialDatabase().materials
+            if material_key and material_key in item.search_names
+        ]
+        if len(matches) == 1:
+            part.mass_each_kg = float(volume_mm3) / 1_000_000_000.0 * matches[0].density_kg_m3
     part.workbench["canonical_rebuild"] = record
     part.modified_at = utc_now_iso()
     validate_workbench_state(part, part.workbench)

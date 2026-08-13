@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = Path(SPECPATH)
 
-packages = ["cadquery", "OCP", "casadi", "matplotlib", "numpy", "scipy", "PIL", "ifcopenshell", "xlsxwriter", "pymupdf", "pypdf", "reportlab"]
+packages = ["cadquery", "OCP", "casadi", "matplotlib", "numpy", "scipy", "PIL", "ifcopenshell", "xlsxwriter", "pymupdf", "pypdf", "reportlab", "ezdxf"]
 binaries = []
 datas = [
     (str(ROOT / "profiles.json"), "."),

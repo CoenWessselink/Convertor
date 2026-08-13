@@ -24,6 +24,8 @@ def main() -> int:
     assert checks["scientific_rendering"]["rendered_bytes"] > 0
     assert checks["project_roundtrips"]["status"] == "passed"
     assert set(checks["project_roundtrips"]["formats"]) == {"nc1", "step", "ifc", "pdf"}
+    assert checks["project_roundtrips"]["production_package"]["status"] == "passed"
+    assert checks["project_roundtrips"]["production_package"]["checked_files"] >= 10
     print("windows_native_runtime_smoke: OK")
     return 0
 

@@ -2,7 +2,7 @@
 
 ## Release
 
-- Application: CWS Convertor 0.8.2-alpha-dev
+- Application: CWS Convertor 0.8.3-beta-dev
 - Platform: Windows 10/11 x64
 - Runtime: bundled CPython 3.12 via PyInstaller onedir
 - External requirements: no Python, pip, virtual environment or manual DLL install
@@ -30,6 +30,7 @@ failing GUI import chain.
 - `CWS_Convertor.exe --self-test` executes native and functional runtime checks.
 - `CWS_Convertor.exe --gui-smoke` creates the main window, processes the event loop and closes it.
 - The packaged regression performs an NC1-to-STEP conversion and project create/read cycle.
+- The native runtime self-test releases and verifies a complete canonical production package.
 
 ## Native checks
 
@@ -73,11 +74,12 @@ Actions job summary so they remain inspectable without downloading the artifact.
 
 ## Local Windows evidence
 
-On 2026-08-13 the source suite completed 30/30 smoke scripts. The new Windows
-build then passed the native selftest, GUI smoke, CLI, project cycle and
-NC1-to-STEP conversion independently from `dist`, a fresh portable extraction
-and a fresh Inno Setup installation. Python and pip were absent from every
-packaged child `PATH`. Silent uninstall removed both executables.
+On 2026-08-13 the `0.8.3-beta-dev` source suite completed 34/34 smoke scripts:
+122 tests passed with seven explicit fixture-dependent skips. The prior
+`0.8.2-alpha-dev` Windows run `31720996524` passed native selftest, GUI smoke,
+CLI, project cycle and NC1-to-STEP conversion independently from `dist`, a
+fresh portable extraction and a fresh Inno Setup installation. The current
+`0.8.3-beta-dev` packaged matrix remains pending until its workflow completes.
 
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the

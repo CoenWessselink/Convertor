@@ -38,7 +38,18 @@ from .utils import (
     utc_now_iso,
 )
 
-SUPPORTED_FORMATS = ("json", "review_pdf", "nc1", "step", "ifc", "production_pdf")
+SUPPORTED_FORMATS = (
+    "json",
+    "review_pdf",
+    "nc1",
+    "step",
+    "ifc",
+    "production_pdf",
+    "dxf",
+    "csv",
+    "label_pdf",
+    "preview_png",
+)
 
 
 @dataclass(slots=True)
@@ -51,6 +62,9 @@ class ExportRequest:
     include_blocked_review_files: bool = True
     create_zip: bool = True
     deterministic_zip: bool = True
+    filename_template: str = (
+        "{project}_{assembly_mark}_{part_position}_{profile}_{revision}_{identity}"
+    )
 
     def normalized_formats(self) -> list[str]:
         result: list[str] = []

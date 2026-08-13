@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.3-beta-dev - Released production packages and drawings
+
+- Atomic per-part and per-assembly-mark release packages added to Project Model workflows.
+- Every release re-runs the canonical NC1, STEP, IFC and Trusted PDF import comparison.
+- Part artifacts include production/review PDF, optional plate DXF, CSV, JSON, label PDF and preview PNG.
+- Assembly packages include A3 vector drawings, semantic STEP/IFC, NC/PDF folders, BOM extracts and a total report.
+- Artifact identity, revision, manufacturing hash, canonical signature, roundtrip report hash and SHA-256 are recorded.
+- Duplicate visible positions with different manufacturing identities and stale releases are hard-blocked.
+- Project GUI, main CLI, export CLI, packaged runtime smoke and Windows build dependencies cover the release path.
+- External reference models remain `manual_validation_required`; this version does not infer golden values.
+
 ## 0.8.2-alpha-dev - Part Workbench production roundtrips
 
 - Project Model 2.5 and Part Workbench 1.1 bind the recognition candidate to the manufacturing hash.

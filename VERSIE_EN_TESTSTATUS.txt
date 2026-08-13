@@ -2,11 +2,11 @@ CWS CONVERTOR — VERSIE- EN TESTSTATUS
 ====================================
 
 Product:             CWS Convertor
-Versie:              0.8.2-alpha-dev
+Versie:              0.8.3-beta-dev
 Project Model:       2.5
 Projectbestand:      .cwscproj
-Fase:                Part Workbench - deterministic rebuild en formaat-roundtrips
-Productiestatus:     ALPHA - per-part vrijgave getest; golden projectvalidatie blijft vereist
+Fase:                Vrijgegeven productiepakketten, BOM en technische tekeningen
+Productiestatus:     BETA-DEV - synthetische releaseketen getest; golden projectvalidatie blijft vereist
 
 NIEUW IN DEZE VERSIE
 --------------------
@@ -39,6 +39,11 @@ NIEUW IN DEZE VERSIE
 - Windows-buildstraat voert automatisch alle smoke-scripts uit.
 - CasADi 3.7.2 en de volledige native DLL-keten zijn expliciet gebundeld.
 - Dist, portable en installer worden met native selftest, echte GUI en NC1-naar-STEP getest zonder Python op child-PATH.
+- Atomair productie-exportpakket per onderdeel en per assemblymerk.
+- Verse NC1/STEP/IFC/Trusted-PDF-roundtrip bij iedere vrijgegeven export.
+- Part-PDF, merk-PDF, STEP/IFC-assembly, plaat-DXF, labels, previews en BOM-bestanden.
+- QR-identiteit, manifesten, totaalrapporten, SHA-256 en deterministische ZIP-pakketten.
+- Harde blokkade bij verouderde vrijgave of gelijke posnummers met verschillende maakidentiteit.
 
 REFERENTIE-IFC
 --------------
@@ -70,9 +75,10 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts lokale ontwikkelrun:   118 tests / 7 skips geslaagd
+Smoke-scripts lokale ontwikkelrun:    34/34 scripts; 122 tests / 7 skips geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Canonical rebuild-tests:               6/6 geslaagd
+Productiepakket-tests:                 4/4 geslaagd
 Referentiemodelcatalogus:           481/481 gekoppeld
 Handmatige referentievalidering:       0/481 afgerond
 
@@ -83,6 +89,9 @@ BELANGRIJKE GRENZEN
 - Slots, pockets, chamfers en complexe eindbewerkingen zijn nog rebuild-geblokkeerd.
 - Custom doorsneden en expliciete boogsegmenten zijn nog niet verliesvrij naar NC1 te serialiseren.
 - Optimalisatie en machinejobs blijven geblokkeerd.
+- Merkprojecties zijn vector-wireframes zonder true hidden-line removal.
+- DXF-export is beperkt tot ondersteunde analytische plaatcontouren.
+- Grote productie-export wacht op een door de eigenaar gevalideerd, vrijgegeven groot model.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
 - GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
 - Windows CI-run 31720996524: source, dist, portable, installer, geïnstalleerde runtime en uninstall geslaagd.

@@ -30,7 +30,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.8.2-alpha-dev
+      CWS_VERSION: 0.8.3-beta-dev
       RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:
@@ -71,6 +71,8 @@ jobs:
           python cli.py project-list-parts --help
           python cli.py project-rebuild-canonical --help
           python cli.py project-validate-roundtrips --help
+          python cli.py project-export-parts --help
+          python cli.py project-export-assemblies --help
           python cli.py project-migrate --help
 
       - name: Source project contract smoke
