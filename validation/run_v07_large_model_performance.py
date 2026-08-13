@@ -11,7 +11,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-import resource
 import sys
 import time
 
@@ -26,6 +25,47 @@ REFERENCE_NAME = "Samenstel nieuw - 11881_Predeterminado (1).step"
 
 
 def max_rss_mb() -> float:
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessMemoryCounters(ctypes.Structure):
+            _fields_ = [
+                ("cb", wintypes.DWORD),
+                ("PageFaultCount", wintypes.DWORD),
+                ("PeakWorkingSetSize", ctypes.c_size_t),
+                ("WorkingSetSize", ctypes.c_size_t),
+                ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                ("PagefileUsage", ctypes.c_size_t),
+                ("PeakPagefileUsage", ctypes.c_size_t),
+            ]
+
+        counters = ProcessMemoryCounters()
+        counters.cb = ctypes.sizeof(counters)
+        get_current_process = ctypes.windll.kernel32.GetCurrentProcess
+        get_current_process.argtypes = []
+        get_current_process.restype = wintypes.HANDLE
+        get_process_memory_info = ctypes.windll.psapi.GetProcessMemoryInfo
+        get_process_memory_info.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(ProcessMemoryCounters),
+            wintypes.DWORD,
+        ]
+        get_process_memory_info.restype = wintypes.BOOL
+        process = get_current_process()
+        if not get_process_memory_info(
+            process,
+            ctypes.byref(counters),
+            counters.cb,
+        ):
+            raise OSError("Windows process memory counters kunnen niet worden gelezen")
+        return float(counters.PeakWorkingSetSize) / (1024.0 * 1024.0)
+
+    import resource
+
     value = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     # Linux reports KiB; macOS reports bytes.
     return value / (1024.0 * 1024.0) if sys.platform == "darwin" else value / 1024.0
@@ -95,7 +135,7 @@ def main() -> int:
     payload = {
         "app_name": APP_NAME,
         "app_version": APP_VERSION,
-        "reference": str(source),
+        "reference": source.name,
         "size_bytes": source.stat().st_size,
         "elapsed_seconds": round(elapsed, 6),
         "max_rss_mb": round(rss, 3),

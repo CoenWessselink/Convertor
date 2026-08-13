@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cws-convertor.local/reference-result.schema.json",
+  "title": "CWS Convertor Reference Result",
+  "type": "object",
+  "required": ["schemaVersion", "model", "validation", "comparison"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "model": {
+      "type": "object",
+      "required": ["id", "path", "format", "confidential"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "format": { "enum": ["STEP", "IFC", "DSTV"] },
+        "confidential": { "type": "boolean" }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["validated", "manual_validation_required"] },
+        "validatedBy": { "type": "string" },
+        "validatedAt": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "properties": {
+        "exact": { "type": "object", "additionalProperties": true },
+        "tolerance": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["expected", "tolerance"],
+            "properties": {
+              "expected": { "type": "number" },
+              "tolerance": { "type": "number", "minimum": 0 },
+              "unit": { "type": "string" }
+            }
+          }
+        },
+        "metadata": { "type": "object", "additionalProperties": true },
+        "performance": {
+          "type": "object",
+          "properties": {
+            "maxParseMs": { "type": "number", "minimum": 0 },
+            "maxTotalMs": { "type": "number", "minimum": 0 },
+            "maxHeapDeltaMb": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}

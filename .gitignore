@@ -6,3 +6,5 @@ __pycache__/
 *.spec
 *.log
 NC1_STEP_Output/
+reference-models-local/
+reference-results-local/

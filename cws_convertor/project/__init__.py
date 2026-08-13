@@ -41,6 +41,11 @@ from .service import (
     SemanticImportResult,
     SourceRegistrationResult,
 )
+from .workbench import (
+    WORKBENCH_SCHEMA_VERSION,
+    evaluate_workbench_revision,
+    workbench_geometry_payload,
+)
 
 __all__ = [
     "ProjectModel",
@@ -79,4 +84,7 @@ __all__ = [
     "ProjectSession",
     "SourceRegistrationResult",
     "SemanticImportResult",
+    "WORKBENCH_SCHEMA_VERSION",
+    "evaluate_workbench_revision",
+    "workbench_geometry_payload",
 ]

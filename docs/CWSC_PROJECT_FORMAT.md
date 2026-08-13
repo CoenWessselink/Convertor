@@ -96,3 +96,25 @@ Een inhoudelijke wijziging kan een projectrevisie aanmaken. Bij normaal opslaan 
 Per bron worden strategie, importerversie, entitycounts, bronklassecounts, relatiecounts, spatial tree, geometry-samenvatting, bewijs, warnings en productiegate opgeslagen. Iedere gematerialiseerde entity verwijst via `SourceIdentity` terug naar bronbestand, bronhash en IFC/STEP-entity.
 
 Schema 2.0 wordt als compatibele minor-versie gemigreerd. Een onbekende major-versie opent niet stil als schrijfbaar project.
+
+## Part Workbench in schema 2.4
+
+Schema 2.4 voegt per onderdeel een optionele `workbench`-sectie toe. Bestaande
+onderdelen zonder deze sectie behouden hun bestaande geometry- en manufacturing
+hashes. Een gestarte Workbench bewaart:
+
+- de onveranderlijke bronbestand- en brongeometriehash;
+- de actuele analytische partrevisie en append-only revisiesnapshots;
+- rechterhandige productie-assen, referentiezijden, contouren en features;
+- provenance, open vragen en actuele blokkerende validatie-issues;
+- een gehasht commandolog met cursor voor undo/redo;
+- afgeleide artefacten met de manufacturing hash waarvoor ze zijn gemaakt.
+
+Een wijziging in productiegeometrie of features berekent de part-hashes opnieuw.
+Artefacten met een andere manufacturing hash krijgen status `invalidated`.
+Globale projectplaatsing is geen onderdeel van de manufacturing identity;
+spiegeling blijft dat wel.
+
+Project Model 2.0, 2.1, 2.2 en 2.3 worden expliciet naar 2.4 gemigreerd. Bij
+migratie wordt een lege Workbench-sectie toegevoegd; er worden geen
+productiefeatures of verwachte waarden verzonnen.

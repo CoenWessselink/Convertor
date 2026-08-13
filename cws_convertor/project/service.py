@@ -39,6 +39,14 @@ from .classification import (
     classify_project as classify_project_model,
     set_manual_part_classification,
 )
+from .workbench import (
+    redo_part_workbench as redo_project_part_workbench,
+    register_part_artifact as register_project_part_artifact,
+    review_part_workbench as review_project_part_workbench,
+    start_part_workbench as start_project_part_workbench,
+    undo_part_workbench as undo_project_part_workbench,
+    update_part_workbench as update_project_part_workbench,
+)
 if TYPE_CHECKING:
     from cws_convertor.bom.models import BOMSnapshot
 
@@ -594,6 +602,96 @@ class ProjectSession:
             self._restore_after_mutation_failure(fallback, original_dirty)
             raise
 
+    def start_part_workbench(
+        self,
+        part_id: str,
+        *,
+        user: str,
+        source_geometry_hash: str | None = None,
+    ) -> dict:
+        """Create the immutable source reference and first editable revision."""
+
+        self._ensure_writable()
+        state = start_project_part_workbench(
+            self.project,
+            part_id,
+            user=user,
+            source_geometry_hash=source_geometry_hash,
+        )
+        self.dirty = True
+        return state
+
+    def update_part_workbench(
+        self,
+        part_id: str,
+        changes: dict,
+        *,
+        user: str,
+        reason: str,
+    ) -> dict:
+        self._ensure_writable()
+        state = update_project_part_workbench(
+            self.project,
+            part_id,
+            changes,
+            user=user,
+            reason=reason,
+        )
+        self.dirty = True
+        return state
+
+    def undo_part_workbench(self, part_id: str, *, user: str) -> dict:
+        self._ensure_writable()
+        state = undo_project_part_workbench(self.project, part_id, user=user)
+        self.dirty = True
+        return state
+
+    def redo_part_workbench(self, part_id: str, *, user: str) -> dict:
+        self._ensure_writable()
+        state = redo_project_part_workbench(self.project, part_id, user=user)
+        self.dirty = True
+        return state
+
+    def review_part_workbench(
+        self,
+        part_id: str,
+        *,
+        user: str,
+        release: bool = False,
+    ) -> dict:
+        self._ensure_writable()
+        state = review_project_part_workbench(
+            self.project,
+            part_id,
+            user=user,
+            release=release,
+        )
+        self.dirty = True
+        return state
+
+    def register_part_artifact(
+        self,
+        part_id: str,
+        *,
+        artifact_id: str,
+        artifact_format: str,
+        sha256: str,
+        user: str,
+        path: str = "",
+    ) -> dict:
+        self._ensure_writable()
+        artifact = register_project_part_artifact(
+            self.project,
+            part_id,
+            artifact_id=artifact_id,
+            artifact_format=artifact_format,
+            sha256=sha256,
+            user=user,
+            path=path,
+        )
+        self.dirty = True
+        return artifact
+
     def build_bom(
         self,
         *,
@@ -1002,6 +1100,112 @@ class ProjectService:
                 revision_message=f"Classificatie van onderdeel {part_id} bevestigd",
             )
             return report
+
+    def start_part_workbench(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        *,
+        user: str,
+        source_geometry_hash: str | None = None,
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            state = session.start_part_workbench(
+                part_id,
+                user=user,
+                source_geometry_hash=source_geometry_hash,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Part Workbench voor {part_id} gestart",
+            )
+            return state
+
+    def update_part_workbench(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        changes: dict,
+        *,
+        user: str,
+        reason: str,
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            state = session.update_part_workbench(
+                part_id,
+                changes,
+                user=user,
+                reason=reason,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=reason or f"Part Workbench voor {part_id} gewijzigd",
+            )
+            return state
+
+    def undo_part_workbench(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        *,
+        user: str,
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            state = session.undo_part_workbench(part_id, user=user)
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Part Workbench-commando voor {part_id} ongedaan gemaakt",
+            )
+            return state
+
+    def redo_part_workbench(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        *,
+        user: str,
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            state = session.redo_part_workbench(part_id, user=user)
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Part Workbench-commando voor {part_id} herhaald",
+            )
+            return state
+
+    def review_part_workbench(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        *,
+        user: str,
+        release: bool = False,
+        embed_sources: bool = True,
+    ) -> dict:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            state = session.review_part_workbench(
+                part_id,
+                user=user,
+                release=release,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=(
+                    f"Part Workbench voor {part_id} vrijgegeven"
+                    if release
+                    else f"Part Workbench voor {part_id} gevalideerd"
+                ),
+            )
+            return state
 
     def build_bom(
         self,

@@ -1,4 +1,4 @@
-"""Canonical Project Model 2.1 for CWS Convertor.
+"""Canonical Project Model 2.x for CWS Convertor.
 
 The project model sits above the existing :class:`canonical_model.CanonicalPart`.
 It adds stable project identity, assemblies, procurement, stock, production and
@@ -724,6 +724,7 @@ class Part(ProjectEntity):
     manufacturing_hash_version: str = MANUFACTURING_HASH_VERSION
     nc1_eligible: bool = False
     export_status: str = "blocked"
+    workbench: dict[str, Any] = field(default_factory=dict)
     classification_status: str = "unclassified"
     classification_method: str = ""
     classification_rule_id: str = ""
@@ -776,11 +777,16 @@ class Part(ProjectEntity):
         self.recompute_hashes()
 
     def _geometry_fingerprint_payload(self) -> dict[str, Any]:
+        workbench_payload: dict[str, Any] = {}
+        if self.workbench:
+            from .workbench import workbench_geometry_payload
+
+            workbench_payload = workbench_geometry_payload(self.workbench)
         canonical = self.canonical()
         if canonical is not None:
             frame = dict(canonical.coordinate_frame or {})
             frame["origin_mm"] = [0.0, 0.0, 0.0]
-            return {
+            payload = {
                 "version": self.hash_algorithm_version,
                 "coordinate_axes": frame,
                 "mirrored": self.mirrored,
@@ -799,6 +805,9 @@ class Part(ProjectEntity):
                 "holes": [asdict(item) for item in canonical.holes],
                 "geometry": canonical.geometry,
             }
+            if workbench_payload:
+                payload["workbench"] = workbench_payload
+            return payload
         descriptor = self.geometry_descriptor
         # Semantic IFC/STEP descriptors contain source entity IDs for audit and
         # viewer navigation.  Those occurrence IDs must never make otherwise
@@ -829,7 +838,7 @@ class Part(ProjectEntity):
                 "bbox_sorted_mm": descriptor.get("bbox_sorted_mm"),
                 "topology": descriptor.get("topology", {}),
             }
-        return {
+        payload = {
             "version": self.hash_algorithm_version,
             "descriptor": descriptor,
             "features": self.production_features,
@@ -838,6 +847,9 @@ class Part(ProjectEntity):
             "length_mm": self.length_mm,
             "mirrored": self.mirrored,
         }
+        if workbench_payload:
+            payload["workbench"] = workbench_payload
+        return payload
 
     def _manufacturing_fingerprint_payload(self, geometry_hash: str) -> dict[str, Any]:
         return {
@@ -863,6 +875,10 @@ class Part(ProjectEntity):
         return self.geometry_hash, self.manufacturing_hash
 
     def validate_hashes(self) -> None:
+        if self.workbench:
+            from .workbench import validate_workbench_state
+
+            validate_workbench_state(self, self.workbench)
         valid_statuses = {"unclassified", "automatic", "review_required", "confirmed", "blocked"}
         if self.classification_status not in valid_statuses:
             raise ProjectValidationError(
@@ -2325,8 +2341,11 @@ def migrate_project_dict(data: dict[str, Any]) -> dict[str, Any]:
         return raw
     if version == PROJECT_SCHEMA_VERSION:
         return raw
-    if version in {"2.0", "2.1", "2.2"} and PROJECT_SCHEMA_VERSION == "2.3":
+    if version in {"2.0", "2.1", "2.2", "2.3"} and PROJECT_SCHEMA_VERSION == "2.4":
         raw["schema_version"] = PROJECT_SCHEMA_VERSION
+        for part in dict(raw.get("parts") or {}).values():
+            if isinstance(part, dict):
+                part.setdefault("workbench", {})
         history = list(raw.get("migration_history") or [])
         history.append(
             {
@@ -2334,7 +2353,7 @@ def migrate_project_dict(data: dict[str, Any]) -> dict[str, Any]:
                 "to": PROJECT_SCHEMA_VERSION,
                 "timestamp": utc_now_iso(),
                 "reason": (
-                    "Classificatie-, normalisatie-, production-identity- en BOM-metadata toegevoegd."
+                    "Part Workbench-revisies, commandohistorie en artefactinvalidatie toegevoegd."
                 ),
             }
         )

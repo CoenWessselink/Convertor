@@ -9,6 +9,13 @@
 
 Versie **0.7.0-alpha** bouwt verder op de bewezen conversiekern en op Project Model 2.0 uit v0.6. De nieuwe fase materialiseert echte IFC-/STEP-semantiek als actieve assemblies, onderdelen, bouten en lassen in **Project Model 2.1**.
 
+De huidige `v0.8-codex-handover`-ontwikkeling gebruikt **Project Model 2.4**.
+Daarin is de eerste Part Workbench-fundering aanwezig: een onveranderlijke
+brongeometrieverwijzing, bewerkbare analytische revisies, rechterhandige
+productie-assen, referentiezijden, contouren en bewerkingen, provenance,
+blokkerende validatie, undo/redo en automatische artefactinvalidatie. De
+interactieve 3D/2D-editor en productie-roundtrips zijn nog niet afgerond.
+
 ## Veiligheidsarchitectuur
 
 ```text
@@ -22,7 +29,7 @@ Compleet IFC / STEP
           ↓
 Geverifieerde Part 21-brongrafiek
           ↓
-Canonical Project Model 2.1
+Canonical Project Model 2.4
           ↓
 Assemblies / parts / fasteners / welds
           ↓
@@ -234,7 +241,8 @@ cws_convertor/importers/ifc_project.py      semantische IFC-projectimport
 cws_convertor/importers/step_project.py     semantische STEP-projectimport
 cws_convertor/importers/semantic.py         gedeeld resultaat-/importcontract
 cws_convertor/project/semantic_import.py    broncontrole, purge, indexes en gate
-cws_convertor/project/model.py              Canonical Project Model 2.1
+cws_convertor/project/model.py              Canonical Project Model 2.4
+cws_convertor/project/workbench.py          partrevisies, validatie en undo/redo
 cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
 cws_convertor/project/service.py            transactionele GUI/CLI-service
 project_tab.py                              Project / Productie-interface
@@ -243,9 +251,8 @@ cli.py                                      conversie- en project-CLI
 
 ## Volgende bouwfase
 
-1. deterministische classificatie van maakdeel, inkoopdeel, fastener, las, niet-staal en onbekend;
-2. profiel-/materiaalherkenning en confidence;
-3. geometry-/manufacturing-conflicten en identieke delen;
-4. part-, assembly-, fastener-, weld- en inkoop-BOM;
-5. uitgebreide eigenschappengrid en onderdeeleditor;
-6. daarna pas per-part/per-merk productie-export.
+1. Part Workbench aansluiten op de echte project/part-selectie en 3D-viewer;
+2. gesynchroniseerde eigenschappengrid, featurelijst en 2D-tekening;
+3. deterministische canonical-solid rebuild en bron/canonical-vergelijking;
+4. NC1/STEP/IFC/PDF-roundtripvalidatie per ondersteunde onderdeelklasse;
+5. pas daarna per-part/per-merk productie-export vrijgeven.

@@ -1,0 +1,216 @@
+{
+  "app_name": "CWS Convertor",
+  "app_version": "0.8.0-alpha-dev",
+  "checks": {
+    "geometry_hash_present": true,
+    "manufacturing_hash_present": true,
+    "no_assembly": true,
+    "no_filename_split": true,
+    "one_part": true,
+    "one_product": true,
+    "one_solid": true,
+    "production_gate_closed": true,
+    "profile_worker_deferred": true,
+    "strategy_b": true,
+    "within_memory_guardrail": true,
+    "within_time_guardrail": true
+  },
+  "elapsed_seconds": 3.586015,
+  "guardrails": {
+    "max_rss_mb": 1536.0,
+    "max_seconds": 120.0
+  },
+  "max_rss_mb": 175.535,
+  "progress": [
+    {
+      "current": 0.0,
+      "fraction": 0.0,
+      "message": "Semantische import: Samenstel nieuw - 11881_Predeterminado (1).step",
+      "total": 1
+    },
+    {
+      "current": 0.02,
+      "fraction": 0.02,
+      "message": "STEP Part 21-grafiek lezen",
+      "total": 1
+    },
+    {
+      "current": 0.28,
+      "fraction": 0.28,
+      "message": "STEP products, occurrences en shapes indexeren",
+      "total": 1
+    },
+    {
+      "current": 0.45,
+      "fraction": 0.45,
+      "message": "STEP productschema en BREP-roots analyseren",
+      "total": 1
+    },
+    {
+      "current": 0.58,
+      "fraction": 0.58,
+      "message": "STEP placements en productidentiteit materialiseren",
+      "total": 1
+    },
+    {
+      "current": 0.88,
+      "fraction": 0.88,
+      "message": "STEP hashes, groepen en productiegate opbouwen",
+      "total": 1
+    },
+    {
+      "current": 1.0,
+      "fraction": 1.0,
+      "message": "STEP semantische import gereed",
+      "total": 1
+    },
+    {
+      "current": 1.0,
+      "fraction": 1.0,
+      "message": "Geïmporteerd: Samenstel nieuw - 11881_Predeterminado (1).step",
+      "total": 1
+    }
+  ],
+  "project_counts": {
+    "assembly": 0,
+    "fastener": 0,
+    "machine_job": 0,
+    "machine_profile": 0,
+    "part": 1,
+    "production_operation": 0,
+    "purchased_item": 0,
+    "remnant": 0,
+    "stock_item": 0,
+    "weld": 0
+  },
+  "reference": "Samenstel nieuw - 11881_Predeterminado (1).step",
+  "semantic_result": {
+    "blocking_reasons": [
+      "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+      "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+    ],
+    "classified_counts": {},
+    "completed_at": "2026-08-13T06:57:46+00:00",
+    "elapsed_seconds": 2.93965,
+    "entity_counts": {
+      "assemblies": 0,
+      "fasteners": 0,
+      "parts": 1,
+      "total_materialised": 1,
+      "welds": 0
+    },
+    "evidence": {
+      "all_current_products_preserved": true,
+      "ambiguous_geometry_review_required": false,
+      "cad_metrics": {},
+      "filename_not_used_for_splitting": true,
+      "geometry_groups": {
+        "c79fe0837e0f56e72bace8247bafe1047c4a22e79b1e86b88c41fa5cb526589d": [
+          "204f3115-b43a-54fe-8786-e4305f5994f5"
+        ]
+      },
+      "manufacturing_groups": {
+        "d2ad53e4dc490661ad00a9ff20d73344bb4844be4fa69639a6ae6232cd4d0da5": [
+          "204f3115-b43a-54fe-8786-e4305f5994f5"
+        ]
+      },
+      "materialised_part_count": 1,
+      "occurrence_count": 0,
+      "product_count": 1,
+      "product_records": [
+        {
+          "description": "11881_Predeterminado",
+          "entity_id": 131209,
+          "name": "11881_Predeterminado",
+          "product_definition_ids": [
+            131205
+          ],
+          "product_id": "11881_Predeterminado"
+        }
+      ],
+      "profile_recognition": {
+        "advanced_faces": 2582,
+        "reason": "Profielherkenning is uitgesteld naar de classificatiejob om dubbele zware CAD-import te voorkomen.",
+        "size_bytes": 9224690,
+        "status": "deferred_large_model"
+      },
+      "solid_root_count": 1,
+      "unshaped_product_count": 0
+    },
+    "file_name": "Samenstel nieuw - 11881_Predeterminado (1).step",
+    "geometry_summary": {},
+    "group_counts": {
+      "geometry_hashes": {
+        "c79fe0837e0f56e72bace8247bafe1047c4a22e79b1e86b88c41fa5cb526589d": 1
+      },
+      "manufacturing_hashes": {
+        "d2ad53e4dc490661ad00a9ff20d73344bb4844be4fa69639a6ae6232cd4d0da5": 1
+      }
+    },
+    "importer_version": "2.1",
+    "production_export_allowed": false,
+    "relationship_counts": {
+      "PRODUCT_DEFINITION_SHAPE": 1,
+      "SHAPE_REPRESENTATION_RELATIONSHIP": 1
+    },
+    "schema": "AP242_MANAGED_MODEL_BASED_3D_ENGINEERING_MIM_LF { 1 0 10303 442 3 1 4 }",
+    "semantic_import_complete": true,
+    "source_class_counts": {
+      "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+      "ADVANCED_FACE": 2582,
+      "APPLICATION_CONTEXT": 1,
+      "APPLICATION_PROTOCOL_DEFINITION": 1,
+      "AXIS2_PLACEMENT_3D": 2603,
+      "B_SPLINE_CURVE_WITH_KNOTS": 1977,
+      "B_SPLINE_SURFACE_WITH_KNOTS": 727,
+      "CARTESIAN_POINT": 73172,
+      "CIRCLE": 662,
+      "CLOSED_SHELL": 1,
+      "COLOUR_RGB": 1,
+      "CONICAL_SURFACE": 23,
+      "CYLINDRICAL_SURFACE": 341,
+      "DEGENERATE_TOROIDAL_SURFACE": 8,
+      "DIRECTION": 9233,
+      "EDGE_CURVE": 6802,
+      "EDGE_LOOP": 2711,
+      "ELLIPSE": 136,
+      "FACE_BOUND": 2711,
+      "FILL_AREA_STYLE": 1,
+      "FILL_AREA_STYLE_COLOUR": 1,
+      "LINE": 4027,
+      "MANIFOLD_SOLID_BREP": 1,
+      "MECHANICAL_DESIGN_GEOMETRIC_PRESENTATION_REPRESENTATION": 1,
+      "ORIENTED_EDGE": 13604,
+      "PLANE": 1272,
+      "PRESENTATION_STYLE_ASSIGNMENT": 1,
+      "PRODUCT": 1,
+      "PRODUCT_CATEGORY": 1,
+      "PRODUCT_CONTEXT": 1,
+      "PRODUCT_DEFINITION": 1,
+      "PRODUCT_DEFINITION_CONTEXT": 1,
+      "PRODUCT_DEFINITION_FORMATION_WITH_SPECIFIED_SOURCE": 1,
+      "PRODUCT_DEFINITION_SHAPE": 1,
+      "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+      "SHAPE_DEFINITION_REPRESENTATION": 1,
+      "SHAPE_REPRESENTATION": 1,
+      "SHAPE_REPRESENTATION_RELATIONSHIP": 1,
+      "SPHERICAL_SURFACE": 37,
+      "STYLED_ITEM": 1,
+      "SURFACE_SIDE_STYLE": 1,
+      "SURFACE_STYLE_FILL_AREA": 1,
+      "SURFACE_STYLE_USAGE": 1,
+      "TOROIDAL_SURFACE": 123,
+      "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+      "VECTOR": 4027,
+      "VERTEX_POINT": 4345
+    },
+    "source_format": "STEP",
+    "source_id": "8a6ab620-fb2b-584d-874c-72deb0d55c4a",
+    "spatial_tree": {},
+    "started_at": "2026-08-13T06:57:46+00:00",
+    "strategy": "B_separate_solids",
+    "warnings": []
+  },
+  "size_bytes": 9224690,
+  "status": "passed"
+}
