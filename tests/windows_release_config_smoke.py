@@ -48,6 +48,8 @@ def main() -> int:
     assert "GITHUB_STEP_SUMMARY" in workflow
     assert "app.py --self-test" in workflow
     assert "app.py --gui-smoke" in workflow
+    assert "validation/run_core_phase0_baseline.py --skip-tests" in workflow
+    assert "ci-core-phase0-baseline.json" in workflow
     assert "Start-Process -FilePath $installer.Path" in workflow
     assert "Start-Process -FilePath $uninstaller" in workflow
     assert workflow.count("-Wait -PassThru -WindowStyle Hidden") == 2

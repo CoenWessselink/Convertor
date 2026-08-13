@@ -1,92 +1,60 @@
-# CWS Convertor — Codex handover status
+# CWS Convertor Codex handover status
 
-## Snapshot identity
+## Current identity
 
 - Product: **CWS Convertor**
-- Integration snapshot: **0.8.1-alpha-dev**
-- Project Model schema: **2.3**
-- Git branch: `v0.8-codex-handover`
-- Based on verified history through tag `v0.7.0-alpha`
-- Added overlays:
-  - v0.7 classification/BOM draft
-  - v0.8 production-package export draft
+- Development snapshot: `0.8.1-alpha-dev`
+- Project Model schema: `2.4`
+- Core baseline source: `ba6744a834f79501c4a6a78c65eb8a85c1484d0e`
+- Active core phase branch: `feature/core-phase-0-baseline`
 
-This is a development handover, not a production release. No Windows installer has been built or clean-machine tested in this environment.
+This remains a development snapshot, not a production release.
 
-## What was reconstructed
+## Verified baseline
 
-The previously announced v0.8 handover archive was not present in the runtime and its upload failed. This snapshot was reconstructed transparently from:
+- Handover ZIP SHA-256 and all 315 embedded manifest entries verify.
+- Runtime/build dependency locks and direct-dependency SPDX SBOM are present.
+- `compileall`, `pip check` and all 31 current smoke scripts pass locally.
+- Nine fixture-dependent tests are explicitly skipped and tracked as gaps.
+- The ignored local reference registry pairs 481 models with 481 expected
+  result files; all remain `manual_validation_required` and none are treated as
+  validated engineering truth.
+- GitHub Actions run `31699143108` passed the complete Windows source, dist,
+  portable, installed-without-Python and uninstall matrix for commit `ba6744a`.
 
-1. the actual v0.7 Git bundle and full v0.7 source;
-2. the physically present v0.7 classification/BOM overlay files;
-3. the physically present v0.8 production-export overlay files;
-4. small integration repairs required to import and test the merged tree.
+See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
+`docs/MASTERPROMPT_TRACEABILITY.md` for full prompt coverage.
 
-## Integration repairs made for this handover
+## Present foundation
 
-- central version changed to `0.8.1-alpha-dev`;
-- Project Model version reconciled to schema `2.3`;
-- missing `cws_convertor.production_export.utils` added;
-- production-export public API completed;
-- dataclass field-name collision in `production_export.models` fixed;
-- BOM public API added;
-- circular BOM/project-service imports changed to lazy imports;
-- exact version/schema assertions in the integrated tests updated.
-
-These repairs are committed separately so Codex can inspect them.
-
-## Verified in the reconstructed tree
-
-The following test scripts ran successfully in this environment:
-
-- `analytic_fitting_smoke.py`
-- `dimension_graph_smoke.py`
-- `ifc_semantic_import_smoke.py`
-- `p21_graph_smoke.py`
-- `pdf_ai_smoke.py`
-- `pdf_review_smoke.py` (2 real-file tests skipped because the binary fixture was not mounted)
-- `production_export_smoke.py`
-- `production_export_negative_smoke.py`
-- `project_baseline_smoke.py`
-- `project_bom_smoke.py`
-- `project_classification_smoke.py`
-- `project_classification_reference_smoke.py`
-- `project_cli_smoke.py`
-- `project_jobs_smoke.py`
-- `project_model_smoke.py`
-- `project_reference_files_smoke.py`
-- `project_semantic_reference_smoke.py`
-- `project_semantic_service_smoke.py`
-- `project_service_smoke.py`
-- `project_storage_smoke.py`
-- `regression_smoke.py`
-- `review_workflow_smoke.py`
-- `step_semantic_import_smoke.py`
-
-## Current functional boundary
-
-Present:
-
-- NC1/DSTV ↔ STEP regression core;
+- NC1/DSTV to/from STEP regression core;
 - converter-owned IFC exact payload roundtrip;
 - Trusted Converter PDF and guarded external vector-PDF review foundation;
 - semantic IFC/STEP project import;
-- Project Model and `.cwscproj` storage;
+- Project Model 2.4 and `.cwscproj` storage/migrations/jobs;
 - deterministic classification and BOM draft;
-- guarded per-part/per-mark package export draft;
-- GUI/CLI foundations.
+- guarded per-part/per-mark production-package export draft;
+- bounded Part Workbench and canonical rebuild foundation;
+- GUI/CLI foundations;
+- working Windows x64 installer and portable package pipeline.
 
-Not yet complete:
+## Not complete
 
-- Part Workbench for local axes, reference faces, contours, holes and production-feature review;
-- reliable general external IFC/STEP-solid → complete canonical manufacturing model;
-- complete technical part/assembly drawings;
-- real LO4 PDF binary regression in this runtime;
-- revision comparison UI;
-- cutting-stock optimization, plate nesting, stock, machines and postprocessors;
-- native Windows installer and clean Windows test;
-- full production release.
+- exact selected IFC/STEP source BREP isolation;
+- complete analytical arcs, custom cross-sections and worked profiles in the
+  deterministic canonical rebuild;
+- NC1/STEP/IFC/Trusted-PDF canonical roundtrip matrix;
+- complete technical part and assembly drawings;
+- true LO4 and P1811 binary regressions in the active fixture layout;
+- validated engineering expectations for the local reference registry;
+- controlled CWS Viewer handover and main-app integration;
+- production-grade revision comparison, cutting optimization, nesting, stock,
+  machines and postprocessors;
+- licensing, optional online services, code signing and final release acceptance.
 
-## Mandatory next phase
+## Next core work
 
-Build the **Part Workbench** before optimization or machine work. It must let a user inspect and correct one imported part, define local production axes and reference faces, edit analytical contours and holes, preserve provenance/audit/undo-redo, validate canonical roundtrips, and only then unlock the existing production-package exporter.
+After phase 0 passes Windows CI, continue with the combined Project Model/import
+audit and then the bounded Part Workbench/canonical rebuild gaps. Do not start
+optimization or machine output before the production-feature and roundtrip
+gates are reliable.
