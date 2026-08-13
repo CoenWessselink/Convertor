@@ -95,6 +95,13 @@ mandatory before accepting the phase commit. The accepted local run completed
 35/35 smoke scripts: 129 tests passed with seven explicit fixture-dependent
 skips. Application selftest and GUI smoke also passed.
 
+Windows run `31734275341` passed on commit `2a80f86`. The complete source,
+PyInstaller dist, fresh portable, silent installer, installed-runtime and
+uninstall matrix includes the SteelModel/viewer-host export. Artifact
+`9195086063` (`CWS_Convertor_0.8.3-beta-dev_Windows_x64`) is 727,107,900 bytes
+with digest
+`sha256:16e69f976d3e0ef916b3dca87c2ed85dc7afad4fa2e45d092aa9008bcbe5e9ab`.
+
 ## Explicit limits
 
 - This phase does not integrate or select a production renderer.

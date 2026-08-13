@@ -85,6 +85,11 @@ fresh portable extraction and a fresh Inno Setup installation. The current
 runtime. Artifact `CWS_Convertor_0.8.3-beta-dev_Windows_x64` has digest
 `sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.
 
+Phase A run `31734275341` passed on commit `2a80f86`, adding the SteelModel 1.0
+and viewer-hostcontract export to dist, portable and installed-runtime checks.
+Artifact `9195086063` is 727,107,900 bytes with digest
+`sha256:16e69f976d3e0ef916b3dca87c2ed85dc7afad4fa2e45d092aa9008bcbe5e9ab`.
+
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the
 installed functional checks pass on the Windows runner.

@@ -41,6 +41,11 @@ not conflict with these sources.
 - Revised phase A local verification passes 35/35 smoke scripts and 129 tests
   with the same seven explicit fixture-dependent skips; application selftest
   and GUI smoke pass under the visible SteelConverter identity.
+- Phase A Windows run `31734275341` passed the complete
+  source/dist/portable/installer/installed/uninstall matrix on commit `2a80f86`,
+  including packaged SteelModel/viewer-host export. Artifact `9195086063` is
+  727,107,900 bytes with digest
+  `sha256:16e69f976d3e0ef916b3dca87c2ed85dc7afad4fa2e45d092aa9008bcbe5e9ab`.
 - Phase 3 artifact `9193020951` (`CWS_Convertor_0.8.3-beta-dev_Windows_x64`)
   is 677,358,200 bytes with digest
   `sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.

@@ -53,3 +53,8 @@ run ID and commit, while `SHA256SUMS.txt` records both deliverable hashes.
 Accepted Windows validation: run `31728698072`, commit `b96e58c`, artifact
 `CWS_Convertor_0.8.3-beta-dev_Windows_x64`, digest
 `sha256:e6bf32b4c32bd0ebc226d866eb19d7a156d0fb2823351c623821be36254c9638`.
+
+Phase A validation supersedes that packaged baseline: run `31734275341`, commit
+`2a80f86`, artifact `9195086063` (`CWS_Convertor_0.8.3-beta-dev_Windows_x64`),
+727,107,900 bytes, digest
+`sha256:16e69f976d3e0ef916b3dca87c2ed85dc7afad4fa2e45d092aa9008bcbe5e9ab`.
