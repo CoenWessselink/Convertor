@@ -58,7 +58,7 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts Windows ontwikkelrun:   26/26 geslaagd
+Smoke-scripts Windows ontwikkelrun:   27/27 geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Referentiemodelcatalogus:           481/481 gekoppeld
 Handmatige referentievalidering:       0/481 afgerond

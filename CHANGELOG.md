@@ -12,6 +12,7 @@
 - Plate bounding-box candidate and through-hole editing use one atomic service update.
 - GUI regression covers start, apply, validate, undo and redo; release remains roundtrip-blocked.
 - Windows build workflow now runs every `tests/*_smoke.py` file.
+- Windows release configuration smoke prevents non-numeric Inno version metadata.
 
 ## 0.7.0-alpha — Semantische IFC/STEP-projectimport
 

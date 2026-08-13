@@ -27,7 +27,7 @@
     "text_overlap_detected": false
   },
   "automated_tests": {
-    "smoke_scripts_passed": 26,
+    "smoke_scripts_passed": 27,
     "workbench_ui_tests_passed": 2,
     "known_fixture_skips": 9
   },

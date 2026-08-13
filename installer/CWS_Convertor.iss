@@ -25,7 +25,7 @@ PrivilegesRequired=admin
 UninstallDisplayIcon={app}\{#MyAppExeName}
 VersionInfoVersion={#MyAppNumericVersion}
 VersionInfoProductName={#MyAppName}
-VersionInfoProductVersion={#MyAppVersion}
+VersionInfoProductVersion={#MyAppNumericVersion}
 VersionInfoCompany={#MyAppPublisher}
 ChangesAssociations=yes
 
