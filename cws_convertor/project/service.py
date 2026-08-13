@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 import tempfile
-from typing import Callable, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable
 from uuid import uuid4
 
 from cws_convertor.errors import ErrorCode
@@ -34,6 +34,13 @@ from .baseline import (
 from .model import ImportStrategy, ProjectModel, SourceFileRecord, utc_now_iso
 from .storage import ProjectPackage, ProjectPackageError, ProjectStore
 from .semantic_import import semantic_import_source
+from .classification import (
+    ClassificationReport,
+    classify_project as classify_project_model,
+    set_manual_part_classification,
+)
+if TYPE_CHECKING:
+    from cws_convertor.bom.models import BOMSnapshot
 
 
 @dataclass
@@ -524,6 +531,103 @@ class ProjectSession:
             )
         return results[0]
 
+    def _restore_after_mutation_failure(self, fallback: ProjectModel, dirty: bool) -> None:
+        if self.path is not None and Path(self.path).is_file():
+            package = self.store.open(self.path, read_only=self.read_only)
+            self.package = package
+            self.project = package.project
+            self.dirty = False
+            return
+        self.project = fallback
+        self.dirty = dirty
+
+    def classify_parts(
+        self,
+        *,
+        source_ids: Iterable[str] | None = None,
+        user: str = "system",
+        force: bool = False,
+        include_decisions: bool = False,
+    ) -> ClassificationReport:
+        """Classify selected parts; restore the persisted package on failure.
+
+        Cloning a 6k-entity IFC graph more than doubles peak memory. The opened
+        package is already an immutable rollback point, so large projects are
+        mutated in memory and reloaded if validation raises.
+        """
+        self._ensure_writable()
+        fallback = self.project
+        original_dirty = self.dirty
+        try:
+            report = classify_project_model(
+                self.project, user=user, source_ids=source_ids, force=force,
+                include_decisions=include_decisions,
+            )
+            self.dirty = True
+            return report
+        except Exception:
+            self._restore_after_mutation_failure(fallback, original_dirty)
+            raise
+
+    def confirm_part_classification(
+        self,
+        part_id: str,
+        category: str,
+        *,
+        user: str,
+        reason: str,
+        normalized_profile: str | None = None,
+        normalized_material: str | None = None,
+    ) -> ClassificationReport:
+        self._ensure_writable()
+        fallback = self.project
+        original_dirty = self.dirty
+        try:
+            report = set_manual_part_classification(
+                self.project, part_id, category, user=user, reason=reason,
+                normalized_profile=normalized_profile,
+                normalized_material=normalized_material,
+            )
+            self.dirty = True
+            return report
+        except Exception:
+            self._restore_after_mutation_failure(fallback, original_dirty)
+            raise
+
+    def build_bom(
+        self,
+        *,
+        user: str = "system",
+        classify_if_needed: bool = True,
+    ) -> BOMSnapshot:
+        self._ensure_writable()
+        fallback = self.project
+        original_dirty = self.dirty
+        try:
+            from cws_convertor.bom.engine import build_bom_snapshot as build_project_bom_snapshot
+
+            snapshot = build_project_bom_snapshot(
+                self.project, user=user, classify_if_needed=classify_if_needed
+            )
+            self.dirty = True
+            return snapshot
+        except Exception:
+            self._restore_after_mutation_failure(fallback, original_dirty)
+            raise
+
+    def export_bom(
+        self,
+        output_dir: str | Path,
+        *,
+        user: str = "system",
+        package_name: str | None = None,
+    ) -> tuple[BOMSnapshot, dict[str, Path]]:
+        snapshot = self.build_bom(user=user)
+        from cws_convertor.bom.export import export_bom_package
+
+        outputs = export_bom_package(snapshot, output_dir, package_name=package_name)
+        return snapshot, outputs
+
     def save(
         self,
         path: str | Path | None = None,
@@ -853,6 +957,74 @@ class ProjectService:
                 revision_message=f"{len(results)} bronbestand(en) semantisch geïmporteerd",
             )
             return results
+
+    def classify_project(
+        self,
+        project_path: str | Path,
+        *,
+        source_ids: Iterable[str] | None = None,
+        user: str = "system",
+        force: bool = False,
+        embed_sources: bool = True,
+    ) -> ClassificationReport:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            report = session.classify_parts(
+                source_ids=source_ids, user=user, force=force
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message="Deterministische onderdeelclassificatie bijgewerkt",
+            )
+            return report
+
+    def set_part_classification(
+        self,
+        project_path: str | Path,
+        part_id: str,
+        category: str,
+        *,
+        user: str,
+        reason: str,
+        normalized_profile: str | None = None,
+        normalized_material: str | None = None,
+        embed_sources: bool = True,
+    ) -> ClassificationReport:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            report = session.confirm_part_classification(
+                part_id, category, user=user, reason=reason,
+                normalized_profile=normalized_profile,
+                normalized_material=normalized_material,
+            )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message=f"Classificatie van onderdeel {part_id} bevestigd",
+            )
+            return report
+
+    def build_bom(
+        self,
+        project_path: str | Path,
+        *,
+        output_dir: str | Path | None = None,
+        package_name: str | None = None,
+        user: str = "system",
+        embed_sources: bool = True,
+    ) -> tuple[BOMSnapshot, dict[str, Path]]:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            snapshot = session.build_bom(user=user)
+            outputs: dict[str, Path] = {}
+            if output_dir is not None:
+                outputs = export_bom_package(
+                    snapshot, output_dir, package_name=package_name
+                )
+            session.save(
+                embed_sources=embed_sources,
+                user=user,
+                revision_message="BOM, inkooplijst en herkomstsnapshot bijgewerkt",
+            )
+            return snapshot, outputs
 
     def project_info(self, project_path: str | Path) -> dict:
         with ProjectSession.open(project_path, read_only=True, store=self.store) as session:

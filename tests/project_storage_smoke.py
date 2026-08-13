@@ -322,7 +322,7 @@ class ProjectStorageTests(unittest.TestCase):
             package = ProjectStore().open(legacy)
             self.assertTrue(package.migration_performed)
             self.assertTrue(package.read_only)
-            self.assertEqual(package.project.schema_version, "2.1")
+            self.assertEqual(package.project.schema_version, "2.3")
             self.assertEqual(package.project.project_name, "Legacy project")
 
             migrated = folder / "migrated.cwscproj"
@@ -330,7 +330,7 @@ class ProjectStorageTests(unittest.TestCase):
             self.assertTrue(migrated.is_file())
             self.assertFalse(result.migration_performed)
             self.assertFalse(result.read_only)
-            self.assertEqual(result.project.schema_version, "2.1")
+            self.assertEqual(result.project.schema_version, "2.3")
             self.assertEqual(original_hash, hashlib.sha256(legacy.read_bytes()).hexdigest())
 
     def test_session_save_reuses_just_written_verified_snapshot(self) -> None:

@@ -153,15 +153,15 @@ class ProjectModelTests(unittest.TestCase):
         self.assertFalse(restored.production_gate()["allowed"])
         self.assertEqual(len(restored.production_gate()["source_failures"]), 1)
 
-    def test_schema_20_migrates_explicitly_to_21(self) -> None:
+    def test_schema_20_migrates_explicitly_to_23(self) -> None:
         raw = ProjectModel.new("Schema migration", created_by="test").to_dict()
         raw["schema_version"] = "2.0"
         raw["migration_history"] = []
         restored = ProjectModel.from_dict(raw)
-        self.assertEqual(restored.schema_version, "2.1")
+        self.assertEqual(restored.schema_version, "2.3")
         self.assertTrue(
             any(
-                item.get("from") == "2.0" and item.get("to") == "2.1"
+                item.get("from") == "2.0" and item.get("to") == "2.3"
                 for item in restored.migration_history
             )
         )

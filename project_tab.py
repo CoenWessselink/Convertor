@@ -47,6 +47,10 @@ class CWSProjectTab(ttk.Frame):
         self._busy_cancellable = False
         self._cancel_event = threading.Event()
         self._source_rows: dict[str, dict[str, Any]] = {}
+        self._part_rows: dict[str, dict[str, Any]] = {}
+        self._last_bom_snapshot: Any | None = None
+        self.part_search = tk.StringVar(value="")
+        self.part_category_filter = tk.StringVar(value="alle")
         self.embed_sources = tk.BooleanVar(value=True)
         self._build_ui()
         self.after(120, self._poll_events)
@@ -113,6 +117,16 @@ class CWSProjectTab(ttk.Frame):
             style="CWS.Primary.TButton",
         )
         self.semantic_button.pack(side="left", padx=(6, 0))
+        self.classify_button = ttk.Button(
+            toolbar, text="Classificeren", command=self.classify_parts,
+            style="CWS.Primary.TButton",
+        )
+        self.classify_button.pack(side="left", padx=(6, 0))
+        self.bom_button = ttk.Button(
+            toolbar, text="BOM / Excel", command=self.build_and_export_bom,
+            style="CWS.Primary.TButton",
+        )
+        self.bom_button.pack(side="left", padx=(6, 0))
         self.cancel_button = ttk.Button(
             toolbar,
             text="Annuleren",
@@ -168,8 +182,15 @@ class CWSProjectTab(ttk.Frame):
             value.pack(fill="x", padx=13, pady=(0, 11))
             self.card_values[key] = value
 
-        body = ttk.Panedwindow(self, orient="horizontal")
-        body.grid(row=3, column=0, sticky="nsew", padx=16, pady=(0, 10))
+        self.workspace = ttk.Notebook(self)
+        self.workspace.grid(row=3, column=0, sticky="nsew", padx=16, pady=(0, 10))
+        model_page = ttk.Frame(self.workspace)
+        bom_page = ttk.Frame(self.workspace)
+        self.workspace.add(model_page, text="  Model & bronnen  ")
+        self.workspace.add(bom_page, text="  Classificatie & BOM  ")
+
+        body = ttk.Panedwindow(model_page, orient="horizontal")
+        body.pack(fill="both", expand=True)
 
         tree_box = ttk.LabelFrame(body, text="Projectstructuur", padding=6)
         tree_box.columnconfigure(0, weight=1)
@@ -225,6 +246,94 @@ class CWSProjectTab(ttk.Frame):
         self.details.configure(yscrollcommand=detail_scroll.set)
         body.add(detail_box, weight=2)
 
+        bom_page.columnconfigure(0, weight=1)
+        bom_page.rowconfigure(2, weight=1)
+        bom_header = tk.Frame(bom_page, bg="#eef4fa", height=58)
+        bom_header.grid(row=0, column=0, sticky="ew")
+        bom_header.grid_propagate(False)
+        bom_header.columnconfigure(3, weight=1)
+        tk.Label(
+            bom_header, text="Zoeken", bg="#eef4fa", fg="#334155",
+            font=("Segoe UI", 9, "bold"),
+        ).grid(row=0, column=0, padx=(12, 6), pady=14)
+        search_entry = ttk.Entry(bom_header, textvariable=self.part_search, width=30)
+        search_entry.grid(row=0, column=1, sticky="w", pady=12)
+        search_entry.bind("<KeyRelease>", lambda _event: self._refresh_classification_grid())
+        ttk.Label(bom_header, text="Categorie").grid(row=0, column=2, padx=(16, 6))
+        category_combo = ttk.Combobox(
+            bom_header, textvariable=self.part_category_filter, state="readonly", width=18,
+            values=("alle", "make_part", "purchased_item", "non_steel", "unknown", "reference"),
+        )
+        category_combo.grid(row=0, column=3, sticky="w")
+        category_combo.bind("<<ComboboxSelected>>", lambda _event: self._refresh_classification_grid())
+        ttk.Button(
+            bom_header, text="Selectie bevestigen",
+            command=self.confirm_selected_classification,
+        ).grid(row=0, column=4, padx=(8, 6), pady=10)
+        ttk.Button(
+            bom_header, text="BOM opnieuw bouwen", command=self.build_and_export_bom,
+            style="CWS.Primary.TButton",
+        ).grid(row=0, column=5, padx=(0, 12), pady=10)
+
+        self.bom_kpi_label = tk.Label(
+            bom_page,
+            text="Nog niet geclassificeerd — productie-uitvoer blijft geblokkeerd",
+            bg="#fff7e6", fg="#8a4b08", font=("Segoe UI", 10, "bold"),
+            anchor="w", padx=12, pady=8,
+        )
+        self.bom_kpi_label.grid(row=1, column=0, sticky="ew")
+
+        bom_body = ttk.Panedwindow(bom_page, orient="horizontal")
+        bom_body.grid(row=2, column=0, sticky="nsew", pady=(6, 0))
+        grid_frame = ttk.Frame(bom_body)
+        grid_frame.columnconfigure(0, weight=1)
+        grid_frame.rowconfigure(0, weight=1)
+        part_columns = (
+            "status", "category", "position", "assembly", "profile", "material",
+            "length", "quantity", "mass", "confidence", "nc1", "warnings",
+        )
+        self.part_grid = ttk.Treeview(
+            grid_frame, columns=part_columns, show="headings", selectmode="browse"
+        )
+        part_labels = {
+            "status": "Status", "category": "Maak / inkoop", "position": "Pos.",
+            "assembly": "Merk", "profile": "Profiel", "material": "Materiaal",
+            "length": "Lengte", "quantity": "Aantal", "mass": "Massa",
+            "confidence": "Confidence", "nc1": "NC1", "warnings": "Waarschuwingen",
+        }
+        widths = {
+            "status": 105, "category": 115, "position": 75, "assembly": 75,
+            "profile": 135, "material": 95, "length": 85, "quantity": 58,
+            "mass": 75, "confidence": 84, "nc1": 60, "warnings": 220,
+        }
+        for column in part_columns:
+            self.part_grid.heading(column, text=part_labels[column])
+            self.part_grid.column(column, width=widths[column], minwidth=50, anchor="w")
+        self.part_grid.grid(row=0, column=0, sticky="nsew")
+        part_scroll_y = ttk.Scrollbar(grid_frame, orient="vertical", command=self.part_grid.yview)
+        part_scroll_y.grid(row=0, column=1, sticky="ns")
+        part_scroll_x = ttk.Scrollbar(grid_frame, orient="horizontal", command=self.part_grid.xview)
+        part_scroll_x.grid(row=1, column=0, sticky="ew")
+        self.part_grid.configure(yscrollcommand=part_scroll_y.set, xscrollcommand=part_scroll_x.set)
+        self.part_grid.bind("<<TreeviewSelect>>", self._part_selected)
+        self.part_grid.tag_configure("ok", background="#edf8f2")
+        self.part_grid.tag_configure("review", background="#fff8e8")
+        self.part_grid.tag_configure("blocked", background="#fdecec")
+        bom_body.add(grid_frame, weight=4)
+
+        bom_detail_frame = ttk.LabelFrame(bom_body, text="Onderdeel / herkomst", padding=6)
+        bom_detail_frame.columnconfigure(0, weight=1)
+        bom_detail_frame.rowconfigure(0, weight=1)
+        self.part_details = tk.Text(
+            bom_detail_frame, wrap="word", borderwidth=0, background="#fbfdff",
+            foreground="#1e293b", font=("Segoe UI", 9), padx=10, pady=8, state="disabled",
+        )
+        self.part_details.grid(row=0, column=0, sticky="nsew")
+        bom_detail_scroll = ttk.Scrollbar(bom_detail_frame, orient="vertical", command=self.part_details.yview)
+        bom_detail_scroll.grid(row=0, column=1, sticky="ns")
+        self.part_details.configure(yscrollcommand=bom_detail_scroll.set)
+        bom_body.add(bom_detail_frame, weight=2)
+
         footer = ttk.Frame(self, padding=(16, 0, 16, 10))
         footer.grid(row=4, column=0, sticky="ew")
         footer.columnconfigure(1, weight=1)
@@ -234,7 +343,7 @@ class CWSProjectTab(ttk.Frame):
         self.status_label.grid(row=0, column=1, sticky="ew", padx=(10, 0))
         self.phase_label = ttk.Label(
             footer,
-            text="Fase 2: semantische IFC / STEP-projectimport",
+            text="Fase 3: classificatie, BOM en inkoop",
             foreground="#64748b",
         )
         self.phase_label.grid(row=0, column=2, sticky="e")
@@ -472,6 +581,147 @@ class CWSProjectTab(ttk.Frame):
             name="cws-project-semantic-import",
         ).start()
 
+    def classify_parts(self) -> None:
+        if self.session is None or not self.session.project.parts:
+            messagebox.showinfo(
+                "Classificatie",
+                "Voer eerst de semantische IFC/STEP-import uit.",
+                parent=self,
+            )
+            return
+        if self._busy or self.session.path is None:
+            return
+        if not messagebox.askyesno(
+            "Onderdelen classificeren",
+            "CWS Convertor classificeert ieder object deterministisch als maakdeel, "
+            "inkoopdeel, niet-staal, referentie of onbekend. Onzekere objecten blijven "
+            "geblokkeerd. Doorgaan?",
+            parent=self,
+        ):
+            return
+        try:
+            if self.session.dirty:
+                self.session.save(
+                    embed_sources=self.embed_sources.get(), user="gui",
+                    revision_message="Voor classificatie",
+                )
+        except Exception as exc:
+            messagebox.showerror("Project opslaan", str(exc), parent=self)
+            return
+        self._set_busy(True, "Onderdelen classificeren en identiteit controleren…")
+        project_path = Path(self.session.path)
+        embed_sources = self.embed_sources.get()
+
+        def worker() -> None:
+            working: ProjectSession | None = None
+            try:
+                working = ProjectSession.open(project_path, store=self.store)
+                report = working.classify_parts(user="gui")
+                working.save(
+                    embed_sources=embed_sources, user="gui",
+                    revision_message="Deterministische classificatie en productie-identiteit",
+                )
+                self.events.put(("classification_ok", (working, report)))
+                working = None
+            except Exception as exc:
+                if working is not None:
+                    working.close()
+                self.events.put(("error", ("Classificatie", str(exc))))
+
+        threading.Thread(target=worker, daemon=True, name="cws-project-classification").start()
+
+    def build_and_export_bom(self) -> None:
+        if self.session is None or not self.session.project.parts:
+            messagebox.showinfo("BOM", "Voer eerst semantische import en classificatie uit.", parent=self)
+            return
+        if self._busy or self.session.path is None:
+            return
+        output_dir = filedialog.askdirectory(parent=self, title="Map voor BOM-, Excel- en inkooppakket")
+        if not output_dir:
+            return
+        try:
+            if self.session.dirty:
+                self.session.save(
+                    embed_sources=self.embed_sources.get(), user="gui",
+                    revision_message="Voor BOM-export",
+                )
+        except Exception as exc:
+            messagebox.showerror("Project opslaan", str(exc), parent=self)
+            return
+        self._set_busy(True, "BOM, inkooplijst, materiaalstaat en herkomstpakket bouwen…")
+        project_path = Path(self.session.path)
+        embed_sources = self.embed_sources.get()
+
+        def worker() -> None:
+            working: ProjectSession | None = None
+            try:
+                working = ProjectSession.open(project_path, store=self.store)
+                snapshot, outputs = working.export_bom(
+                    output_dir, user="gui", package_name=None
+                )
+                working.save(
+                    embed_sources=embed_sources, user="gui",
+                    revision_message="BOM, inkoop en herkomstsnapshot bijgewerkt",
+                )
+                self.events.put(("bom_ok", (working, snapshot, outputs)))
+                working = None
+            except Exception as exc:
+                if working is not None:
+                    working.close()
+                self.events.put(("error", ("BOM / Excel", str(exc))))
+
+        threading.Thread(target=worker, daemon=True, name="cws-project-bom").start()
+
+    def confirm_selected_classification(self) -> None:
+        selected = list(self.part_grid.selection())
+        if not selected or self.session is None or self.session.path is None:
+            messagebox.showinfo("Classificatie", "Selecteer eerst één onderdeel.", parent=self)
+            return
+        part_id = selected[0]
+        current = self.session.project.parts.get(part_id)
+        if current is None:
+            return
+        category = simpledialog.askstring(
+            "Classificatie bevestigen",
+            "Categorie (make_part, purchased_item, non_steel, reference, unknown):",
+            initialvalue=current.category, parent=self,
+        )
+        if not category:
+            return
+        category = category.strip().lower()
+        allowed = {"make_part", "purchased_item", "non_steel", "reference", "unknown"}
+        if category not in allowed:
+            messagebox.showerror("Classificatie", f"Onbekende categorie: {category}", parent=self)
+            return
+        reason = simpledialog.askstring(
+            "Classificatie bevestigen", "Reden voor auditlog:", parent=self
+        )
+        if not reason:
+            return
+        self._set_busy(True, f"Classificatie van {current.part_position or current.name} opslaan…")
+        project_path = Path(self.session.path)
+        embed_sources = self.embed_sources.get()
+
+        def worker() -> None:
+            working: ProjectSession | None = None
+            try:
+                working = ProjectSession.open(project_path, store=self.store)
+                report = working.confirm_part_classification(
+                    part_id, category, user="gui", reason=reason
+                )
+                working.save(
+                    embed_sources=embed_sources, user="gui",
+                    revision_message=f"Classificatie {part_id} bevestigd",
+                )
+                self.events.put(("classification_ok", (working, report)))
+                working = None
+            except Exception as exc:
+                if working is not None:
+                    working.close()
+                self.events.put(("error", ("Classificatie bevestigen", str(exc))))
+
+        threading.Thread(target=worker, daemon=True, name="cws-part-classification").start()
+
     def cancel_current_operation(self) -> None:
         if not self._busy or not self._busy_cancellable:
             return
@@ -537,7 +787,9 @@ class CWSProjectTab(ttk.Frame):
     def refresh(self) -> None:
         self.project_tree.delete(*self.project_tree.get_children())
         self.source_grid.delete(*self.source_grid.get_children())
+        self.part_grid.delete(*self.part_grid.get_children())
         self._source_rows.clear()
+        self._part_rows.clear()
         if self.session is None:
             self.project_badge.configure(text="GEEN PROJECT", bg="#334155")
             self.project_path_label.configure(text="Maak of open een .cwscproj-project")
@@ -546,6 +798,10 @@ class CWSProjectTab(ttk.Frame):
             self.card_values["parts"].configure(text="0")
             self.card_values["warnings"].configure(text="0")
             self.card_values["storage"].configure(text="Niet geopend")
+            self.bom_kpi_label.configure(
+                text="Nog geen project — open een .cwscproj-bestand",
+                bg="#eef4fa", fg="#334155",
+            )
             self._set_details(
                 "CWS Convertor-projecten bewaren bronhashes, importstrategieën, "
                 "auditgegevens en optioneel de volledige IFC/STEP-bronnen in één "
@@ -723,6 +979,8 @@ class CWSProjectTab(ttk.Frame):
                 "embedded": embedded,
             }
 
+        self._refresh_classification_grid()
+
         self._set_details(
             f"PROJECT\n{project.project_name}\n\n"
             f"Klant: {project.customer or '—'}\n"
@@ -736,12 +994,131 @@ class CWSProjectTab(ttk.Frame):
             "IFC/STEP-bronnen kunnen nu expliciet semantisch worden geïmporteerd. "
             "Daarbij worden bronhiërarchie, assemblies, onderdelen, bouten, lassen, "
             "properties en placements in het Canonical Project Model vastgelegd. "
-            "NC1- en machine-uitvoer blijven bewust geblokkeerd totdat profiel- en "
-            "featureherkenning per onderdeel door de volgende productiefase is gevalideerd."
+            "Classificatie, productie-identiteit en BOM zijn nu onderdeel van dezelfde "
+            "projectketen. NC1- en machine-uitvoer blijven bewust geblokkeerd totdat "
+            "profiel, features, referentiezijden en roundtrip per onderdeel zijn gevalideerd."
         )
         self.status_label.configure(
             text="Project gereed" if not self.session.dirty else "Niet-opgeslagen wijzigingen"
         )
+
+    def _refresh_classification_grid(self) -> None:
+        self.part_grid.delete(*self.part_grid.get_children())
+        self._part_rows.clear()
+        if self.session is None:
+            return
+        project = self.session.project
+        search = self.part_search.get().strip().lower()
+        category_filter = self.part_category_filter.get().strip()
+        classification = dict(project.settings.get("classification") or {})
+        bom = dict(project.settings.get("bom") or {})
+        bom_summary = dict(bom.get("summary") or {})
+        category_counts = dict(classification.get("category_counts") or {})
+        if bom_summary:
+            blocked = int(bom_summary.get("blocking_conflict_count", 0) or 0)
+            self.bom_kpi_label.configure(
+                text=(
+                    f"{bom_summary.get('part_group_count', 0)} unieke partregels  ·  "
+                    f"{bom_summary.get('assembly_group_count', 0)} assemblymerken  ·  "
+                    f"{bom_summary.get('purchase_group_count', 0)} inkoopgroepen  ·  "
+                    f"{blocked} blokkades"
+                ),
+                bg="#fdecec" if blocked else "#edf8f2",
+                fg="#9c0006" if blocked else "#166534",
+            )
+        elif classification:
+            self.bom_kpi_label.configure(
+                text=(
+                    f"Classificatie: {category_counts.get('make_part', 0)} maakdelen  ·  "
+                    f"{category_counts.get('purchased_item', 0)} inkoopdelen  ·  "
+                    f"{classification.get('unknown_part_count', 0)} onbekend"
+                ),
+                bg="#fff7e6", fg="#8a4b08",
+            )
+        else:
+            self.bom_kpi_label.configure(
+                text="Nog niet geclassificeerd — productie-uitvoer blijft geblokkeerd",
+                bg="#fff7e6", fg="#8a4b08",
+            )
+        values = sorted(
+            project.parts.values(),
+            key=lambda item: (item.part_position or "~", item.name, item.internal_id),
+        )
+        for part in values:
+            if category_filter not in {"", "alle"} and part.category != category_filter:
+                continue
+            haystack = " ".join(
+                [part.part_position, part.name, part.category, part.profile, part.material,
+                 part.material_grade, part.normalized_profile, part.normalized_material,
+                 part.source_identity.assembly_mark]
+            ).lower()
+            if search and search not in haystack:
+                continue
+            reasons = [issue.message for issue in part.blocking_issues()]
+            tag = "blocked" if reasons else (
+                "review" if part.classification_status in {"unclassified", "review_required"} else "ok"
+            )
+            assembly_marks = []
+            for assembly_id in part.assembly_ids:
+                assembly = project.assemblies.get(assembly_id)
+                if assembly and assembly.assembly_mark:
+                    assembly_marks.append(assembly.assembly_mark)
+            self.part_grid.insert(
+                "", "end", iid=part.internal_id, tags=(tag,),
+                values=(
+                    part.classification_status, part.category, part.part_position or "—",
+                    ", ".join(sorted(set(assembly_marks))) or part.source_identity.assembly_mark or "—",
+                    part.normalized_profile or part.profile or "—",
+                    part.normalized_material or part.material_grade or part.material or "—",
+                    f"{part.length_mm:.3f}", part.quantity_total, f"{part.mass_each_kg:.3f}",
+                    f"{part.classification_confidence * 100:.0f}%",
+                    "ja" if part.nc1_eligible else "nee",
+                    " | ".join(reasons),
+                ),
+            )
+            self._part_rows[part.internal_id] = {
+                "part": part, "blocking_reasons": reasons, "assembly_marks": sorted(set(assembly_marks)),
+            }
+
+    def _part_selected(self, _event=None) -> None:
+        selected = list(self.part_grid.selection())
+        if not selected or self.session is None:
+            return
+        row = self._part_rows.get(selected[0])
+        if not row:
+            return
+        part = row["part"]
+        lines = [
+            part.part_position or part.name or part.internal_id,
+            "=" * 48,
+            f"Categorie: {part.category}",
+            f"Classificatiestatus: {part.classification_status}",
+            f"Regel: {part.classification_rule_id or '—'}",
+            f"Reden: {part.classification_reason or '—'}",
+            f"Confidence: {part.classification_confidence * 100:.1f}%",
+            "",
+            f"Profiel: {part.normalized_profile or part.profile or '—'}",
+            f"Materiaal: {part.normalized_material or part.material_grade or part.material or '—'}",
+            f"Lengte: {part.length_mm:.3f} mm",
+            f"Massa/stuk: {part.mass_each_kg:.3f} kg",
+            f"Aantal: {part.quantity_total}",
+            f"Assemblymerken: {', '.join(row['assembly_marks']) or '—'}",
+            "",
+            f"Geometry hash: {part.geometry_hash}",
+            f"Manufacturing hash: {part.manufacturing_hash}",
+            f"Production identity: {part.production_identity_hash or 'nog niet berekend'}",
+            f"Bronentity: {part.source_identity.source_entity_id or '—'}",
+            f"Bron-GlobalId: {part.source_identity.global_id or '—'}",
+            "",
+            "BLOKKADES",
+        ]
+        lines.extend(f"• {reason}" for reason in row["blocking_reasons"])
+        if not row["blocking_reasons"]:
+            lines.append("Geen classificatieblokkade; productiegate kan nog wel gesloten zijn.")
+        self.part_details.configure(state="normal")
+        self.part_details.delete("1.0", "end")
+        self.part_details.insert("1.0", "\n".join(lines))
+        self.part_details.configure(state="disabled")
 
     def _source_selected(self, _event=None) -> None:
         selected = self.source_grid.selection()
@@ -859,6 +1236,8 @@ class CWSProjectTab(ttk.Frame):
             self.save_button,
             self.add_button,
             self.semantic_button,
+            self.classify_button,
+            self.bom_button,
             self.report_button,
             self.extract_button,
         ):
@@ -907,6 +1286,40 @@ class CWSProjectTab(ttk.Frame):
                         f"{total} objecten gematerialiseerd. Productiegate blijft actief."
                     )
                     self.refresh()
+                elif event == "classification_ok":
+                    session, report = payload
+                    self._replace_session(session)
+                    self._set_busy(
+                        False,
+                        f"Classificatie gereed: {report.classified_part_count} onderdelen, "
+                        f"{report.review_required_count} te beoordelen",
+                    )
+                    self.workspace.select(1)
+                    self.log_callback(
+                        f"Classificatie gereed: {report.category_counts}; "
+                        f"{report.identity_conflict_count} identiteitsconflicten."
+                    )
+                    self.refresh()
+                elif event == "bom_ok":
+                    session, snapshot, outputs = payload
+                    self._replace_session(session)
+                    self._last_bom_snapshot = snapshot
+                    self._set_busy(
+                        False,
+                        f"BOM-pakket gereed: {snapshot.summary['part_group_count']} partregels",
+                    )
+                    self.workspace.select(1)
+                    self.refresh()
+                    package = next((path for name, path in outputs.items() if name.endswith('_PACKAGE.zip')), None)
+                    messagebox.showinfo(
+                        "BOM / Excel gereed",
+                        f"Partregels: {snapshot.summary['part_group_count']}\n"
+                        f"Assemblymerken: {snapshot.summary['assembly_group_count']}\n"
+                        f"Inkoopgroepen: {snapshot.summary['purchase_group_count']}\n"
+                        f"Blokkerende conflicten: {snapshot.summary['blocking_conflict_count']}\n\n"
+                        f"Pakket: {package or 'uitvoermap'}",
+                        parent=self,
+                    )
                 elif event == "semantic_cancelled":
                     self._set_busy(False, "Semantische import geannuleerd; project ongewijzigd")
                     self.log_callback(str(payload))

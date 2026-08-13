@@ -27,7 +27,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.7.0-alpha
+      CWS_VERSION: 0.8.0-alpha-dev
 
     steps:
       - name: Checkout repository
@@ -161,7 +161,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Convertor_0.7.0-alpha_Windows_x64
+          name: CWS_Convertor_0.8.0-alpha-dev_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30

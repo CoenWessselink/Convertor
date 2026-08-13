@@ -293,6 +293,41 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="Schrijf het semantische importrapport als JSON")
     _report_arg(p)
 
+    p = sub.add_parser("project-classify", help="Classificeer onderdelen deterministisch en bereken productie-identiteit")
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("--source-id", action="append", default=[], help="Beperk tot bron-ID; herhaalbaar")
+    p.add_argument("--force", action="store_true", help="Bereken ook eerder bevestigde automatische classificaties opnieuw")
+    p.add_argument("--no-embed", action="store_true", help="Bewaar bronnen alleen als pad/hashreferentie")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true", help="Schrijf classificatierapport als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser("project-set-classification", help="Bevestig één onderdeelclassificatie handmatig")
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("part_id", help="Interne part-ID")
+    p.add_argument("category", choices=["make_part", "purchased_item", "non_steel", "reference", "unknown"])
+    p.add_argument("--reason", required=True, help="Verplichte auditreden")
+    p.add_argument("--profile", default=None, help="Optioneel genormaliseerd profiel")
+    p.add_argument("--material", default=None, help="Optioneel genormaliseerd materiaal")
+    p.add_argument("--no-embed", action="store_true")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true")
+    _report_arg(p)
+
+    p = sub.add_parser("project-bom", help="Bouw BOM, inkoop-, bout-, las- en materiaalstaten")
+    p.add_argument("project", help="Bestaand .cwscproj-projectbestand")
+    p.add_argument("-o", "--output", required=True, help="Uitvoermap voor XLSX/CSV/JSON/ZIP")
+    p.add_argument("--name", default="", help="Optionele pakketnaam")
+    p.add_argument("--no-embed", action="store_true")
+    p.add_argument("--user", default="", help="Gebruiker voor auditlog")
+    p.add_argument("--json", action="store_true", help="Schrijf BOM-samenvatting als JSON")
+    _report_arg(p)
+
+    p = sub.add_parser("project-bom-summary", help="Toon de laatst opgeslagen BOM-status")
+    p.add_argument("project", help=".cwscproj-projectbestand")
+    p.add_argument("--json", action="store_true")
+    _report_arg(p)
+
     p = sub.add_parser("project-tree", help="Toon de semantische project-/assemblyboom")
     p.add_argument("project", help=".cwscproj-projectbestand")
     p.add_argument("--source-id", default="", help="Beperk tot één bron-ID")
@@ -505,6 +540,108 @@ def main(argv: list[str] | None = None) -> int:
                 f"{exc}",
                 file=sys.stderr,
             )
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-classify":
+        try:
+            report = service.classify_project(
+                args.project, source_ids=args.source_id or None,
+                user=args.user or "cli", force=args.force,
+                embed_sources=not args.no_embed,
+            )
+            payload = {
+                "converter_version": APP_VERSION, "command": args.command,
+                "status": "review_required" if report.blocking_part_count else "passed",
+                "classification": report.to_dict(include_decisions=False),
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"Classificatie gereed: {report.classified_part_count} onderdelen")
+                for key, value in sorted(report.category_counts.items()):
+                    print(f"  {key}: {value}")
+                print(f"Review vereist: {report.review_required_count} | identiteitsconflicten: {report.identity_conflict_count}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_REVIEW_REQUIRED if report.blocking_part_count else EXIT_OK
+        except Exception as exc:
+            payload = {"converter_version": APP_VERSION, "command": args.command, "status": "failed", "error": _exception_payload(exc)}
+            print(f"FOUT classificatie: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-set-classification":
+        try:
+            report = service.set_part_classification(
+                args.project, args.part_id, args.category,
+                user=args.user or "cli", reason=args.reason,
+                normalized_profile=args.profile, normalized_material=args.material,
+                embed_sources=not args.no_embed,
+            )
+            payload = {
+                "converter_version": APP_VERSION, "command": args.command,
+                "status": "review_required" if report.blocking_part_count else "passed",
+                "part_id": args.part_id, "category": args.category,
+                "classification": report.to_dict(include_decisions=False),
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"Classificatie bevestigd: {args.part_id} → {args.category}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_REVIEW_REQUIRED if report.blocking_part_count else EXIT_OK
+        except Exception as exc:
+            payload = {"converter_version": APP_VERSION, "command": args.command, "status": "failed", "error": _exception_payload(exc)}
+            print(f"FOUT handmatige classificatie: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-bom":
+        try:
+            snapshot, outputs = service.build_bom(
+                args.project, output_dir=args.output, package_name=args.name or None,
+                user=args.user or "cli", embed_sources=not args.no_embed,
+            )
+            payload = {
+                "converter_version": APP_VERSION, "command": args.command,
+                "status": "passed" if snapshot.validation and snapshot.validation.production_ready else "review_required",
+                "snapshot_sha256": snapshot.snapshot_sha256,
+                "summary": snapshot.summary,
+                "validation": snapshot.validation.to_dict() if snapshot.validation else {},
+                "outputs": {name: str(path) for name, path in outputs.items()},
+            }
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                print(f"BOM gebouwd: {snapshot.summary['part_group_count']} partregels, {snapshot.summary['assembly_group_count']} assemblymerken")
+                print(f"Blokkerende conflicten: {snapshot.summary['blocking_conflict_count']}")
+                for path in outputs.values():
+                    print(f"  {path}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK if snapshot.validation and snapshot.validation.production_ready else EXIT_REVIEW_REQUIRED
+        except Exception as exc:
+            payload = {"converter_version": APP_VERSION, "command": args.command, "status": "failed", "error": _exception_payload(exc)}
+            print(f"FOUT BOM: {exc}", file=sys.stderr)
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_FAILED
+
+    if args.command == "project-bom-summary":
+        try:
+            with ProjectSession.open(args.project, read_only=True) as session:
+                bom = dict(session.project.settings.get("bom") or {})
+                classification = dict(session.project.settings.get("classification") or {})
+            payload = {"converter_version": APP_VERSION, "command": args.command, "status": "passed", "bom": bom, "classification": classification}
+            if args.json:
+                print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            else:
+                summary = dict(bom.get("summary") or {})
+                print(f"BOM-snapshot: {bom.get('snapshot_sha256') or 'nog niet gebouwd'}")
+                print(f"Partregels: {summary.get('part_group_count', 0)} | Assemblymerken: {summary.get('assembly_group_count', 0)} | Inkoopgroepen: {summary.get('purchase_group_count', 0)}")
+            _write_aggregate_report(args.json_report, payload)
+            return EXIT_OK
+        except Exception as exc:
+            payload = {"converter_version": APP_VERSION, "command": args.command, "status": "failed", "error": _exception_payload(exc)}
+            print(f"FOUT BOM-status: {exc}", file=sys.stderr)
             _write_aggregate_report(args.json_report, payload)
             return EXIT_FAILED
 

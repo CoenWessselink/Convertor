@@ -1,4 +1,4 @@
-# CWS Convertor 0.7.0-alpha
+# CWS Convertor 0.8.0-alpha-dev — Codex integration snapshot
 
 **CWS Convertor** is een local-first desktopapplicatie en CLI voor veilige conversie en productievoorbereiding van:
 

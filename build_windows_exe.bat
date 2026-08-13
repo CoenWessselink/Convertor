@@ -3,7 +3,7 @@ setlocal EnableExtensions
 set PYTHONUTF8=1
 cd /d "%~dp0"
 
-set "CWS_VERSION=0.7.0-alpha"
+set "CWS_VERSION=0.8.0-alpha-dev"
 set "CWS_DIST=CWS_Convertor"
 
 echo [1/7] Python 3.12 buildomgeving controleren...

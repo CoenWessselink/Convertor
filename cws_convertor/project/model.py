@@ -630,6 +630,12 @@ class ProjectEntity:
     def validate_base(self) -> None:
         if not self.internal_id:
             raise ProjectValidationError(f"{self.entity_type} mist internal_id")
+        try:
+            EntityCategory(self.category)
+        except ValueError as exc:
+            raise ProjectValidationError(
+                f"{self.entity_type} {self.internal_id} heeft onbekende categorie {self.category!r}"
+            ) from exc
         confidence = _require_finite_number(
             self.confidence,
             f"Confidence van {self.entity_type} {self.internal_id}",
@@ -718,6 +724,18 @@ class Part(ProjectEntity):
     manufacturing_hash_version: str = MANUFACTURING_HASH_VERSION
     nc1_eligible: bool = False
     export_status: str = "blocked"
+    classification_status: str = "unclassified"
+    classification_method: str = ""
+    classification_rule_id: str = ""
+    classification_reason: str = ""
+    classification_confidence: float = 0.0
+    normalized_profile: str = ""
+    normalized_material: str = ""
+    profile_confidence: float = 0.0
+    material_confidence: float = 0.0
+    production_identity_hash: str = ""
+    production_identity_version: str = "cws-production-identity-v1"
+    bom_group_key: str = ""
 
     def canonical(self) -> CanonicalPart | None:
         return CanonicalPart.from_dict(self.canonical_part) if self.canonical_part else None
@@ -845,6 +863,28 @@ class Part(ProjectEntity):
         return self.geometry_hash, self.manufacturing_hash
 
     def validate_hashes(self) -> None:
+        valid_statuses = {"unclassified", "automatic", "review_required", "confirmed", "blocked"}
+        if self.classification_status not in valid_statuses:
+            raise ProjectValidationError(
+                f"Onderdeel {self.internal_id} heeft ongeldige classificatiestatus {self.classification_status!r}"
+            )
+        for label, value in (
+            ("classification_confidence", self.classification_confidence),
+            ("profile_confidence", self.profile_confidence),
+            ("material_confidence", self.material_confidence),
+        ):
+            numeric = _require_finite_number(value, f"{label} van onderdeel {self.internal_id}")
+            if not 0.0 <= numeric <= 1.0:
+                raise ProjectValidationError(
+                    f"Onderdeel {self.internal_id} heeft ongeldige {label}"
+                )
+        if self.production_identity_hash and (
+            len(self.production_identity_hash) != 64
+            or any(ch not in "0123456789abcdefABCDEF" for ch in self.production_identity_hash)
+        ):
+            raise ProjectValidationError(
+                f"Onderdeel {self.internal_id} heeft ongeldige production identity hash"
+            )
         current_geometry = self.geometry_hash
         current_manufacturing = self.manufacturing_hash
         expected_geometry = stable_sha256(self._geometry_fingerprint_payload())
@@ -2285,21 +2325,20 @@ def migrate_project_dict(data: dict[str, Any]) -> dict[str, Any]:
         return raw
     if version == PROJECT_SCHEMA_VERSION:
         return raw
-    if version == "2.0" and PROJECT_SCHEMA_VERSION == "2.1":
+    if version in {"2.0", "2.1", "2.2"} and PROJECT_SCHEMA_VERSION == "2.3":
         raw["schema_version"] = PROJECT_SCHEMA_VERSION
         history = list(raw.get("migration_history") or [])
         history.append(
             {
-                "from": "2.0",
+                "from": version,
                 "to": PROJECT_SCHEMA_VERSION,
                 "timestamp": utc_now_iso(),
-                "reason": "Semantische IFC/STEP-projectimport metadata en bronstatus toegevoegd.",
+                "reason": (
+                    "Classificatie-, normalisatie-, production-identity- en BOM-metadata toegevoegd."
+                ),
             }
         )
         raw["migration_history"] = history
-        # Schema 2.1 did not remove fields.  Existing source records and entity
-        # collections receive their new optional members through dataclass
-        # defaults during ``from_dict``.
         return raw
     if _major(version) != "1":
         return raw
