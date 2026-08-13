@@ -27,6 +27,11 @@ def main() -> int:
     assert "actions/checkout@v6" in workflow
     assert "actions/setup-python@v6" in workflow
     assert 'Get-ChildItem tests -Filter "*_smoke.py"' in workflow
+    assert "Start-Process -FilePath $installer.Path" in workflow
+    assert "Start-Process -FilePath $uninstaller" in workflow
+    assert workflow.count("-Wait -PassThru -WindowStyle Hidden") == 2
+    assert "$installProcess.ExitCode" in workflow
+    assert "$uninstallProcess.ExitCode" in workflow
     assert f'set "CWS_VERSION={APP_VERSION}"' in batch
     assert "for %%F in (tests\\*_smoke.py)" in batch
     print("windows_release_config_smoke: OK")

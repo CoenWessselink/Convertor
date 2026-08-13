@@ -107,8 +107,12 @@ jobs:
         run: |
           $installer = Resolve-Path "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_x64.exe"
           $installDir = Join-Path $env:RUNNER_TEMP "CWS_Convertor_Installed"
-          & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR="$installDir"
-          if ($LASTEXITCODE -ne 0) { throw "Stille installatie mislukt met exitcode $LASTEXITCODE" }
+          $installProcess = Start-Process -FilePath $installer.Path `
+            -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/DIR=$installDir") `
+            -Wait -PassThru -WindowStyle Hidden
+          if ($installProcess.ExitCode -ne 0) {
+            throw "Stille installatie mislukt met exitcode $($installProcess.ExitCode)"
+          }
           $gui = Join-Path $installDir "CWS_Convertor.exe"
           $cli = Join-Path $installDir "CWS_Convertor_CLI.exe"
           if (-not (Test-Path $gui)) { throw "Geinstalleerde GUI EXE ontbreekt" }
@@ -130,8 +134,12 @@ jobs:
 
           $uninstaller = Join-Path $installDir "unins000.exe"
           if (-not (Test-Path $uninstaller)) { throw "Uninstaller ontbreekt" }
-          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
-          if ($LASTEXITCODE -ne 0) { throw "Stille uninstall mislukt" }
+          $uninstallProcess = Start-Process -FilePath $uninstaller `
+            -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") `
+            -Wait -PassThru -WindowStyle Hidden
+          if ($uninstallProcess.ExitCode -ne 0) {
+            throw "Stille uninstall mislukt met exitcode $($uninstallProcess.ExitCode)"
+          }
 
       - name: Create checksums
         shell: pwsh
