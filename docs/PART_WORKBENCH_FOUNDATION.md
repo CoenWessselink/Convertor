@@ -1,7 +1,9 @@
 # Part Workbench foundation
 
-Status: eerste backend-fundering, niet de volledige Part Workbench-fase.  
-Project Model: `2.4`  
+Status: eerste backend-fundering, niet de volledige Part Workbench-fase.
+
+Project Model: `2.4`
+
 Workbench-schema: `1.0`
 
 ## Gebouwd
