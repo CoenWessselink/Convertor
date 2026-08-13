@@ -44,6 +44,8 @@ def main() -> int:
     assert "--label portable" in workflow
     assert "--label installed" in workflow
     assert "inspect_windows_native_dependencies.py" in workflow
+    assert "WINDOWS_RELEASE_MANIFEST.json" in workflow
+    assert "GITHUB_STEP_SUMMARY" in workflow
     assert "app.py --self-test" in workflow
     assert "app.py --gui-smoke" in workflow
     assert "Start-Process -FilePath $installer.Path" in workflow

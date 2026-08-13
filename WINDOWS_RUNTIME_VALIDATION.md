@@ -67,7 +67,9 @@ The Windows workflow fails unless all of these environments pass independently:
 
 The workflow appends its run ID, commit and completed matrix to the copy shipped
 inside the release artifact. JSON reports for every environment are included
-beside this document and `SHA256SUMS.txt`.
+beside this document, `SHA256SUMS.txt` and `WINDOWS_RELEASE_MANIFEST.json`.
+The exact release-file hashes and byte sizes are also published in the GitHub
+Actions job summary so they remain inspectable without downloading the artifact.
 
 ## Local Windows evidence
 
