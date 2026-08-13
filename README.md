@@ -260,6 +260,11 @@ workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.8.0-alpha-dev. Een
 artefact geldt pas als gebouwd nadat de native Windows CI-installatie-, CLI-,
 projectopslag- en uninstallsmokes zijn geslaagd.
 
+Workflow `31685684421` op commit `2b003e4` is volledig geslaagd. Het geuploade
+artefact `9175668822` bevat de portable ZIP, installer-EXE en `SHA256SUMS.txt`.
+Dit bewijst de technische Windows-build; productie-export blijft afzonderlijk
+geblokkeerd door de nog ontbrekende formaat-roundtrips en golden validatie.
+
 ## Belangrijkste modules
 
 ```text

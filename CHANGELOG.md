@@ -22,6 +22,7 @@
 - Six canonical rebuild regressions and updated GUI validation added; all 28 smoke scripts pass locally on Windows.
 - Production release remains blocked pending exact source isolation and NC1/STEP/IFC/PDF roundtrip validation.
 - Canonical builder loading is lazy so the packaged project CLI does not initialize CadQuery/CasADi for non-geometry commands.
+- Native Windows workflow 31685684421 passed PyInstaller, Inno Setup, installed-app smoke without Python on PATH, project storage, uninstall, checksums and artifact upload.
 
 ## 0.7.0-alpha — Semantische IFC/STEP-projectimport
 

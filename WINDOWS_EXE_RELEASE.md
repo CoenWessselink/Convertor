@@ -59,3 +59,26 @@ De workflow en installerconfiguratie zijn aangepast aan Project Model 2.4 en de
 Part Workbench. Een installer-EXE of portable Windows-ZIP mag pas als vrijgegeven
 worden beschouwd na een native Windows x64-build, geinstalleerde-app-smoke zonder
 Python in `PATH`, file-associationtest, uninstalltest en schone-machinecontrole.
+
+### Bewezen CI-build 2026-08-13
+
+- workflow: `31685684421`;
+- commit: `2b003e43c6b3bdc037a82a3027b4053a2aea22ac`;
+- resultaat: `success`;
+- artefact: `9175668822`, `CWS_Convertor_0.8.0-alpha-dev_Windows_x64`;
+- artefactgrootte: 552.810.499 bytes;
+- vervaldatum: 2026-09-12;
+- 28/28 smoke-scripts, project-CLI en GUI-import: geslaagd;
+- PyInstaller GUI/CLI en gebundelde CLI-start: geslaagd;
+- Inno Setup, stille installatie zonder Python op `PATH`, projectopslag en
+  stille uninstall: geslaagd;
+- checksums en artefactupload: geslaagd.
+
+```text
+9954f8fafffd6864993ea7d2e24c958bc5c17e77f5b817045b925ecd715b8372  CWS_Convertor_Portable_0.8.0-alpha-dev_x64.zip
+40a9dd6229d2e892d496d274c5d02a7ab9f9341525d460ce68b5f97bfab9c405  CWS_Convertor_Setup_0.8.0-alpha-dev_x64.exe
+```
+
+Dit is een bewezen technische Windows-build. Een veldtest met echte golden
+STEP/IFC/DSTV-bestanden en de productie-roundtripgate blijven afzonderlijke,
+nog niet afgeronde acceptatiestappen.

@@ -78,4 +78,4 @@ BELANGRIJKE GRENZEN
 - NC1/STEP/IFC/PDF-roundtripvalidatie is nog niet afgerond.
 - Optimalisatie en machinejobs blijven geblokkeerd.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
-- De vorige GitHub Windows-pipeline 31680546892 slaagde; deze nieuwe wijziging krijgt opnieuw CI-validatie voor vrijgave.
+- GitHub Windows-pipeline 31685684421 op commit 2b003e4 slaagde inclusief installer, installatie zonder Python op PATH, projectopslag en uninstall.
