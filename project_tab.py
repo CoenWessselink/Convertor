@@ -27,6 +27,7 @@ from cws_convertor.project import (
     write_baseline_report,
 )
 from cws_convertor.ui.part_workbench import PartWorkbenchPanel
+from cws_convertor.ui.project_viewer import ProjectViewerPanel
 
 
 class CWSProjectTab(ttk.Frame):
@@ -53,9 +54,15 @@ class CWSProjectTab(ttk.Frame):
         self.part_search = tk.StringVar(value="")
         self.part_category_filter = tk.StringVar(value="alle")
         self.embed_sources = tk.BooleanVar(value=True)
+        self._closing = False
+        self._poll_after_id: str | None = None
+        self._autosave_after_id: str | None = None
         self._build_ui()
-        self.after(120, self._poll_events)
-        self.after(self.AUTOSAVE_INTERVAL_MS, self._autosave_tick)
+        self._poll_after_id = self.after(120, self._poll_events)
+        self._autosave_after_id = self.after(
+            self.AUTOSAVE_INTERVAL_MS,
+            self._autosave_tick,
+        )
         self.refresh()
 
     # ------------------------------------------------------------------ style/UI
@@ -193,9 +200,11 @@ class CWSProjectTab(ttk.Frame):
         self.workspace = ttk.Notebook(self)
         self.workspace.grid(row=3, column=0, sticky="nsew", padx=16, pady=(0, 10))
         model_page = ttk.Frame(self.workspace)
+        viewer_page = ttk.Frame(self.workspace)
         bom_page = ttk.Frame(self.workspace)
         workbench_page = ttk.Frame(self.workspace)
         self.workspace.add(model_page, text="  Model & bronnen  ")
+        self.workspace.add(viewer_page, text="  3D Viewer  ")
         self.workspace.add(bom_page, text="  Classificatie & BOM  ")
         self.workspace.add(workbench_page, text="  Part Workbench  ")
 
@@ -255,6 +264,15 @@ class CWSProjectTab(ttk.Frame):
         detail_scroll.grid(row=0, column=1, sticky="ns")
         self.details.configure(yscrollcommand=detail_scroll.set)
         body.add(detail_box, weight=2)
+
+        viewer_page.columnconfigure(0, weight=1)
+        viewer_page.rowconfigure(0, weight=1)
+        self.project_viewer = ProjectViewerPanel(
+            viewer_page,
+            selection_callback=self._select_entity_from_viewer,
+            status_callback=self._viewer_status,
+        )
+        self.project_viewer.grid(row=0, column=0, sticky="nsew")
 
         bom_page.columnconfigure(0, weight=1)
         bom_page.rowconfigure(2, weight=1)
@@ -364,7 +382,7 @@ class CWSProjectTab(ttk.Frame):
         self.status_label.grid(row=0, column=1, sticky="ew", padx=(10, 0))
         self.phase_label = ttk.Label(
             footer,
-            text="Fase 4: Part Workbench",
+            text="Fase B: Viewer & Import Accuracy",
             foreground="#64748b",
         )
         self.phase_label.grid(row=0, column=2, sticky="e")
@@ -439,6 +457,8 @@ class CWSProjectTab(ttk.Frame):
             self.embed_sources.set(embedded or not session.project.sources)
             self.log_callback(f"CWS-project geopend: {session.path}")
             self.refresh()
+            if session.project.parts:
+                self.workspace.select(1)
         except Exception as exc:
             messagebox.showerror("Project openen", str(exc), parent=self)
 
@@ -874,6 +894,7 @@ class CWSProjectTab(ttk.Frame):
         self._part_rows.clear()
         if self.session is None:
             self.part_workbench.clear()
+            self.project_viewer.load_project(None)
             self.project_badge.configure(text="GEEN PROJECT", bg="#334155")
             self.project_path_label.configure(text="Maak of open een .cwscproj-project")
             self.card_values["sources"].configure(text="0")
@@ -1064,6 +1085,22 @@ class CWSProjectTab(ttk.Frame):
 
         self._refresh_classification_grid()
         self.part_workbench.refresh()
+        try:
+            self.project_viewer.load_project(project)
+            if project.parts and not self.project_viewer.state.selected_id:
+                first_part_id = min(
+                    project.parts,
+                    key=lambda item: (
+                        project.parts[item].part_position or "~",
+                        project.parts[item].name,
+                        item,
+                    ),
+                )
+                self.project_viewer.select_entity(first_part_id, notify=False)
+        except Exception as exc:
+            self.project_viewer.load_project(None)
+            self.status_label.configure(text=f"Viewer-host niet geladen: {exc}")
+            self.log_callback(f"FOUT viewer-host opbouwen: {exc}")
 
         self._set_details(
             f"PROJECT\n{project.project_name}\n\n"
@@ -1164,7 +1201,7 @@ class CWSProjectTab(ttk.Frame):
                 "part": part, "blocking_reasons": reasons, "assembly_marks": sorted(set(assembly_marks)),
             }
 
-    def _part_selected(self, _event=None) -> None:
+    def _part_selected(self, _event=None, *, sync_renderer: bool = True) -> None:
         selected = list(self.part_grid.selection())
         if not selected or self.session is None:
             return
@@ -1204,14 +1241,35 @@ class CWSProjectTab(ttk.Frame):
         self.part_details.insert("1.0", "\n".join(lines))
         self.part_details.configure(state="disabled")
         self.part_workbench.select_part(part.internal_id, notify=False)
+        viewer_already_selected = bool(
+            self.project_viewer.state is not None
+            and self.project_viewer.state.selected_id == part.internal_id
+        )
+        self.project_viewer.select_entity(
+            part.internal_id,
+            notify=False,
+            sync_renderer=sync_renderer and not viewer_already_selected,
+        )
 
     def _select_part_from_workbench(self, part_id: str) -> None:
+        self._select_part_everywhere(part_id, source="workbench")
+
+    def _select_entity_from_viewer(self, steel_model_id: str) -> None:
+        if self.session is None or steel_model_id not in self.session.project.parts:
+            return
+        self._select_part_everywhere(steel_model_id, source="viewer")
+
+    def _select_part_everywhere(self, part_id: str, *, source: str) -> None:
         if not self.part_grid.exists(part_id):
             return
         self.part_grid.selection_set(part_id)
         self.part_grid.focus(part_id)
         self.part_grid.see(part_id)
-        self._part_selected()
+        self._part_selected(sync_renderer=source != "viewer")
+
+    def _viewer_status(self, message: str) -> None:
+        self.status_label.configure(text=message)
+        self.log_callback(message)
 
     def _workbench_changed(self) -> None:
         self.refresh()
@@ -1347,6 +1405,7 @@ class CWSProjectTab(ttk.Frame):
             state="normal" if self._busy_cancellable else "disabled"
         )
         self.part_workbench.set_busy(busy)
+        self.project_viewer.set_busy(busy)
         if busy:
             self.progress.start(10)
         else:
@@ -1388,6 +1447,7 @@ class CWSProjectTab(ttk.Frame):
                         f"{total} objecten gematerialiseerd. Productiegate blijft actief."
                     )
                     self.refresh()
+                    self.workspace.select(1)
                 elif event == "classification_ok":
                     session, report = payload
                     self._replace_session(session)
@@ -1396,7 +1456,7 @@ class CWSProjectTab(ttk.Frame):
                         f"Classificatie gereed: {report.classified_part_count} onderdelen, "
                         f"{report.review_required_count} te beoordelen",
                     )
-                    self.workspace.select(1)
+                    self.workspace.select(2)
                     self.log_callback(
                         f"Classificatie gereed: {report.category_counts}; "
                         f"{report.identity_conflict_count} identiteitsconflicten."
@@ -1410,7 +1470,7 @@ class CWSProjectTab(ttk.Frame):
                         False,
                         f"BOM-pakket gereed: {snapshot.summary['part_group_count']} partregels",
                     )
-                    self.workspace.select(1)
+                    self.workspace.select(2)
                     self.refresh()
                     package = next((path for name, path in outputs.items() if name.endswith('_PACKAGE.zip')), None)
                     messagebox.showinfo(
@@ -1449,7 +1509,8 @@ class CWSProjectTab(ttk.Frame):
                     messagebox.showerror(title, message, parent=self)
         except queue.Empty:
             pass
-        self.after(120, self._poll_events)
+        if not self._closing:
+            self._poll_after_id = self.after(120, self._poll_events)
 
     def _autosave_tick(self) -> None:
         if self.session is not None and self.session.dirty and not self._busy:
@@ -1458,7 +1519,11 @@ class CWSProjectTab(ttk.Frame):
                 self.status_label.configure(text=f"Autosave: {target.name}")
             except Exception as exc:
                 self.log_callback(f"WAARSCHUWING autosave mislukt: {exc}")
-        self.after(self.AUTOSAVE_INTERVAL_MS, self._autosave_tick)
+        if not self._closing:
+            self._autosave_after_id = self.after(
+                self.AUTOSAVE_INTERVAL_MS,
+                self._autosave_tick,
+            )
 
     def _confirm_discard_dirty(self) -> bool:
         if self.session is None or not self.session.dirty:
@@ -1476,6 +1541,15 @@ class CWSProjectTab(ttk.Frame):
         return True
 
     def destroy(self) -> None:
+        self._closing = True
+        for after_id in (self._poll_after_id, self._autosave_after_id):
+            if after_id is not None:
+                try:
+                    self.after_cancel(after_id)
+                except tk.TclError:
+                    pass
+        self._poll_after_id = None
+        self._autosave_after_id = None
         self._cancel_event.set()
         if self.session is not None:
             try:

@@ -1,0 +1,130 @@
+{
+  "manifest": {
+    "accuracy": {
+      "approximate": 1,
+      "exact": 2,
+      "geometry_total": 4,
+      "manual_validation_required": 1,
+      "not_applicable": 1,
+      "review_count": 2,
+      "tolerance_verified": 0
+    },
+    "binding_count": 5,
+    "entity_count": 5,
+    "project_id": "b7000000-0000-4000-8000-000000000001",
+    "renderer": {
+      "compatible": false,
+      "component_name": "",
+      "component_version": "",
+      "errors": [
+        "viewer component not attached"
+      ],
+      "missing_capabilities": [
+        "accuracy_debug",
+        "camera.standard_views",
+        "compare.models",
+        "large_model.telemetry",
+        "measurement.state",
+        "scene.load",
+        "scene.patch",
+        "section.planes",
+        "selection.sync",
+        "visibility.isolate"
+      ]
+    },
+    "selected": {
+      "accuracy_label": "Benadering",
+      "accuracy_status": "approximate",
+      "category": "make_part",
+      "display_properties": {
+        "category": "make_part",
+        "confidence": 1.0,
+        "entity_type": "part",
+        "export_status": "blocked",
+        "length_mm": 6200.0,
+        "mass_each_kg": 0.0,
+        "material": "S355J2",
+        "material_grade": "",
+        "mirrored": false,
+        "name": "Randligger",
+        "nc1_eligible": false,
+        "part_position": "K14",
+        "part_type": "unknown",
+        "profile": "IPE300",
+        "profile_type": "",
+        "quantity_total": 1,
+        "revision": "",
+        "status": "new",
+        "surface_area_each_m2": 0.0
+      },
+      "entity_type": "part",
+      "geometry_hash": "d6a14450a20b8fe43db69aa379796e5c9c6fc425e0e16b710b068fab0781e8b6",
+      "geometry_kind": "triangulated_mesh",
+      "global_id": "phase-b-k14",
+      "global_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "local_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "manufacturing_hash": "a23a93067f335a1cbc02f7c0512ebea8aed595b9c351d19d055e2465749e2292",
+      "name": "Randligger",
+      "source_entity_id": "#102",
+      "source_file_id": "7f1b18d4-6fd4-5e33-8db5-9b1eb65f2d51",
+      "source_file_name": "fase-b-viewer.ifc",
+      "source_format": "IFC",
+      "source_sha256": "3718ab8cb11d58acf48acaf9e955ea5b01b4557632303dd3ef24e85674984e1a",
+      "status": "new",
+      "steel_model_id": "part-k14",
+      "validation_issue_codes": [
+        "CWS-VIEW-002"
+      ],
+      "viewer_geometry_content_sha256": "",
+      "viewer_geometry_id": "fb78c3f7-e4c5-5959-ae8f-7b3f538cb73f",
+      "viewer_node_id": "1a70ebaa-09ab-57ed-9e20-a4ebbf61cd74"
+    },
+    "source_count": 1,
+    "steel_model_snapshot_sha256": "76eb98b1caa5e8bec284d0f2362333a2c529f7ca99b2067d13c7d4365b3cf335",
+    "viewer_host_snapshot_sha256": "a29bb2066b157dee63d1b45d52a5726fa95bd9bb8306207ef0527a1c8a712571"
+  },
+  "status": "passed",
+  "ui": {
+    "accuracy_debug": true,
+    "model_tree": true,
+    "properties_panel": true,
+    "renderer_connected": false,
+    "renderer_slot": true,
+    "validation_grid": true,
+    "workspace": "3D Viewer"
+  }
+}

@@ -310,6 +310,8 @@ cws_convertor/steel_model/contracts.py      SteelModel 1.0 read-only contract
 cws_convertor/steel_model/adapter.py        Project Model 2.5 compatibility adapter
 cws_convertor/steel_model/tolerances.py     central comparison policy
 cws_convertor/steel_model/viewer_boundary.py controlled GPT-viewer handover contract
+cws_convertor/viewer/workspace.py          verified viewer state and selection
+cws_convertor/ui/project_viewer.py         integrated project viewer host UI
 cws_convertor/ui/part_workbench.py          geintegreerde analytische Part Workbench
 cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
 cws_convertor/project/service.py            transactionele GUI/CLI-service
@@ -317,18 +319,23 @@ project_tab.py                              Project / Productie-interface
 cli.py                                      conversie- en project-CLI
 ```
 
-## Volgende bouwfase
+## Huidige bouwfase
 
 De eerder uitgevoerde kernfasen 0-3 blijven geldig als technisch bewijs. De
 voorwaartse roadmap gebruikt nu fasen A-F. Fase A is afgerond met SteelModel
 1.0, centrale toleranties, compatibiliteitsidentiteit en het viewer-hostcontract.
-Nu volgt fase B: Viewer & Import Accuracy.
+Fase B is gestart. Batch 1 levert nu de echte SteelModel-gebonden projectboom,
+properties, validatie, Accuracy/Debug-status, selectie-synchronisatie en de
+capability-gated rendererpoort in de hoofdapp. Rendererfuncties blijven bewust
+uitgeschakeld totdat een overdracht echte projectmeshes en een complete
+compatibele commandobrug levert.
 
 1. maak `source ID -> SteelModel ID -> viewer mesh ID` stabiel en controleerbaar;
 2. bewijs units, transformaties, orientatie en toleranties op synthetische en
    eigenaar-gevalideerde referenties;
-3. synchroniseer viewerselectie, modelboom, eigenschappen en validatieproblemen;
-4. voeg Accuracy/Debug mode, visuele regressie en grote-modelmetingen toe;
+3. behoud de nu geteste synchronisatie van viewerselectie, modelboom,
+   eigenschappen en validatieproblemen;
+4. koppel echte projectmeshes en voeg visuele regressie en grote-modelmetingen toe;
 5. behoud alle bestaande conversie-, Workbench-, roundtrip- en Windows-tests;
 6. bouw pas daarna de productie-editor, volledige tekeningen, adapters en
    optimalisatie verder uit.

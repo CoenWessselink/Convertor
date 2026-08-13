@@ -6,7 +6,7 @@ Compatibiliteit:     CWS_Convertor binaries/installer/.cwscproj/ProgIDs behouden
 Versie:              0.8.3-beta-dev
 Project Model:       2.5
 Projectbestand:      .cwscproj
-Fase:                Fase A fundament afgerond; fase B Viewer & Import Accuracy volgt
+Fase:                Fase B Viewer & Import Accuracy actief; batch 1 viewerhost afgerond
 Productiestatus:     BETA-DEV - synthetische releaseketen getest; golden projectvalidatie blijft vereist
 
 NIEUW IN DEZE VERSIE
@@ -17,6 +17,10 @@ NIEUW IN DEZE VERSIE
 - Capability-handshake en expliciete grens tussen app- en viewerverantwoordelijkheid.
 - SteelConverter zichtbaar, met behoud van bestaande CWS_Convertor-compatibiliteits-ID's.
 - CLI `project-export-steel-model` voor gecontroleerde GPT-vieweroverdracht.
+- SteelModel-gebonden 3D Viewer-workspace met modelboom, properties, validatie en brontrace.
+- Bidirectionele selectie tussen projectlijst, Part Workbench en viewerhost zonder event-echo.
+- Capability-gated commandobrug; renderertools blijven uit tot een compatibele renderer is gekoppeld.
+- Deterministisch viewerhost-manifest voor accuracy- en UI-regressie.
 - Gedeelde ISO-10303-21-grafiekkern voor IFC en STEP.
 - IFC assemblies, parts, fasteners, lassen, placements, properties en materialen.
 - STEP products, product definitions, occurrences en BREP-roots.
@@ -82,8 +86,9 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts lokale ontwikkelrun:    35/35 scripts; 129 tests / 7 skips geslaagd
+Smoke-scripts lokale ontwikkelrun:    36/36 scripts; 136 tests / 7 skips geslaagd
 SteelModel fase-A contracttests:       7/7 geslaagd
+Viewerworkspace/UI-contracttests:      7/7 geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Canonical rebuild-tests:               6/6 geslaagd
 Productiepakket-tests:                 4/4 geslaagd
@@ -100,6 +105,8 @@ BELANGRIJKE GRENZEN
 - Merkprojecties zijn vector-wireframes zonder true hidden-line removal.
 - DXF-export is beperkt tot ondersteunde analytische plaatcontouren.
 - Grote productie-export wacht op een door de eigenaar gevalideerd, vrijgegeven groot model.
+- De centrale viewerhost toont nog geen echte projectmesh; rendererfuncties blijven daarom uitgeschakeld.
+- Viewer V2 is geaudit maar niet geactiveerd: synthetische boxes, PySide6/Windows/PyInstaller en echte projectmeshes zijn nog open.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
 - Windows CI-run 31728698072: fase 3 source, dist, portable, installer, installed runtime, productiepakket en uninstall geslaagd.
 - Windows CI-run 31734275341: fase A source, dist, portable, installer, installed runtime, SteelModel/viewer-hostexport en uninstall geslaagd; artifact 9195086063.

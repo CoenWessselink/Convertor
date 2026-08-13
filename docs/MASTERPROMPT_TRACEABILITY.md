@@ -31,7 +31,7 @@ be merged without the `SteelModel`, provenance and integration gates.
 | Phase | Required outcome | Existing evidence | Status |
 | --- | --- | --- | --- |
 | A - Foundation | Stable repository, target identity plan, versioned `SteelModel`, immutable sources, modular contracts, persistence and validation state | Core phase 0 baseline; Project Model 2.5; `.cwscproj`; jobs; locks/SBOM; Windows packaging; SteelModel 1.0 adapter; central tolerances; viewer-host handshake | **Complete**; existing runtime and package identifiers stay compatibility-stable |
-| B - Viewer & Import Accuracy | Correct repeatable import; source/model/mesh trace; production viewer; measurements; sections; compare; debug mode; visual, golden and large-model regression | Semantic IFC/STEP import, source locators, exact single-solid STEP selection, entity-specific IFC tessellation and performance evidence | **Next priority**: controlled viewer integration and end-to-end accuracy gate remain |
+| B - Viewer & Import Accuracy | Correct repeatable import; source/model/mesh trace; production viewer; measurements; sections; compare; debug mode; visual, golden and large-model regression | Semantic IFC/STEP import, source locators, exact single-solid STEP selection, entity-specific IFC tessellation, SteelModel-bound host UI, synchronized tree/properties/issues/selection and capability-gated renderer bridge | **In progress**: batch 1 host slice is tested; real project meshes, renderer UX and visual/large-model accuracy gates remain |
 | C - Production Editor | Viewer-integrated parametric production editing, feature preview, scribing, audit and deterministic rebuild | Part Workbench 1.1, analytical arcs, custom sections, worked profiles, undo/redo and hash invalidation | Partial: slots, copes, bevels, complex ends, scribing and full 3D interaction remain |
 | D - BOM & Drawings | Model-driven BOM plus separate overview, assembly/mark and part drawing workflows | Classification/BOM draft, atomic packages, initial part/assembly PDFs, BOM extracts and labels | Partial: full drawing hierarchy, sections/details, hidden-line/layout editing and independent acceptance remain |
 | E - Export & Production | Validated NC1/STEP/IFC and machine adapters with readiness and traceability | Four-format roundtrip matrix, guarded per-part/per-mark packages, CLI and installer | Partial and gated: machine-specific adapters and owner-validated release evidence remain |
@@ -85,8 +85,13 @@ not rewritten when priorities change.
 10. Synthetic exact golden tests, owner-validated real-model tests and visual
     regressions for missing, displaced, mirrored and malformed geometry.
 11. Large-model time, memory and crash evidence on representative references.
-12. Existing 34 smoke scripts and all applicable unit/regression tests remain
+12. The complete current smoke suite and all applicable unit/regression tests remain
     green, with fixture gaps explicit.
+
+Batch-1 evidence is recorded in
+`docs/PHASE_B_VIEWER_HOST_SLICE_2026-08-13.md`. Its delivered scope covers
+items 1, 4, 5 and the host side of item 9. It does not satisfy the remaining
+renderer, visual-golden or large-model acceptance items.
 
 ## Non-negotiable gates
 

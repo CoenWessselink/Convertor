@@ -75,6 +75,8 @@ jobs:
           python cli.py project-export-parts --help
           python cli.py project-export-assemblies --help
           python cli.py project-migrate --help
+          python validation/run_phase_b_viewer_ui.py `
+            --output "$env:RUNTIME_RESULTS\source-phase-b-viewer-ui.json"
 
       - name: Source project contract smoke
         shell: pwsh
