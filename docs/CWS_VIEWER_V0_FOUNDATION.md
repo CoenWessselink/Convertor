@@ -40,6 +40,8 @@ Viewer V0:
 
 The complete repository suite must be repeated before commit. Windows packaging
 remains unchanged because V0 is not imported by the production app yet.
+Viewer featurebranches are included in the Windows workflow so future renderer
+and native-dependency changes cannot bypass packaged and installed tests.
 
 ## Next hard gate: V1 technology spike
 
