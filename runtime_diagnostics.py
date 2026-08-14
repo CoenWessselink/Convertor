@@ -179,6 +179,37 @@ def _scientific_rendering_check() -> dict[str, Any]:
 
 
 def _vtk_viewer_check() -> dict[str, Any]:
+    if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+        from vtkmodules.vtkCommonCore import vtkPoints
+        from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData, vtkTriangle
+        from vtkmodules.vtkRenderingCore import vtkPolyDataMapper
+        import vtkmodules.vtkRenderingFreeType  # noqa: F401
+        import vtkmodules.vtkRenderingOpenGL2  # noqa: F401
+
+        points = vtkPoints()
+        for point in ((0.0, 0.0, 0.0), (20.0, 0.0, 0.0), (0.0, 10.0, 0.0)):
+            points.InsertNextPoint(*point)
+        triangle = vtkTriangle()
+        for index in range(3):
+            triangle.GetPointIds().SetId(index, index)
+        cells = vtkCellArray()
+        cells.InsertNextCell(triangle)
+        polydata = vtkPolyData()
+        polydata.SetPoints(points)
+        polydata.SetPolys(cells)
+        mapper = vtkPolyDataMapper()
+        mapper.SetInputData(polydata)
+        mapper.Update()
+        if polydata.GetNumberOfPoints() != 3 or polydata.GetNumberOfCells() != 1:
+            raise AssertionError("VTK headless CI-pipeline verloor de testdriehoek")
+        return {
+            "vtk_version": _version("vtk"),
+            "mode": "headless_ci_native_pipeline",
+            "points": polydata.GetNumberOfPoints(),
+            "cells": polydata.GetNumberOfCells(),
+            "render_skipped_reason": "GitHub Actions Windows has no stable interactive OpenGL context",
+        }
+
     from cws_convertor.viewer.vtk_backend import VtkOffscreenRenderer
 
     renderer = VtkOffscreenRenderer(width=160, height=120)
@@ -191,6 +222,7 @@ def _vtk_viewer_check() -> dict[str, Any]:
         raise AssertionError("VTK off-screen renderer leverde geen geldige PNG op")
     return {
         "vtk_version": _version("vtk"),
+        "mode": "offscreen_png_render",
         "png_bytes": len(png),
         "backend": telemetry["backend"],
         "viewport": telemetry["viewport"],

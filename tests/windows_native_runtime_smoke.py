@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,13 @@ def main() -> int:
     assert checks["ifcopenshell"]["project_count"] == 1
     assert checks["pymupdf"]["page_count"] == 1
     assert checks["scientific_rendering"]["rendered_bytes"] > 0
+    if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+        assert checks["vtk_viewer"]["mode"] == "headless_ci_native_pipeline"
+        assert checks["vtk_viewer"]["points"] == 3
+        assert checks["vtk_viewer"]["cells"] == 1
+    else:
+        assert checks["vtk_viewer"]["mode"] == "offscreen_png_render"
+        assert checks["vtk_viewer"]["png_bytes"] > 200
     assert checks["project_roundtrips"]["status"] == "passed"
     assert set(checks["project_roundtrips"]["formats"]) == {"nc1", "step", "ifc", "pdf"}
     assert checks["project_roundtrips"]["production_package"]["status"] == "passed"

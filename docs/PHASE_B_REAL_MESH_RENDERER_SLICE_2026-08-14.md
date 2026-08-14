@@ -61,6 +61,12 @@ hidden-import set and packaged native self-test.
 - Visual output: `validation/results/phase-b-mesh-renderer.png`.
 - Integrated local UI capture: `validation/results/phase-b-viewer-ui.png`.
 
+GitHub's non-interactive Windows runner has no stable OpenGL render context and
+terminates inside VTK's Win32 render window. Its package gate therefore loads
+the native rendering modules and executes a real polydata/mapper pipeline; the
+actual PNG, visual-golden and GUI render gates remain mandatory in the local
+source/dist/portable/installed Windows matrix.
+
 ## Accuracy boundary
 
 A runtime source inspection does not rewrite project truth. If the current

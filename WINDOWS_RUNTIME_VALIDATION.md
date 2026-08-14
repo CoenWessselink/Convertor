@@ -48,7 +48,7 @@ failing GUI import chain.
 | Matplotlib | Render a line using the non-interactive Agg backend |
 | NumPy/SciPy | Create a native array and calculate a determinant |
 | Pillow | Create an in-memory RGB image |
-| VTK | Render real triangle geometry off-screen and validate the PNG output |
+| VTK | Local/package gate: render real geometry and validate PNG; headless GitHub gate: load native rendering modules and execute a polydata/mapper pipeline |
 
 `inspect_windows_native_dependencies.py` additionally reads the PE import table
 of `_casadi.pyd`, confirms every direct dependency resolves from the package,
@@ -77,6 +77,13 @@ inside the release artifact. JSON reports for every environment are included
 beside this document, `SHA256SUMS.txt` and `WINDOWS_RELEASE_MANIFEST.json`.
 The exact release-file hashes and byte sizes are also published in the GitHub
 Actions job summary so they remain inspectable without downloading the artifact.
+
+GitHub-hosted Windows runners do not expose a stable interactive OpenGL context;
+creating VTK's Win32 render window there can terminate the process before Python
+can report an exception. CI therefore validates the bundled native VTK modules
+and a real triangle polydata/mapper pipeline without constructing a render
+window. The local source, dist, portable and installed-package gates remain the
+authoritative pixel-render checks and must produce a valid PNG.
 
 ## Local Windows evidence
 
