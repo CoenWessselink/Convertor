@@ -114,7 +114,16 @@ jobs:
         run: |
           $installDir = "$env:RUNNER_TEMP\CWS-Convertor-V9-Installed"
           $installer = (Resolve-Path release\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe)
-          Start-Process -FilePath $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$installDir`"" -Wait
+          $installProcess = Start-Process -FilePath $installer -ArgumentList @(
+            "/VERYSILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/SP-",
+            "/CURRENTUSER",
+            "/TASKS=fileassoc",
+            "/DIR=$installDir"
+          ) -Wait -PassThru -WindowStyle Hidden
+          if ($installProcess.ExitCode -ne 0) { throw "silent install failed" }
           if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw "installed GUI missing" }
           "CWS_INSTALL_DIR=$installDir" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -125,6 +134,10 @@ jobs:
             --runtime-dir "$env:CWS_INSTALL_DIR" `
             --label v9-installed `
             --result-dir build\installed-results
+
+      - name: Installed file associations
+        shell: pwsh
+        run: |
           python tests\windows_installer_association_smoke.py `
             --runtime-dir "$env:CWS_INSTALL_DIR"
 

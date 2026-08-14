@@ -47,6 +47,9 @@ class ViewerV9PackagingConfigTests(unittest.TestCase):
             "tests\\windows_installer_association_smoke.py",
             "--runtime-dir build\\portable",
             '--runtime-dir "$env:CWS_INSTALL_DIR"',
+            '"/CURRENTUSER"',
+            '"/TASKS=fileassoc"',
+            "Installed file associations",
         ):
             self.assertIn(token, workflow)
 
