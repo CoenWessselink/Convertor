@@ -128,8 +128,9 @@ The installer is 266,487,917 bytes with SHA-256
 `0655a7816965fc0b891ba645592839fc26a8324ed03715cfc94714e685621b91`.
 The packaged subprocess harness now tolerates mixed Windows console encodings
 without hiding nonzero exit codes or file-based runtime assertions. GitHub
-Windows validation for this batch remains pending until the source commit is
-pushed.
+Windows run `31785710833` passed the complete matrix on commit `949f5a0`.
+Artifact `9213845091` is 727,225,659 bytes with digest
+`sha256:a5e0c9a06f5b1d10827d290059db34e0fb34e1b5d7c1f2c42f380001373394e9`.
 
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the

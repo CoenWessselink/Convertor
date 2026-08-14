@@ -47,7 +47,9 @@ retain unnecessary worker closures or continue through a large stale backlog.
   `fa590c3c141ca0568526558d6191a4f7a55ed3e0c6935312b5111567e4c62483`.
 - Installer: 266,487,917 bytes, SHA-256
   `0655a7816965fc0b891ba645592839fc26a8324ed03715cfc94714e685621b91`.
-- GitHub Windows package validation remains pending until this batch is pushed.
+- GitHub Windows run `31785710833` passed the complete matrix on commit
+  `949f5a0`. Artifact `9213845091` is 727,225,659 bytes with digest
+  `sha256:a5e0c9a06f5b1d10827d290059db34e0fb34e1b5d7c1f2c42f380001373394e9`.
 
 ## Accuracy and performance boundary
 
