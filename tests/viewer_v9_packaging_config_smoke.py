@@ -43,6 +43,10 @@ class ViewerV9PackagingConfigTests(unittest.TestCase):
             "installed",
             "ifcopenshell",
             "casadi",
+            "tests\\packaged_runtime_smoke.py",
+            "tests\\windows_installer_association_smoke.py",
+            "--runtime-dir build\\portable",
+            '--runtime-dir "$env:CWS_INSTALL_DIR"',
         ):
             self.assertIn(token, workflow)
 

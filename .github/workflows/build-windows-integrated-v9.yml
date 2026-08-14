@@ -95,13 +95,10 @@ jobs:
       - name: Portable self-test without Python on PATH
         shell: pwsh
         run: |
-          $oldPath = $env:PATH
-          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-          & build\portable\CWS_Convertor.exe --self-test --project build\v9-smoke.cwscproj --require-gui-runtime --report build\portable-selftest.json
-          if ($LASTEXITCODE -ne 0) { throw "portable self-test failed" }
-          & build\portable\CWS_Convertor.exe --gui-smoke --project build\v9-smoke.cwscproj --report build\portable-gui-smoke.json
-          if ($LASTEXITCODE -ne 0) { throw "portable GUI smoke failed" }
-          $env:PATH = $oldPath
+          python tests\packaged_runtime_smoke.py `
+            --runtime-dir build\portable `
+            --label v9-portable `
+            --result-dir build\portable-results
 
       - name: Build Inno Setup installer
         shell: pwsh
@@ -124,15 +121,12 @@ jobs:
       - name: Installed self-test and GUI smoke without Python on PATH
         shell: pwsh
         run: |
-          $oldPath = $env:PATH
-          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-          & "$env:CWS_INSTALL_DIR\CWS_Convertor.exe" --self-test --project build\v9-smoke.cwscproj --require-gui-runtime --report build\installed-selftest.json
-          if ($LASTEXITCODE -ne 0) { throw "installed self-test failed" }
-          & "$env:CWS_INSTALL_DIR\CWS_Convertor.exe" --gui-smoke --project build\v9-smoke.cwscproj --report build\installed-gui-smoke.json
-          if ($LASTEXITCODE -ne 0) { throw "installed GUI smoke failed" }
-          & "$env:CWS_INSTALL_DIR\CWS_Convertor_CLI.exe" --version
-          if ($LASTEXITCODE -ne 0) { throw "installed CLI failed" }
-          $env:PATH = $oldPath
+          python tests\packaged_runtime_smoke.py `
+            --runtime-dir "$env:CWS_INSTALL_DIR" `
+            --label v9-installed `
+            --result-dir build\installed-results
+          python tests\windows_installer_association_smoke.py `
+            --runtime-dir "$env:CWS_INSTALL_DIR"
 
       - name: Uninstall and verify removal
         shell: pwsh
@@ -150,6 +144,8 @@ jobs:
           Get-FileHash release\CWS_Convertor_Portable_0.9.0-alpha-dev_x64.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii -Append
           Copy-Item build\*-selftest.json release\ -ErrorAction SilentlyContinue
           Copy-Item build\*-gui-smoke.json release\ -ErrorAction SilentlyContinue
+          Copy-Item build\portable-results\*.json release\ -ErrorAction SilentlyContinue
+          Copy-Item build\installed-results\*.json release\ -ErrorAction SilentlyContinue
           Copy-Item build\dist-size.json release\
 
       - name: Upload integrated Windows release
