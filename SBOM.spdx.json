@@ -2,14 +2,14 @@
   "SPDXID": "SPDXRef-DOCUMENT",
   "annotations": [
     {
-      "annotationDate": "2026-08-13T00:00:00Z",
+      "annotationDate": "2026-08-14T00:00:00Z",
       "annotationType": "OTHER",
       "annotator": "Tool: SteelConverter Windows native runtime release",
       "comment": "Direct dependency SBOM generated from pinned lock files. The native Windows build publishes a second transitive wheel inventory."
     }
   ],
   "creationInfo": {
-    "created": "2026-08-13T00:00:00Z",
+    "created": "2026-08-14T00:00:00Z",
     "creators": [
       "Tool: SteelConverter Windows native runtime release"
     ]
@@ -247,6 +247,60 @@
       "name": "vtk",
       "primaryPackagePurpose": "LIBRARY",
       "versionInfo": "9.6.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-13-PySide6",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pyside6@6.9.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "PySide6",
+      "primaryPackagePurpose": "LIBRARY",
+      "versionInfo": "6.9.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-14-psutil",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/psutil@7.2.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "psutil",
+      "primaryPackagePurpose": "LIBRARY",
+      "versionInfo": "7.2.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-15-Pillow",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pillow@12.3.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "Pillow",
+      "primaryPackagePurpose": "LIBRARY",
+      "versionInfo": "12.3.0"
     }
   ],
   "relationships": [
@@ -307,6 +361,21 @@
     },
     {
       "relatedSpdxElement": "SPDXRef-Package-12-vtk",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-13-PySide6",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-14-psutil",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-15-Pillow",
       "relationshipType": "DEPENDS_ON",
       "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
     }
