@@ -59,8 +59,12 @@ jobs:
           Get-ChildItem tests -Filter "*_smoke.py" |
             Sort-Object Name |
             ForEach-Object {
+              Write-Host "Running smoke script: $($_.Name)"
               python $_.FullName
-              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              if ($LASTEXITCODE -ne 0) {
+                Write-Host "::error file=$($_.FullName)::Smoke script $($_.Name) failed with exit code $LASTEXITCODE"
+                exit $LASTEXITCODE
+              }
             }
           python cli.py --version
           python cli.py pdf-analyze --help

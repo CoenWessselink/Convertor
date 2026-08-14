@@ -40,6 +40,7 @@ def main() -> int:
     assert "actions/checkout@v6" in workflow
     assert "actions/setup-python@v6" in workflow
     assert 'Get-ChildItem tests -Filter "*_smoke.py"' in workflow
+    assert "Smoke script $($_.Name) failed with exit code" in workflow
     assert '"casadi"' in spec
     assert '"scipy"' in spec
     assert '"ezdxf"' in spec
