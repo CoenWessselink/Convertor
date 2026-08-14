@@ -2,8 +2,8 @@
 
 Date: 2026-08-14
 
-Status: implemented and locally verified through the full Windows package and
-installer matrix; GitHub Windows CI pending.
+Status: implemented and verified through the local and GitHub Windows package
+and installer matrices.
 This is a bounded Phase C delivery, not a claim that every profile operation or
 machine adapter is complete.
 
@@ -74,6 +74,9 @@ reason. It is never converted into a guessed mark.
   `deb63e62ff493b835c96443c24ea2e6118c033ded82171dc16a24a98832c0f10`;
 - installer: 266,505,615 bytes, SHA-256
   `2bb184362280e41df773ab8a15b4516fc78b7b132b2426b6f8265d0fb41d8c8d`.
+- GitHub Actions run `31790503693` passes for commit `6626bfc`; artifact
+  `9215732797` is 727,434,228 bytes with GitHub digest
+  `sha256:3dff65c3a8c797f8601e8c68405556adae8f152d147c5bfe7ac781a2e14fd063`.
 
 ## Open Phase C gates
 
@@ -83,7 +86,6 @@ reason. It is never converted into a guessed mark.
 - automatic BREP/assembly contact extraction that can supply the strict contact
   proposal contract;
 - owner validation with supplied production reference models;
-- GitHub-hosted Windows source/dist/portable/installer/installed/uninstall run.
 
 NC1/STEP/IFC machine-output support for the new feature kinds belongs to Phase
 E and remains blocked until exact format adapters and roundtrip regressions are

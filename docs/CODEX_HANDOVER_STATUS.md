@@ -90,6 +90,9 @@ not conflict with these sources.
   `deb63e62ff493b835c96443c24ea2e6118c033ded82171dc16a24a98832c0f10`;
   the installer is 266,505,615 bytes with SHA-256
   `2bb184362280e41df773ab8a15b4516fc78b7b132b2426b6f8265d0fb41d8c8d`.
+- Phase C batch 1 Windows run `31790503693` passed the complete matrix on
+  commit `6626bfc`. Artifact `9215732797` is 727,434,228 bytes with digest
+  `sha256:3dff65c3a8c797f8601e8c68405556adae8f152d147c5bfe7ac781a2e14fd063`.
 - The Viewer V2 handover archive and all 19 manifest entries were checksum
   verified. V2 was not activated because it supplies synthetic boxes rather
   than real project meshes and its Windows/PySide6/PyInstaller gate is open.
