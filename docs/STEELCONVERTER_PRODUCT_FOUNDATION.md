@@ -139,10 +139,11 @@ count. It is accepted only when:
 - large models expose time, memory and crash behavior;
 - an Accuracy/Debug mode exposes IDs, units, deltas and validation status.
 
-Phase A is closed. Phase B batches 1-2 now deliver the end-to-end host and real
-selected-part mesh slice while the viewer is developed in parallel. The next
-batch must prove progressive whole-project loading with owner-validated large
-and complex models before advanced viewer breadth grows.
+Phase A is closed. Phase B batches 1-3 now deliver the end-to-end host, real
+mesh renderer and bounded progressive whole-project loading while the viewer is
+developed in parallel. The next gate must exercise this path with
+owner-validated large and complex models and then address safe IFC extraction
+reuse before advanced viewer breadth grows.
 Purchasing, machine adapters and optimization do not advance ahead of this gate.
 
 ## Golden references and release gates

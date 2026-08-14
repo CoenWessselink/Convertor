@@ -31,6 +31,7 @@ for %%F in (tests\*_smoke.py) do (
 ".venv-build\Scripts\python.exe" cli.py --version || goto :error
 ".venv-build\Scripts\python.exe" app.py --self-test --output "%CWS_RESULTS%\source-native-selftest.json" || goto :error
 ".venv-build\Scripts\python.exe" app.py --gui-smoke --output "%CWS_RESULTS%\source-gui-smoke.json" || goto :error
+".venv-build\Scripts\python.exe" validation\run_phase_b_progressive_loading.py --output "%CWS_RESULTS%\source-phase-b-progressive-loading.json" || goto :error
 
 echo [4/9] Schone PyInstaller onedir-build maken...
 if exist "build" rmdir /s /q "build"

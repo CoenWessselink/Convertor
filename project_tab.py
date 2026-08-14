@@ -1276,12 +1276,18 @@ class CWSProjectTab(ttk.Frame):
         self.status_label.configure(text=message)
         self.log_callback(message)
 
-    def _viewer_geometry_provider(self) -> Callable[[str], Any] | None:
+    def _viewer_geometry_provider(self) -> Callable[..., Any] | None:
         session = self.session
         if session is None:
             return None
 
-        def resolve(target: ProjectSession, part_id: str) -> Any:
+        def resolve(
+            target: ProjectSession,
+            part_id: str,
+            cancel_check: Callable[[], None] | None = None,
+        ) -> Any:
+            check_cancel = cancel_check or (lambda: None)
+            check_cancel()
             part = target.project.parts.get(part_id)
             if part is None:
                 raise ProjectPackageError(f"Onbekend onderdeel {part_id}")
@@ -1292,11 +1298,16 @@ class CWSProjectTab(ttk.Frame):
             )
 
             steel_model = build_steel_model_snapshot(target.project)
+            check_cancel()
             entity = next(
                 item for item in steel_model.entities if item.steel_model_id == part_id
             )
             if entity.geometry_kind != "canonical_part":
-                return target.inspect_part_source_geometry(part_id, persist=False)
+                return target.inspect_part_source_geometry(
+                    part_id,
+                    persist=False,
+                    cancel_check=check_cancel,
+                )
 
             binding = next(
                 item
@@ -1316,6 +1327,7 @@ class CWSProjectTab(ttk.Frame):
                         f"Onderdeel {part_id} mist actuele canonical geometrie"
                     )
                 shape = conversion.build_shape(canonical).val()
+            check_cancel()
             return build_canonical_viewer_mesh_resource(
                 shape,
                 project_id=steel_model.project_id,
@@ -1328,19 +1340,29 @@ class CWSProjectTab(ttk.Frame):
         if project_path is not None and project_path.is_file() and not session.dirty:
             stable_path = project_path.resolve()
 
-            def load_saved(part_id: str) -> Any:
+            def load_saved(
+                part_id: str,
+                cancel_check: Callable[[], None] | None = None,
+            ) -> Any:
                 with ProjectSession.open(
                     stable_path,
                     store=store,
                     read_only=True,
                 ) as isolated:
-                    return resolve(isolated, part_id)
+                    return resolve(isolated, part_id, cancel_check)
 
+            setattr(load_saved, "viewer_max_concurrency", 2)
+            setattr(load_saved, "viewer_accepts_cancel", True)
             return load_saved
 
-        def load_active(part_id: str) -> Any:
-            return resolve(session, part_id)
+        def load_active(
+            part_id: str,
+            cancel_check: Callable[[], None] | None = None,
+        ) -> Any:
+            return resolve(session, part_id, cancel_check)
 
+        setattr(load_active, "viewer_max_concurrency", 1)
+        setattr(load_active, "viewer_accepts_cancel", True)
         return load_active
 
     def _workbench_changed(self) -> None:

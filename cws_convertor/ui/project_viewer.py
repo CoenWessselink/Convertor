@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import json
 import queue
+import threading
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable, Mapping
@@ -19,6 +20,10 @@ from cws_convertor.steel_model.viewer_boundary import (
 from cws_convertor.viewer.mesh_resources import (
     ViewerMeshResource,
     build_viewer_mesh_resource,
+)
+from cws_convertor.viewer.progressive_loader import (
+    ProgressiveMeshLoadCancelled,
+    ProgressiveMeshLoadPlan,
 )
 from cws_convertor.viewer.workspace import ACCURACY_LABELS, ViewerTreeNode, ViewerWorkspaceState
 
@@ -53,14 +58,16 @@ class ProjectViewerPanel(ttk.Frame):
         self._renderer_handshake: ViewerHandshake | None = None
         self._renderer_command: Callable[[str, dict[str, Any]], None] | None = None
         self._builtin_renderer: Any | None = None
-        self._mesh_provider: Callable[[str], Any] | None = None
+        self._mesh_provider: Callable[..., Any] | None = None
         self._mesh_generation = 0
-        self._mesh_pending: set[str] = set()
+        self._mesh_plan: ProgressiveMeshLoadPlan | None = None
+        self._mesh_cancel_event = threading.Event()
         self._mesh_events: queue.Queue[tuple[int, str, Any, Exception | None]] = queue.Queue()
         self._mesh_executor = ThreadPoolExecutor(
-            max_workers=1,
+            max_workers=2,
             thread_name_prefix="cws-viewer-mesh",
         )
+        self._mesh_completion_reported_generation = -1
         self._mesh_poll_after_id: str | None = None
         self._resize_after_id: str | None = None
         self._scene_photo: Any | None = None
@@ -73,6 +80,8 @@ class ProjectViewerPanel(ttk.Frame):
         self.accuracy_mode_var = tk.BooleanVar(value=True)
         self.renderer_status_var = tk.StringVar(value="Renderer niet gekoppeld")
         self.selection_status_var = tk.StringVar(value="Geen object geselecteerd")
+        self.mesh_progress_var = tk.DoubleVar(value=0.0)
+        self.mesh_status_var = tk.StringVar(value="")
         self._build_ui()
         self._render_empty_state()
         self._mesh_poll_after_id = self.after(100, self._poll_mesh_events)
@@ -267,19 +276,39 @@ class ProjectViewerPanel(ttk.Frame):
 
         footer = ttk.Frame(self, padding=(8, 5))
         footer.grid(row=2, column=0, sticky="ew")
+        footer.columnconfigure(0, weight=1)
         self.model_summary_label = ttk.Label(footer, text="Geen SteelModel geladen")
-        self.model_summary_label.pack(side="left")
+        self.model_summary_label.grid(row=0, column=0, sticky="w")
+        mesh_status = ttk.Frame(footer)
+        mesh_status.grid(row=0, column=1, sticky="e")
+        self.mesh_cancel_button = ttk.Button(
+            mesh_status,
+            text="Laden stoppen",
+            command=lambda: self.cancel_mesh_requests(clear_plan=False),
+            state="disabled",
+        )
+        self.mesh_cancel_button.pack(side="right")
+        self.mesh_progress = ttk.Progressbar(
+            mesh_status,
+            mode="determinate",
+            variable=self.mesh_progress_var,
+            maximum=1.0,
+            length=130,
+        )
+        self.mesh_progress.pack(side="right", padx=(8, 6))
+        self.mesh_status_label = ttk.Label(mesh_status, textvariable=self.mesh_status_var)
+        self.mesh_status_label.pack(side="right", padx=(12, 0))
         self.trace_label = ttk.Label(footer, text="", anchor="e")
-        self.trace_label.pack(side="right", fill="x", expand=True, padx=(12, 0))
+        self.trace_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(3, 0))
 
     def load_project(
         self,
         project: ProjectModel | None,
         *,
-        mesh_provider: Callable[[str], Any] | None = None,
+        mesh_provider: Callable[..., Any] | None = None,
     ) -> None:
         selected_id = self.state.selected_id if self.state else ""
-        self.cancel_mesh_requests()
+        self.cancel_mesh_requests(clear_plan=True)
         self._mesh_provider = mesh_provider
         self._project = project
         if project is None:
@@ -315,6 +344,7 @@ class ProjectViewerPanel(ttk.Frame):
         ):
             self._ensure_builtin_renderer()
         self._refresh_all()
+        self._start_progressive_mesh_loading()
 
     def register_renderer_handshake(self, handshake: ViewerHandshake) -> dict[str, Any]:
         return self.attach_renderer(handshake, None)
@@ -346,6 +376,8 @@ class ProjectViewerPanel(ttk.Frame):
             report["scene_loaded"] = loaded
             if not loaded:
                 self._renderer_command = None
+            else:
+                self._start_progressive_mesh_loading()
         self._refresh_renderer_controls()
         self._refresh_center_status()
         return report
@@ -386,18 +418,67 @@ class ProjectViewerPanel(ttk.Frame):
             self._renderer_command = None
             self.status_callback(f"Ingebouwde mesh-renderer niet beschikbaar: {exc}")
 
-    def cancel_mesh_requests(self) -> None:
+    def cancel_mesh_requests(self, *, clear_plan: bool = True) -> None:
+        plan = self._mesh_plan
+        was_loading = bool(plan is not None and not plan.is_finished)
+        self._mesh_cancel_event.set()
+        if plan is not None:
+            plan.cancel()
         self._mesh_generation += 1
-        self._mesh_pending.clear()
+        self._mesh_cancel_event = threading.Event()
+        if clear_plan:
+            self._mesh_plan = None
+        elif was_loading:
+            self.status_callback("Progressief laden van projectmeshes gestopt")
+        self._refresh_mesh_progress()
+
+    def _mesh_entity_ids(self) -> tuple[str, ...]:
+        state = self.state
+        if state is None:
+            return ()
+        result: list[str] = []
+        for entity in state.steel_model.entities:
+            binding = state.binding(entity.steel_model_id)
+            if (
+                entity.entity_type == "part"
+                and binding is not None
+                and binding.viewer_geometry_id
+                and state.mesh_resource(entity.steel_model_id) is None
+            ):
+                result.append(entity.steel_model_id)
+        return tuple(result)
+
+    def _start_progressive_mesh_loading(self) -> None:
+        if (
+            self.state is None
+            or self._mesh_provider is None
+            or self._renderer_command is None
+            or not self.scene_canvas.winfo_ismapped()
+            or self._mesh_plan is not None
+        ):
+            return
+        max_in_flight = max(
+            1,
+            min(2, int(getattr(self._mesh_provider, "viewer_max_concurrency", 1))),
+        )
+        self._mesh_plan = ProgressiveMeshLoadPlan(
+            self._mesh_entity_ids(),
+            max_in_flight=max_in_flight,
+            patch_batch_size=4,
+        )
+        selected = self.state.selected_entity
+        if selected is not None:
+            self._mesh_plan.prioritize(selected.steel_model_id)
+        self._dispatch_mesh_requests()
+        self._refresh_mesh_progress()
 
     def _request_selected_mesh(self) -> None:
         state = self.state
-        provider = self._mesh_provider
         entity = state.selected_entity if state is not None else None
         binding = state.selected_binding if state is not None else None
         if (
             state is None
-            or provider is None
+            or self._mesh_provider is None
             or entity is None
             or binding is None
             or entity.entity_type != "part"
@@ -405,94 +486,216 @@ class ProjectViewerPanel(ttk.Frame):
             or not self.scene_canvas.winfo_ismapped()
             or self._renderer_command is None
             or state.mesh_resource(entity.steel_model_id) is not None
-            or entity.steel_model_id in self._mesh_pending
         ):
             return
 
+        plan = self._mesh_plan
+        if plan is None:
+            self._start_progressive_mesh_loading()
+            plan = self._mesh_plan
+        if plan is not None and plan.cancel_requested:
+            self._mesh_generation += 1
+            self._mesh_cancel_event = threading.Event()
+            provider_limit = max(
+                1,
+                min(2, int(getattr(self._mesh_provider, "viewer_max_concurrency", 1))),
+            )
+            plan = ProgressiveMeshLoadPlan(
+                (entity.steel_model_id,),
+                max_in_flight=provider_limit,
+                patch_batch_size=1,
+                mode="selection_only",
+            )
+            self._mesh_plan = plan
+        if plan is not None:
+            plan.prioritize(entity.steel_model_id)
+            self._dispatch_mesh_requests()
+            self._refresh_mesh_progress()
+
+    def _dispatch_mesh_requests(self) -> None:
+        state = self.state
+        provider = self._mesh_provider
+        plan = self._mesh_plan
+        if state is None or provider is None or plan is None or plan.cancel_requested:
+            return
         generation = self._mesh_generation
-        steel_model_id = entity.steel_model_id
+        cancel_event = self._mesh_cancel_event
         project_id = state.steel_model.project_id
-        self._mesh_pending.add(steel_model_id)
-        self._scene_message = f"Mesh laden voor {entity.name or steel_model_id}..."
-        self._draw_scene_status()
+        accepts_cancel = bool(getattr(provider, "viewer_accepts_cancel", False))
+        for steel_model_id in plan.claim():
+            entity = state.entity(steel_model_id)
+            binding = state.binding(steel_model_id)
+            if entity is None or binding is None:
+                plan.mark_failed(steel_model_id, "SteelModel-binding ontbreekt")
+                continue
 
-        def load() -> None:
-            try:
-                supplied = provider(steel_model_id)
-                resource = (
-                    supplied
-                    if isinstance(supplied, ViewerMeshResource)
-                    else build_viewer_mesh_resource(
-                        supplied,
-                        project_id=project_id,
-                        entity=entity,
-                        binding=binding,
+            def load(
+                entity_id: str = steel_model_id,
+                source_entity=entity,
+                source_binding=binding,
+            ) -> None:
+                def cancel_check() -> None:
+                    if cancel_event.is_set():
+                        raise ProgressiveMeshLoadCancelled(
+                            f"Mesh laden geannuleerd voor {entity_id}"
+                        )
+
+                try:
+                    cancel_check()
+                    supplied = (
+                        provider(entity_id, cancel_check=cancel_check)
+                        if accepts_cancel
+                        else provider(entity_id)
                     )
-                )
-                self._mesh_events.put((generation, steel_model_id, resource, None))
-            except Exception as exc:
-                self._mesh_events.put((generation, steel_model_id, None, exc))
+                    cancel_check()
+                    resource = (
+                        supplied
+                        if isinstance(supplied, ViewerMeshResource)
+                        else build_viewer_mesh_resource(
+                            supplied,
+                            project_id=project_id,
+                            entity=source_entity,
+                            binding=source_binding,
+                        )
+                    )
+                    cancel_check()
+                    self._mesh_events.put((generation, entity_id, resource, None))
+                except Exception as exc:
+                    self._mesh_events.put((generation, entity_id, None, exc))
 
-        self._mesh_executor.submit(load)
+            self._mesh_executor.submit(load)
 
     def _poll_mesh_events(self) -> None:
+        resources: list[tuple[str, ViewerMeshResource]] = []
+        failures: list[tuple[str, Exception]] = []
         try:
             while True:
                 generation, steel_model_id, resource, error = self._mesh_events.get_nowait()
                 if generation != self._mesh_generation:
                     continue
-                self._mesh_pending.discard(steel_model_id)
-                if self.state is None or self.state.entity(steel_model_id) is None:
+                plan = self._mesh_plan
+                if (
+                    plan is None
+                    or self.state is None
+                    or self.state.entity(steel_model_id) is None
+                ):
                     continue
                 if error is not None:
-                    self._scene_message = f"Mesh niet beschikbaar: {error}"
-                    self.status_callback(
-                        f"Viewer-mesh voor {steel_model_id} niet geladen: {error}"
-                    )
-                    self._draw_scene_status()
+                    if plan.mark_failed(steel_model_id, error):
+                        failures.append((steel_model_id, error))
                     continue
+                resources.append((steel_model_id, resource))
+        except queue.Empty:
+            pass
+
+        state = self.state
+        plan = self._mesh_plan
+        if resources and state is not None and plan is not None:
+            first_resource = not bool(state.visual_manifest()["mesh_resource_count"])
+            attached_any = False
+            for start in range(0, len(resources), plan.patch_batch_size):
+                batch = resources[start : start + plan.patch_batch_size]
+                entity_ids = [item[0] for item in batch]
+                batch_resources = [item[1] for item in batch]
+                accepted: list[tuple[list[str], dict[str, Any]]] = []
                 try:
-                    first_resource = not bool(self.state.visual_manifest()["mesh_resource_count"])
-                    patch = self.state.attach_mesh_resource(resource)
                     if self._renderer_command is None:
                         raise RuntimeError("renderer is niet gekoppeld")
+                    patch = state.attach_mesh_resources(batch_resources)
+                    accepted.append((entity_ids, patch))
+                except Exception as batch_error:
+                    if len(batch) == 1 or self._renderer_command is None:
+                        for entity_id in entity_ids:
+                            if plan.mark_failed(entity_id, batch_error):
+                                failures.append((entity_id, batch_error))
+                    else:
+                        # Preserve valid neighbours when one resource poisons an
+                        # otherwise atomic batch.
+                        for entity_id, resource in batch:
+                            try:
+                                patch = state.attach_mesh_resources((resource,))
+                                accepted.append(([entity_id], patch))
+                            except Exception as item_error:
+                                if plan.mark_failed(entity_id, item_error):
+                                    failures.append((entity_id, item_error))
+                for accepted_ids, patch in accepted:
+                    for entity_id in accepted_ids:
+                        plan.mark_loaded(entity_id)
+                    attached_any = True
                     try:
                         self._renderer_command("scene.patch", patch)
                     except Exception:
-                        self._renderer_command("scene.load", self.state.scene_payload())
+                        try:
+                            self._renderer_command("scene.load", state.scene_payload())
+                        except Exception as exc:
+                            self._scene_message = f"Meshpatch geweigerd: {exc}"
+                            self.status_callback(f"Viewer-meshpatch geweigerd: {exc}")
+            if attached_any:
+                try:
+                    assert self._renderer_command is not None
                     if first_resource:
-                        self._renderer_command("camera.standard_view", {"view": "isometric"})
-                    if self.state.selected_binding is not None:
+                        self._renderer_command(
+                            "camera.standard_view", {"view": "isometric"}
+                        )
+                    if state.selected_binding is not None:
                         self._renderer_command(
                             "selection.set",
-                            {
-                                "viewer_node_ids": [
-                                    self.state.selected_binding.viewer_node_id
-                                ]
-                            },
+                            {"viewer_node_ids": [state.selected_binding.viewer_node_id]},
                         )
-                    self._scene_message = (
-                        f"{len(resource.vertices_mm)} vertices | "
-                        f"{len(resource.triangles)} driehoeken | mm"
-                    )
-                    self.status_callback(
-                        f"Echte projectmesh geladen voor {steel_model_id}: "
-                        f"{len(resource.triangles)} driehoeken"
-                    )
                     self._refresh_selection()
-                    self._refresh_all()
                 except Exception as exc:
-                    self._scene_message = f"Meshpatch geweigerd: {exc}"
-                    self.status_callback(
-                        f"Viewer-meshpatch voor {steel_model_id} geweigerd: {exc}"
-                    )
-                    self._draw_scene_status()
-        except queue.Empty:
-            pass
+                    self.status_callback(f"Viewerselectie na meshpatch mislukt: {exc}")
+
+        for steel_model_id, error in failures:
+            self.status_callback(
+                f"Viewer-mesh voor {steel_model_id} niet geladen: {error}"
+            )
+        self._dispatch_mesh_requests()
+        self._refresh_mesh_progress()
         try:
             self._mesh_poll_after_id = self.after(100, self._poll_mesh_events)
         except tk.TclError:
             self._mesh_poll_after_id = None
+
+    def _refresh_mesh_progress(self) -> None:
+        plan = self._mesh_plan
+        if plan is None:
+            self.mesh_progress_var.set(0.0)
+            self.mesh_status_var.set("")
+            self.mesh_cancel_button.configure(state="disabled")
+            return
+        progress = plan.manifest(include_runtime=True)
+        total = int(progress["total"])
+        loaded = int(progress["loaded"])
+        failed = int(progress["failed"])
+        pending = int(progress["pending"])
+        cancelled = int(progress["cancelled"])
+        self.mesh_progress_var.set(float(progress["progress_ratio"]))
+        suffix = f" | {failed} fout(en)" if failed else ""
+        if progress["status"] == "cancelled":
+            label = f"Gestopt | {loaded}/{total}"
+        elif progress["mode"] == "selection_only":
+            label = f"Selectie | {loaded}/{total}{suffix}"
+        else:
+            label = f"Mesh | {loaded}/{total}{suffix}"
+        self.mesh_status_var.set(label)
+        self._scene_message = (
+            f"Projectmesh: {loaded}/{total} geladen | "
+            f"{pending} bezig | {failed} niet beschikbaar"
+        )
+        loading = progress["status"] in {"queued", "loading"}
+        self.mesh_cancel_button.configure(state="normal" if loading else "disabled")
+        if (
+            not loading
+            and not cancelled
+            and total
+            and self._mesh_completion_reported_generation != self._mesh_generation
+        ):
+            self._mesh_completion_reported_generation = self._mesh_generation
+            self.status_callback(
+                f"Projectmeshes geladen: {loaded}/{total}; niet beschikbaar: {failed}"
+            )
+        self._draw_scene_status()
 
     def select_entity(
         self,
@@ -769,6 +972,7 @@ class ProjectViewerPanel(ttk.Frame):
     def _scene_mapped(self, _event=None) -> None:
         if self._mesh_provider is not None and self._renderer_command is None:
             self._ensure_builtin_renderer()
+        self._start_progressive_mesh_loading()
         self._request_selected_mesh()
 
     def _resize_builtin_renderer(self) -> None:
@@ -979,6 +1183,9 @@ class ProjectViewerPanel(ttk.Frame):
         self.model_summary_label.configure(text="Geen SteelModel geladen")
         self.selection_status_var.set("Geen object geselecteerd")
         self.trace_label.configure(text="")
+        self.mesh_progress_var.set(0.0)
+        self.mesh_status_var.set("")
+        self.mesh_cancel_button.configure(state="disabled")
         self._refresh_renderer_controls()
         self._draw_scene_status()
 
@@ -998,6 +1205,10 @@ class ProjectViewerPanel(ttk.Frame):
         if self.state is None:
             return "{}"
         value = self.state.visual_manifest()
+        if self._mesh_plan is not None:
+            value["progressive_mesh_load"] = self._mesh_plan.manifest(
+                include_runtime=True
+            )
         if self._builtin_renderer is not None:
             value["builtin_renderer_telemetry"] = self._builtin_renderer.telemetry()
         return json.dumps(value, indent=2, sort_keys=True)

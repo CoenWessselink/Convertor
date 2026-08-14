@@ -7,6 +7,11 @@ from .mesh_resources import (
     build_canonical_viewer_mesh_resource,
     build_viewer_mesh_resource,
 )
+from .progressive_loader import (
+    PROGRESSIVE_MESH_LOAD_VERSION,
+    ProgressiveMeshLoadCancelled,
+    ProgressiveMeshLoadPlan,
+)
 from .workspace import (
     AccuracySummary,
     ViewerTreeNode,
@@ -15,6 +20,9 @@ from .workspace import (
 
 __all__ = [
     "AccuracySummary",
+    "PROGRESSIVE_MESH_LOAD_VERSION",
+    "ProgressiveMeshLoadCancelled",
+    "ProgressiveMeshLoadPlan",
     "VIEWER_MESH_CONTRACT_VERSION",
     "ViewerMeshResource",
     "ViewerTessellationPolicy",

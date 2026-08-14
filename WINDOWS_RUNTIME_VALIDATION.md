@@ -117,6 +117,20 @@ installed runtime, file associations and uninstall. Artifact `9210399390` is
 727,369,191 bytes with digest
 `sha256:d893a6869a958f413344459e5a437a99803026fc5f8d308754779a142ddc7cd2`.
 
+On 2026-08-14 the Phase B batch-3 local matrix passed 39/39 source smoke
+scripts, then independently passed dist, a fresh portable extraction and a
+fresh per-user installation without Python on the child `PATH`. Native VTK,
+GUI, project/SteelModel, IFC source geometry, production packages, file
+associations and silent uninstall passed. The portable ZIP is 454,996,427 bytes
+with SHA-256
+`fa590c3c141ca0568526558d6191a4f7a55ed3e0c6935312b5111567e4c62483`.
+The installer is 266,487,917 bytes with SHA-256
+`0655a7816965fc0b891ba645592839fc26a8324ed03715cfc94714e685621b91`.
+The packaged subprocess harness now tolerates mixed Windows console encodings
+without hiding nonzero exit codes or file-based runtime assertions. GitHub
+Windows validation for this batch remains pending until the source commit is
+pushed.
+
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the
 installed functional checks pass on the Windows runner.

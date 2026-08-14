@@ -69,6 +69,10 @@ SteelConverter drawing environment.
 - Phase B batches 1-2: integrated host plus real mesh renderer, 38/38 local
   smoke scripts, 148 tests with seven fixture skips, and Windows run
   `31776351027`.
+- Phase B batch 3: bounded progressive whole-project loading, 39/39 local smoke
+  scripts and 146 discoverable unittest cases with seven fixture skips. The
+  complete local Windows package matrix passes; GitHub Windows validation is
+  pending for this batch.
 - The local registry contains 481 model/result pairs, all still marked
   `manual_validation_required` and therefore not engineering truth.
 

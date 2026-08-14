@@ -13,8 +13,9 @@ This remains a development snapshot, not a production release. Phase A supplies
 the project-wide read-only `SteelModel 1.0` adapter, central tolerances and
 viewer-host contract. Phase B batch 1 adds the integrated host workspace,
 trace, validation and synchronized selection. Batch 2 adds verified real mesh
-resources and a built-in VTK/Tk rendering path while preserving existing
-projects, CLI contracts and release evidence.
+resources and a built-in VTK/Tk rendering path. Batch 3 adds bounded progressive
+whole-project loading, priority, cancellation and grouped scene patches while
+preserving existing projects, CLI contracts and release evidence.
 
 The leading requirements are now:
 
@@ -68,6 +69,17 @@ not conflict with these sources.
 - The batch-2 generated load regression renders 600 transformed actors and
   7,200 triangles through one shared geometry buffer. This is engineering load
   evidence, not an owner-validated representative model.
+- Phase B batch 3 local verification passes 39/39 smoke scripts and 146
+  discoverable unittest cases with seven explicit fixture-dependent skips.
+  Its six new regressions cover bounded two-worker scheduling, selected-part
+  priority, retry, grouped patches, stale cancellation results and isolation of
+  malformed resources. The generated 5,000-entity scheduler run peaks at two
+  pending jobs and about 0.7 MB traced scheduler memory. Its local Windows
+  source/dist/fresh-portable/fresh-installed matrix, associations and uninstall
+  pass. The ZIP is 454,996,427 bytes with SHA-256
+  `fa590c3c141ca0568526558d6191a4f7a55ed3e0c6935312b5111567e4c62483`;
+  the installer is 266,487,917 bytes with SHA-256
+  `0655a7816965fc0b891ba645592839fc26a8324ed03715cfc94714e685621b91`.
 - The Viewer V2 handover archive and all 19 manifest entries were checksum
   verified. V2 was not activated because it supplies synthetic boxes rather
   than real project meshes and its Windows/PySide6/PyInstaller gate is open.
@@ -112,8 +124,9 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
   properties, validation, source trace and capability-gated command bridge.
 - versioned, hash-bound real mesh resources for exact STEP BREP, entity-specific
   IFC triangulation and current canonical BREP;
-- lazy selected-part VTK rendering inside the existing Tk workspace, including
-  fit/isometric camera, orbit, zoom, picking and accuracy coloring.
+- progressive whole-project VTK rendering inside the existing Tk workspace,
+  including selected-part priority, stop/restart, fit/isometric camera, orbit,
+  zoom, picking and accuracy coloring.
 
 These are proven implementation components. They are not a claim that the
 broader SteelConverter phases B-F are complete.
@@ -121,8 +134,8 @@ broader SteelConverter phases B-F are complete.
 ## Not complete
 
 - accepted measurement, section, viewpoint and compare modules;
-- owner-validated representative large-model viewer evidence and progressive
-  whole-project loading;
+- owner-validated representative large-model viewer evidence;
+- safe IFC parse reuse or source-batched extraction for large projects;
 - broader visual golden coverage beyond the current exact STEP structural image;
 - exact selected IFC BREP and multi-solid STEP BREP isolation;
 - unsupported slots, pockets, chamfers and complex end operations in canonical rebuild;
@@ -137,11 +150,12 @@ broader SteelConverter phases B-F are complete.
 
 ## Next core work
 
-Use revised phases A-F. Phase A and Phase B batches 1-2 are implemented;
-preserve those baselines. The next controlled viewer batch must prove
-progressive whole-project loading against owner-validated large/complex models
-and then add accepted measurement and section contracts. Generated stress
-fixtures may supplement that evidence but cannot replace owner validation.
+Use revised phases A-F. Phase A and Phase B batches 1-3 are implemented;
+preserve those baselines. The next controlled viewer gate must prove the
+progressive loader against owner-validated large/complex models, then safely
+optimize IFC extraction and add accepted measurement and section contracts.
+Generated stress fixtures may supplement that evidence but cannot replace
+owner validation.
 
 Do not advance purchasing, optimization or machine output before the phase-B
 accuracy gate and owner-validated production references pass.

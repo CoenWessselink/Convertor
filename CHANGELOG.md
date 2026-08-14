@@ -2,6 +2,14 @@
 
 ## 0.8.3-beta-dev - Released production packages and drawings
 
+- Phase B batch 3 adds bounded progressive whole-project mesh loading with
+  selected-part priority, cooperative cancellation and stale-result guards.
+- Mesh resources are attached in grouped scene patches; a rejected resource is
+  isolated so valid batch neighbours continue loading.
+- The viewer footer now exposes determinate load progress, failure counts and a
+  stop command, with selection-only restart after cancellation.
+- A 5,000-entity scheduler validation and six permanent regressions cover
+  concurrency, priority, retry, cancellation, batching and malformed resources.
 - Phase B batch 2 adds hash-bound real STEP, IFC and current-canonical viewer
   meshes through the SteelModel 1.0 / ViewerHost 1.0 boundary.
 - The existing Tk workspace now renders verified meshes with an off-screen VTK

@@ -1,0 +1,40 @@
+{
+  "cancellation": {
+    "cancelled": 5000,
+    "claimed_before_cancel": [
+      "part-00000",
+      "part-00001"
+    ],
+    "status": "cancelled",
+    "work_after_cancel": 0
+  },
+  "generated_scheduler_load": {
+    "completed": 5000,
+    "elapsed_ms": 7.785,
+    "entity_count": 5000,
+    "first_claimed": [
+      "part-04999",
+      "part-00000"
+    ],
+    "maximum_pending": 2,
+    "peak_traced_memory_bytes": 706928
+  },
+  "open_gate": {
+    "ifc_parse_reuse": "not_implemented",
+    "owner_validated_large_model": "manual_validation_required",
+    "reason": "Deze run bewijst schedulerbelasting, begrensde werkvoorraad en annulering, maar parseert geen eigenaar-gevalideerd complex model."
+  },
+  "regression_suite": {
+    "script": "tests/progressive_viewer_loading_smoke.py",
+    "test_count": 6
+  },
+  "runtime_policy": {
+    "active_session_max_concurrency": 1,
+    "saved_project_max_concurrency": 2,
+    "scene_patch_batch_size": 4,
+    "selection_priority": true,
+    "stale_generation_results_discarded": true
+  },
+  "schema_version": "phase-b-progressive-loading-evidence-v1",
+  "status": "passed"
+}

@@ -157,6 +157,12 @@ IFC-entiteitsmesh- en actuele canonical-BREP-resources. Onzekere of handmatig te
 valideren bronselecties leveren geen geometrie op; meten, doorsneden en vergelijken
 blijven afzonderlijk capability-gated.
 
+Projectmeshes laden progressief met een begrensde werkvoorraad, voorrang voor
+het geselecteerde onderdeel, annuleerbare broninspectie en gebundelde
+scene-updates. De statusbalk toont voortgang en fouten; stoppen laat een gekozen
+onderdeel later afzonderlijk opnieuw laden. Een ongeldige mesh blokkeert geldige
+buurresources niet en wordt met SteelModel-ID en foutmelding geregistreerd.
+
 ## Bewezen referentie-import
 
 ### Tekla IFC2X3

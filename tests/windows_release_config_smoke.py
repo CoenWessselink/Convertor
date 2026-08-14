@@ -58,6 +58,7 @@ def main() -> int:
     assert "project-inspect-source-geometry" in packaged_smoke
     assert "triangulated_mesh" in packaged_smoke
     assert '"vtk_viewer"' in packaged_smoke
+    assert 'errors="replace"' in packaged_smoke
     assert workflow.count("packaged_runtime_smoke.py") == 3
     assert "--label dist" in workflow
     assert "--label portable" in workflow
