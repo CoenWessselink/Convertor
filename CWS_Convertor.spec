@@ -35,6 +35,14 @@ hiddenimports = [
     "reportlab.pdfbase._fontdata_enc_symbol",
     "reportlab.pdfbase._fontdata_enc_winansi",
     "reportlab.pdfbase._fontdata_enc_zapfdingbats",
+    "vtkmodules.vtkCommonCore",
+    "vtkmodules.vtkCommonDataModel",
+    "vtkmodules.vtkCommonMath",
+    "vtkmodules.vtkFiltersCore",
+    "vtkmodules.vtkIOImage",
+    "vtkmodules.vtkRenderingCore",
+    "vtkmodules.vtkRenderingFreeType",
+    "vtkmodules.vtkRenderingOpenGL2",
 ]
 for package in packages:
     package_datas, package_binaries, package_hidden = collect_all(package)

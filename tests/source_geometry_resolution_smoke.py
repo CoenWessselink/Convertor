@@ -13,6 +13,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.project import ProjectModel, ProjectSession, ProjectValidationError
+from cws_convertor.steel_model.adapter import build_steel_model_snapshot
+from cws_convertor.steel_model.viewer_boundary import build_viewer_host_snapshot
+from cws_convertor.viewer.mesh_resources import build_viewer_mesh_resource
+from cws_convertor.viewer.workspace import ViewerWorkspaceState
 from cli import EXIT_OK, EXIT_REVIEW_REQUIRED, main as cli_main
 
 
@@ -253,6 +257,25 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             self.assertEqual(
                 part.geometry_descriptor["source_mesh_metrics"]["fidelity"],
                 "triangulated_mesh",
+            )
+            steel_model = build_steel_model_snapshot(session.project)
+            viewer_state = ViewerWorkspaceState(
+                steel_model,
+                build_viewer_host_snapshot(steel_model),
+            )
+            viewer_resource = build_viewer_mesh_resource(
+                inspection,
+                project_id=steel_model.project_id,
+                entity=viewer_state.entity(part.internal_id),
+                binding=viewer_state.binding(part.internal_id),
+            )
+            self.assertEqual(viewer_resource.geometry_basis, "source_ifc_triangulation")
+            self.assertEqual(len(viewer_resource.vertices_mm), 8)
+            self.assertEqual(len(viewer_resource.triangles), 12)
+            viewer_state.attach_mesh_resource(viewer_resource)
+            self.assertEqual(
+                viewer_state.binding(part.internal_id).viewer_geometry_content_sha256,
+                viewer_resource.geometry_content_sha256,
             )
 
             session.save(project_path, embed_sources=True, user="tester")

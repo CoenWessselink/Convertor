@@ -2,6 +2,17 @@
 
 ## 0.8.3-beta-dev - Released production packages and drawings
 
+- Phase B batch 2 adds hash-bound real STEP, IFC and current-canonical viewer
+  meshes through the SteelModel 1.0 / ViewerHost 1.0 boundary.
+- The existing Tk workspace now renders verified meshes with an off-screen VTK
+  pipeline, synchronized picking, fit/isometric views, orbit and zoom.
+- Meshes load lazily from re-verified source bytes; manual/unverified selections
+  never become display geometry and runtime inspection does not upgrade project truth.
+- Structural visual-golden, transform, tamper and 600-instance shared-geometry
+  regressions plus a packaged VTK native self-test were added.
+- Installer automation now supports an explicit per-user validation mode;
+  file associations use the matching user/machine Classes root and are covered
+  by an installed-registry regression before uninstall.
 - Atomic per-part and per-assembly-mark release packages added to Project Model workflows.
 - Every release re-runs the canonical NC1, STEP, IFC and Trusted PDF import comparison.
 - Part artifacts include production/review PDF, optional plate DXF, CSV, JSON, label PDF and preview PNG.

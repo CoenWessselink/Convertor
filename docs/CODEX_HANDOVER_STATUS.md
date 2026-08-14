@@ -11,8 +11,9 @@
 
 This remains a development snapshot, not a production release. Phase A supplies
 the project-wide read-only `SteelModel 1.0` adapter, central tolerances and
-viewer-host contract. Phase B batch 1 now adds the integrated host workspace,
-trace, validation and synchronized selection while preserving existing
+viewer-host contract. Phase B batch 1 adds the integrated host workspace,
+trace, validation and synchronized selection. Batch 2 adds verified real mesh
+resources and a built-in VTK/Tk rendering path while preserving existing
 projects, CLI contracts and release evidence.
 
 The leading requirements are now:
@@ -55,6 +56,16 @@ not conflict with these sources.
   source/dist/portable/installer/installed/uninstall matrix on commit `cfacbd3`.
   Artifact `9198752611` is 727,134,039 bytes with digest
   `sha256:a0ac861f536fe9b2dc17a6e3b6a23e42f3bf5a06def9d3f1a3d7f67fa0235ea5`.
+- Phase B batch 2 local verification passes 38/38 smoke scripts and 148 known
+  test cases with the same seven explicit fixture-dependent skips. Its native
+  self-test and GUI smoke pass; the new VTK check produces a valid off-screen
+  PNG. The local Windows source/dist/fresh-portable/installed matrix passes
+  without Python on the child PATH, including production-package, VTK,
+  per-user file-association and uninstall checks. GitHub CI evidence for the
+  exact pushed batch is pending.
+- The batch-2 generated load regression renders 600 transformed actors and
+  7,200 triangles through one shared geometry buffer. This is engineering load
+  evidence, not an owner-validated representative model.
 - The Viewer V2 handover archive and all 19 manifest entries were checksum
   verified. V2 was not activated because it supplies synthetic boxes rather
   than real project meshes and its Windows/PySide6/PyInstaller gate is open.
@@ -97,15 +108,20 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
   installer, project and registry compatibility identifiers.
 - integrated SteelModel-bound project viewer host with synchronized tree,
   properties, validation, source trace and capability-gated command bridge.
+- versioned, hash-bound real mesh resources for exact STEP BREP, entity-specific
+  IFC triangulation and current canonical BREP;
+- lazy selected-part VTK rendering inside the existing Tk workspace, including
+  fit/isometric camera, orbit, zoom, picking and accuracy coloring.
 
 These are proven implementation components. They are not a claim that the
 broader SteelConverter phases B-F are complete.
 
 ## Not complete
 
-- trustworthy central production renderer with real project meshes,
-  measurements, sections, compare and complete Accuracy/Debug interaction;
-- visual golden regression and representative large-model viewer evidence;
+- accepted measurement, section, viewpoint and compare modules;
+- owner-validated representative large-model viewer evidence and progressive
+  whole-project loading;
+- broader visual golden coverage beyond the current exact STEP structural image;
 - exact selected IFC BREP and multi-solid STEP BREP isolation;
 - unsupported slots, pockets, chamfers and complex end operations in canonical rebuild;
 - production scribing proposal, preview, validation and adapter contracts;
@@ -119,12 +135,11 @@ broader SteelConverter phases B-F are complete.
 
 ## Next core work
 
-Use revised phases A-F. Phase A is complete and phase B batch 1 is implemented;
-preserve those baselines. The next controlled viewer batch must connect real
-project mesh resources through `SteelModel 1.0`/`ViewerHost 1.0`, prove
-units/transforms and preserve the now-tested selection/validation flow. It must
-add golden visual and representative large-model evidence before feature
-breadth grows.
+Use revised phases A-F. Phase A and Phase B batches 1-2 are implemented;
+preserve those baselines. The next controlled viewer batch must prove
+progressive whole-project loading against owner-validated large/complex models
+and then add accepted measurement and section contracts. Generated stress
+fixtures may supplement that evidence but cannot replace owner validation.
 
 Do not advance purchasing, optimization or machine output before the phase-B
 accuracy gate and owner-validated production references pass.

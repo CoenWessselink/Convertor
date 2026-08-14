@@ -30,6 +30,9 @@ def main() -> int:
     assert "VersionInfoVersion={#MyAppNumericVersion}" in installer
     assert "VersionInfoProductVersion={#MyAppNumericVersion}" in installer
     assert "VersionInfoProductVersion={#MyAppVersion}" not in installer
+    assert "PrivilegesRequiredOverridesAllowed=commandline" in installer
+    assert "Root: HKCR" not in installer
+    assert installer.count('Root: HKA; Subkey: "Software\\Classes\\') == 20
     assert re.fullmatch(r"\d+\.\d+\.\d+\.\d+", APP_VERSION_NUMERIC)
 
     assert f"CWS_VERSION: {APP_VERSION}" in workflow
@@ -45,12 +48,15 @@ def main() -> int:
     assert "hook-casadi.py" in workflow or "pyinstaller_hooks/**" in workflow
     assert "casadi==3.7.2" in runtime_lock
     assert "ezdxf==1.4.4" in runtime_lock
+    assert "vtk==9.6.2" in runtime_lock
+    assert "vtkmodules.vtkRenderingOpenGL2" in spec
     assert "os.add_dll_directory" in runtime_hook
     assert "libcasadi.dll" in runtime_hook
     assert "multiprocessing.freeze_support()" in gui_entry
     assert "multiprocessing.freeze_support()" in cli_entry
     assert "project-inspect-source-geometry" in packaged_smoke
     assert "triangulated_mesh" in packaged_smoke
+    assert '"vtk_viewer"' in packaged_smoke
     assert workflow.count("packaged_runtime_smoke.py") == 3
     assert "--label dist" in workflow
     assert "--label portable" in workflow
@@ -63,6 +69,9 @@ def main() -> int:
     assert "validation/run_core_phase0_baseline.py --skip-tests" in workflow
     assert "ci-core-phase0-baseline.json" in workflow
     assert "Start-Process -FilePath $installer.Path" in workflow
+    assert workflow.count("/CURRENTUSER") == 1
+    assert workflow.count("/TASKS=fileassoc") == 1
+    assert "windows_installer_association_smoke.py" in workflow
     assert "Start-Process -FilePath $uninstaller" in workflow
     assert workflow.count("-Wait -PassThru -WindowStyle Hidden") == 2
     assert "$installProcess.ExitCode" in workflow
@@ -70,6 +79,9 @@ def main() -> int:
     assert f'set "CWS_VERSION={APP_VERSION}"' in batch
     assert "for %%F in (tests\\*_smoke.py)" in batch
     assert batch.count("packaged_runtime_smoke.py") == 3
+    assert batch.count("/CURRENTUSER") == 1
+    assert batch.count("/TASKS=fileassoc") == 1
+    assert "windows_installer_association_smoke.py" in batch
     lazy_import = subprocess.run(
         [
             sys.executable,

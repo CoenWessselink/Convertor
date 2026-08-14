@@ -178,6 +178,25 @@ def _scientific_rendering_check() -> dict[str, Any]:
     }
 
 
+def _vtk_viewer_check() -> dict[str, Any]:
+    from cws_convertor.viewer.vtk_backend import VtkOffscreenRenderer
+
+    renderer = VtkOffscreenRenderer(width=160, height=120)
+    try:
+        png = renderer.render()
+        telemetry = renderer.telemetry()
+    finally:
+        renderer.close()
+    if not png.startswith(b"\x89PNG\r\n\x1a\n") or len(png) < 200:
+        raise AssertionError("VTK off-screen renderer leverde geen geldige PNG op")
+    return {
+        "vtk_version": _version("vtk"),
+        "png_bytes": len(png),
+        "backend": telemetry["backend"],
+        "viewport": telemetry["viewport"],
+    }
+
+
 def _project_roundtrip_check() -> dict[str, Any]:
     from cws_convertor.project import Part, ProjectSession, SourceIdentity
 
@@ -334,6 +353,7 @@ def run_native_self_test() -> dict[str, Any]:
         _run_check("ifcopenshell", _ifcopenshell_check),
         _run_check("pymupdf", _pdf_check),
         _run_check("scientific_rendering", _scientific_rendering_check),
+        _run_check("vtk_viewer", _vtk_viewer_check),
         _run_check("project_roundtrips", _project_roundtrip_check),
     ]
     return {

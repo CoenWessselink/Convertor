@@ -1,0 +1,79 @@
+{
+  "mesh_contract": {
+    "coordinate_space": "entity_local",
+    "geometry_basis": "source_native_brep",
+    "geometry_content_sha256": "d983d3765c89107e03e57e0d7611e16f0fbbe23ad074847d2a8be218a01e1e75",
+    "local_bounds_mm": [
+      -50.0,
+      50.0,
+      -25.0,
+      25.0,
+      -5.0,
+      5.0
+    ],
+    "triangle_count": 12,
+    "units": "mm",
+    "vertex_count": 24
+  },
+  "open_gate": {
+    "owner_validated_large_model": "manual_validation_required",
+    "reason": "De 600-instance test bewijst rendererbelasting en gedeelde geometrie, maar is geen eigenaar-gevalideerd complex referentiemodel."
+  },
+  "regression_suite": {
+    "generated_instance_load_count": 600,
+    "script": "tests/viewer_mesh_renderer_smoke.py",
+    "test_count": 4
+  },
+  "renderer": {
+    "actor_count": 1,
+    "backend": "vtk_offscreen_png",
+    "triangle_count": 12,
+    "unique_geometry_count": 1,
+    "vertex_count": 24,
+    "viewport": [
+      360,
+      260
+    ],
+    "visible_actor_count": 1
+  },
+  "schema_version": "phase-b-mesh-renderer-evidence-v1",
+  "source_evidence": {
+    "geometry_kind": "native_brep",
+    "production_geometry_exact": true,
+    "selection_verified": true,
+    "status": "resolved_exact"
+  },
+  "status": "passed",
+  "transform_evidence": {
+    "expected_center_mm": [
+      1000.0,
+      2000.0,
+      3000.0
+    ],
+    "rendered_actor_center_mm": [
+      1000.0,
+      2000.0,
+      3000.0
+    ],
+    "status": "passed"
+  },
+  "visual_evidence": {
+    "centroid_px": [
+      190.924,
+      139.072
+    ],
+    "changed_pixel_count": 17634,
+    "golden_policy": "tests/golden/viewer_mesh_v1.json",
+    "image": "phase-b-mesh-renderer.png",
+    "object_bbox_px": [
+      68,
+      73,
+      309,
+      215
+    ],
+    "viewport": [
+      360,
+      260
+    ]
+  }
+}

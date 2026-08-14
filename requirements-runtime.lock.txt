@@ -9,3 +9,4 @@ ifcopenshell==0.8.5
 PyMuPDF==1.26.7
 pypdf==5.9.0
 reportlab==4.4.9
+vtk==9.6.2

@@ -115,7 +115,7 @@ area and is not hidden under technical control or machine output.
 | Phase | Scope | Current interpretation |
 | --- | --- | --- |
 | A - Foundation | Repository baseline, target identity migration, `SteelModel` contract, immutable sources, state and module boundaries | **Complete**; read-only SteelModel 1.0 adapter, central tolerances, compatibility identity and viewer-host boundary are tested |
-| B - Viewer & Import Accuracy | Reliable import, source/model/mesh trace, viewer UX, measurements, sections, compare, debug mode, golden and large-model regressions | **In progress**; batch 1 supplies the SteelModel-bound host UI, trace, validation and synchronized selection, while real project rendering and the full accuracy gate remain open |
+| B - Viewer & Import Accuracy | Reliable import, source/model/mesh trace, viewer UX, measurements, sections, compare, debug mode, golden and large-model regressions | **In progress**; batches 1-2 supply the SteelModel-bound host UI plus verified STEP/IFC/canonical mesh resources and a built-in VTK/Tk renderer. Measurements, sections, compare and owner-validated large-model evidence remain open |
 | C - Production Editor | Parametric production edits, holes/slots/copes/cuts/bevels, scribing, preview, undo/redo and audit | Backend foundations exist; complete viewer-integrated workflow remains open |
 | D - BOM & Drawings | BOM/material/purchasing outputs plus overview, assembly/mark and part drawings | Initial packages and drawings exist; full model-driven drawing acceptance remains open |
 | E - Export & Production | Validated NC1/STEP/IFC and machine-specific adapters with readiness reports | Conversion and guarded package foundations exist; production adapters remain gated |
@@ -139,9 +139,10 @@ count. It is accepted only when:
 - large models expose time, memory and crash behavior;
 - an Accuracy/Debug mode exposes IDs, units, deltas and validation status.
 
-Phase A is closed. Phase B batch 1 now delivers the smallest end-to-end host
-accuracy slice while the viewer is developed in parallel. The next batch must
-connect real project meshes through that tested boundary.
+Phase A is closed. Phase B batches 1-2 now deliver the end-to-end host and real
+selected-part mesh slice while the viewer is developed in parallel. The next
+batch must prove progressive whole-project loading with owner-validated large
+and complex models before advanced viewer breadth grows.
 Purchasing, machine adapters and optimization do not advance ahead of this gate.
 
 ## Golden references and release gates

@@ -229,6 +229,24 @@
       "name": "ezdxf",
       "primaryPackagePurpose": "LIBRARY",
       "versionInfo": "1.4.4"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-12-vtk",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "NOASSERTION",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/vtk@9.6.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "vtk",
+      "primaryPackagePurpose": "LIBRARY",
+      "versionInfo": "9.6.2"
     }
   ],
   "relationships": [
@@ -284,6 +302,11 @@
     },
     {
       "relatedSpdxElement": "SPDXRef-Package-11-ezdxf",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-12-vtk",
       "relationshipType": "DEPENDS_ON",
       "spdxElementId": "SPDXRef-Package-0-CWS-Convertor"
     }

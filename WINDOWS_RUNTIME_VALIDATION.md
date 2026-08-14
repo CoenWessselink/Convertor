@@ -32,6 +32,10 @@ failing GUI import chain.
 - The packaged regression performs an NC1-to-STEP conversion, project create/read cycle and
   SteelModel/viewer-hostcontract export.
 - The native runtime self-test releases and verifies a complete canonical production package.
+- The native runtime self-test renders a real triangulated mesh through VTK and
+  validates the produced PNG.
+- Automated installer validation uses per-user mode, verifies all configured
+  file associations and the PDF context action, and then verifies uninstall.
 
 ## Native checks
 
@@ -44,6 +48,7 @@ failing GUI import chain.
 | Matplotlib | Render a line using the non-interactive Agg backend |
 | NumPy/SciPy | Create a native array and calculate a determinant |
 | Pillow | Create an in-memory RGB image |
+| VTK | Render real triangle geometry off-screen and validate the PNG output |
 
 `inspect_windows_native_dependencies.py` additionally reads the PE import table
 of `_casadi.pyd`, confirms every direct dependency resolves from the package,
@@ -60,12 +65,12 @@ separate dependency and license gate.
 
 The Windows workflow fails unless all of these environments pass independently:
 
-| Environment | Native selftest | GUI smoke | CLI | Project | SteelModel | NC1 to STEP | Python on child PATH |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Source | required | required | required | required | required | existing regressions | build Python |
-| PyInstaller dist | required | required | required | required | required | required | absent |
-| Fresh portable extraction | required | required | required | required | required | required | absent |
-| Installed application | required | required | required | required | required | required | absent |
+| Environment | Native selftest | GUI smoke | CLI | Project | SteelModel | NC1 to STEP | VTK viewer | Python on child PATH |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Source | required | required | required | required | required | existing regressions | required | build Python |
+| PyInstaller dist | required | required | required | required | required | required | required | absent |
+| Fresh portable extraction | required | required | required | required | required | required | required | absent |
+| Installed application | required | required | required | required | required | required | required | absent |
 
 The workflow appends its run ID, commit and completed matrix to the copy shipped
 inside the release artifact. JSON reports for every environment are included
@@ -89,6 +94,17 @@ Phase A run `31734275341` passed on commit `2a80f86`, adding the SteelModel 1.0
 and viewer-hostcontract export to dist, portable and installed-runtime checks.
 Artifact `9195086063` is 727,107,900 bytes with digest
 `sha256:16e69f976d3e0ef916b3dca87c2ed85dc7afad4fa2e45d092aa9008bcbe5e9ab`.
+
+On 2026-08-14 the Phase B batch-2 local Windows matrix passed for source,
+PyInstaller dist, a fresh portable extraction and a per-user installation.
+All packaged environments passed the seven-check native self-test, visible GUI
+smoke and functional package smoke without Python on the child `PATH`; the
+installed associations and silent uninstall also passed. The portable ZIP is
+454,980,853 bytes with SHA-256
+`975cd157e8b7fe9e774f2098285ae7d8e70579aa511e757c963d2b88fe972040`.
+The installer is 266,452,047 bytes with SHA-256
+`c230a70146a271e5d7f230ecd9a1190941383162da8f1089c2b6c155ecf5a2ed`.
+GitHub CI evidence for the exact pushed commit remains required.
 
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the

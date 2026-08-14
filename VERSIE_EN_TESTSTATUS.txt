@@ -6,7 +6,7 @@ Compatibiliteit:     CWS_Convertor binaries/installer/.cwscproj/ProgIDs behouden
 Versie:              0.8.3-beta-dev
 Project Model:       2.5
 Projectbestand:      .cwscproj
-Fase:                Fase B Viewer & Import Accuracy actief; batch 1 viewerhost afgerond
+Fase:                Fase B Viewer & Import Accuracy actief; batches 1-2 afgerond
 Productiestatus:     BETA-DEV - synthetische releaseketen getest; golden projectvalidatie blijft vereist
 
 NIEUW IN DEZE VERSIE
@@ -19,8 +19,13 @@ NIEUW IN DEZE VERSIE
 - CLI `project-export-steel-model` voor gecontroleerde GPT-vieweroverdracht.
 - SteelModel-gebonden 3D Viewer-workspace met modelboom, properties, validatie en brontrace.
 - Bidirectionele selectie tussen projectlijst, Part Workbench en viewerhost zonder event-echo.
-- Capability-gated commandobrug; renderertools blijven uit tot een compatibele renderer is gekoppeld.
+- Capability-gated commandobrug; alleen bewezen renderertools worden geactiveerd.
 - Deterministisch viewerhost-manifest voor accuracy- en UI-regressie.
+- ViewerMeshResource 1.0 met geometry-contenthash, resourcehash, brontrace, units en lokaal assenstelsel.
+- Echte STEP-BREP-, IFC-entiteitsmesh- en actuele canonical-BREP-weergave zonder afgeleide dozen.
+- Ingebouwde off-screen VTK-renderer in de bestaande Tk-workspace met fit, iso, orbit, zoom en picking.
+- Luie meshopbouw uit opnieuw geverifieerde bronbytes; start pas bij zichtbare 3D-workspace.
+- Structurele visual-golden, transformatiecontrole en 600-instance gedeelde-geometrieregressie.
 - Gedeelde ISO-10303-21-grafiekkern voor IFC en STEP.
 - IFC assemblies, parts, fasteners, lassen, placements, properties en materialen.
 - STEP products, product definitions, occurrences en BREP-roots.
@@ -86,9 +91,12 @@ STEP -> Trusted PDF -> STEP:          19/19 geslaagd
 Trusted PDF -> IFC focus:              2/2 geslaagd
 Synthetische LO4-keten:                1/1 geslaagd
 AI/integriteit/negatieve tests:       11/11 geslaagd
-Smoke-scripts lokale ontwikkelrun:    36/36 scripts; 136 tests / 7 skips geslaagd
+Smoke-scripts lokale ontwikkelrun:    38/38 scripts; 148 tests / 7 skips geslaagd
 SteelModel fase-A contracttests:       7/7 geslaagd
 Viewerworkspace/UI-contracttests:      7/7 geslaagd
+Viewer mesh/renderer-tests:            4/4 geslaagd
+Lokale Windows pakketmatrix:           source/dist/portable/installed geslaagd
+Installer-associaties/uninstall:       geslaagd
 Part Workbench GUI-tests:              2/2 geslaagd
 Canonical rebuild-tests:               6/6 geslaagd
 Productiepakket-tests:                 4/4 geslaagd
@@ -105,11 +113,14 @@ BELANGRIJKE GRENZEN
 - Merkprojecties zijn vector-wireframes zonder true hidden-line removal.
 - DXF-export is beperkt tot ondersteunde analytische plaatcontouren.
 - Grote productie-export wacht op een door de eigenaar gevalideerd, vrijgegeven groot model.
-- De centrale viewerhost toont nog geen echte projectmesh; rendererfuncties blijven daarom uitgeschakeld.
-- Viewer V2 is geaudit maar niet geactiveerd: synthetische boxes, PySide6/Windows/PyInstaller en echte projectmeshes zijn nog open.
+- De centrale viewer toont nu echte geselecteerde projectmeshes; progressief volledig-project laden is nog open.
+- Meten, doorsneden en vergelijken blijven uitgeschakeld totdat hun contracts en regressies zijn geaccepteerd.
+- De 600-instance test is gegenereerd bewijs en vervangt geen eigenaar-gevalideerd groot/complex model.
+- Viewer V2 blijft uitgesloten: de synthetische boxes en PySide6-shell zijn niet overgenomen.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
 - Windows CI-run 31728698072: fase 3 source, dist, portable, installer, installed runtime, productiepakket en uninstall geslaagd.
 - Windows CI-run 31734275341: fase A source, dist, portable, installer, installed runtime, SteelModel/viewer-hostexport en uninstall geslaagd; artifact 9195086063.
 - Windows CI-run 31744026521: fase B batch 1 source, viewerhost-UI, dist, portable, installer, installed runtime en uninstall geslaagd; artifact 9198752611.
+- Fase B batch 2 lokale Windows-matrix: native selftest, GUI, packaged runtime en VTK geslaagd in source, dist, verse portable extractie en installatie zonder Python op child-PATH; associaties en uninstall geslaagd. Exacte GitHub CI-run volgt na push.
 - GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
 - Windows CI-run 31720996524: source, dist, portable, installer, geïnstalleerde runtime en uninstall geslaagd.

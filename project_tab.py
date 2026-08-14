@@ -389,6 +389,8 @@ class CWSProjectTab(ttk.Frame):
 
     # ------------------------------------------------------------------ project actions
     def _replace_session(self, session: ProjectSession | None) -> None:
+        if hasattr(self, "project_viewer"):
+            self.project_viewer.cancel_mesh_requests()
         if self.session is not None and self.session is not session:
             self.session.close()
         self.session = session
@@ -1086,7 +1088,10 @@ class CWSProjectTab(ttk.Frame):
         self._refresh_classification_grid()
         self.part_workbench.refresh()
         try:
-            self.project_viewer.load_project(project)
+            self.project_viewer.load_project(
+                project,
+                mesh_provider=self._viewer_geometry_provider(),
+            )
             if project.parts and not self.project_viewer.state.selected_id:
                 first_part_id = min(
                     project.parts,
@@ -1270,6 +1275,73 @@ class CWSProjectTab(ttk.Frame):
     def _viewer_status(self, message: str) -> None:
         self.status_label.configure(text=message)
         self.log_callback(message)
+
+    def _viewer_geometry_provider(self) -> Callable[[str], Any] | None:
+        session = self.session
+        if session is None:
+            return None
+
+        def resolve(target: ProjectSession, part_id: str) -> Any:
+            part = target.project.parts.get(part_id)
+            if part is None:
+                raise ProjectPackageError(f"Onbekend onderdeel {part_id}")
+            from cws_convertor.steel_model.adapter import build_steel_model_snapshot
+            from cws_convertor.steel_model.viewer_boundary import build_viewer_host_snapshot
+            from cws_convertor.viewer.mesh_resources import (
+                build_canonical_viewer_mesh_resource,
+            )
+
+            steel_model = build_steel_model_snapshot(target.project)
+            entity = next(
+                item for item in steel_model.entities if item.steel_model_id == part_id
+            )
+            if entity.geometry_kind != "canonical_part":
+                return target.inspect_part_source_geometry(part_id, persist=False)
+
+            binding = next(
+                item
+                for item in build_viewer_host_snapshot(steel_model).bindings
+                if item.steel_model_id == part_id
+            )
+            if part.workbench:
+                from cws_convertor.project.canonical_rebuild import build_canonical_shape
+
+                shape, _warnings, _input_payload = build_canonical_shape(part)
+            else:
+                import conversion
+
+                canonical = part.canonical()
+                if canonical is None:
+                    raise ProjectPackageError(
+                        f"Onderdeel {part_id} mist actuele canonical geometrie"
+                    )
+                shape = conversion.build_shape(canonical).val()
+            return build_canonical_viewer_mesh_resource(
+                shape,
+                project_id=steel_model.project_id,
+                entity=entity,
+                binding=binding,
+            )
+
+        project_path = session.path
+        store = self.store
+        if project_path is not None and project_path.is_file() and not session.dirty:
+            stable_path = project_path.resolve()
+
+            def load_saved(part_id: str) -> Any:
+                with ProjectSession.open(
+                    stable_path,
+                    store=store,
+                    read_only=True,
+                ) as isolated:
+                    return resolve(isolated, part_id)
+
+            return load_saved
+
+        def load_active(part_id: str) -> Any:
+            return resolve(session, part_id)
+
+        return load_active
 
     def _workbench_changed(self) -> None:
         self.refresh()

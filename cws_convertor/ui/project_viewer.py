@@ -1,7 +1,10 @@
 """SteelModel-bound project viewer host for the desktop application."""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 import json
+import queue
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable, Mapping
@@ -12,6 +15,10 @@ from cws_convertor.steel_model.contracts import AccuracyStatus, SteelValidationR
 from cws_convertor.steel_model.viewer_boundary import (
     ViewerHandshake,
     build_viewer_host_snapshot,
+)
+from cws_convertor.viewer.mesh_resources import (
+    ViewerMeshResource,
+    build_viewer_mesh_resource,
 )
 from cws_convertor.viewer.workspace import ACCURACY_LABELS, ViewerTreeNode, ViewerWorkspaceState
 
@@ -45,12 +52,30 @@ class ProjectViewerPanel(ttk.Frame):
         self._issue_to_model_id: dict[str, str] = {}
         self._renderer_handshake: ViewerHandshake | None = None
         self._renderer_command: Callable[[str, dict[str, Any]], None] | None = None
+        self._builtin_renderer: Any | None = None
+        self._mesh_provider: Callable[[str], Any] | None = None
+        self._mesh_generation = 0
+        self._mesh_pending: set[str] = set()
+        self._mesh_events: queue.Queue[tuple[int, str, Any, Exception | None]] = queue.Queue()
+        self._mesh_executor = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="cws-viewer-mesh",
+        )
+        self._mesh_poll_after_id: str | None = None
+        self._resize_after_id: str | None = None
+        self._scene_photo: Any | None = None
+        self._scene_rendered = False
+        self._scene_message = ""
+        self._mouse_origin: tuple[int, int] | None = None
+        self._mouse_previous: tuple[int, int] | None = None
+        self._mouse_dragged = False
         self.search_var = tk.StringVar(value="")
         self.accuracy_mode_var = tk.BooleanVar(value=True)
         self.renderer_status_var = tk.StringVar(value="Renderer niet gekoppeld")
         self.selection_status_var = tk.StringVar(value="Geen object geselecteerd")
         self._build_ui()
         self._render_empty_state()
+        self._mesh_poll_after_id = self.after(100, self._poll_mesh_events)
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
@@ -112,7 +137,7 @@ class ProjectViewerPanel(ttk.Frame):
             toolbar,
             text="Nauwkeurigheid / debug",
             variable=self.accuracy_mode_var,
-            command=self._refresh_center_status,
+            command=self._accuracy_mode_changed,
         ).pack(side="left")
         ttk.Label(toolbar, textvariable=self.renderer_status_var, anchor="e").pack(
             side="right", fill="x", expand=True, padx=(12, 0)
@@ -157,7 +182,12 @@ class ProjectViewerPanel(ttk.Frame):
             borderwidth=0,
         )
         self.scene_canvas.grid(row=0, column=0, sticky="nsew")
-        self.scene_canvas.bind("<Configure>", lambda _event: self._draw_scene_status())
+        self.scene_canvas.bind("<Configure>", self._scene_configured)
+        self.scene_canvas.bind("<Map>", self._scene_mapped)
+        self.scene_canvas.bind("<ButtonPress-1>", self._scene_button_press)
+        self.scene_canvas.bind("<B1-Motion>", self._scene_drag)
+        self.scene_canvas.bind("<ButtonRelease-1>", self._scene_button_release)
+        self.scene_canvas.bind("<MouseWheel>", self._scene_mouse_wheel)
         center.add(scene, weight=5)
 
         issues_panel = ttk.Frame(center, height=155)
@@ -242,14 +272,23 @@ class ProjectViewerPanel(ttk.Frame):
         self.trace_label = ttk.Label(footer, text="", anchor="e")
         self.trace_label.pack(side="right", fill="x", expand=True, padx=(12, 0))
 
-    def load_project(self, project: ProjectModel | None) -> None:
+    def load_project(
+        self,
+        project: ProjectModel | None,
+        *,
+        mesh_provider: Callable[[str], Any] | None = None,
+    ) -> None:
         selected_id = self.state.selected_id if self.state else ""
+        self.cancel_mesh_requests()
+        self._mesh_provider = mesh_provider
         self._project = project
         if project is None:
             self.state = None
             self._renderer_handshake = None
             self._renderer_command = None
             self.renderer_status_var.set("Renderer niet gekoppeld")
+            self._scene_rendered = False
+            self._scene_photo = None
             self._render_empty_state()
             return
         steel_model = build_steel_model_snapshot(project)
@@ -269,6 +308,12 @@ class ProjectViewerPanel(ttk.Frame):
                 require_attached=False,
             ):
                 self._renderer_command = None
+        if (
+            self._mesh_provider is not None
+            and self._renderer_command is None
+            and self.scene_canvas.winfo_ismapped()
+        ):
+            self._ensure_builtin_renderer()
         self._refresh_all()
 
     def register_renderer_handshake(self, handshake: ViewerHandshake) -> dict[str, Any]:
@@ -313,6 +358,142 @@ class ProjectViewerPanel(ttk.Frame):
         else:
             self._render_empty_state()
 
+    def _ensure_builtin_renderer(self) -> None:
+        if self.state is None or self._mesh_provider is None:
+            return
+        try:
+            if self._builtin_renderer is None:
+                from cws_convertor.viewer.vtk_backend import VtkOffscreenRenderer
+
+                self._builtin_renderer = VtkOffscreenRenderer(
+                    image_callback=self._renderer_image_ready,
+                    selection_callback=self.select_viewer_node,
+                    width=max(64, self.scene_canvas.winfo_width()),
+                    height=max(64, self.scene_canvas.winfo_height()),
+                )
+            report = self.attach_renderer(
+                self._builtin_renderer.handshake,
+                self._builtin_renderer.command,
+            )
+            if not report.get("compatible"):
+                self.status_callback(
+                    "Ingebouwde mesh-renderer geweigerd: "
+                    + "; ".join(report.get("errors") or ())
+                )
+        except Exception as exc:
+            self._builtin_renderer = None
+            self._renderer_handshake = None
+            self._renderer_command = None
+            self.status_callback(f"Ingebouwde mesh-renderer niet beschikbaar: {exc}")
+
+    def cancel_mesh_requests(self) -> None:
+        self._mesh_generation += 1
+        self._mesh_pending.clear()
+
+    def _request_selected_mesh(self) -> None:
+        state = self.state
+        provider = self._mesh_provider
+        entity = state.selected_entity if state is not None else None
+        binding = state.selected_binding if state is not None else None
+        if (
+            state is None
+            or provider is None
+            or entity is None
+            or binding is None
+            or entity.entity_type != "part"
+            or not binding.viewer_geometry_id
+            or not self.scene_canvas.winfo_ismapped()
+            or self._renderer_command is None
+            or state.mesh_resource(entity.steel_model_id) is not None
+            or entity.steel_model_id in self._mesh_pending
+        ):
+            return
+
+        generation = self._mesh_generation
+        steel_model_id = entity.steel_model_id
+        project_id = state.steel_model.project_id
+        self._mesh_pending.add(steel_model_id)
+        self._scene_message = f"Mesh laden voor {entity.name or steel_model_id}..."
+        self._draw_scene_status()
+
+        def load() -> None:
+            try:
+                supplied = provider(steel_model_id)
+                resource = (
+                    supplied
+                    if isinstance(supplied, ViewerMeshResource)
+                    else build_viewer_mesh_resource(
+                        supplied,
+                        project_id=project_id,
+                        entity=entity,
+                        binding=binding,
+                    )
+                )
+                self._mesh_events.put((generation, steel_model_id, resource, None))
+            except Exception as exc:
+                self._mesh_events.put((generation, steel_model_id, None, exc))
+
+        self._mesh_executor.submit(load)
+
+    def _poll_mesh_events(self) -> None:
+        try:
+            while True:
+                generation, steel_model_id, resource, error = self._mesh_events.get_nowait()
+                if generation != self._mesh_generation:
+                    continue
+                self._mesh_pending.discard(steel_model_id)
+                if self.state is None or self.state.entity(steel_model_id) is None:
+                    continue
+                if error is not None:
+                    self._scene_message = f"Mesh niet beschikbaar: {error}"
+                    self.status_callback(
+                        f"Viewer-mesh voor {steel_model_id} niet geladen: {error}"
+                    )
+                    self._draw_scene_status()
+                    continue
+                try:
+                    first_resource = not bool(self.state.visual_manifest()["mesh_resource_count"])
+                    patch = self.state.attach_mesh_resource(resource)
+                    if self._renderer_command is None:
+                        raise RuntimeError("renderer is niet gekoppeld")
+                    try:
+                        self._renderer_command("scene.patch", patch)
+                    except Exception:
+                        self._renderer_command("scene.load", self.state.scene_payload())
+                    if first_resource:
+                        self._renderer_command("camera.standard_view", {"view": "isometric"})
+                    if self.state.selected_binding is not None:
+                        self._renderer_command(
+                            "selection.set",
+                            {
+                                "viewer_node_ids": [
+                                    self.state.selected_binding.viewer_node_id
+                                ]
+                            },
+                        )
+                    self._scene_message = (
+                        f"{len(resource.vertices_mm)} vertices | "
+                        f"{len(resource.triangles)} driehoeken | mm"
+                    )
+                    self.status_callback(
+                        f"Echte projectmesh geladen voor {steel_model_id}: "
+                        f"{len(resource.triangles)} driehoeken"
+                    )
+                    self._refresh_selection()
+                    self._refresh_all()
+                except Exception as exc:
+                    self._scene_message = f"Meshpatch geweigerd: {exc}"
+                    self.status_callback(
+                        f"Viewer-meshpatch voor {steel_model_id} geweigerd: {exc}"
+                    )
+                    self._draw_scene_status()
+        except queue.Empty:
+            pass
+        try:
+            self._mesh_poll_after_id = self.after(100, self._poll_mesh_events)
+        except tk.TclError:
+            self._mesh_poll_after_id = None
+
     def select_entity(
         self,
         steel_model_id: str,
@@ -337,6 +518,7 @@ class ProjectViewerPanel(ttk.Frame):
             )
         if notify:
             self.selection_callback(steel_model_id)
+        self._request_selected_mesh()
         return True
 
     def select_viewer_node(self, viewer_node_id: str) -> dict[str, Any]:
@@ -419,7 +601,8 @@ class ProjectViewerPanel(ttk.Frame):
         elif compatible:
             report = state.handshake_report
             self.renderer_status_var.set(
-                f"{report['component_name']} {report['component_version']} gekoppeld"
+                f"{report['component_name']} {report['component_version']} "
+                + ("gekoppeld" if report.get("complete") else "mesh-kern gekoppeld")
             )
         else:
             self.renderer_status_var.set("Viewer-host gereed | rendereroverdracht vereist")
@@ -545,41 +728,161 @@ class ProjectViewerPanel(ttk.Frame):
     def _refresh_center_status(self) -> None:
         self._draw_scene_status()
 
+    def _accuracy_mode_changed(self) -> None:
+        if self.state is not None and self.state.capability_available("accuracy_debug"):
+            self._run_renderer_command(
+                "accuracy_debug.set",
+                {"enabled": bool(self.accuracy_mode_var.get())},
+                require_attached=False,
+            )
+        self._draw_scene_status()
+
+    def _renderer_image_ready(
+        self,
+        png: bytes,
+        _telemetry: Mapping[str, Any],
+    ) -> None:
+        from PIL import Image, ImageTk
+
+        image = Image.open(BytesIO(png)).convert("RGB")
+        self._scene_photo = ImageTk.PhotoImage(image, master=self.scene_canvas)
+        self.scene_canvas.delete("scene-image")
+        image_id = self.scene_canvas.create_image(
+            0,
+            0,
+            image=self._scene_photo,
+            anchor="nw",
+            tags=("scene-image",),
+        )
+        self.scene_canvas.tag_lower(image_id)
+        self._scene_rendered = True
+        self._draw_scene_status()
+
+    def _scene_configured(self, _event=None) -> None:
+        if self._resize_after_id is not None:
+            try:
+                self.after_cancel(self._resize_after_id)
+            except tk.TclError:
+                pass
+        self._resize_after_id = self.after(80, self._resize_builtin_renderer)
+
+    def _scene_mapped(self, _event=None) -> None:
+        if self._mesh_provider is not None and self._renderer_command is None:
+            self._ensure_builtin_renderer()
+        self._request_selected_mesh()
+
+    def _resize_builtin_renderer(self) -> None:
+        self._resize_after_id = None
+        renderer = self._active_builtin_renderer()
+        if renderer is None:
+            self._draw_scene_status()
+            return
+        width = self.scene_canvas.winfo_width()
+        height = self.scene_canvas.winfo_height()
+        if width >= 64 and height >= 64:
+            renderer.resize(width, height)
+
+    def _active_builtin_renderer(self) -> Any | None:
+        handler_owner = getattr(self._renderer_command, "__self__", None)
+        return self._builtin_renderer if handler_owner is self._builtin_renderer else None
+
+    def _scene_button_press(self, event: tk.Event) -> None:
+        if self._active_builtin_renderer() is None:
+            return
+        self._mouse_origin = (int(event.x), int(event.y))
+        self._mouse_previous = self._mouse_origin
+        self._mouse_dragged = False
+
+    def _scene_drag(self, event: tk.Event) -> None:
+        renderer = self._active_builtin_renderer()
+        if renderer is None or self._mouse_previous is None:
+            return
+        current = (int(event.x), int(event.y))
+        delta_x = current[0] - self._mouse_previous[0]
+        delta_y = current[1] - self._mouse_previous[1]
+        if abs(delta_x) + abs(delta_y) >= 2:
+            self._mouse_dragged = True
+            renderer.orbit(delta_x, -delta_y)
+        self._mouse_previous = current
+
+    def _scene_button_release(self, event: tk.Event) -> None:
+        renderer = self._active_builtin_renderer()
+        if renderer is not None and self._mouse_origin is not None and not self._mouse_dragged:
+            renderer.pick(int(event.x), int(event.y))
+        self._mouse_origin = None
+        self._mouse_previous = None
+        self._mouse_dragged = False
+
+    def _scene_mouse_wheel(self, event: tk.Event) -> None:
+        renderer = self._active_builtin_renderer()
+        if renderer is None:
+            return
+        renderer.zoom(1.15 if int(event.delta) > 0 else 1.0 / 1.15)
+
     def _draw_scene_status(self) -> None:
         canvas = self.scene_canvas
-        canvas.delete("all")
         width = max(1, canvas.winfo_width())
         height = max(1, canvas.winfo_height())
         center_x = width / 2
         center_y = height / 2
-        canvas.create_line(0, height - 34, width, height - 34, fill="#313834")
+        canvas.delete("scene-overlay")
+        if not self._scene_rendered:
+            canvas.delete("all")
         if self.state is None:
             title = "Open of maak een project"
-            detail = "De 3D Viewer wordt rechtstreeks uit het SteelModel opgebouwd."
+            detail = "Geen scene geladen"
         elif not self.state.renderer_compatible or self._renderer_command is None:
             title = "Viewer-host gereed"
-            detail = (
-                "De gecontroleerde renderer is nog niet gekoppeld.\n"
-                "Modelboom, properties, brontrace en validatie gebruiken al het echte SteelModel."
+            detail = "Gecontroleerde renderer niet gekoppeld"
+        else:
+            title = ""
+            detail = self._scene_message or "Geen mesh geladen"
+        if not self._scene_rendered:
+            canvas.create_text(
+                center_x,
+                center_y - 18,
+                text=title,
+                fill="#f0f3f1",
+                font=("Segoe UI", 15, "bold"),
+                tags=("scene-overlay",),
+            )
+            canvas.create_text(
+                center_x,
+                center_y + 20,
+                text=detail,
+                fill="#aeb8b2",
+                font=("Segoe UI", 9),
+                justify="center",
+                width=max(260, width - 90),
+                tags=("scene-overlay",),
             )
         else:
-            title = "Renderer gekoppeld"
-            detail = "De renderer kan de gevalideerde scene via ViewerHost 1.0 laden."
-        canvas.create_text(
-            center_x,
-            center_y - 18,
-            text=title,
-            fill="#f0f3f1",
-            font=("Segoe UI", 15, "bold"),
-        )
-        canvas.create_text(
-            center_x,
-            center_y + 20,
-            text=detail,
-            fill="#aeb8b2",
-            font=("Segoe UI", 9),
-            justify="center",
-            width=max(260, width - 90),
+            canvas.create_rectangle(
+                0,
+                0,
+                width,
+                28,
+                fill="#111714",
+                outline="",
+                stipple="gray50",
+                tags=("scene-overlay",),
+            )
+            canvas.create_text(
+                10,
+                14,
+                text=detail,
+                fill="#e2e8e4",
+                font=("Segoe UI", 8),
+                anchor="w",
+                tags=("scene-overlay",),
+            )
+        canvas.create_line(
+            0,
+            height - 34,
+            width,
+            height - 34,
+            fill="#313834",
+            tags=("scene-overlay",),
         )
         if self.state is not None and self.accuracy_mode_var.get():
             payload = self.state.selection_payload()
@@ -600,6 +903,7 @@ class ProjectViewerPanel(ttk.Frame):
                 fill="#d5ddd8",
                 font=("Consolas", 8),
                 anchor="w",
+                tags=("scene-overlay",),
             )
 
     def _tree_selected(self, _event=None) -> None:
@@ -693,7 +997,29 @@ class ProjectViewerPanel(ttk.Frame):
     def export_visual_manifest(self) -> str:
         if self.state is None:
             return "{}"
-        return json.dumps(self.state.visual_manifest(), indent=2, sort_keys=True)
+        value = self.state.visual_manifest()
+        if self._builtin_renderer is not None:
+            value["builtin_renderer_telemetry"] = self._builtin_renderer.telemetry()
+        return json.dumps(value, indent=2, sort_keys=True)
+
+    def destroy(self) -> None:
+        self.cancel_mesh_requests()
+        for after_id in (self._mesh_poll_after_id, self._resize_after_id):
+            if after_id is not None:
+                try:
+                    self.after_cancel(after_id)
+                except tk.TclError:
+                    pass
+        self._mesh_poll_after_id = None
+        self._resize_after_id = None
+        self._mesh_executor.shutdown(wait=False, cancel_futures=True)
+        if self._builtin_renderer is not None:
+            try:
+                self._builtin_renderer.close()
+            except Exception:
+                pass
+            self._builtin_renderer = None
+        super().destroy()
 
 
 __all__ = ["ProjectViewerPanel"]

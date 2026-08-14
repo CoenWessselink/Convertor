@@ -133,6 +133,7 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
                 "ifcopenshell",
                 "pymupdf",
                 "scientific_rendering",
+                "vtk_viewer",
                 "project_roundtrips",
             },
         )

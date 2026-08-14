@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping
 
 from cws_convertor.steel_model.contracts import (
@@ -17,6 +17,7 @@ from cws_convertor.steel_model.viewer_boundary import (
     ViewerHostSnapshot,
     validate_viewer_handshake,
 )
+from .mesh_resources import ViewerMeshResource
 
 
 ACCURACY_LABELS: Mapping[AccuracyStatus, str] = {
@@ -114,11 +115,14 @@ class ViewerWorkspaceState:
                 raise ValueError(f"Viewer geometry hash mismatch for {steel_model_id}")
 
         self._selected_id = ""
+        self._mesh_resources: dict[str, ViewerMeshResource] = {}
         self._handshake: ViewerHandshake | None = None
         self._handshake_report: dict[str, Any] = {
             "compatible": False,
             "component_name": "",
             "component_version": "",
+            "complete": False,
+            "missing_core_capabilities": list(viewer_host.required_capabilities),
             "missing_capabilities": list(viewer_host.required_capabilities),
             "errors": ["viewer component not attached"],
         }
@@ -174,6 +178,84 @@ class ViewerWorkspaceState:
 
     def binding(self, steel_model_id: str) -> ViewerEntityBinding | None:
         return self._bindings.get(steel_model_id)
+
+    def mesh_resource(self, steel_model_id: str) -> ViewerMeshResource | None:
+        return self._mesh_resources.get(steel_model_id)
+
+    def attach_mesh_resource(self, resource: ViewerMeshResource) -> dict[str, Any]:
+        """Validate and bind one lazily resolved mesh to the active host."""
+
+        return self.attach_mesh_resources((resource,))
+
+    def attach_mesh_resources(
+        self,
+        resources: Iterable[ViewerMeshResource],
+    ) -> dict[str, Any]:
+        """Atomically bind one or more independently verified mesh resources."""
+
+        values = tuple(resources)
+        if not values:
+            raise ValueError("Viewer mesh patch contains no resources")
+        if len({item.steel_model_id for item in values}) != len(values):
+            raise ValueError("Viewer mesh patch contains duplicate SteelModel IDs")
+        for resource in values:
+            self._validate_mesh_resource(resource)
+
+        previous_host_sha256 = self.viewer_host.snapshot_sha256
+        replacements = {
+            resource.steel_model_id: replace(
+                self._bindings[resource.steel_model_id],
+                viewer_geometry_content_sha256=resource.geometry_content_sha256,
+            )
+            for resource in values
+        }
+        bindings = tuple(
+            replacements.get(item.steel_model_id, item)
+            for item in self.viewer_host.bindings
+        )
+        self.viewer_host = ViewerHostSnapshot(
+            project_id=self.viewer_host.project_id,
+            steel_model_snapshot_sha256=self.viewer_host.steel_model_snapshot_sha256,
+            bindings=bindings,
+            contract_version=self.viewer_host.contract_version,
+            steel_model_schema_version=self.viewer_host.steel_model_schema_version,
+            required_capabilities=self.viewer_host.required_capabilities,
+        )
+        self._bindings.update(replacements)
+        self._mesh_resources.update(
+            {resource.steel_model_id: resource for resource in values}
+        )
+        return {
+            "contract_version": self.viewer_host.contract_version,
+            "project_id": self.steel_model.project_id,
+            "steel_model_snapshot_sha256": self.steel_model.snapshot_sha256,
+            "previous_viewer_host_snapshot_sha256": previous_host_sha256,
+            "viewer_host_snapshot_sha256": self.viewer_host.snapshot_sha256,
+            "viewer_host": self.viewer_host.to_dict(),
+            "entities": [
+                self._entities[resource.steel_model_id].to_dict()
+                for resource in values
+            ],
+            "resources": [resource.to_dict() for resource in values],
+        }
+
+    def _validate_mesh_resource(self, resource: ViewerMeshResource) -> None:
+        if resource.project_id != self.steel_model.project_id:
+            raise ValueError("Viewer mesh belongs to another project")
+        entity = self._entities.get(resource.steel_model_id)
+        binding = self._bindings.get(resource.steel_model_id)
+        if entity is None or binding is None:
+            raise ValueError("Viewer mesh refers to an unknown SteelModel entity")
+        if resource.viewer_geometry_id != binding.viewer_geometry_id:
+            raise ValueError("Viewer mesh geometry ID does not match its binding")
+        if resource.source_file_id != binding.source_file_id:
+            raise ValueError("Viewer mesh source file does not match its binding")
+        if resource.source_entity_id != binding.source_entity_id:
+            raise ValueError("Viewer mesh source entity does not match its binding")
+        if resource.source_sha256 != entity.source.source_sha256:
+            raise ValueError("Viewer mesh source hash does not match SteelModel trace")
+        if resource.accuracy_status != entity.accuracy_status.value:
+            raise ValueError("Viewer mesh accuracy does not match SteelModel state")
 
     def accuracy_summary(self) -> AccuracySummary:
         counts = Counter(item.accuracy_status for item in self._entities.values())
@@ -247,6 +329,10 @@ class ViewerWorkspaceState:
             "viewer_host_snapshot_sha256": self.viewer_host.snapshot_sha256,
             "steel_model": self.steel_model.to_dict(),
             "viewer_host": self.viewer_host.to_dict(),
+            "mesh_resources": [
+                self._mesh_resources[item].to_dict()
+                for item in sorted(self._mesh_resources)
+            ],
         }
 
     def search(self, query: str = "", *, entity_type: str = "") -> tuple[SteelEntityRecord, ...]:
@@ -326,6 +412,13 @@ class ViewerWorkspaceState:
             "source_count": len(self.steel_model.sources),
             "entity_count": len(self.steel_model.entities),
             "binding_count": len(self.viewer_host.bindings),
+            "mesh_resource_count": len(self._mesh_resources),
+            "mesh_vertex_count": sum(
+                len(item.vertices_mm) for item in self._mesh_resources.values()
+            ),
+            "mesh_triangle_count": sum(
+                len(item.triangles) for item in self._mesh_resources.values()
+            ),
             "accuracy": summary.to_dict(),
             "selected": self.selection_payload(),
             "renderer": self.handshake_report,

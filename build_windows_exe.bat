@@ -61,8 +61,9 @@ if not exist "%ISCC%" (
 
 echo [8/9] Installeren, volledig testen en verwijderen...
 if exist "%CWS_INSTALL_DIR%" rmdir /s /q "%CWS_INSTALL_DIR%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CD%\dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_x64.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/DIR=%CWS_INSTALL_DIR%') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CD%\dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_x64.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER','/TASKS=fileassoc','/DIR=%CWS_INSTALL_DIR%') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
 ".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" --label installed --result-dir "%CWS_RESULTS%" || goto :error
+".venv-build\Scripts\python.exe" tests\windows_installer_association_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" || goto :error
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CWS_INSTALL_DIR%\unins000.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
 if exist "%CWS_INSTALL_DIR%\CWS_Convertor.exe" goto :error
 if exist "%CWS_INSTALL_DIR%\CWS_Convertor_CLI.exe" goto :error

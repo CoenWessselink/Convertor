@@ -152,8 +152,10 @@ Het bestaande tabblad heeft nu een echte actie **Semantisch importeren**. De int
 - een actieve **Annuleren**-knop met volledige rollback;
 - details van MLO4/LO4, STEP-producten en blokkades.
 
-Exacte 3D-bronisoleratie, featureselectie in de viewer en verdere
-classificatie-/BOM-interactie horen bij de volgende begrensde interfacefase.
+De 3D Viewer is nu gekoppeld aan opnieuw geverifieerde STEP-BREP-,
+IFC-entiteitsmesh- en actuele canonical-BREP-resources. Onzekere of handmatig te
+valideren bronselecties leveren geen geometrie op; meten, doorsneden en vergelijken
+blijven afzonderlijk capability-gated.
 
 ## Bewezen referentie-import
 
@@ -311,6 +313,8 @@ cws_convertor/steel_model/adapter.py        Project Model 2.5 compatibility adap
 cws_convertor/steel_model/tolerances.py     central comparison policy
 cws_convertor/steel_model/viewer_boundary.py controlled GPT-viewer handover contract
 cws_convertor/viewer/workspace.py          verified viewer state and selection
+cws_convertor/viewer/mesh_resources.py     hash-bound real mesh resources
+cws_convertor/viewer/vtk_backend.py        off-screen VTK scene, camera and picking
 cws_convertor/ui/project_viewer.py         integrated project viewer host UI
 cws_convertor/ui/part_workbench.py          geintegreerde analytische Part Workbench
 cws_convertor/project/storage.py            .cwscproj ZIP+SQLite-integriteit
@@ -324,18 +328,19 @@ cli.py                                      conversie- en project-CLI
 De eerder uitgevoerde kernfasen 0-3 blijven geldig als technisch bewijs. De
 voorwaartse roadmap gebruikt nu fasen A-F. Fase A is afgerond met SteelModel
 1.0, centrale toleranties, compatibiliteitsidentiteit en het viewer-hostcontract.
-Fase B is gestart. Batch 1 levert nu de echte SteelModel-gebonden projectboom,
-properties, validatie, Accuracy/Debug-status, selectie-synchronisatie en de
-capability-gated rendererpoort in de hoofdapp. Rendererfuncties blijven bewust
-uitgeschakeld totdat een overdracht echte projectmeshes en een complete
-compatibele commandobrug levert.
+Fase B is gestart. Batches 1-2 leveren de SteelModel-gebonden projectboom,
+properties, validatie, Accuracy/Debug-status, selectie-synchronisatie,
+hash-gebonden STEP/IFC/canonical meshes en een ingebouwde VTK/Tk-renderer.
+Camera, picking en zichtbaarheidsfuncties zijn actief; meten, doorsneden en
+vergelijken blijven bewust uit totdat hun eigen contracts zijn bewezen.
 
 1. maak `source ID -> SteelModel ID -> viewer mesh ID` stabiel en controleerbaar;
 2. bewijs units, transformaties, orientatie en toleranties op synthetische en
    eigenaar-gevalideerde referenties;
 3. behoud de nu geteste synchronisatie van viewerselectie, modelboom,
    eigenschappen en validatieproblemen;
-4. koppel echte projectmeshes en voeg visuele regressie en grote-modelmetingen toe;
+4. breid de nu gekoppelde echte projectmeshes uit naar progressief volledig-project
+   laden en eigenaar-gevalideerde grote-modelmetingen;
 5. behoud alle bestaande conversie-, Workbench-, roundtrip- en Windows-tests;
 6. bouw pas daarna de productie-editor, volledige tekeningen, adapters en
    optimalisatie verder uit.

@@ -26,6 +26,18 @@ REQUIRED_VIEWER_CAPABILITIES: tuple[str, ...] = (
     "visibility.isolate",
 )
 
+# A renderer may be attached for trustworthy geometry display before advanced
+# measurement/section/compare modules are accepted. Those tools remain gated
+# individually by the complete capability list above.
+CORE_VIEWER_CAPABILITIES: tuple[str, ...] = (
+    "accuracy_debug",
+    "camera.standard_views",
+    "large_model.telemetry",
+    "scene.load",
+    "scene.patch",
+    "selection.sync",
+)
+
 APP_OWNED_STATE: tuple[str, ...] = (
     "audit_log",
     "canonical_rebuild",
@@ -261,13 +273,16 @@ def validate_viewer_handshake(handshake: ViewerHandshake) -> dict[str, Any]:
             "SteelModel schema "
             f"{handshake.steel_model_schema_version} != {STEEL_MODEL_SCHEMA_VERSION}"
         )
+    missing_core = sorted(set(CORE_VIEWER_CAPABILITIES) - set(handshake.capabilities))
     missing = sorted(set(REQUIRED_VIEWER_CAPABILITIES) - set(handshake.capabilities))
-    if missing:
-        errors.append("missing capabilities: " + ", ".join(missing))
+    if missing_core:
+        errors.append("missing core capabilities: " + ", ".join(missing_core))
     return {
         "compatible": not errors,
+        "complete": not errors and not missing,
         "component_name": handshake.component_name,
         "component_version": handshake.component_version,
+        "missing_core_capabilities": missing_core,
         "missing_capabilities": missing,
         "errors": errors,
     }
@@ -313,6 +328,7 @@ def build_viewer_host_snapshot(steel_model: SteelModelSnapshot) -> ViewerHostSna
 
 __all__ = [
     "APP_OWNED_STATE",
+    "CORE_VIEWER_CAPABILITIES",
     "FORBIDDEN_VIEWER_RESPONSIBILITIES",
     "REQUIRED_VIEWER_CAPABILITIES",
     "VIEWER_HOST_CONTRACT_VERSION",

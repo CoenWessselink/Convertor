@@ -22,6 +22,7 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=commandline
 UninstallDisplayIcon={app}\{#MyAppExeName}
 VersionInfoVersion={#MyAppNumericVersion}
 VersionInfoProductName={#MyAppName}
@@ -47,31 +48,31 @@ Name: "{group}\Verwijderen"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-Root: HKCR; Subkey: ".cwscproj"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.Project"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.Project"; ValueType: string; ValueName: ""; ValueData: "SteelConverter-project"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.cwscproj"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.Project"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.Project"; ValueType: string; ValueName: ""; ValueData: "SteelConverter-project"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
-Root: HKCR; Subkey: ".nc"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.NC1"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: ".nc1"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.NC1"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.NC1"; ValueType: string; ValueName: ""; ValueData: "DSTV/NC1 productieonderdeel"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.NC1\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.NC1\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.nc"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.NC1"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.nc1"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.NC1"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.NC1"; ValueType: string; ValueName: ""; ValueData: "DSTV/NC1 productieonderdeel"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.NC1\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.NC1\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
-Root: HKCR; Subkey: ".step"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.STEP"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: ".stp"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.STEP"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.STEP"; ValueType: string; ValueName: ""; ValueData: "STEP CAD-onderdeel"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.STEP\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.STEP\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.step"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.STEP"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.stp"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.STEP"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.STEP"; ValueType: string; ValueName: ""; ValueData: "STEP CAD-onderdeel"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.STEP\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.STEP\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
-Root: HKCR; Subkey: ".ifc"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.IFC"; Flags: uninsdeletevalue; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.IFC"; ValueType: string; ValueName: ""; ValueData: "IFC-model"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.IFC\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
-Root: HKCR; Subkey: "CWSConvertor.IFC\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\.ifc"; ValueType: string; ValueName: ""; ValueData: "CWSConvertor.IFC"; Flags: uninsdeletevalue; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.IFC"; ValueType: string; ValueName: ""; ValueData: "IFC-model"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.IFC\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\CWSConvertor.IFC\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
 ; Laat de standaard PDF-lezer intact; voeg alleen een expliciete SteelConverter-actie toe.
-Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\CWSConvertor"; ValueType: string; ValueName: ""; ValueData: "Openen in SteelConverter"; Flags: uninsdeletekey; Tasks: fileassoc
-Root: HKCR; Subkey: "SystemFileAssociations\.pdf\shell\CWSConvertor\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\CWSConvertor"; ValueType: string; ValueName: ""; ValueData: "Openen in SteelConverter"; Flags: uninsdeletekey; Tasks: fileassoc
+Root: HKA; Subkey: "Software\Classes\SystemFileAssociations\.pdf\shell\CWSConvertor\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""; Tasks: fileassoc
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Start {#MyAppName}"; Flags: nowait postinstall skipifsilent

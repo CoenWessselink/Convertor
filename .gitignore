@@ -1,4 +1,5 @@
 .venv/
+.venv-build/
 build/
 dist/
 dist_installer/
