@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 120
     env:
       PYTHONUTF8: "1"
-      QT_QPA_PLATFORM: windows
+      QT_QPA_PLATFORM: offscreen
       CWS_REQUIRE_VIEWER_GUI: "1"
       CWS_REQUIRE_IFCOPENSHELL: "1"
 

@@ -63,6 +63,7 @@ class ViewerV8LayoutTests(unittest.TestCase):
         identity = GridLayoutIdentity("../company", "user/../../", "project", "AUX")
         stored = self.store.save(identity, self.model.layout("AUX"))
         self.assertTrue(str(stored.path).startswith(str(Path(self.temp.name).resolve())))
+        self.assertEqual("_AUX.cwsgrid.json", stored.path.name)
 
 
 if __name__ == "__main__":

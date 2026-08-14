@@ -12,6 +12,10 @@ if str(ROOT) not in sys.path:
 from cws_viewer.errors import ViewerError
 from cws_viewer.ui_qt import OcctAisWidget, VtkMeshWidget, qt_available
 
+HEADLESS_GITHUB_WINDOWS = (
+    sys.platform == "win32" and os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
+)
+
 
 class ViewerV1QtContractTests(unittest.TestCase):
     def test_qt_layer_is_import_safe_and_explicit(self) -> None:
@@ -28,7 +32,7 @@ class ViewerV1QtContractTests(unittest.TestCase):
         application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         occt = OcctAisWidget()
         self.assertIsNotNone(occt)
-        if QtWidgets.QApplication.platformName() == "offscreen":
+        if HEADLESS_GITHUB_WINDOWS or QtWidgets.QApplication.platformName() == "offscreen":
             self.assertTrue(isinstance(VtkMeshWidget, type))
             occt.close()
             application.processEvents()

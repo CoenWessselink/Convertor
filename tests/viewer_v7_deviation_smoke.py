@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 from pathlib import Path
 import sys,tempfile,unittest
 ROOT=Path(__file__).resolve().parents[1]
@@ -18,6 +19,15 @@ class ViewerV7DeviationTests(unittest.TestCase):
         self.assertFalse(field.passed)
         self.assertGreater(field.maximum_mm,0.9)
         self.assertGreater(len(field.samples),20)
+
+    @unittest.skipIf(
+        sys.platform == 'win32' and os.environ.get('GITHUB_ACTIONS', '').lower() == 'true',
+        'VTK OpenGL capture vereist een interactieve Windows-sessie',
+    )
+    def test_deviation_heatmap_is_rendered(self):
+        source=build_exact_runtime(build_plate(p1811_definition()),part_id='P1811-source')
+        changed=build_exact_runtime(build_plate(p1811_definition(changed_hole_diameter=20)),part_id='P1811-changed')
+        field=build_deviation_field(source,changed,tolerance_mm=0.02)
         with tempfile.TemporaryDirectory(prefix='cws-v7-deviation-') as temp:
             path=render_deviation_heatmap(source,changed,field,Path(temp)/'heatmap.png',width=900,height=560)
             self.assertTrue(path.is_file())

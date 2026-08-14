@@ -14,11 +14,22 @@ from .grid import GridLayout
 
 _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
 _LAYOUT_FORMAT = "CWS_VIEWER_GRID_LAYOUT_V1"
+_WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{index}" for index in range(1, 10)),
+    *(f"LPT{index}" for index in range(1, 10)),
+}
 
 
 def _safe_component(value: str, fallback: str) -> str:
     text = _SAFE.sub("_", str(value or "").strip()).strip("._")
-    return (text or fallback)[:96]
+    text = (text or fallback)[:96]
+    if text.partition(".")[0].upper() in _WINDOWS_RESERVED_NAMES:
+        text = f"_{text}"
+    return text
 
 
 @dataclass(frozen=True, slots=True)
