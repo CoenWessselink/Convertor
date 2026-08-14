@@ -24,6 +24,10 @@ DEFAULT_PROJECT = Path(
 )
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
+)
 class ViewerV3VtkRealMeshTests(unittest.TestCase):
     def test_lo4_real_source_mesh_render_and_pick(self) -> None:
         project_path = Path(os.environ.get("CWS_V3_REFERENCE_PROJECT", DEFAULT_PROJECT))

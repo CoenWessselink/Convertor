@@ -68,7 +68,9 @@ AI mag documentsemantiek, classificatievoorstellen, confidence en controlevragen
 
 - atomair productiepakket per onderdeel en merk, uitsluitend na actuele vrijgave;
 - verse NC1-, STEP-, IFC- en Trusted-PDF-roundtrips bij iedere productie-export;
-- technische parttekeningen, A3-merkoverzichten, labels en voorvertoningen;
+- technische parttekeningen met Tasche-huisstijl, horizontaal incrementeel plus
+  absoluut, verticaal absoluut en volledige gatmaatvoering;
+- A3-merkoverzichten, labels en voorvertoningen;
 - assembly STEP/IFC, NC/PDF-submappen, stuk-, inkoop-, bout-, las- en paklijsten;
 - QR-identiteit, SHA-256, ingesloten assemblymanifest en `totaalrapport.json`;
 - CLI- en Project/Productie-integratie met selectie en naamgevingssjabloon;

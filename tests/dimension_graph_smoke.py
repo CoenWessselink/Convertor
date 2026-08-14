@@ -47,7 +47,15 @@ class DimensionGraphTests(unittest.TestCase):
             self.assertIn(f"hole-{index:03d}-diameter", ids)
             self.assertIn(f"hole-{index:03d}-x", ids)
             self.assertIn(f"hole-{index:03d}-y", ids)
-        self.assertTrue(part.drawing.dimension_chains)
+        incremental = [item for item in part.drawing.dimensions if item["kind"] == "chain_linear"]
+        self.assertEqual(len(incremental), 1)
+        combined = next(
+            item
+            for item in part.drawing.dimension_chains
+            if item["kind"] == "combined_incremental_absolute_chain"
+        )
+        self.assertEqual([incremental[0]["id"]], combined["dimension_ids"])
+        self.assertEqual(["hole-001-x"], combined["absolute_dimension_ids"])
 
     def test_tampered_dimension_value_is_rejected(self) -> None:
         source = self.folder / "sample.nc1"

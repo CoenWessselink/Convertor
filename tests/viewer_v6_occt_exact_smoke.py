@@ -16,6 +16,10 @@ from cws_viewer.backends.occt_exact import OcctExactPartBackend
 from cws_viewer.exact import build_exact_runtime,build_plate,load_step_exact,p1811_definition
 from cws_viewer.technology.host import TkNativeWindowHost
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers exact topology",
+)
 class ViewerV6OcctExactTests(unittest.TestCase):
     def test_exact_overlay_face_pick_and_capture(self):
         if platform.system()=='Linux' and os.environ.get('CWS_V6_XVFB')!='1':

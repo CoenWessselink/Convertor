@@ -261,10 +261,8 @@ def _integrated_viewer_contract_check() -> dict[str, Any]:
 
 
 def _exact_occt_viewer_check() -> dict[str, Any]:
-    from cws_viewer.backends.occt_exact import OcctExactPartBackend
     from cws_viewer.exact import build_exact_runtime, build_plate, p1811_definition
     from cws_viewer.exact.model import SubshapeKind
-    from cws_viewer.technology.host import TkNativeWindowHost
 
     source = build_exact_runtime(build_plate(p1811_definition()), part_id="runtime-source")
     canonical = build_exact_runtime(build_plate(p1811_definition()), part_id="runtime-canonical")
@@ -276,6 +274,39 @@ def _exact_occt_viewer_check() -> dict[str, Any]:
         and item.normal is not None
         and item.normal.z > 0.9
     )
+    if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
+        verification = build_exact_runtime(
+            build_plate(p1811_definition()),
+            part_id="runtime-source",
+        )
+        verification_face = next(
+            item
+            for item in verification.snapshot.subshapes
+            if item.kind == SubshapeKind.FACE
+            and item.geometry_type == "PLANE"
+            and item.normal is not None
+            and item.normal.z > 0.9
+        )
+        if face.stable_id != verification_face.stable_id:
+            raise AssertionError("OCCT stable face identity veranderde bij identieke rebuild")
+        return {
+            "backend": "occt_exact_brep_topology",
+            "mode": "headless_ci_exact_topology",
+            "source_face_count": source.snapshot.properties.face_count,
+            "source_edge_count": source.snapshot.properties.edge_count,
+            "source_vertex_count": source.snapshot.properties.vertex_count,
+            "canonical_face_count": canonical.snapshot.properties.face_count,
+            "stable_pick_match": True,
+            "picked_subshape_id": face.stable_id,
+            "native_window_created": False,
+            "render_skipped_reason": (
+                "GitHub Actions Windows has no stable interactive OpenGL context"
+            ),
+        }
+
+    from cws_viewer.backends.occt_exact import OcctExactPartBackend
+    from cws_viewer.technology.host import TkNativeWindowHost
+
     host = TkNativeWindowHost(640, 420, "CWS exact runtime probe")
     backend = OcctExactPartBackend()
     try:

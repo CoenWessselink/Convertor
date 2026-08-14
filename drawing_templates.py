@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 import json
+import sys
 from typing import Any
 
 MM_TO_PT = 72.0 / 25.4
@@ -20,12 +21,17 @@ SHEET_SIZES_MM: dict[str, tuple[float, float]] = {
 }
 
 
+def _default_logo_path() -> str:
+    root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return str(root / "assets" / "branding" / "tasche_staalbouw.png")
+
+
 @dataclass
 class DrawingTemplate:
     template_id: str = "default"
-    company_name: str = ""
-    company_subtitle: str = ""
-    logo_path: str = ""
+    company_name: str = "Tasche Staalbouw"
+    company_subtitle: str = "Albergen - Fleringen"
+    logo_path: str = field(default_factory=_default_logo_path)
     sheet_format: str = "A4"
     orientation: str = "landscape"
     projection_method: str = "first-angle"
@@ -42,7 +48,14 @@ class DrawingTemplate:
     title_text_height_mm: float = 4.0
     default_status: str = "CONCEPT"
     default_subject: str = "ONDERDEELTEKENING"
-    default_notes: list[str] = field(default_factory=list)
+    default_notes: list[str] = field(
+        default_factory=lambda: [
+            "Alle maten in millimeters, tenzij anders vermeld.",
+            "Horizontale maatvoering: incrementeel en absoluut.",
+            "Verticale maatvoering: uitsluitend absoluut.",
+            "Alle gaten zijn voorzien van positie- en diametermaatvoering.",
+        ]
+    )
     title_block_defaults: dict[str, Any] = field(default_factory=dict)
 
     def page_size_points(self) -> tuple[float, float]:

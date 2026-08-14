@@ -83,10 +83,11 @@ Actions job summary so they remain inspectable without downloading the artifact.
 
 GitHub-hosted Windows runners do not expose a stable interactive OpenGL context;
 creating VTK's Win32 render window there can terminate the process before Python
-can report an exception. CI therefore validates the bundled native VTK modules
-and a real triangle polydata/mapper pipeline without constructing a render
-window. The local source, dist, portable and installed-package gates remain the
-authoritative pixel-render checks and must produce a valid PNG.
+can report an exception. CI therefore validates the bundled native VTK modules,
+a real triangle polydata/mapper pipeline and deterministic OCCT BREP topology
+with stable face identity without constructing a render window. The local
+source, dist, portable and installed-package gates remain the authoritative
+pixel-render, native-picking and PNG checks.
 
 ## Local Windows evidence
 

@@ -24,7 +24,7 @@ class ViewerV4WindowsConfigTests(unittest.TestCase):
     def test_workflow_executes_source_packaged_and_portable_gates(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "build-windows-exe.yml").read_text(encoding="utf-8")
         required = (
-            "run_viewer_v4_professional_controls.py",
+            "viewer_ci_headless_smoke.py",
             "run_viewer_v6_smoke_batch.py",
             "CWS_Convertor.spec",
             "Create portable ZIP",
@@ -33,6 +33,7 @@ class ViewerV4WindowsConfigTests(unittest.TestCase):
         )
         for value in required:
             self.assertIn(value, workflow)
+        self.assertNotIn("run_viewer_v4_professional_controls.py", workflow)
 
     def test_requirement_lock_is_pinned(self) -> None:
         lock = (ROOT / "requirements-viewer-v4.lock.txt").read_text(encoding="utf-8")

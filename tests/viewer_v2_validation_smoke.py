@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -11,6 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "validation" / "run_viewer_v2_validation.py"
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
+)
 class ViewerV2ValidationTests(unittest.TestCase):
     def test_validation_runner_emits_machine_readable_green_gate(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws-viewer-v2-validation-") as temp:

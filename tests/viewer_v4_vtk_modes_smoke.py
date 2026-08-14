@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -16,6 +17,10 @@ from cws_viewer.core.controller import ViewerCoreController
 from cws_viewer.fixtures import build_synthetic_product_scene
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
+)
 class ViewerV4VtkModesTests(unittest.TestCase):
     def test_professional_render_modes_and_backgrounds_are_visual(self) -> None:
         scene = build_synthetic_product_scene(120, parts_per_assembly=30)

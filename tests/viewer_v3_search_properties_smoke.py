@@ -22,14 +22,14 @@ DEFAULT_PROJECT = Path(
     "/mnt/data/CONVERTER_WORK/RELEASE_V070_SEMANTIC_IMPORT_FINAL/"
     "CWS_Convertor_v0.7.0-alpha_REFERENCE_PROJECT.cwscproj"
 )
+PROJECT_PATH = Path(os.environ.get("CWS_V3_REFERENCE_PROJECT", DEFAULT_PROJECT))
 
 
+@unittest.skipUnless(PROJECT_PATH.is_file(), f"V3 referentieproject ontbreekt: {PROJECT_PATH}")
 class ViewerV3SearchPropertyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.project_path = Path(os.environ.get("CWS_V3_REFERENCE_PROJECT", DEFAULT_PROJECT))
-        if not cls.project_path.is_file():
-            raise unittest.SkipTest(f"V3 referentieproject ontbreekt: {cls.project_path}")
+        cls.project_path = PROJECT_PATH
         cls.project = ProjectStore().open(cls.project_path, read_only=True).project
         cls.scene = CwsProjectSceneAdapter().build_scene(cls.project)
 

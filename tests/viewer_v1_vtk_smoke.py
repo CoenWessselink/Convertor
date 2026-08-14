@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
 import tempfile
 import unittest
@@ -13,6 +14,10 @@ from cws_viewer.technology.benchmark import run_backend_case
 from cws_viewer.technology.contracts import TechnologyBackendName
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
+)
 class ViewerV1VtkTests(unittest.TestCase):
     def test_vtk_renders_picks_clips_and_captures(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws-vtk-v1-") as temp:

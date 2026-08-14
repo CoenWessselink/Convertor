@@ -26,6 +26,7 @@ datas = [
     (str(ROOT / "profiles.json"), "."),
     (str(ROOT / "materials.json"), "."),
     (str(ROOT / "templates"), "templates"),
+    (str(ROOT / "assets"), "assets"),
     (str(ROOT / "README.md"), "."),
     (str(ROOT / "CHANGELOG.md"), "."),
     (str(ROOT / "VERSIE_EN_TESTSTATUS.txt"), "."),

@@ -198,6 +198,7 @@ def build_dimension_graph(part: CanonicalPart) -> tuple[list[dict[str, Any]], li
 
         x_dimension_ids: list[str] = []
         y_dimension_ids: list[str] = []
+        x_stations: list[tuple[float, str, str]] = []
         for index, hole in enumerate(part.holes):
             feature = f"holes[{index}]"
             ordinal = index + 1
@@ -270,8 +271,44 @@ def build_dimension_graph(part: CanonicalPart) -> tuple[list[dict[str, Any]], li
             )
             x_dimension_ids.append(x_id)
             y_dimension_ids.append(y_id)
+            x_stations.append((x_value, x_id, feature))
 
         if x_dimension_ids:
+            incremental_ids: list[str] = []
+            previous_value = 0.0
+            previous_feature = "contours[0]"
+            for station_index, (station_value, _absolute_id, feature) in enumerate(
+                sorted(x_stations, key=lambda item: (item[0], item[1])),
+                start=1,
+            ):
+                if station_value <= previous_value + 1e-9:
+                    continue
+                increment_id = f"hole-x-increment-{station_index:03d}"
+                dimensions.append(
+                    _dimension(
+                        increment_id,
+                        kind="chain_linear",
+                        value_mm=station_value - previous_value,
+                        label=_fmt(station_value - previous_value),
+                        axis="x",
+                        anchors=(
+                            _anchor(previous_feature, "chain_station", axis="x"),
+                            _anchor(feature, "center", axis="x"),
+                        ),
+                        feature_refs=(previous_feature, feature),
+                        source_field=f"{feature}.x",
+                        provenance=_evidence_summary(
+                            part,
+                            (f"{feature}.x", feature),
+                            fallback_method="canonical_incremental_hole_chain",
+                            fallback_value=station_value - previous_value,
+                        ),
+                        display_group="hole-positions-x-incremental",
+                    )
+                )
+                incremental_ids.append(increment_id)
+                previous_value = station_value
+                previous_feature = feature
             chains.append(
                 {
                     "id": "holes-x-from-left-datum",
@@ -286,6 +323,23 @@ def build_dimension_graph(part: CanonicalPart) -> tuple[list[dict[str, Any]], li
                     ),
                     "total_dimension_id": "overall-x",
                     "overdetermined": False,
+                }
+            )
+            chains.append(
+                {
+                    "id": "holes-x-incremental-plus-absolute",
+                    "kind": "combined_incremental_absolute_chain",
+                    "axis": "x",
+                    "datum": _anchor("contours[0]", "datum", axis="x", side="min"),
+                    "dimension_ids": incremental_ids,
+                    "absolute_dimension_ids": sorted(
+                        x_dimension_ids,
+                        key=lambda item: next(
+                            dimension["value_mm"] for dimension in dimensions if dimension["id"] == item
+                        ),
+                    ),
+                    "total_dimension_id": "overall-x",
+                    "overdetermined": True,
                 }
             )
             chains.append(
@@ -454,9 +508,17 @@ def validate_dimension_graph(
             "thickness",
             "angle",
             "profile_dimension",
+            "chain_linear",
         }:
             errors.append(f"Maat {dimension_id!r} heeft onbekend type {kind!r}")
-        if kind in {"diameter", "radius", "thickness", "linear", "profile_dimension"} and value <= 0:
+        if kind in {
+            "diameter",
+            "radius",
+            "thickness",
+            "linear",
+            "profile_dimension",
+            "chain_linear",
+        } and value <= 0:
             errors.append(f"Maat {dimension_id!r} moet positief zijn")
         anchors = list(item.get("anchors") or [])
         if not anchors:
@@ -481,20 +543,44 @@ def validate_dimension_graph(
 
     for chain_index, chain in enumerate(chain_values):
         chain_id = str(chain.get("id", f"chain-{chain_index + 1}"))
+        chain_kind = str(chain.get("kind", ""))
+        if chain_kind not in {"ordinate_chain", "combined_incremental_absolute_chain"}:
+            errors.append(f"Maatketen {chain_id!r} heeft onbekend type {chain_kind!r}")
         dimension_ids = [str(item) for item in chain.get("dimension_ids") or []]
         unknown = [item for item in dimension_ids if item not in by_id]
         if unknown:
             errors.append(f"Maatketen {chain_id!r} verwijst naar onbekende maten: {', '.join(unknown)}")
             continue
         positions = [float(by_id[item]["value_mm"]) for item in dimension_ids]
-        if positions != sorted(positions):
+        if chain_kind == "ordinate_chain" and positions != sorted(positions):
             errors.append(f"Maatketen {chain_id!r} is niet oplopend vanaf het datum")
+        absolute_ids = [str(item) for item in chain.get("absolute_dimension_ids") or []]
+        unknown_absolute = [item for item in absolute_ids if item not in by_id]
+        if unknown_absolute:
+            errors.append(
+                f"Maatketen {chain_id!r} verwijst naar onbekende absolute maten: "
+                + ", ".join(unknown_absolute)
+            )
+        absolute_positions = [
+            float(by_id[item]["value_mm"])
+            for item in absolute_ids
+            if item in by_id
+        ]
+        if absolute_positions != sorted(absolute_positions):
+            errors.append(f"Maatketen {chain_id!r} heeft geen oplopende absolute maatrail")
         total_id = str(chain.get("total_dimension_id", ""))
         if total_id:
             if total_id not in by_id:
                 errors.append(f"Maatketen {chain_id!r} mist totaalmaat {total_id!r}")
-            elif positions and max(positions) > float(by_id[total_id]["value_mm"]) + tolerance_mm:
-                errors.append(f"Maatketen {chain_id!r} ligt buiten de totaalmaat")
+            else:
+                total_value = float(by_id[total_id]["value_mm"])
+                if chain_kind == "ordinate_chain" and positions and max(positions) > total_value + tolerance_mm:
+                    errors.append(f"Maatketen {chain_id!r} ligt buiten de totaalmaat")
+                if chain_kind == "combined_incremental_absolute_chain":
+                    if positions and sum(positions) > total_value + tolerance_mm:
+                        errors.append(f"Maatketen {chain_id!r} overschrijdt de totaalmaat")
+                    if absolute_positions and max(absolute_positions) > total_value + tolerance_mm:
+                        errors.append(f"Maatketen {chain_id!r} heeft absolute maten buiten de totaalmaat")
 
     coverage = 100.0 if not required else 100.0 * (len(required) - len(missing)) / len(required)
     unique_errors = list(dict.fromkeys(errors))

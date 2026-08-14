@@ -41,6 +41,9 @@ def main() -> int:
     assert "actions/setup-python@v6" in workflow
     assert 'Get-ChildItem tests -Filter "*_smoke.py"' in workflow
     assert "Smoke script $($_.Name) failed with exit code" in workflow
+    assert "python tests/viewer_ci_headless_smoke.py" in workflow
+    assert "run_viewer_v4_professional_controls.py" not in workflow
+    assert '"assets/**"' in workflow
     assert '"casadi"' in spec
     assert '"scipy"' in spec
     assert '"ezdxf"' in spec
@@ -51,6 +54,7 @@ def main() -> int:
     assert "ezdxf==1.4.4" in runtime_lock
     assert "vtk==9.6.2" in runtime_lock
     assert "vtkmodules.vtkRenderingOpenGL2" in spec
+    assert 'ROOT / "assets"' in spec
     assert "os.add_dll_directory" in runtime_hook
     assert "libcasadi.dll" in runtime_hook
     assert "multiprocessing.freeze_support()" in gui_entry

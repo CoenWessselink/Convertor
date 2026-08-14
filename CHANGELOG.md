@@ -12,6 +12,13 @@
   source/canonical inspection, stable subshape picking, snapping and compare.
 - Viewer code cannot authorize production release; NC1, STEP, IFC and Trusted PDF
   remain controlled by the existing canonical validation and release services.
+- Part drawings now use the Tasche Staalbouw sheet identity and logo, a structured
+  engineering header/sidebar/title block and a permanent drawing standard.
+- Horizontal hole positions are always shown incrementally and absolutely;
+  vertical positions remain absolute, with every hole identified and dimensioned.
+- GitHub-hosted Windows validates VTK mesh construction and deterministic OCCT
+  topology without creating an unstable native OpenGL window. Local native,
+  dist, portable and installed gates retain the full render and picking checks.
 - PyInstaller now registers native package DLL directories for CasADi, Qt, VTK
   and OCCT before application imports.
 - Two permanent regressions cover exact STEP metric persistence and deterministic

@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "viewer_harness" / "run_v1_technology_spike.py"
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
+)
 class ViewerV1DecisionTests(unittest.TestCase):
     def test_quick_spike_produces_hybrid_decision_and_evidence(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws-viewer-v1-decision-") as temp:

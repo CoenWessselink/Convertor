@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from io import BytesIO
 from pathlib import Path
 import sys
@@ -20,6 +21,10 @@ from cws_viewer.fixtures import build_synthetic_product_scene
 from cws_viewer.math3d import Rgba
 
 
+@unittest.skipIf(
+    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
+)
 class ViewerV4VtkControlsTests(unittest.TestCase):
     def test_professional_display_states_render_different_valid_images(self) -> None:
         scene = build_synthetic_product_scene(500, parts_per_assembly=100)

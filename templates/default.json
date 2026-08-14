@@ -1,13 +1,18 @@
 {
   "template_id": "default",
-  "company_name": "",
-  "company_subtitle": "",
-  "logo_path": "",
+  "company_name": "Tasche Staalbouw",
+  "company_subtitle": "Albergen - Fleringen",
+  "logo_path": "assets/branding/tasche_staalbouw.png",
   "default_subject": "ONDERDEELTEKENING",
   "default_status": "CONCEPT",
   "drawn_by": "",
   "checked_by": "",
-  "general_notes": [],
+  "general_notes": [
+    "Alle maten in millimeters, tenzij anders vermeld.",
+    "Horizontale maatvoering: incrementeel en absoluut.",
+    "Verticale maatvoering: uitsluitend absoluut.",
+    "Alle gaten zijn voorzien van positie- en diametermaatvoering."
+  ],
   "projection_method": "first_angle",
   "decimal_precision": 1,
   "line_weight_mm": 0.25,
