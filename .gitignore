@@ -13,3 +13,4 @@ output/
 reference-models-local/
 reference-results-local/
 validation/results/windows-runtime/
+validation/results/phase-c-*.png

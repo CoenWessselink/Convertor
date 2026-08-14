@@ -88,6 +88,9 @@ class PartWorkbenchUITests(unittest.TestCase):
                 "Bewerkingen",
                 "Hoeken / contouren",
                 "Gaten",
+                "Sleuven",
+                "Uitsparingen",
+                "Markeringen",
                 "Codes / merken",
                 "Prijzen",
                 "Bewerkingstijden",
@@ -173,6 +176,66 @@ class PartWorkbenchUITests(unittest.TestCase):
         self.assertEqual(str(self.panel.apply_button["state"]), "disabled")
         self.panel.set_busy(False)
         self.assertEqual(str(self.panel.apply_button["state"]), "normal")
+
+    def test_production_feature_editors_update_preview_and_persist_contract(self) -> None:
+        part = self.session.project.parts["part-ui-1"]
+        self.panel.start_workbench()
+        self.panel.part_form_var.set("plate")
+        self.panel.candidate_var.set("PL10")
+        self.panel.confidence_var.set("1.000")
+        self.panel.recognition_confirmed_var.set(True)
+        self.panel.side_id_var.set("top")
+        self.panel.side_label_var.set("Bovenzijde")
+        self.panel.face_ref_var.set("face:top")
+        self.panel.side_confirmed_var.set(True)
+        self.panel.material_var.set("S355")
+        self.panel.material_grade_var.set("S355J2")
+        self.panel.part_position_var.set("P-200")
+        self.panel.use_source_bbox()
+
+        self.panel.slot_x_var.set("50")
+        self.panel.slot_y_var.set("40")
+        self.panel.slot_length_var.set("30")
+        self.panel.slot_width_var.set("10")
+        self.panel.slot_angle_var.set("15")
+        self.panel.add_or_update_slot()
+
+        self.panel.cutout_kind_var.set("cutout")
+        self.panel.cutout_x_var.set("150")
+        self.panel.cutout_y_var.set("70")
+        self.panel.cutout_width_var.set("20")
+        self.panel.cutout_height_var.set("15")
+        self.panel.add_or_update_cutout()
+
+        self.panel.scribe_x1_var.set("20")
+        self.panel.scribe_y1_var.set("80")
+        self.panel.scribe_x2_var.set("80")
+        self.panel.scribe_y2_var.set("80")
+        self.panel.scribe_type_var.set("assembly")
+        self.panel.scribe_status_var.set("confirmed")
+        self.panel.scribe_confidence_var.set("0.940")
+        self.panel.add_or_update_scribe()
+
+        self.assertEqual(len(self.panel.slot_grid.get_children()), 1)
+        self.assertEqual(len(self.panel.cutout_grid.get_children()), 1)
+        self.assertEqual(len(self.panel.scribe_grid.get_children()), 1)
+        self.assertGreaterEqual(len(self.panel.axis_2d.lines), 4)
+        self.panel.reason_var.set("Production Editor UI bevestigd")
+        self.panel.apply_changes()
+
+        revision = part.workbench["current_revision"]
+        self.assertEqual(revision["validation_issues"], [])
+        self.assertEqual([item["kind"] for item in revision["features"]], ["slot", "cutout", "scribe"])
+        self.assertTrue(all(item["contract_version"] == "1.0" for item in revision["features"]))
+        self.assertEqual(part.material, "S355")
+        self.assertEqual(part.material_grade, "S355J2")
+        self.assertEqual(part.part_position, "P-200")
+
+        self.panel.rebuild_canonical()
+        report = part.workbench["canonical_rebuild"]["report"]
+        self.assertEqual(report["build_status"], "built")
+        self.assertTrue(report["canonical_signature"])
+        self.assertIn("niet-snijdende", report["warnings"][0])
 
 
 if __name__ == "__main__":

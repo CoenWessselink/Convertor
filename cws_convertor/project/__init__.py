@@ -44,6 +44,7 @@ from .service import (
 from .workbench import (
     WORKBENCH_SCHEMA_VERSION,
     evaluate_workbench_revision,
+    propose_scribes_from_explicit_contacts,
     workbench_geometry_payload,
 )
 from .source_geometry import (
@@ -105,6 +106,7 @@ __all__ = [
     "SemanticImportResult",
     "WORKBENCH_SCHEMA_VERSION",
     "evaluate_workbench_revision",
+    "propose_scribes_from_explicit_contacts",
     "workbench_geometry_payload",
     "SOURCE_INSPECTION_SCHEMA_VERSION",
     "SOURCE_LOCATOR_SCHEMA_VERSION",

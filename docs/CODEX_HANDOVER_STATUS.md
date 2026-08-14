@@ -83,6 +83,13 @@ not conflict with these sources.
 - Phase B batch 3 Windows run `31785710833` passed the complete matrix on
   commit `949f5a0`. Artifact `9213845091` is 727,225,659 bytes with digest
   `sha256:a5e0c9a06f5b1d10827d290059db34e0fb34e1b5d7c1f2c42f380001373394e9`.
+- Phase C batch 1 local verification passes 40/40 smoke scripts and 154
+  discoverable unittest cases with seven fixture-dependent skips. The local
+  source/dist/fresh-portable/fresh-installed matrix, associations and uninstall
+  pass. The ZIP is 455,033,476 bytes with SHA-256
+  `deb63e62ff493b835c96443c24ea2e6118c033ded82171dc16a24a98832c0f10`;
+  the installer is 266,505,615 bytes with SHA-256
+  `2bb184362280e41df773ab8a15b4516fc78b7b132b2426b6f8265d0fb41d8c8d`.
 - The Viewer V2 handover archive and all 19 manifest entries were checksum
   verified. V2 was not activated because it supplies synthetic boxes rather
   than real project meshes and its Windows/PySide6/PyInstaller gate is open.
@@ -130,6 +137,10 @@ See `docs/CORE_PHASE0_BASELINE_2026-08-13.md` for exact evidence and
 - progressive whole-project VTK rendering inside the existing Tk workspace,
   including selected-part priority, stop/restart, fit/isometric camera, orbit,
   zoom, picking and accuracy coloring.
+- Phase C Production Editor batch 1 with a typed feature contract, editable
+  production properties, exact plate slots and rectangular cutouts,
+  non-cutting scribe intent, strict exact-contact proposals, integrated draft
+  preview, audit and classification/BOM invalidation.
 
 These are proven implementation components. They are not a claim that the
 broader SteelConverter phases B-F are complete.
@@ -141,8 +152,8 @@ broader SteelConverter phases B-F are complete.
 - safe IFC parse reuse or source-batched extraction for large projects;
 - broader visual golden coverage beyond the current exact STEP structural image;
 - exact selected IFC BREP and multi-solid STEP BREP isolation;
-- unsupported slots, pockets, chamfers and complex end operations in canonical rebuild;
-- production scribing proposal, preview, validation and adapter contracts;
+- blind pockets, rounded cutouts, bevels and complex profile/end operations in canonical rebuild;
+- automatic BREP/assembly contact extraction and production scribing machine adapters;
 - true hidden-line removal, editable drawing layouts and complex section/detail views;
 - true LO4 and P1811 binary regressions in the active fixture layout;
 - validated engineering expectations for the local reference registry;
@@ -153,10 +164,11 @@ broader SteelConverter phases B-F are complete.
 
 ## Next core work
 
-Use revised phases A-F. Phase A and Phase B batches 1-3 are implemented;
-preserve those baselines. The next controlled viewer gate must prove the
-progressive loader against owner-validated large/complex models, then safely
-optimize IFC extraction and add accepted measurement and section contracts.
+Use revised phases A-F. Phase A, Phase B batches 1-3 and Phase C batch 1 are
+implemented; preserve those baselines. The next controlled viewer gate must
+prove the progressive loader against owner-validated large/complex models. The
+next Production Editor gate must add native face/edge placement and exact
+profile/end operations without weakening the Phase E export gates.
 Generated stress fixtures may supplement that evidence but cannot replace
 owner validation.
 

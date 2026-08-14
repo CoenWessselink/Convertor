@@ -12,7 +12,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-from cws_convertor.project import Part, ProjectSession
+from cws_convertor.project import Part, ProjectSession, propose_scribes_from_explicit_contacts
 
 
 STATUS_COLORS = {
@@ -103,6 +103,9 @@ class PartWorkbenchPanel(ttk.Frame):
         self._features: list[dict[str, Any]] = []
         self._reference_sides: list[dict[str, Any]] = []
         self._selected_hole_id = ""
+        self._selected_slot_id = ""
+        self._selected_cutout_id = ""
+        self._selected_scribe_id = ""
         self._loading = False
         self._busy = False
 
@@ -116,6 +119,10 @@ class PartWorkbenchPanel(ttk.Frame):
         self.length_var = tk.StringVar(value="0.000")
         self.thickness_var = tk.StringVar(value="0.000")
         self.diameter_var = tk.StringVar(value="0.000")
+        self.material_var = tk.StringVar(value="")
+        self.material_grade_var = tk.StringVar(value="")
+        self.part_position_var = tk.StringVar(value="")
+        self.assembly_position_var = tk.StringVar(value="")
         self.recognition_confirmed_var = tk.BooleanVar(value=False)
         self.side_id_var = tk.StringVar(value="top")
         self.side_label_var = tk.StringVar(value="Bovenzijde")
@@ -125,6 +132,27 @@ class PartWorkbenchPanel(ttk.Frame):
         self.hole_y_var = tk.StringVar(value="0.000")
         self.hole_diameter_var = tk.StringVar(value="14.000")
         self.hole_side_var = tk.StringVar(value="top")
+        self.slot_x_var = tk.StringVar(value="0.000")
+        self.slot_y_var = tk.StringVar(value="0.000")
+        self.slot_length_var = tk.StringVar(value="30.000")
+        self.slot_width_var = tk.StringVar(value="14.000")
+        self.slot_angle_var = tk.StringVar(value="0.000")
+        self.slot_side_var = tk.StringVar(value="top")
+        self.cutout_kind_var = tk.StringVar(value="cope")
+        self.cutout_x_var = tk.StringVar(value="0.000")
+        self.cutout_y_var = tk.StringVar(value="0.000")
+        self.cutout_width_var = tk.StringVar(value="30.000")
+        self.cutout_height_var = tk.StringVar(value="30.000")
+        self.cutout_angle_var = tk.StringVar(value="0.000")
+        self.cutout_side_var = tk.StringVar(value="top")
+        self.scribe_x1_var = tk.StringVar(value="0.000")
+        self.scribe_y1_var = tk.StringVar(value="0.000")
+        self.scribe_x2_var = tk.StringVar(value="100.000")
+        self.scribe_y2_var = tk.StringVar(value="0.000")
+        self.scribe_side_var = tk.StringVar(value="top")
+        self.scribe_type_var = tk.StringVar(value="line")
+        self.scribe_status_var = tk.StringVar(value="confirmed")
+        self.scribe_confidence_var = tk.StringVar(value="1.000")
         self.status_var = tk.StringVar(value="Geen onderdeel geselecteerd")
         self.canonical_status_var = tk.StringVar(value="Nog niet opgebouwd")
 
@@ -289,6 +317,9 @@ class PartWorkbenchPanel(ttk.Frame):
         self._build_operations_tab()
         self._build_contours_tab()
         self._build_holes_tab()
+        self._build_slots_tab()
+        self._build_cutouts_tab()
+        self._build_scribing_tab()
         self._build_key_value_tab("Codes / merken", "codes_grid")
         self._build_key_value_tab("Prijzen", "prices_grid")
         self._build_key_value_tab("Bewerkingstijden", "times_grid")
@@ -309,23 +340,27 @@ class PartWorkbenchPanel(ttk.Frame):
             ("Lengte mm", ttk.Entry(page, textvariable=self.length_var)),
             ("Plaatdikte mm", ttk.Entry(page, textvariable=self.thickness_var)),
             ("Diameter mm", ttk.Entry(page, textvariable=self.diameter_var)),
+            ("Materiaal", ttk.Entry(page, textvariable=self.material_var)),
+            ("Kwaliteit", ttk.Entry(page, textvariable=self.material_grade_var)),
+            ("Posnummer", ttk.Entry(page, textvariable=self.part_position_var)),
+            ("Samenstel", ttk.Entry(page, textvariable=self.assembly_position_var)),
         )
         for index, (label, widget) in enumerate(fields):
             row, pair = divmod(index, 3)
             ttk.Label(page, text=label).grid(row=row, column=pair * 2, sticky="w", padx=(0, 5), pady=4)
             widget.grid(row=row, column=pair * 2 + 1, sticky="ew", padx=(0, 14), pady=4)
         ttk.Checkbutton(page, text="Herkenning bevestigd", variable=self.recognition_confirmed_var).grid(
-            row=3, column=0, columnspan=2, sticky="w", pady=(7, 0)
+            row=5, column=0, columnspan=2, sticky="w", pady=(7, 0)
         )
         ttk.Checkbutton(page, text="Referentiezijde bevestigd", variable=self.side_confirmed_var).grid(
-            row=3, column=2, columnspan=2, sticky="w", pady=(7, 0)
+            row=5, column=2, columnspan=2, sticky="w", pady=(7, 0)
         )
-        ttk.Label(page, text="Reden").grid(row=4, column=0, sticky="w", pady=(8, 0))
+        ttk.Label(page, text="Reden").grid(row=6, column=0, sticky="w", pady=(8, 0))
         ttk.Entry(page, textvariable=self.reason_var).grid(
-            row=4, column=1, columnspan=3, sticky="ew", padx=(0, 14), pady=(8, 0)
+            row=6, column=1, columnspan=3, sticky="ew", padx=(0, 14), pady=(8, 0)
         )
-        ttk.Label(page, text="Gebruiker").grid(row=4, column=4, sticky="e", padx=(0, 5), pady=(8, 0))
-        ttk.Entry(page, textvariable=self.user_var, width=14).grid(row=4, column=5, sticky="ew", pady=(8, 0))
+        ttk.Label(page, text="Gebruiker").grid(row=6, column=4, sticky="e", padx=(0, 5), pady=(8, 0))
+        ttk.Entry(page, textvariable=self.user_var, width=14).grid(row=6, column=5, sticky="ew", pady=(8, 0))
 
     def _build_extra_tab(self) -> None:
         page = ttk.Frame(self.editor_tabs, padding=6)
@@ -434,6 +469,119 @@ class PartWorkbenchPanel(ttk.Frame):
         ttk.Button(editor, text="Verwijderen", command=self.remove_hole).pack(side="left", padx=(6, 0))
         ttk.Button(editor, text="Nieuw", command=self.new_hole).pack(side="left", padx=(6, 0))
 
+    def _build_slots_tab(self) -> None:
+        page = ttk.Frame(self.editor_tabs, padding=6)
+        self.editor_tabs.add(page, text="Sleuven")
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        self.slot_grid = ttk.Treeview(
+            page,
+            columns=("side", "x", "y", "length", "width", "angle"),
+            show="tree headings",
+            selectmode="browse",
+        )
+        for column, label, width in (
+            ("#0", "Sleuf-ID", 135), ("side", "Zijde", 85), ("x", "X mm", 75),
+            ("y", "Y mm", 75), ("length", "Lengte", 85), ("width", "Breedte", 85),
+            ("angle", "Hoek", 75),
+        ):
+            self.slot_grid.heading(column, text=label)
+            self.slot_grid.column(column, width=width, minwidth=60)
+        self.slot_grid.grid(row=0, column=0, sticky="nsew")
+        self.slot_grid.bind("<<TreeviewSelect>>", self._on_slot_selected)
+        editor = ttk.Frame(page)
+        editor.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        for index, (label, variable, width) in enumerate(
+            (
+                ("Zijde", self.slot_side_var, 10), ("X", self.slot_x_var, 8),
+                ("Y", self.slot_y_var, 8), ("Lengte", self.slot_length_var, 8),
+                ("Breedte", self.slot_width_var, 8), ("Hoek", self.slot_angle_var, 8),
+            )
+        ):
+            ttk.Label(editor, text=label).pack(side="left", padx=(0 if index == 0 else 7, 3))
+            ttk.Entry(editor, textvariable=variable, width=width).pack(side="left")
+        ttk.Button(editor, text="Toevoegen / bijwerken", command=self.add_or_update_slot).pack(side="left", padx=(10, 0))
+        ttk.Button(editor, text="Verwijderen", command=self.remove_slot).pack(side="left", padx=(5, 0))
+        ttk.Button(editor, text="Nieuw", command=self.new_slot).pack(side="left", padx=(5, 0))
+
+    def _build_cutouts_tab(self) -> None:
+        page = ttk.Frame(self.editor_tabs, padding=6)
+        self.editor_tabs.add(page, text="Uitsparingen")
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        self.cutout_grid = ttk.Treeview(
+            page,
+            columns=("kind", "side", "x", "y", "width", "height", "angle"),
+            show="tree headings",
+            selectmode="browse",
+        )
+        for column, label, width in (
+            ("#0", "ID", 120), ("kind", "Type", 80), ("side", "Zijde", 80),
+            ("x", "X mm", 70), ("y", "Y mm", 70), ("width", "Breedte", 80),
+            ("height", "Hoogte", 80), ("angle", "Hoek", 70),
+        ):
+            self.cutout_grid.heading(column, text=label)
+            self.cutout_grid.column(column, width=width, minwidth=55)
+        self.cutout_grid.grid(row=0, column=0, sticky="nsew")
+        self.cutout_grid.bind("<<TreeviewSelect>>", self._on_cutout_selected)
+        editor = ttk.Frame(page)
+        editor.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        fields = (
+            ("Type", ttk.Combobox(editor, textvariable=self.cutout_kind_var, values=("cope", "cutout"), state="readonly", width=8)),
+            ("Zijde", ttk.Entry(editor, textvariable=self.cutout_side_var, width=9)),
+            ("X", ttk.Entry(editor, textvariable=self.cutout_x_var, width=7)),
+            ("Y", ttk.Entry(editor, textvariable=self.cutout_y_var, width=7)),
+            ("Breedte", ttk.Entry(editor, textvariable=self.cutout_width_var, width=7)),
+            ("Hoogte", ttk.Entry(editor, textvariable=self.cutout_height_var, width=7)),
+            ("Hoek", ttk.Entry(editor, textvariable=self.cutout_angle_var, width=7)),
+        )
+        for index, (label, widget) in enumerate(fields):
+            ttk.Label(editor, text=label).pack(side="left", padx=(0 if index == 0 else 7, 3))
+            widget.pack(side="left")
+        ttk.Button(editor, text="Toevoegen / bijwerken", command=self.add_or_update_cutout).pack(side="left", padx=(10, 0))
+        ttk.Button(editor, text="Verwijderen", command=self.remove_cutout).pack(side="left", padx=(5, 0))
+        ttk.Button(editor, text="Nieuw", command=self.new_cutout).pack(side="left", padx=(5, 0))
+
+    def _build_scribing_tab(self) -> None:
+        page = ttk.Frame(self.editor_tabs, padding=6)
+        self.editor_tabs.add(page, text="Markeringen")
+        page.columnconfigure(0, weight=1)
+        page.rowconfigure(0, weight=1)
+        self.scribe_grid = ttk.Treeview(
+            page,
+            columns=("side", "type", "start", "end", "status", "confidence"),
+            show="tree headings",
+            selectmode="browse",
+        )
+        for column, label, width in (
+            ("#0", "Markeer-ID", 130), ("side", "Zijde", 80), ("type", "Type", 90),
+            ("start", "Start", 105), ("end", "Einde", 105), ("status", "Status", 90),
+            ("confidence", "Confidence", 85),
+        ):
+            self.scribe_grid.heading(column, text=label)
+            self.scribe_grid.column(column, width=width, minwidth=60)
+        self.scribe_grid.grid(row=0, column=0, sticky="nsew")
+        self.scribe_grid.bind("<<TreeviewSelect>>", self._on_scribe_selected)
+        editor = ttk.Frame(page)
+        editor.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        fields = (
+            ("Zijde", ttk.Entry(editor, textvariable=self.scribe_side_var, width=8)),
+            ("X1", ttk.Entry(editor, textvariable=self.scribe_x1_var, width=7)),
+            ("Y1", ttk.Entry(editor, textvariable=self.scribe_y1_var, width=7)),
+            ("X2", ttk.Entry(editor, textvariable=self.scribe_x2_var, width=7)),
+            ("Y2", ttk.Entry(editor, textvariable=self.scribe_y2_var, width=7)),
+            ("Type", ttk.Combobox(editor, textvariable=self.scribe_type_var, values=("line", "centerline", "assembly", "text"), state="readonly", width=10)),
+            ("Status", ttk.Combobox(editor, textvariable=self.scribe_status_var, values=("proposed", "confirmed"), state="readonly", width=10)),
+            ("Conf.", ttk.Entry(editor, textvariable=self.scribe_confidence_var, width=7)),
+        )
+        for index, (label, widget) in enumerate(fields):
+            ttk.Label(editor, text=label).pack(side="left", padx=(0 if index == 0 else 6, 3))
+            widget.pack(side="left")
+        ttk.Button(editor, text="Toevoegen / bijwerken", command=self.add_or_update_scribe).pack(side="left", padx=(9, 0))
+        ttk.Button(editor, text="Verwijderen", command=self.remove_scribe).pack(side="left", padx=(5, 0))
+        ttk.Button(editor, text="Nieuw", command=self.new_scribe).pack(side="left", padx=(5, 0))
+        ttk.Button(editor, text="Contactlijnen", command=self.propose_scribes).pack(side="left", padx=(9, 0))
+
     def _build_key_value_tab(self, label: str, attribute: str) -> None:
         page = ttk.Frame(self.editor_tabs, padding=6)
         self.editor_tabs.add(page, text=label)
@@ -484,6 +632,10 @@ class PartWorkbenchPanel(ttk.Frame):
         self._contours = []
         self._features = []
         self._reference_sides = []
+        self._selected_hole_id = ""
+        self._selected_slot_id = ""
+        self._selected_cutout_id = ""
+        self._selected_scribe_id = ""
         self._set_controls_enabled(False)
         self.status_var.set("Geen onderdeel geselecteerd")
         self.canonical_status_var.set("Nog niet opgebouwd")
@@ -501,6 +653,9 @@ class PartWorkbenchPanel(ttk.Frame):
             self.operation_grid,
             self.contour_grid,
             self.hole_grid,
+            self.slot_grid,
+            self.cutout_grid,
+            self.scribe_grid,
             self.codes_grid,
             self.prices_grid,
             self.times_grid,
@@ -596,6 +751,11 @@ class PartWorkbenchPanel(ttk.Frame):
         self.length_var.set(f"{float(dimensions.get('length_mm', fallback_length) or 0.0):.3f}")
         self.thickness_var.set(f"{float(dimensions.get('thickness_mm', fallback_thickness) or 0.0):.3f}")
         self.diameter_var.set(f"{float(dimensions.get('diameter_mm', 0.0) or 0.0):.3f}")
+        production_properties = dict(revision.get("production_properties") or {})
+        self.material_var.set(str(production_properties.get("material", part.normalized_material or part.material or "")))
+        self.material_grade_var.set(str(production_properties.get("material_grade", part.material_grade or "")))
+        self.part_position_var.set(str(production_properties.get("part_position", part.part_position or "")))
+        self.assembly_position_var.set(str(production_properties.get("assembly_position", "")))
         self.recognition_confirmed_var.set(bool(recognition.get("confirmed", False)))
         self._reference_sides = deepcopy(list(revision.get("reference_sides") or []))
         side = self._reference_sides[0] if self._reference_sides else {}
@@ -606,6 +766,9 @@ class PartWorkbenchPanel(ttk.Frame):
         self._contours = deepcopy(list(revision.get("contours") or []))
         self._features = deepcopy(list(revision.get("features") or []))
         self._selected_hole_id = ""
+        self._selected_slot_id = ""
+        self._selected_cutout_id = ""
+        self._selected_scribe_id = ""
         self._loading = False
         self._set_controls_enabled(True)
         self._populate_detail_grids(part, state, revision)
@@ -750,7 +913,14 @@ class PartWorkbenchPanel(ttk.Frame):
             grid.insert("", "end", text=key, values=(_short(value, 120),))
 
     def _refresh_draft_grids(self) -> None:
-        for grid in (self.operation_grid, self.contour_grid, self.hole_grid):
+        for grid in (
+            self.operation_grid,
+            self.contour_grid,
+            self.hole_grid,
+            self.slot_grid,
+            self.cutout_grid,
+            self.scribe_grid,
+        ):
             grid.delete(*grid.get_children())
         for contour in self._contours:
             contour_id = str(contour.get("contour_id") or "")
@@ -773,6 +943,30 @@ class PartWorkbenchPanel(ttk.Frame):
                     values=(feature.get("reference_side", ""), _short(parameters.get("x_mm")),
                             _short(parameters.get("y_mm")), _short(parameters.get("diameter_mm")),
                             "ja" if parameters.get("through", True) else "nee"),
+                )
+            elif kind == "slot":
+                self.slot_grid.insert(
+                    "", "end", iid=feature_id or None, text=feature_id,
+                    values=(feature.get("reference_side", ""), _short(parameters.get("x_mm")),
+                            _short(parameters.get("y_mm")), _short(parameters.get("length_mm")),
+                            _short(parameters.get("width_mm")), _short(parameters.get("angle_deg", 0.0))),
+                )
+            elif kind in {"cope", "cutout"}:
+                self.cutout_grid.insert(
+                    "", "end", iid=feature_id or None, text=feature_id,
+                    values=(kind, feature.get("reference_side", ""), _short(parameters.get("x_mm")),
+                            _short(parameters.get("y_mm")), _short(parameters.get("width_mm")),
+                            _short(parameters.get("height_mm")), _short(parameters.get("angle_deg", 0.0))),
+                )
+            elif kind == "scribe":
+                points = list(parameters.get("points") or [])
+                start = points[0] if points else []
+                end = points[-1] if points else []
+                self.scribe_grid.insert(
+                    "", "end", iid=feature_id or None, text=feature_id,
+                    values=(feature.get("reference_side", ""), parameters.get("mark_type", "line"),
+                            _short(start), _short(end), feature.get("status", "confirmed"),
+                            _short(feature.get("confidence", 1.0))),
                 )
 
     def _set_controls_enabled(self, enabled: bool) -> None:
@@ -880,6 +1074,13 @@ class PartWorkbenchPanel(ttk.Frame):
                         "confirmed": self.recognition_confirmed_var.get(),
                     },
                     "dimensions": dimensions,
+                    "production_properties": {
+                        "profile": self.candidate_var.get().strip(),
+                        "material": self.material_var.get().strip(),
+                        "material_grade": self.material_grade_var.get().strip(),
+                        "part_position": self.part_position_var.get().strip(),
+                        "assembly_position": self.assembly_position_var.get().strip(),
+                    },
                     "reference_sides": sides,
                     "contours": deepcopy(self._contours),
                     "features": deepcopy(self._features),
@@ -1070,11 +1271,263 @@ class PartWorkbenchPanel(ttk.Frame):
         self._render_preview(self._current_part())
 
     def _next_hole_id(self) -> str:
+        return self._next_feature_id("hole")
+
+    def new_slot(self) -> None:
+        self._selected_slot_id = ""
+        self.slot_grid.selection_remove(self.slot_grid.selection())
+        self.slot_x_var.set("0.000")
+        self.slot_y_var.set("0.000")
+        self.slot_length_var.set("30.000")
+        self.slot_width_var.set("14.000")
+        self.slot_angle_var.set("0.000")
+        self.slot_side_var.set(self.side_id_var.get().strip() or "top")
+
+    def _on_slot_selected(self, _event=None) -> None:
+        selected = self.slot_grid.selection()
+        if not selected:
+            return
+        self._selected_slot_id = selected[0]
+        feature = next((item for item in self._features if item.get("feature_id") == selected[0]), None)
+        if feature is None:
+            return
+        parameters = dict(feature.get("parameters") or {})
+        self.slot_side_var.set(str(feature.get("reference_side") or "top"))
+        self.slot_x_var.set(str(parameters.get("x_mm", 0.0)))
+        self.slot_y_var.set(str(parameters.get("y_mm", 0.0)))
+        self.slot_length_var.set(str(parameters.get("length_mm", 30.0)))
+        self.slot_width_var.set(str(parameters.get("width_mm", 14.0)))
+        self.slot_angle_var.set(str(parameters.get("angle_deg", 0.0)))
+
+    def add_or_update_slot(self) -> None:
+        try:
+            x, y, length, width, angle = self._finite_values(
+                (self.slot_x_var, self.slot_y_var, self.slot_length_var, self.slot_width_var, self.slot_angle_var),
+                "Sleuf",
+            )
+            if length <= 0.0 or width <= 0.0 or length < width:
+                raise ValueError("Sleuflengte moet minimaal gelijk zijn aan een positieve breedte")
+        except ValueError as exc:
+            self._show_error("Sleuf", exc)
+            return
+        feature_id = self._selected_slot_id or self._next_feature_id("slot")
+        feature = {
+            "feature_id": feature_id,
+            "kind": "slot",
+            "reference_side": self.slot_side_var.get().strip() or self.side_id_var.get().strip(),
+            "parameters": {
+                "x_mm": x, "y_mm": y, "length_mm": length, "width_mm": width,
+                "angle_deg": angle, "through": True,
+            },
+        }
+        self._replace_feature(feature)
+        self._selected_slot_id = feature_id
+        self._refresh_draft_grids()
+        if self.slot_grid.exists(feature_id):
+            self.slot_grid.selection_set(feature_id)
+        self._render_preview(self._current_part())
+
+    def remove_slot(self) -> None:
+        selected = self.slot_grid.selection()
+        feature_id = selected[0] if selected else self._selected_slot_id
+        self._remove_feature(feature_id)
+        self.new_slot()
+
+    def new_cutout(self) -> None:
+        self._selected_cutout_id = ""
+        self.cutout_grid.selection_remove(self.cutout_grid.selection())
+        self.cutout_kind_var.set("cope")
+        self.cutout_x_var.set("0.000")
+        self.cutout_y_var.set("0.000")
+        self.cutout_width_var.set("30.000")
+        self.cutout_height_var.set("30.000")
+        self.cutout_angle_var.set("0.000")
+        self.cutout_side_var.set(self.side_id_var.get().strip() or "top")
+
+    def _on_cutout_selected(self, _event=None) -> None:
+        selected = self.cutout_grid.selection()
+        if not selected:
+            return
+        self._selected_cutout_id = selected[0]
+        feature = next((item for item in self._features if item.get("feature_id") == selected[0]), None)
+        if feature is None:
+            return
+        parameters = dict(feature.get("parameters") or {})
+        self.cutout_kind_var.set(str(feature.get("kind") or "cope"))
+        self.cutout_side_var.set(str(feature.get("reference_side") or "top"))
+        self.cutout_x_var.set(str(parameters.get("x_mm", 0.0)))
+        self.cutout_y_var.set(str(parameters.get("y_mm", 0.0)))
+        self.cutout_width_var.set(str(parameters.get("width_mm", 30.0)))
+        self.cutout_height_var.set(str(parameters.get("height_mm", 30.0)))
+        self.cutout_angle_var.set(str(parameters.get("angle_deg", 0.0)))
+
+    def add_or_update_cutout(self) -> None:
+        try:
+            x, y, width, height, angle = self._finite_values(
+                (self.cutout_x_var, self.cutout_y_var, self.cutout_width_var, self.cutout_height_var, self.cutout_angle_var),
+                "Uitsparing",
+            )
+            if width <= 0.0 or height <= 0.0:
+                raise ValueError("Uitsparing vereist positieve breedte en hoogte")
+        except ValueError as exc:
+            self._show_error("Uitsparing", exc)
+            return
+        kind = self.cutout_kind_var.get().strip()
+        if kind not in {"cope", "cutout"}:
+            self._show_error("Uitsparing", ValueError("Kies cope of cutout"))
+            return
+        feature_id = self._selected_cutout_id or self._next_feature_id(kind)
+        feature = {
+            "feature_id": feature_id,
+            "kind": kind,
+            "reference_side": self.cutout_side_var.get().strip() or self.side_id_var.get().strip(),
+            "parameters": {
+                "x_mm": x, "y_mm": y, "width_mm": width, "height_mm": height,
+                "angle_deg": angle, "corner_radius_mm": 0.0, "through": True,
+            },
+        }
+        self._replace_feature(feature)
+        self._selected_cutout_id = feature_id
+        self._refresh_draft_grids()
+        if self.cutout_grid.exists(feature_id):
+            self.cutout_grid.selection_set(feature_id)
+        self._render_preview(self._current_part())
+
+    def remove_cutout(self) -> None:
+        selected = self.cutout_grid.selection()
+        feature_id = selected[0] if selected else self._selected_cutout_id
+        self._remove_feature(feature_id)
+        self.new_cutout()
+
+    def new_scribe(self) -> None:
+        self._selected_scribe_id = ""
+        self.scribe_grid.selection_remove(self.scribe_grid.selection())
+        self.scribe_x1_var.set("0.000")
+        self.scribe_y1_var.set("0.000")
+        self.scribe_x2_var.set("100.000")
+        self.scribe_y2_var.set("0.000")
+        self.scribe_side_var.set(self.side_id_var.get().strip() or "top")
+        self.scribe_type_var.set("line")
+        self.scribe_status_var.set("confirmed")
+        self.scribe_confidence_var.set("1.000")
+
+    def _on_scribe_selected(self, _event=None) -> None:
+        selected = self.scribe_grid.selection()
+        if not selected:
+            return
+        self._selected_scribe_id = selected[0]
+        feature = next((item for item in self._features if item.get("feature_id") == selected[0]), None)
+        if feature is None:
+            return
+        parameters = dict(feature.get("parameters") or {})
+        points = list(parameters.get("points") or [])
+        start = points[0] if points else (0.0, 0.0)
+        end = points[-1] if points else (100.0, 0.0)
+        self.scribe_side_var.set(str(feature.get("reference_side") or "top"))
+        self.scribe_x1_var.set(str(start[0]))
+        self.scribe_y1_var.set(str(start[1]))
+        self.scribe_x2_var.set(str(end[0]))
+        self.scribe_y2_var.set(str(end[1]))
+        self.scribe_type_var.set(str(parameters.get("mark_type") or "line"))
+        self.scribe_status_var.set(str(feature.get("status") or "confirmed"))
+        self.scribe_confidence_var.set(str(feature.get("confidence", 1.0)))
+
+    def add_or_update_scribe(self) -> None:
+        try:
+            x1, y1, x2, y2, confidence = self._finite_values(
+                (self.scribe_x1_var, self.scribe_y1_var, self.scribe_x2_var, self.scribe_y2_var, self.scribe_confidence_var),
+                "Markering",
+            )
+            if math.dist((x1, y1), (x2, y2)) <= 1e-6:
+                raise ValueError("Markering vereist twee verschillende punten")
+            if not 0.0 <= confidence <= 1.0:
+                raise ValueError("Confidence moet tussen 0 en 1 liggen")
+        except ValueError as exc:
+            self._show_error("Markering", exc)
+            return
+        feature_id = self._selected_scribe_id or self._next_feature_id("scribe")
+        feature = {
+            "feature_id": feature_id,
+            "kind": "scribe",
+            "operation_class": "marking",
+            "reference_side": self.scribe_side_var.get().strip() or self.side_id_var.get().strip(),
+            "status": self.scribe_status_var.get().strip() or "confirmed",
+            "confidence": confidence,
+            "provenance": {"method": "user", "source": "part_workbench"},
+            "parameters": {
+                "points": [[x1, y1], [x2, y2]],
+                "mark_type": self.scribe_type_var.get().strip() or "line",
+                "line_width_mm": 0.2,
+            },
+        }
+        self._replace_feature(feature)
+        self._selected_scribe_id = feature_id
+        self._refresh_draft_grids()
+        if self.scribe_grid.exists(feature_id):
+            self.scribe_grid.selection_set(feature_id)
+        self._render_preview(self._current_part())
+
+    def remove_scribe(self) -> None:
+        selected = self.scribe_grid.selection()
+        feature_id = selected[0] if selected else self._selected_scribe_id
+        self._remove_feature(feature_id)
+        self.new_scribe()
+
+    def propose_scribes(self) -> None:
+        part = self._current_part()
+        if part is None:
+            self._show_error("Markeringen", ValueError("Selecteer eerst een onderdeel"))
+            return
+        try:
+            report = propose_scribes_from_explicit_contacts(part)
+        except Exception as exc:
+            self._show_error("Contactlijnen", exc)
+            return
+        existing = {str(item.get("feature_id") or "") for item in self._features}
+        added = 0
+        for feature in report["proposals"]:
+            if feature["feature_id"] in existing:
+                continue
+            self._features.append(feature)
+            existing.add(feature["feature_id"])
+            added += 1
+        self._refresh_draft_grids()
+        self._render_preview(part)
+        self.status_var.set(
+            f"{added} contactmarkering(en) voorgesteld; {report['skipped_count']} overgeslagen; nog niet toegepast"
+        )
+
+    @staticmethod
+    def _finite_values(variables: tuple[tk.StringVar, ...], label: str) -> tuple[float, ...]:
+        try:
+            values = tuple(float(variable.get().replace(",", ".")) for variable in variables)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{label} bevat een niet-numerieke waarde") from exc
+        if not all(math.isfinite(value) for value in values):
+            raise ValueError(f"{label} bevat een niet-eindige waarde")
+        return values
+
+    def _replace_feature(self, feature: dict[str, Any]) -> None:
+        feature_id = str(feature.get("feature_id") or "")
+        index = next((index for index, item in enumerate(self._features) if item.get("feature_id") == feature_id), None)
+        if index is None:
+            self._features.append(feature)
+        else:
+            self._features[index] = feature
+
+    def _remove_feature(self, feature_id: str) -> None:
+        if not feature_id:
+            return
+        self._features = [item for item in self._features if item.get("feature_id") != feature_id]
+        self._refresh_draft_grids()
+        self._render_preview(self._current_part())
+
+    def _next_feature_id(self, prefix: str) -> str:
         existing = {str(item.get("feature_id")) for item in self._features}
         number = 1
-        while f"hole-{number}" in existing:
+        while f"{prefix}-{number}" in existing:
             number += 1
-        return f"hole-{number}"
+        return f"{prefix}-{number}"
 
     def _require_selection(self) -> tuple[ProjectSession | None, Part | None]:
         session = self._session()
@@ -1147,9 +1600,43 @@ class PartWorkbenchPanel(ttk.Frame):
             ys = [point[1] for point in polygon]
             self.axis_2d.plot(xs, ys, color=color, linewidth=2.0)
         for feature in self._features:
-            if feature.get("kind") != "hole":
-                continue
+            kind = str(feature.get("kind") or "")
             parameters = dict(feature.get("parameters") or {})
+            z = reviewed_thickness if reviewed_thickness > 0.0 else (
+                min(dimensions) if dimensions is not None else 0.0
+            )
+            if kind == "scribe":
+                try:
+                    points = [(float(item[0]), float(item[1])) for item in parameters.get("points") or []]
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if len(points) < 2:
+                    continue
+                xs = [item[0] for item in points]
+                ys = [item[1] for item in points]
+                status = str(feature.get("status") or "confirmed")
+                mark_color = "#a15c00" if status == "proposed" else "#16835f"
+                self.axis_3d.plot(xs, ys, [z + 0.02] * len(xs), color=mark_color, linewidth=1.5, linestyle="--")
+                self.axis_2d.plot(xs, ys, color=mark_color, linewidth=1.5, linestyle="--")
+                continue
+            if kind == "slot":
+                outline = self._slot_outline(parameters)
+                if outline:
+                    xs = [item[0] for item in outline]
+                    ys = [item[1] for item in outline]
+                    self.axis_3d.plot(xs, ys, [z] * len(xs), color="#2563a6", linewidth=1.5)
+                    self.axis_2d.plot(xs, ys, color="#2563a6", linewidth=1.5)
+                continue
+            if kind in {"cope", "cutout"}:
+                outline = self._rectangular_feature_outline(parameters)
+                if outline:
+                    xs = [item[0] for item in outline]
+                    ys = [item[1] for item in outline]
+                    self.axis_3d.plot(xs, ys, [z] * len(xs), color="#b42318", linewidth=1.5)
+                    self.axis_2d.plot(xs, ys, color="#b42318", linewidth=1.5)
+                continue
+            if kind != "hole":
+                continue
             try:
                 x = float(parameters.get("x_mm"))
                 y = float(parameters.get("y_mm"))
@@ -1158,13 +1645,69 @@ class PartWorkbenchPanel(ttk.Frame):
                 continue
             circle_x = [x + radius * math.cos(index * math.tau / 48.0) for index in range(49)]
             circle_y = [y + radius * math.sin(index * math.tau / 48.0) for index in range(49)]
-            z = reviewed_thickness if reviewed_thickness > 0.0 else (
-                min(dimensions) if dimensions is not None else 0.0
-            )
             self.axis_3d.plot(circle_x, circle_y, [z] * len(circle_x), color="#2563a6", linewidth=1.5)
             self.axis_2d.plot(circle_x, circle_y, color="#2563a6", linewidth=1.5)
         self._fit_axes(dimensions, polygon)
         self.canvas.draw_idle()
+
+    @staticmethod
+    def _rotate_point(x: float, y: float, angle_deg: float) -> tuple[float, float]:
+        angle = math.radians(angle_deg)
+        return (
+            x * math.cos(angle) - y * math.sin(angle),
+            x * math.sin(angle) + y * math.cos(angle),
+        )
+
+    @classmethod
+    def _slot_outline(cls, parameters: dict[str, Any]) -> list[tuple[float, float]]:
+        try:
+            center_x = float(parameters.get("x_mm"))
+            center_y = float(parameters.get("y_mm"))
+            length = float(parameters.get("length_mm"))
+            width = float(parameters.get("width_mm"))
+            angle = float(parameters.get("angle_deg", 0.0))
+        except (TypeError, ValueError):
+            return []
+        if not all(math.isfinite(value) for value in (center_x, center_y, length, width, angle)) or length < width or width <= 0.0:
+            return []
+        radius = width / 2.0
+        half_straight = (length - width) / 2.0
+        local: list[tuple[float, float]] = []
+        for index in range(17):
+            cap_angle = math.pi / 2.0 + math.pi * index / 16.0
+            local.append((-half_straight + radius * math.cos(cap_angle), radius * math.sin(cap_angle)))
+        for index in range(17):
+            cap_angle = -math.pi / 2.0 + math.pi * index / 16.0
+            local.append((half_straight + radius * math.cos(cap_angle), radius * math.sin(cap_angle)))
+        local.append(local[0])
+        return [
+            (center_x + rotated[0], center_y + rotated[1])
+            for rotated in (cls._rotate_point(x, y, angle) for x, y in local)
+        ]
+
+    @classmethod
+    def _rectangular_feature_outline(cls, parameters: dict[str, Any]) -> list[tuple[float, float]]:
+        try:
+            center_x = float(parameters.get("x_mm"))
+            center_y = float(parameters.get("y_mm"))
+            width = float(parameters.get("width_mm"))
+            height = float(parameters.get("height_mm"))
+            angle = float(parameters.get("angle_deg", 0.0))
+        except (TypeError, ValueError):
+            return []
+        if not all(math.isfinite(value) for value in (center_x, center_y, width, height, angle)) or width <= 0.0 or height <= 0.0:
+            return []
+        local = [
+            (-width / 2.0, -height / 2.0),
+            (width / 2.0, -height / 2.0),
+            (width / 2.0, height / 2.0),
+            (-width / 2.0, height / 2.0),
+            (-width / 2.0, -height / 2.0),
+        ]
+        return [
+            (center_x + rotated[0], center_y + rotated[1])
+            for rotated in (cls._rotate_point(x, y, angle) for x, y in local)
+        ]
 
     def _outer_polygon(self) -> list[tuple[float, float]]:
         contour = next((item for item in self._contours if item.get("role") == "outer"), None)

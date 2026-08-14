@@ -107,6 +107,10 @@ hashes. Een gestarte Workbench bewaart:
 - de actuele analytische partrevisie en append-only revisiesnapshots;
 - rechterhandige productie-assen, expliciete maakafmetingen, referentiezijden,
   contouren en features;
+- optionele productie-eigenschappen voor profiel, materiaal, kwaliteit,
+  posnummer en samenstelmetadata;
+- featurecontract 1.0 voor gescheiden materiaalverwijdering en markeringen,
+  inclusief status, confidence, provenance en typespecifieke parameters;
 - provenance, open vragen en actuele blokkerende validatie-issues;
 - een gehasht commandolog met cursor voor undo/redo;
 - afgeleide artefacten met de manufacturing hash waarvoor ze zijn gemaakt;
@@ -117,6 +121,8 @@ hashes. Een gestarte Workbench bewaart:
 
 Een wijziging in productiegeometrie of features berekent de part-hashes opnieuw.
 Artefacten met een andere manufacturing hash krijgen status `invalidated`.
+Een gewijzigde manufacturing hash maakt ook een eerder berekende
+classificatie-/BOM-identiteit ongeldig; herclassificatie is dan verplicht.
 Het canonical rebuildrapport volgt dezelfde regel en wordt nooit gebruikt om
 ontbrekende bronwaarden alsnog als verwacht resultaat in te vullen.
 Globale projectplaatsing is geen onderdeel van de manufacturing identity;

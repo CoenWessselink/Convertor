@@ -30,7 +30,7 @@ from .workbench import (
 
 
 REBUILD_SCHEMA_VERSION = "1.0"
-BUILDER_VERSION = "cws-canonical-rebuild-v1"
+BUILDER_VERSION = "cws-canonical-rebuild-v2"
 class CanonicalRebuildError(ValueError):
     """Raised when the reviewed representation cannot be rebuilt safely."""
 
@@ -123,6 +123,82 @@ def _extruded_contour(contour: Mapping[str, Any], z: float, height: float) -> cq
     return cq.Solid.extrudeLinear(wire, [], cq.Vector(0.0, 0.0, height))
 
 
+def _cut_plate_feature(
+    shape: cq.Shape,
+    feature: Mapping[str, Any],
+    thickness: float,
+) -> tuple[cq.Shape, str | None]:
+    feature_id = str(feature.get("feature_id") or "?")
+    kind = str(feature.get("kind") or "")
+    parameters = dict(feature.get("parameters") or {})
+    if kind == "scribe":
+        return shape, f"Scribe {feature_id} is als niet-snijdende productie-intentie bewaard"
+    if kind not in {"hole", "slot", "cope", "cutout"}:
+        raise CanonicalRebuildError(
+            f"Bewerking {feature_id} van type {kind or '?'} kan nog niet exact worden teruggebouwd"
+        )
+    if not bool(parameters.get("through", True)):
+        raise CanonicalRebuildError(
+            f"Blinde bewerking {feature_id} kan nog niet exact worden teruggebouwd"
+        )
+    try:
+        x = float(parameters.get("x_mm"))
+        y = float(parameters.get("y_mm"))
+    except (TypeError, ValueError) as exc:
+        raise CanonicalRebuildError(
+            f"Bewerking {feature_id} mist een geldige positie"
+        ) from exc
+    if not math.isfinite(x) or not math.isfinite(y):
+        raise CanonicalRebuildError(f"Bewerking {feature_id} heeft geen eindige positie")
+    origin = (0.0, 0.0, -1.0)
+    if kind == "hole":
+        diameter = _positive(parameters.get("diameter_mm"), "Gatdiameter")
+        cutter = cq.Solid.makeCylinder(
+            diameter / 2.0,
+            thickness + 2.0,
+            cq.Vector(x, y, -1.0),
+            cq.Vector(0.0, 0.0, 1.0),
+        )
+    elif kind == "slot":
+        length = _positive(parameters.get("length_mm"), "Sleuflengte")
+        width = _positive(parameters.get("width_mm"), "Sleufbreedte")
+        if length < width:
+            raise CanonicalRebuildError("Sleuflengte moet minimaal gelijk zijn aan de sleufbreedte")
+        angle = float(parameters.get("angle_deg", 0.0))
+        if not math.isfinite(angle):
+            raise CanonicalRebuildError("Sleufhoek moet eindig zijn")
+        cutter = (
+            cq.Workplane("XY", origin=origin)
+            .center(x, y)
+            .slot2D(length, width, angle)
+            .extrude(thickness + 2.0)
+            .val()
+        )
+    elif kind in {"cope", "cutout"}:
+        width = _positive(parameters.get("width_mm"), "Uitsparing breedte")
+        height = _positive(parameters.get("height_mm"), "Uitsparing hoogte")
+        corner_radius = float(parameters.get("corner_radius_mm", 0.0))
+        if corner_radius != 0.0:
+            raise CanonicalRebuildError(
+                f"Uitsparing {feature_id} met hoekradius vereist handmatige validatie"
+            )
+        angle = float(parameters.get("angle_deg", 0.0))
+        if not math.isfinite(angle):
+            raise CanonicalRebuildError("Uitsparinghoek moet eindig zijn")
+        cutter = (
+            cq.Workplane("XY", origin=(x, y, -1.0))
+            .transformed(rotate=(0.0, 0.0, angle))
+            .rect(width, height)
+            .extrude(thickness + 2.0)
+            .val()
+        )
+    before = float(shape.Volume())
+    result = shape.cut(cutter)
+    if before - float(result.Volume()) <= 1e-6:
+        raise CanonicalRebuildError(f"Bewerking {feature_id} snijdt de plaat niet")
+    return result, None
+
+
 def _build_plate(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
     dimensions = dict(revision.get("dimensions") or {})
     thickness = _positive(dimensions.get("thickness_mm"), "Plaatdikte")
@@ -141,34 +217,12 @@ def _build_plate(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
                 f"Binnencontour {contour.get('contour_id') or '?'} snijdt de plaat niet"
             )
 
+    warnings: list[str] = []
     for feature in list(revision.get("features") or []):
-        if feature.get("kind") != "hole":
-            raise CanonicalRebuildError(
-                f"Bewerking {feature.get('feature_id') or '?'} van type {feature.get('kind') or '?'} kan nog niet worden teruggebouwd"
-            )
-        parameters = dict(feature.get("parameters") or {})
-        if not bool(parameters.get("through", True)):
-            raise CanonicalRebuildError(
-                f"Blind gat {feature.get('feature_id') or '?'} kan nog niet worden teruggebouwd"
-            )
-        x = float(parameters.get("x_mm"))
-        y = float(parameters.get("y_mm"))
-        diameter = _positive(parameters.get("diameter_mm"), "Gatdiameter")
-        if not math.isfinite(x) or not math.isfinite(y):
-            raise CanonicalRebuildError("Gatpositie moet eindig zijn")
-        cutter = cq.Solid.makeCylinder(
-            diameter / 2.0,
-            thickness + 2.0,
-            cq.Vector(x, y, -1.0),
-            cq.Vector(0.0, 0.0, 1.0),
-        )
-        before = float(shape.Volume())
-        shape = shape.cut(cutter)
-        if before - float(shape.Volume()) <= 1e-6:
-            raise CanonicalRebuildError(
-                f"Gat {feature.get('feature_id') or '?'} snijdt de plaat niet"
-            )
-    return shape, []
+        shape, warning = _cut_plate_feature(shape, feature, thickness)
+        if warning:
+            warnings.append(warning)
+    return shape, warnings
 
 
 def _exact_profile(candidate: str) -> ProfileDefinition:
@@ -225,7 +279,13 @@ def _build_profile(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
         )
     length = _positive(dict(revision.get("dimensions") or {}).get("length_mm"), "Profiellengte")
     source = _profile_part(profile, length)
+    markings: list[str] = []
     for feature in list(revision.get("features") or []):
+        if feature.get("kind") == "scribe":
+            markings.append(
+                f"Scribe {feature.get('feature_id') or '?'} is als niet-snijdende productie-intentie bewaard"
+            )
+            continue
         if feature.get("kind") != "hole":
             raise CanonicalRebuildError(
                 f"Bewerking {feature.get('feature_id') or '?'} van type {feature.get('kind') or '?'} kan nog niet worden teruggebouwd"
@@ -247,11 +307,13 @@ def _build_profile(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
             )
         )
     shape = conversion.build_shape(source).val()
-    return shape, list(source.warnings)
+    return shape, list(source.warnings) + markings
 
 
 def _build_round_bar(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
-    if list(revision.get("features") or []):
+    features = list(revision.get("features") or [])
+    unsupported = [item for item in features if item.get("kind") != "scribe"]
+    if unsupported:
         raise CanonicalRebuildError("Bewerkingen in rondstaf worden nog niet teruggebouwd")
     dimensions = dict(revision.get("dimensions") or {})
     length = _positive(dimensions.get("length_mm"), "Rondstaflengte")
@@ -262,11 +324,16 @@ def _build_round_bar(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
         cq.Vector(0.0, 0.0, 0.0),
         cq.Vector(1.0, 0.0, 0.0),
     )
-    return shape, []
+    return shape, [
+        f"Scribe {item.get('feature_id') or '?'} is als niet-snijdende productie-intentie bewaard"
+        for item in features
+    ]
 
 
 def _build_custom(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
-    if list(revision.get("features") or []):
+    features = list(revision.get("features") or [])
+    unsupported = [item for item in features if item.get("kind") != "scribe"]
+    if unsupported:
         raise CanonicalRebuildError("Bewerkingen in custom profielen worden nog niet teruggebouwd")
     length = _positive(dict(revision.get("dimensions") or {}).get("length_mm"), "Profiellengte")
     contours = list(revision.get("contours") or [])
@@ -276,7 +343,10 @@ def _build_custom(revision: Mapping[str, Any]) -> tuple[cq.Shape, list[str]]:
     shape = _extruded_contour(outer[0], 0.0, length)
     for contour in (item for item in contours if item.get("role") == "inner"):
         shape = shape.cut(_extruded_contour(contour, -1.0, length + 2.0))
-    return shape, []
+    return shape, [
+        f"Scribe {item.get('feature_id') or '?'} is als niet-snijdende productie-intentie bewaard"
+        for item in features
+    ]
 
 
 def build_canonical_shape(part: Part) -> tuple[cq.Shape, list[str], dict[str, Any]]:

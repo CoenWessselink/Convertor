@@ -29,12 +29,30 @@ SUPPORTED_PART_FORMS = {"plate", "profile", "round_bar", "custom"}
 SUPPORTED_FEATURE_KINDS = {
     "hole",
     "slot",
+    "cope",
+    "cutout",
     "pocket",
     "radius",
     "arc",
     "chamfer",
+    "bevel",
+    "end_cut",
+    "scribe",
+}
+FEATURE_CONTRACT_VERSION = "1.0"
+CUTTING_FEATURE_KINDS = {
+    "hole",
+    "slot",
+    "cope",
+    "cutout",
+    "pocket",
+    "radius",
+    "arc",
+    "chamfer",
+    "bevel",
     "end_cut",
 }
+MARKING_FEATURE_KINDS = {"scribe"}
 SUPPORTED_CONTOUR_SEGMENTS = {"line", "arc"}
 SUPPORTED_DIMENSION_KEYS = {"length_mm", "thickness_mm", "diameter_mm"}
 RECOGNITION_THRESHOLD = 0.8
@@ -117,6 +135,13 @@ def _new_revision(part: Part, *, user: str, source_geometry_hash: str) -> dict[s
         },
         "production_frame": asdict(Transform3D.identity()),
         "dimensions": {},
+        "production_properties": {
+            "profile": part.normalized_profile or part.profile,
+            "material": part.normalized_material or part.material,
+            "material_grade": part.material_grade,
+            "part_position": part.part_position,
+            "assembly_position": "",
+        },
         "reference_sides": [
             {
                 "side_id": str(side),
@@ -128,7 +153,7 @@ def _new_revision(part: Part, *, user: str, source_geometry_hash: str) -> dict[s
             if str(side).strip()
         ],
         "contours": [],
-        "features": deepcopy(part.production_features),
+        "features": initial_workbench_features(part.production_features),
         "field_provenance": {},
         "unresolved_questions": [],
         "validation_issues": [],
@@ -206,6 +231,296 @@ def _normalise_dimensions(value: Any) -> dict[str, float]:
     return result
 
 
+def _normalise_production_properties(value: Any) -> dict[str, str]:
+    if value in (None, ""):
+        return {}
+    if not isinstance(value, Mapping):
+        raise ProjectValidationError("Productie-eigenschappen moeten als object zijn vastgelegd")
+    allowed = {
+        "profile",
+        "material",
+        "material_grade",
+        "part_position",
+        "assembly_position",
+    }
+    unknown = sorted(set(value) - allowed)
+    if unknown:
+        raise ProjectValidationError(
+            f"Onbekende productie-eigenschappen: {', '.join(unknown)}"
+        )
+    return {str(key): str(value[key] or "").strip() for key in sorted(value)}
+
+
+def _normalise_feature_parameters(kind: str, value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ProjectValidationError(f"Parameters van bewerking {kind or '?'} moeten als object zijn vastgelegd")
+    raw = dict(value)
+    specifications: dict[str, tuple[set[str], set[str]]] = {
+        "hole": (
+            {"x_mm", "y_mm", "diameter_mm"},
+            {"through", "depth_mm", "dstv_face"},
+        ),
+        "slot": (
+            {"x_mm", "y_mm", "length_mm", "width_mm"},
+            {"angle_deg", "through", "depth_mm", "dstv_face"},
+        ),
+        "cope": (
+            {"x_mm", "y_mm", "width_mm", "height_mm"},
+            {"angle_deg", "corner_radius_mm", "through"},
+        ),
+        "cutout": (
+            {"x_mm", "y_mm", "width_mm", "height_mm"},
+            {"angle_deg", "corner_radius_mm", "through"},
+        ),
+        "pocket": (
+            {"x_mm", "y_mm", "width_mm", "height_mm", "depth_mm"},
+            {"angle_deg", "corner_radius_mm"},
+        ),
+        "end_cut": ({"end", "angle_deg"}, {"offset_mm"}),
+        "bevel": ({"edge_ref", "angle_deg", "depth_mm"}, {"weld_prep"}),
+        "chamfer": ({"edge_ref", "angle_deg", "depth_mm"}, set()),
+        "scribe": ({"points"}, {"mark_type", "text", "line_width_mm"}),
+    }
+    if kind not in specifications:
+        return deepcopy(raw)
+    required, optional = specifications[kind]
+    missing = sorted(key for key in required if key not in raw)
+    if missing:
+        raise ProjectValidationError(
+            f"Bewerking {kind} mist parameters: {', '.join(missing)}"
+        )
+    unknown = sorted(set(raw) - required - optional)
+    if unknown:
+        raise ProjectValidationError(
+            f"Bewerking {kind} bevat onbekende parameters: {', '.join(unknown)}"
+        )
+    result: dict[str, Any] = {}
+    numeric_keys = {
+        "x_mm",
+        "y_mm",
+        "diameter_mm",
+        "length_mm",
+        "width_mm",
+        "height_mm",
+        "angle_deg",
+        "depth_mm",
+        "corner_radius_mm",
+        "offset_mm",
+        "line_width_mm",
+    }
+    for key in sorted(raw):
+        item = raw[key]
+        if key in numeric_keys:
+            result[key] = _finite(item, f"{kind}.{key}")
+        elif key == "through":
+            if not isinstance(item, bool):
+                raise ProjectValidationError(f"{kind}.through moet true of false zijn")
+            result[key] = item
+        elif key == "points":
+            if not isinstance(item, (list, tuple)):
+                raise ProjectValidationError("Scribe-punten moeten als lijst zijn vastgelegd")
+            result[key] = [_point(point, "Scribe-punt") for point in item]
+        else:
+            result[key] = str(item or "").strip()
+    if kind in {"hole", "slot", "cope", "cutout"}:
+        result.setdefault("through", True)
+    if kind in {"slot", "cope", "cutout", "pocket"}:
+        result.setdefault("angle_deg", 0.0)
+        result.setdefault("corner_radius_mm", 0.0)
+    if kind == "scribe":
+        result.setdefault("mark_type", "line")
+        result.setdefault("line_width_mm", 0.2)
+    return result
+
+
+def normalise_features(value: Any) -> list[dict[str, Any]]:
+    if value in (None, ""):
+        return []
+    if not isinstance(value, (list, tuple)):
+        raise ProjectValidationError("Productiebewerkingen moeten als lijst zijn vastgelegd")
+    result: list[dict[str, Any]] = []
+    for raw in value:
+        if not isinstance(raw, Mapping):
+            raise ProjectValidationError("Iedere productiebewerking moet een object zijn")
+        feature = deepcopy(dict(raw))
+        kind = str(feature.get("kind") or "").strip().lower()
+        feature["feature_id"] = str(feature.get("feature_id") or "").strip()
+        feature["kind"] = kind
+        feature["reference_side"] = str(feature.get("reference_side") or "").strip()
+        feature["parameters"] = _normalise_feature_parameters(
+            kind, feature.get("parameters") or {}
+        )
+        if kind in SUPPORTED_FEATURE_KINDS:
+            allowed_feature_keys = {
+                "feature_id",
+                "kind",
+                "reference_side",
+                "parameters",
+                "contract_version",
+                "operation_class",
+                "status",
+                "confidence",
+                "provenance",
+            }
+            unknown_feature_keys = sorted(set(feature) - allowed_feature_keys)
+            if unknown_feature_keys:
+                raise ProjectValidationError(
+                    f"Bewerking {kind} bevat onbekende velden: {', '.join(unknown_feature_keys)}"
+                )
+            expected_class = "marking" if kind in MARKING_FEATURE_KINDS else "material_removal"
+            operation_class = str(feature.get("operation_class") or expected_class).strip().lower()
+            if operation_class != expected_class:
+                raise ProjectValidationError(
+                    f"Bewerking {kind} moet operation_class {expected_class} gebruiken"
+                )
+            status = str(feature.get("status") or "confirmed").strip().lower()
+            if status not in {"proposed", "confirmed", "rejected"}:
+                raise ProjectValidationError(f"Bewerking {kind} heeft een ongeldige status")
+            confidence = _finite(feature.get("confidence", 1.0), f"{kind}.confidence")
+            if not 0.0 <= confidence <= 1.0:
+                raise ProjectValidationError(f"Confidence van bewerking {kind} moet tussen 0 en 1 liggen")
+            provenance = feature.get("provenance") or {"method": "user", "source": "part_workbench"}
+            if not isinstance(provenance, Mapping):
+                raise ProjectValidationError(f"Herkomst van bewerking {kind} moet een object zijn")
+            feature["contract_version"] = FEATURE_CONTRACT_VERSION
+            feature["operation_class"] = operation_class
+            feature["status"] = status
+            feature["confidence"] = confidence
+            feature["provenance"] = {
+                str(key): deepcopy(provenance[key]) for key in sorted(provenance)
+            }
+        result.append(feature)
+    return result
+
+
+def initial_workbench_features(value: Any) -> list[dict[str, Any]]:
+    """Adapt known pre-Workbench Canonical Part holes without inventing data."""
+
+    if value in (None, ""):
+        return []
+    if not isinstance(value, (list, tuple)):
+        raise ProjectValidationError("Bronbewerkingen moeten als lijst zijn vastgelegd")
+    adapted: list[dict[str, Any]] = []
+    for index, raw in enumerate(value):
+        if not isinstance(raw, Mapping):
+            raise ProjectValidationError("Bronbewerking moet een object zijn")
+        item = deepcopy(dict(raw))
+        kind = str(item.get("kind") or "").strip().lower()
+        if kind == "hole" and "parameters" not in item:
+            if not all(key in item for key in ("x", "q", "diameter")):
+                raise ProjectValidationError("Bestaand Canonical Part-gat mist x, q of diameter")
+            source_signature = stable_sha256({"index": index, "feature": item})
+            parameters: dict[str, Any] = {
+                "x_mm": item.get("x"),
+                "y_mm": item.get("q"),
+                "diameter_mm": item.get("diameter"),
+                "through": not bool(item.get("depth")),
+            }
+            if item.get("depth"):
+                parameters["depth_mm"] = item.get("depth")
+            adapted.append(
+                {
+                    "feature_id": f"hole-source-{source_signature[:12]}",
+                    "kind": "hole",
+                    "reference_side": str(item.get("face") or "").strip(),
+                    "status": "confirmed",
+                    "confidence": 1.0,
+                    "provenance": {
+                        "method": "canonical_part_adapter",
+                        "source_operation": str(item.get("operation") or ""),
+                    },
+                    "parameters": parameters,
+                }
+            )
+            continue
+        adapted.append(item)
+    return normalise_features(adapted)
+
+
+def propose_scribes_from_explicit_contacts(part: Part) -> dict[str, Any]:
+    """Build review-required scribe proposals from explicit exact contact lines only."""
+
+    descriptor = part.geometry_descriptor if isinstance(part.geometry_descriptor, Mapping) else {}
+    raw_contacts = descriptor.get("contact_lines") or []
+    if not isinstance(raw_contacts, (list, tuple)):
+        raise ProjectValidationError("Contactlijnen moeten als lijst zijn vastgelegd")
+    proposals: list[dict[str, Any]] = []
+    skipped: list[dict[str, str]] = []
+    seen_signatures: set[str] = set()
+    for index, raw in enumerate(raw_contacts):
+        contact_id = f"contact-{index + 1}"
+        if not isinstance(raw, Mapping):
+            skipped.append({"contact_id": contact_id, "reason": "contactlijn is geen object"})
+            continue
+        contact = dict(raw)
+        contact_id = str(contact.get("contact_id") or contact_id).strip()
+        geometry_status = str(contact.get("geometry_status") or "").strip().lower()
+        source_entity_ids = [
+            str(value).strip() for value in list(contact.get("source_entity_ids") or [])
+            if str(value).strip()
+        ]
+        reference_side = str(contact.get("reference_side") or "").strip()
+        if geometry_status != "exact":
+            skipped.append({"contact_id": contact_id, "reason": "contactgeometrie is niet exact bevestigd"})
+            continue
+        if not source_entity_ids:
+            skipped.append({"contact_id": contact_id, "reason": "bronobject-ID ontbreekt"})
+            continue
+        if not reference_side:
+            skipped.append({"contact_id": contact_id, "reason": "referentiezijde ontbreekt"})
+            continue
+        try:
+            confidence = _finite(contact.get("confidence"), "Contactlijn-confidence")
+            points = [_point(point, "Contactlijnpunt") for point in list(contact.get("points") or [])]
+        except ProjectValidationError as exc:
+            skipped.append({"contact_id": contact_id, "reason": str(exc)})
+            continue
+        if not 0.0 <= confidence <= 1.0:
+            skipped.append({"contact_id": contact_id, "reason": "confidence ligt buiten 0..1"})
+            continue
+        if len(points) < 2 or all(_same_point(points[0], point) for point in points[1:]):
+            skipped.append({"contact_id": contact_id, "reason": "contactlijn heeft geen expliciete lengte"})
+            continue
+        signature_payload = {
+            "reference_side": reference_side,
+            "points": points,
+            "source_entity_ids": sorted(source_entity_ids),
+        }
+        signature = stable_sha256(signature_payload)
+        if signature in seen_signatures:
+            skipped.append({"contact_id": contact_id, "reason": "dubbele contactlijn"})
+            continue
+        seen_signatures.add(signature)
+        proposals.append(
+            {
+                "feature_id": f"scribe-contact-{signature[:12]}",
+                "kind": "scribe",
+                "operation_class": "marking",
+                "reference_side": reference_side,
+                "status": "proposed",
+                "confidence": confidence,
+                "provenance": {
+                    "method": "explicit_contact_line",
+                    "contact_id": contact_id,
+                    "geometry_status": geometry_status,
+                    "source_entity_ids": sorted(source_entity_ids),
+                },
+                "parameters": {
+                    "points": points,
+                    "mark_type": str(contact.get("mark_type") or "assembly"),
+                    "line_width_mm": _finite(contact.get("line_width_mm", 0.2), "Markeerlijndikte"),
+                },
+            }
+        )
+    return {
+        "source_count": len(raw_contacts),
+        "proposal_count": len(proposals),
+        "skipped_count": len(skipped),
+        "proposals": normalise_features(proposals),
+        "skipped": skipped,
+    }
+
+
 def workbench_geometry_payload(state: Mapping[str, Any] | None) -> dict[str, Any]:
     if not state:
         return {}
@@ -231,6 +546,9 @@ def workbench_geometry_payload(state: Mapping[str, Any] | None) -> dict[str, Any
     # explicitly contain this field and therefore include it in the geometry hash.
     if "dimensions" in revision:
         payload["dimensions"] = _normalise_dimensions(revision.get("dimensions"))
+    if "production_properties" in revision:
+        properties = _normalise_production_properties(revision.get("production_properties"))
+        payload["production_profile"] = properties.get("profile", "")
     return payload
 
 
@@ -347,6 +665,8 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
     _normalise_frame(revision.get("production_frame"))
     if "dimensions" in revision:
         _normalise_dimensions(revision.get("dimensions"))
+    if "production_properties" in revision:
+        _normalise_production_properties(revision.get("production_properties"))
 
     side_ids: set[str] = set()
     confirmed_sides: set[str] = set()
@@ -457,8 +777,17 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
         feature_ids.add(feature_id)
         if kind not in SUPPORTED_FEATURE_KINDS:
             issues.append(_issue("UNSUPPORTED-FEATURE", f"Bewerking {kind or '?'} wordt niet ondersteund.", f"features.{index}.kind"))
+            continue
         if side_id not in confirmed_sides:
             issues.append(_issue("FEATURE-REFERENCE-SIDE", f"Bewerking {feature_id or index} verwijst niet naar een bevestigde zijde.", f"features.{index}.reference_side"))
+        status = str(feature.get("status") or "confirmed").lower()
+        confidence = _finite(feature.get("confidence", 1.0), "Bewerkingsconfidence")
+        if not 0.0 <= confidence <= 1.0:
+            issues.append(_issue("FEATURE-CONFIDENCE", f"Bewerking {feature_id or index} heeft een ongeldige confidence.", f"features.{index}.confidence"))
+        if status == "proposed":
+            issues.append(_issue("FEATURE-REVIEW", f"Bewerking {feature_id or index} is nog een voorstel en moet worden bevestigd of verwijderd.", f"features.{index}.status"))
+        elif status == "rejected":
+            issues.append(_issue("FEATURE-REJECTED", f"Afgewezen bewerking {feature_id or index} moet uit de actieve revisie worden verwijderd.", f"features.{index}.status"))
         if kind == "hole":
             x = _finite(parameters.get("x_mm"), "Gat X")
             y = _finite(parameters.get("y_mm"), "Gat Y")
@@ -471,6 +800,54 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
             hole_keys.add(key)
             if outer_polygon is not None and not _point_in_polygon([x, y], outer_polygon):
                 issues.append(_issue("HOLE-OUTSIDE", f"Gat {feature_id or index} ligt buiten of op de plaatcontour.", f"features.{index}"))
+        elif kind == "slot":
+            x = _finite(parameters.get("x_mm"), "Sleuf X")
+            y = _finite(parameters.get("y_mm"), "Sleuf Y")
+            length = _finite(parameters.get("length_mm"), "Sleuflengte")
+            width = _finite(parameters.get("width_mm"), "Sleufbreedte")
+            _finite(parameters.get("angle_deg", 0.0), "Sleufhoek")
+            if width <= 0.0 or length <= 0.0 or length < width:
+                issues.append(_issue("SLOT-DIMENSIONS", "Sleuflengte moet minimaal gelijk zijn aan een positieve sleufbreedte.", f"features.{index}.parameters"))
+            if not bool(parameters.get("through", True)) and _finite(parameters.get("depth_mm", 0.0), "Sleufdiepte") <= 0.0:
+                issues.append(_issue("SLOT-DEPTH", "Een blinde sleuf vereist een positieve diepte.", f"features.{index}.parameters.depth_mm"))
+            if outer_polygon is not None and not _point_in_polygon([x, y], outer_polygon):
+                issues.append(_issue("SLOT-OUTSIDE", f"Sleuf {feature_id or index} ligt buiten of op de plaatcontour.", f"features.{index}"))
+        elif kind in {"cope", "cutout", "pocket"}:
+            _finite(parameters.get("x_mm"), "Uitsparing X")
+            _finite(parameters.get("y_mm"), "Uitsparing Y")
+            width = _finite(parameters.get("width_mm"), "Uitsparing breedte")
+            height = _finite(parameters.get("height_mm"), "Uitsparing hoogte")
+            corner_radius = _finite(parameters.get("corner_radius_mm", 0.0), "Hoekradius")
+            _finite(parameters.get("angle_deg", 0.0), "Uitsparing hoek")
+            if width <= 0.0 or height <= 0.0:
+                issues.append(_issue("CUTOUT-DIMENSIONS", "Uitsparing vereist positieve breedte en hoogte.", f"features.{index}.parameters"))
+            if corner_radius < 0.0 or corner_radius * 2.0 > min(width, height):
+                issues.append(_issue("CUTOUT-RADIUS", "Hoekradius past niet binnen de uitsparing.", f"features.{index}.parameters.corner_radius_mm"))
+            if kind == "pocket" and _finite(parameters.get("depth_mm"), "Pocketdiepte") <= 0.0:
+                issues.append(_issue("POCKET-DEPTH", "Pocketdiepte moet positief zijn.", f"features.{index}.parameters.depth_mm"))
+        elif kind in {"bevel", "chamfer"}:
+            angle = _finite(parameters.get("angle_deg"), "Afschuinhoek")
+            depth = _finite(parameters.get("depth_mm"), "Afschuindiepte")
+            if not str(parameters.get("edge_ref") or "").strip():
+                issues.append(_issue("BEVEL-EDGE", "Afschuining mist een expliciete randreferentie.", f"features.{index}.parameters.edge_ref"))
+            if not 0.0 < angle < 90.0 or depth <= 0.0:
+                issues.append(_issue("BEVEL-DIMENSIONS", "Afschuining vereist een hoek tussen 0 en 90 graden en een positieve diepte.", f"features.{index}.parameters"))
+        elif kind == "end_cut":
+            if str(parameters.get("end") or "").lower() not in {"start", "end"}:
+                issues.append(_issue("END-CUT-END", "Kopsnede moet start of end aanwijzen.", f"features.{index}.parameters.end"))
+            angle = _finite(parameters.get("angle_deg"), "Kopsnedehoek")
+            if not -89.0 <= angle <= 89.0:
+                issues.append(_issue("END-CUT-ANGLE", "Kopsnedehoek moet tussen -89 en 89 graden liggen.", f"features.{index}.parameters.angle_deg"))
+        elif kind == "scribe":
+            points = list(parameters.get("points") or [])
+            if len(points) < 2:
+                issues.append(_issue("SCRIBE-POINTS", "Scribe vereist minimaal twee expliciete punten.", f"features.{index}.parameters.points"))
+            else:
+                normalised_points = [_point(point, "Scribe-punt") for point in points]
+                if all(_same_point(normalised_points[0], point) for point in normalised_points[1:]):
+                    issues.append(_issue("SCRIBE-LENGTH", "Scribe heeft geen meetbare lengte.", f"features.{index}.parameters.points"))
+            if str(parameters.get("mark_type") or "line") not in {"line", "centerline", "assembly", "text"}:
+                issues.append(_issue("SCRIBE-TYPE", "Scribe-type wordt niet ondersteund.", f"features.{index}.parameters.mark_type"))
 
     for index, question in enumerate(list(revision.get("unresolved_questions") or [])):
         if bool(question.get("blocking", True)) and not bool(question.get("resolved")):
@@ -621,6 +998,16 @@ def _sync_part_state(part: Part) -> None:
     revision = dict(state.get("current_revision") or {})
     dimensions = dict(revision.get("dimensions") or {})
     recognition = dict(revision.get("recognition") or {})
+    identity_inputs_before = (
+        part.profile,
+        part.normalized_profile,
+        part.material,
+        part.normalized_material,
+        part.material_grade,
+    )
+    production_properties = _normalise_production_properties(
+        revision.get("production_properties") or {}
+    )
     length = dimensions.get("length_mm")
     if isinstance(length, (int, float)) and not isinstance(length, bool) and float(length) > 0.0:
         part.length_mm = float(length)
@@ -628,6 +1015,25 @@ def _sync_part_state(part: Part) -> None:
     if candidate and bool(recognition.get("confirmed")):
         part.profile = candidate
         part.normalized_profile = candidate
+    explicit_profile = production_properties.get("profile", "")
+    if explicit_profile:
+        part.profile = explicit_profile
+        part.normalized_profile = explicit_profile
+    if "material" in production_properties:
+        part.material = production_properties["material"]
+        part.normalized_material = production_properties["material"]
+    if "material_grade" in production_properties:
+        part.material_grade = production_properties["material_grade"]
+    if production_properties.get("part_position"):
+        part.part_position = production_properties["part_position"]
+    identity_inputs_after = (
+        part.profile,
+        part.normalized_profile,
+        part.material,
+        part.normalized_material,
+        part.material_grade,
+    )
+    identity_inputs_changed = identity_inputs_after != identity_inputs_before
     part.production_features = deepcopy(list(revision.get("features") or []))
     part.reference_sides = [
         str(item.get("side_id"))
@@ -636,6 +1042,14 @@ def _sync_part_state(part: Part) -> None:
     ]
     previous_hash = part.manufacturing_hash
     part.recompute_hashes()
+    if identity_inputs_changed or previous_hash != part.manufacturing_hash:
+        part.classification_status = "review_required"
+        part.classification_method = "part_workbench_change"
+        part.classification_rule_id = ""
+        part.classification_reason = "Productie-identiteit is in de Production Editor gewijzigd"
+        part.classification_confidence = 0.0
+        part.production_identity_hash = ""
+        part.bom_group_key = ""
     issues = list(revision.get("validation_issues") or [])
     status = str(revision.get("review_status") or ReviewStatus.REVIEW_REQUIRED.value)
     if issues:
@@ -763,6 +1177,7 @@ def update_part_workbench(
         "recognition",
         "production_frame",
         "dimensions",
+        "production_properties",
         "reference_sides",
         "contours",
         "features",
@@ -780,6 +1195,10 @@ def update_part_workbench(
             after[key] = _normalise_frame(value)
         elif key == "dimensions":
             after[key] = _normalise_dimensions(value)
+        elif key == "production_properties":
+            after[key] = _normalise_production_properties(value)
+        elif key == "features":
+            after[key] = normalise_features(value)
         else:
             after[key] = deepcopy(value)
     timestamp = utc_now_iso()
@@ -1195,6 +1614,12 @@ __all__ = [
     "WORKBENCH_SCHEMA_VERSION",
     "SUPPORTED_PART_FORMS",
     "SUPPORTED_FEATURE_KINDS",
+    "FEATURE_CONTRACT_VERSION",
+    "CUTTING_FEATURE_KINDS",
+    "MARKING_FEATURE_KINDS",
+    "normalise_features",
+    "initial_workbench_features",
+    "propose_scribes_from_explicit_contacts",
     "create_workbench_state",
     "evaluate_workbench_revision",
     "validate_workbench_state",

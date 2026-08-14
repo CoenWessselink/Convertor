@@ -1,11 +1,11 @@
 # Part Workbench foundation
 
-Status: geintegreerde Workbench plus eerste deterministic canonical rebuildlaag;
-niet de volledige Part Workbench- of roundtripfase.
+Status: geintegreerde Workbench, deterministic canonical rebuild en Phase C
+Production Editor batch 1; niet de volledige profielbewerkings- of exportfase.
 
-Project Model: `2.4`
+Project Model: `2.5`
 
-Workbench-schema: `1.0`
+Workbench-schema: `1.1`, met featurecontract `1.0` voor nieuwe edits
 
 ## Gebouwd
 
@@ -30,6 +30,13 @@ Workbench-schema: `1.0`
 - exacte vergelijking van solidcount en geometrische geldigheid;
 - gehasht rebuildrapport met manufacturing-hashkoppeling en invalidatie;
 - geintegreerde UI met een afzonderlijk canonical vergelijkingstabblad.
+- typevaste slots, rechthoekige cope/cutout-bewerkingen en niet-snijdende
+  scribes met status, confidence en provenance;
+- directe 2D/3D-draftpreview en afzonderlijke editors voor deze bewerkingen;
+- exacte plate-rebuild voor doorgaande slots en rechthoekige cutouts;
+- alleen evidence-gebonden scribevoorstellen uit expliciete exacte
+  contactlijnen;
+- invalidatie van classificatie/BOM-identiteit na iedere manufacturing-edit.
 
 ## Harde controles
 
@@ -67,9 +74,10 @@ De fundering blokkeert of weigert onder meer:
 
 - automatische kandidaatherkenning vanuit echte BREP-geometrie;
 - exacte source-BREP-isolatie en mesh/topologievergelijking per geselecteerd part;
-- canonical rebuild van boogcontouren, custom doorsneden en profielbewerkingen;
-- directe featurehighlighting tussen grids, 2D en 3D;
-- volledige canonical naar NC1/STEP/IFC/PDF naar canonical roundtrips;
+- exacte profielslots/copes, blinde pockets, bevels en complexe eindsneden;
+- native VTK face/edge-selectie als invoer voor featureplaatsing;
+- automatische exacte contactlijnextractie uit BREP/assemblies;
+- NC1/STEP/IFC-machineadapters en roundtrips voor de nieuwe featuretypen;
 - performance- en geheugentests voor interactieve bewerking van grote modellen;
 - vrijgave van productie-export;
 - nieuwe Windows installer van deze wijziging en test op een schone Windows x64-machine.
