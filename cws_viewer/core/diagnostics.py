@@ -88,6 +88,8 @@ class ViewerRuntimeReport:
         required = {"cadquery", "OCP", "casadi", "fitz", "matplotlib"}
         if os.environ.get("CWS_REQUIRE_IFCOPENSHELL") == "1":
             required.add("ifcopenshell")
+        if os.environ.get("CWS_REQUIRE_VIEWER_GUI") == "1":
+            required.update({"PySide6", "vtk"})
         status = {probe.module: probe.status for probe in self.probes}
         return all(status.get(module) == "ok" for module in required)
 

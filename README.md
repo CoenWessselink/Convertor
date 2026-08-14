@@ -1,8 +1,12 @@
-# SteelConverter - CWS Convertor 0.8.3-beta-dev implementation snapshot
+# SteelConverter - CWS Convertor 0.9.0-alpha-dev implementation snapshot
+
+De V9-hoofdapp gebruikt **Viewer / Project** als centrale cockpit. De elf werkruimtes zijn: Inlezen, Viewer / Project, Bewerken, Converteren, Controleren, PDF / Tekening, Profielen, Tekeningen, Scribing, Hoeveelheden / Excel en Exporteren. Selecties uit tree, 3D-viewer en property grid blijven via canonieke entity-ID's aan de aangesloten bestaande functies gekoppeld.
+
+Start de geintegreerde desktopapp met `CWS_Convertor_App.py`. De klassieke UI blijft tijdelijk beschikbaar met `CWS_Convertor_App.py --legacy-ui`. De standaard onderdeeltekening gebruikt de Tasche A3-layout. Zie `docs/UI_V9_REFACTOR_AUDIT_2026-08-14.md` voor de functiemapping, regressietests en expliciete UI-integratiegaten.
 
 **SteelConverter** is de leidende en zichtbare productnaam. De huidige
 compatibele executable-, installer-, project- en registeridentifiers blijven
-voor versie 0.8.3-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
+voor versie 0.9.0-alpha-dev bewust `CWS_Convertor`, zodat bestaande projecten,
 scripts en upgrades blijven werken.
 
 SteelConverter is een local-first productieomgeving voor veilige conversie en
@@ -13,7 +17,7 @@ productievoorbereiding van:
 - hoeveelheden en Excel;
 - complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie **0.8.3-beta-dev** bouwt verder op de bewezen conversiekern en de
+Versie **0.9.0-alpha-dev** bouwt verder op de bewezen conversiekern en de
 semantische IFC-/STEP-projectimport. De actuele projectstructuur gebruikt
 **Project Model 2.5**.
 

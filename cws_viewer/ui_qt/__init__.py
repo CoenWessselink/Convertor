@@ -19,6 +19,11 @@ __all__ = [
     "run_real_project_viewer",
     "create_harness_window",
     "run_harness",
+    "RevisionComparePanel",
+    "ExactComparePanel",
+    "ProfessionalPropertyGridPanel",
+    "VirtualProjectTableModel",
+    "FieldChooserDialog",
 ]
 
 
@@ -41,6 +46,17 @@ def __getattr__(name: str) -> Any:
     if name in {"RealProjectViewerWindow", "run_real_project_viewer"}:
         from .project_viewer import RealProjectViewerWindow, run_real_project_viewer
         return {"RealProjectViewerWindow": RealProjectViewerWindow, "run_real_project_viewer": run_real_project_viewer}[name]
+
+    if name in {"ProfessionalPropertyGridPanel", "VirtualProjectTableModel", "FieldChooserDialog"}:
+        from .property_grid import FieldChooserDialog, ProfessionalPropertyGridPanel, VirtualProjectTableModel
+        return {
+            "ProfessionalPropertyGridPanel": ProfessionalPropertyGridPanel,
+            "VirtualProjectTableModel": VirtualProjectTableModel,
+            "FieldChooserDialog": FieldChooserDialog,
+        }[name]
+    if name in {"RevisionComparePanel", "ExactComparePanel"}:
+        from .revision_compare import ExactComparePanel, RevisionComparePanel
+        return {"RevisionComparePanel": RevisionComparePanel, "ExactComparePanel": ExactComparePanel}[name]
     if name in {"create_harness_window", "run_harness"}:
         from .technology_harness import create_harness_window, run_harness
         return {"create_harness_window": create_harness_window, "run_harness": run_harness}[name]

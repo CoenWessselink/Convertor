@@ -29,6 +29,13 @@ class PartDrawingStandardTests(unittest.TestCase):
             part.product.project_number = "WE-2024-118"
             part.product.client = "Tasche Staalbouw"
             part.header.position_number = "B-102"
+            part.header.profile = "HEA300"
+            part.header.profile_type = "I"
+            part.header.dim1 = 300.0
+            part.header.dim2 = 300.0
+            part.header.dim3 = 16.0
+            part.header.dim4 = 10.0
+            part.drawing.title_block["subject"] = "BEAM HEA300 - 6250"
             part.holes = [
                 CanonicalHole(face="v", x=40.0, q=45.0, diameter=22.0),
                 CanonicalHole(face="v", x=100.0, q=45.0, diameter=22.0),
@@ -40,15 +47,27 @@ class PartDrawingStandardTests(unittest.TestCase):
             document = fitz.open(target)
             try:
                 self.assertEqual(1, document.page_count)
-                text = document[0].get_text()
-                images = document[0].get_images(full=True)
+                page = document[0]
+                text = page.get_text()
+                images = page.get_images(full=True)
+                self.assertAlmostEqual(420.0, page.rect.width * 25.4 / 72.0, delta=0.2)
+                self.assertAlmostEqual(297.0, page.rect.height * 25.4 / 72.0, delta=0.2)
             finally:
                 document.close()
 
             for required_text in (
                 "ELEVATION / MAIN VIEW",
+                "BEAM HEA300 - 6250",
+                "PLAN - TOP FLANGE",
+                "PLAN - BOTTOM FLANGE",
+                "DETAIL - HOLE H1",
+                "SECTION A-A",
+                "3D VIEW - REVIEW",
                 "MATERIAL / PROFILE",
+                "BILL OF MATERIALS",
                 "HOLES",
+                "CUTS",
+                "GENERAL NOTES",
                 "X INCR.",
                 "X ABS.",
                 "Y ABS.",

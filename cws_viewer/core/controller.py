@@ -5,7 +5,8 @@ project geometry and never decides production readiness.
 """
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
+import copy
 import math
 from pathlib import Path
 from typing import Callable, Iterable, TypeVar
@@ -63,14 +64,23 @@ from cws_viewer.contracts.workspace import (
     VisibilitySet,
     WorkspaceRestoreReport,
 )
+from cws_viewer.core.explode import radial_explode
 from cws_viewer.core.scene_index import SceneIndex
 from cws_viewer.core.session import ViewerSession
 from cws_viewer.core.workspace_store import ViewerWorkspaceStore
 from cws_viewer.errors import ViewerError, ViewerErrorCode
 from cws_viewer.math3d import BoundingBox, Rgba, Vector3
+from cws_viewer.measurements import MeasurementCollection, MeasurementRecord, MeasurementSettings
 from cws_viewer.rendering.contracts import CoreRenderBackend
 
 E = TypeVar("E", bound=ViewerEvent)
+
+
+@dataclass(slots=True)
+class _ViewerHistoryState:
+    session: ViewerSession
+    measurements: MeasurementCollection
+    measurement_settings: MeasurementSettings
 
 
 class ViewerCoreController(ViewerController):
@@ -93,6 +103,12 @@ class ViewerCoreController(ViewerController):
         self._active_viewpoint_id: str | None = None
         self._workspace_store = ViewerWorkspaceStore()
         self._event_bus = EventBus()
+        self._undo_stack: list[_ViewerHistoryState] = []
+        self._redo_stack: list[_ViewerHistoryState] = []
+        self._history_limit = 100
+        self._measurements = MeasurementCollection()
+        self._measurement_settings = MeasurementSettings()
+        self._active_measurement_kind: MeasurementKind | None = None
         self._disposed = False
         self._width = int(width)
         self._height = int(height)
@@ -166,6 +182,53 @@ class ViewerCoreController(ViewerController):
             )
         )
 
+    def _history_state(self) -> _ViewerHistoryState:
+        return _ViewerHistoryState(
+            session=copy.deepcopy(self._session),
+            measurements=copy.deepcopy(self._measurements),
+            measurement_settings=copy.deepcopy(self._measurement_settings),
+        )
+
+    def _push_history(self) -> None:
+        """Save display/review-only state before a user-visible mutation."""
+        self._undo_stack.append(self._history_state())
+        if len(self._undo_stack) > self._history_limit:
+            del self._undo_stack[0]
+        self._redo_stack.clear()
+
+    def _restore_history_state(self, state: _ViewerHistoryState) -> None:
+        self._session = copy.deepcopy(state.session)
+        self._measurements = copy.deepcopy(state.measurements)
+        self._measurement_settings = copy.deepcopy(state.measurement_settings)
+        if self._index is not None:
+            self._backend.set_camera(self._session.camera)
+            self._sync_display(render=True)
+            self._emit_selection()
+            self._emit_visibility()
+            self._event_bus.emit(
+                SectionChanged(section_plane_ids=tuple(sorted(self._session.section_planes)))
+            )
+
+    def can_undo(self) -> bool:
+        return bool(self._undo_stack)
+
+    def can_redo(self) -> bool:
+        return bool(self._redo_stack)
+
+    def undo_viewer(self) -> bool:
+        if not self._undo_stack:
+            return False
+        self._redo_stack.append(self._history_state())
+        self._restore_history_state(self._undo_stack.pop())
+        return True
+
+    def redo_viewer(self) -> bool:
+        if not self._redo_stack:
+            return False
+        self._undo_stack.append(self._history_state())
+        self._restore_history_state(self._redo_stack.pop())
+        return True
+
     def capabilities(self):
         self._ensure_alive()
         return self._backend.capabilities()
@@ -177,6 +240,9 @@ class ViewerCoreController(ViewerController):
             index = SceneIndex.build(scene)
             self._index = index
             self._session.reset_for_scene(index)
+            self._undo_stack.clear()
+            self._redo_stack.clear()
+            self._measurements = MeasurementCollection()
             self._viewpoints.clear()
             self._visibility_sets.clear()
             self._active_viewpoint_id = None
@@ -240,6 +306,9 @@ class ViewerCoreController(ViewerController):
         self._backend.clear_scene()
         self._index = None
         self._session = ViewerSession()
+        self._undo_stack.clear()
+        self._redo_stack.clear()
+        self._measurements = MeasurementCollection()
         self._compare = None
         self._viewpoints.clear()
         self._visibility_sets.clear()
@@ -276,12 +345,14 @@ class ViewerCoreController(ViewerController):
 
     def hide(self, ids: Iterable[str]) -> None:
         values = self._normalise_ids(ids)
+        self._push_history()
         self._session.hidden.update(values)
         self._sync_display(render=True)
         self._emit_visibility()
 
     def show(self, ids: Iterable[str]) -> None:
         index = self._ensure_index()
+        self._push_history()
         values = self._normalise_ids(ids)
         expanded = set(index.descendants(values, include_self=True, renderable_only=False))
         self._session.hidden.difference_update(expanded)
@@ -290,6 +361,7 @@ class ViewerCoreController(ViewerController):
 
     def show_all(self) -> None:
         index = self._ensure_index()
+        self._push_history()
         self._session.hidden = {node.node_id for node in index.scene.nodes if not node.visible}
         self._session.isolation = ()
         self._session.ghost_context = False
@@ -298,6 +370,7 @@ class ViewerCoreController(ViewerController):
 
     def isolate(self, ids: Iterable[str], *, ghost_context: bool = False) -> None:
         values = self._normalise_ids(ids)
+        self._push_history()
         self._session.isolation = values
         self._session.ghost_context = bool(ghost_context)
         self._sync_display(render=True)
@@ -607,8 +680,10 @@ class ViewerCoreController(ViewerController):
 
     def add_section_plane(self, plane: SectionPlane) -> str:
         self._ensure_index()
+        self._push_history()
         stored = plane.with_id()
         self._session.section_planes[stored.plane_id] = stored
+        self._sync_display(render=True)
         self._event_bus.emit(
             SectionChanged(section_plane_ids=tuple(sorted(self._session.section_planes)))
         )
@@ -622,37 +697,89 @@ class ViewerCoreController(ViewerController):
                 code=ViewerErrorCode.NODE_NOT_FOUND,
                 context={"plane_id": plane_id},
             )
+        self._push_history()
         self._session.section_planes[plane_id] = plane.with_id(plane_id)
+        self._sync_display(render=True)
         self._event_bus.emit(
             SectionChanged(section_plane_ids=tuple(sorted(self._session.section_planes)))
         )
 
     def remove_section_plane(self, plane_id: str) -> None:
         self._ensure_index()
-        self._session.section_planes.pop(plane_id, None)
+        if plane_id in self._session.section_planes:
+            self._push_history()
+            self._session.section_planes.pop(plane_id, None)
+            self._sync_display(render=True)
         self._event_bus.emit(
             SectionChanged(section_plane_ids=tuple(sorted(self._session.section_planes)))
         )
 
     def set_clipping_box(self, box: ClippingBox | None) -> None:
         self._ensure_index()
+        self._push_history()
         self._session.clipping_box = box
+        self._sync_display(render=True)
+
+    def explode(self, ids: Iterable[str], distance_mm: float = 250.0) -> tuple[str, ...]:
+        index = self._ensure_index()
+        requested = self._normalise_ids(ids)
+        affected = index.descendants(requested, include_self=True, renderable_only=True)
+        if not affected:
+            return ()
+        self._push_history()
+        bounds = {node_id: index.world_bounds_by_node[node_id] for node_id in affected}
+        self._session.explode_offsets.update(radial_explode(bounds, float(distance_mm)))
+        self._sync_display(render=True)
+        return affected
+
+    def reset_explode(self, ids: Iterable[str] | None = None) -> tuple[str, ...]:
+        self._ensure_index()
+        if ids is None:
+            affected = tuple(self._session.explode_offsets)
+        else:
+            requested = self._normalise_ids(ids)
+            affected = self.index.descendants(requested, include_self=True, renderable_only=True)
+        if affected:
+            self._push_history()
+            for node_id in affected:
+                self._session.explode_offsets.pop(node_id, None)
+            self._sync_display(render=True)
+        return tuple(affected)
 
     def begin_measurement(self, kind: MeasurementKind) -> None:
-        raise ViewerError(
-            f"Measurementtool {MeasurementKind(kind).value} volgt in Viewer V5",
-            code=ViewerErrorCode.TOOL_UNSUPPORTED,
-        )
+        self._ensure_index()
+        self._active_measurement_kind = MeasurementKind(kind)
 
     def cancel_tool(self) -> None:
         self._ensure_alive()
+        self._active_measurement_kind = None
+
+    def add_measurement(self, record: MeasurementRecord) -> MeasurementRecord:
+        self._ensure_index()
+        self._push_history()
+        return self._measurements.add(record)
+
+    def list_measurements(self) -> tuple[MeasurementRecord, ...]:
+        return self._measurements.values()
+
+    def set_measurement_settings(self, settings: MeasurementSettings) -> None:
+        self._ensure_index()
+        self._push_history()
+        self._measurement_settings = settings
+
+    def get_measurement_settings(self) -> MeasurementSettings:
+        return self._measurement_settings
 
     def remove_measurement(self, measurement_id: str) -> None:
-        raise ViewerError(
-            "Measurements volgen in Viewer V5",
-            code=ViewerErrorCode.TOOL_UNSUPPORTED,
-            context={"measurement_id": measurement_id},
-        )
+        self._ensure_index()
+        if str(measurement_id) not in self._measurements.records:
+            raise ViewerError(
+                "Measurement bestaat niet",
+                code=ViewerErrorCode.NODE_NOT_FOUND,
+                context={"measurement_id": measurement_id},
+            )
+        self._push_history()
+        self._measurements.remove(measurement_id)
 
     def set_compare(self, compare: CompareScene | None) -> JobHandle:
         index = self._ensure_index()
@@ -832,6 +959,9 @@ class ViewerCoreController(ViewerController):
             clipping_box=self._session.clipping_box,
             viewpoints=self.list_viewpoints(),
             visibility_sets=self.list_visibility_sets(),
+            explode_offsets_by_node=tuple(sorted(self._session.explode_offsets.items())),
+            measurements=self.list_measurements(),
+            measurement_settings=self._measurement_settings,
             accuracy_mode=self._session.accuracy_mode,
             active_viewpoint_id=self._active_viewpoint_id,
         )
@@ -858,6 +988,12 @@ class ViewerCoreController(ViewerController):
         all_referenced = set(state.selected_node_ids) | set(state.hidden_node_ids) | set(state.isolation_node_ids)
         all_referenced.update(node_id for node_id, _ in state.transparency_by_node)
         all_referenced.update(node_id for node_id, _ in state.color_by_node)
+        all_referenced.update(node_id for node_id, _ in state.explode_offsets_by_node)
+        all_referenced.update(
+            anchor.node_id
+            for measurement in state.measurements
+            for anchor in measurement.anchors
+        )
         dropped = tuple(sorted(all_referenced - existing))
         self._session.camera = state.camera
         self._session.selection_level = state.selection_level
@@ -872,7 +1008,21 @@ class ViewerCoreController(ViewerController):
         self._session.display_preferences = state.display_preferences
         self._session.section_planes = {plane.plane_id: plane for plane in state.section_planes}
         self._session.clipping_box = state.clipping_box
+        self._session.explode_offsets = {
+            node_id: offset
+            for node_id, offset in state.explode_offsets_by_node
+            if node_id in existing
+        }
         self._session.accuracy_mode = state.accuracy_mode
+        self._measurements = MeasurementCollection(
+            records={item.measurement_id: item for item in state.measurements}
+        )
+        current_hashes = {
+            node.node_id: str(node.geometry_hash or "")
+            for node in index.scene.nodes
+        }
+        invalidated_measurements = self._measurements.invalidate_for_geometry(current_hashes)
+        self._measurement_settings = state.measurement_settings
         self._viewpoints = {item.viewpoint_id: item for item in state.viewpoints}
         self._visibility_sets = {item.visibility_set_id: item for item in state.visibility_sets}
         self._active_viewpoint_id = state.active_viewpoint_id
@@ -890,6 +1040,9 @@ class ViewerCoreController(ViewerController):
             colors_restored=len(self._session.colors),
             viewpoints_restored=len(self._viewpoints),
             visibility_sets_restored=len(self._visibility_sets),
+            explode_offsets_restored=len(self._session.explode_offsets),
+            measurements_restored=len(self._measurements.records),
+            measurements_invalidated=len(invalidated_measurements),
             dropped_node_ids=dropped,
         )
         self._event_bus.emit(

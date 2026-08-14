@@ -208,7 +208,7 @@ class CanonicalDrawingData:
     views: list[dict[str, Any]] = field(default_factory=list)
     projection_method: str = "first_angle"
     scale: str = ""
-    sheet_format: str = "A4"
+    sheet_format: str = "A3"
     orientation: str = "landscape"
     sheet_number: int = 1
     sheet_count: int = 1

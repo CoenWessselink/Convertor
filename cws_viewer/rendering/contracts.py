@@ -8,13 +8,15 @@ from typing import Protocol
 from cws_viewer.contracts.scene import ProjectScene
 from cws_viewer.contracts.state import (
     CameraState,
+    ClippingBox,
     PickResult,
     ScreenshotOptions,
+    SectionPlane,
     ViewerCapabilities,
     ViewerDisplayPreferences,
 )
 from cws_viewer.core.scene_index import SceneIndex
-from cws_viewer.math3d import Rgba
+from cws_viewer.math3d import Rgba, Vector3
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +36,9 @@ class RenderState:
     display_preferences: ViewerDisplayPreferences = field(
         default_factory=ViewerDisplayPreferences
     )
+    section_planes: tuple[SectionPlane, ...] = ()
+    clipping_box: ClippingBox | None = None
+    explode_offsets_by_node: tuple[tuple[str, Vector3], ...] = ()
 
     @property
     def visible_set(self) -> frozenset[str]:
@@ -54,6 +59,10 @@ class RenderState:
     @property
     def colors(self) -> dict[str, Rgba]:
         return dict(self.color_by_node)
+
+    @property
+    def explode_offsets(self) -> dict[str, Vector3]:
+        return dict(self.explode_offsets_by_node)
 
 
 class CoreRenderBackend(Protocol):

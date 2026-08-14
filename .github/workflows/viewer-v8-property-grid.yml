@@ -1,0 +1,83 @@
+name: CWS Viewer V8 Windows professional property grid gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/cws-viewer-v8-property-grid]
+
+jobs:
+  windows-v8:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install pinned dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-v8.lock.txt
+
+      - name: Compile and run complete source regression
+        shell: pwsh
+        run: |
+          python -m compileall -q .
+          Get-ChildItem tests\*_smoke.py | Sort-Object Name | ForEach-Object {
+            Write-Host "RUN $($_.Name)"
+            python $_.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          python validation\run_viewer_v8_property_grid.py --allow-missing-project
+          python viewer_v8_app.py --self-test --output source_runtime.json
+          python viewer_v8_app.py --gui-smoke --output source_gui.json
+
+      - name: Build PyInstaller onedir
+        shell: pwsh
+        run: pyinstaller --noconfirm --clean CWS_Viewer_V8.spec
+
+      - name: Verify packaged native runtime and real Qt/OCCT GUI
+        shell: pwsh
+        env:
+          CWS_REQUIRE_IFCOPENSHELL: '1'
+        run: |
+          dist\CWS_Viewer_V8\CWS_Viewer_V8.exe --self-test --output packaged_runtime.json
+          dist\CWS_Viewer_V8\CWS_Viewer_V8.exe --gui-smoke --output packaged_gui.json
+          python tests\windows_native_runtime_smoke.py > packaged_source_probe.json
+
+      - name: Build portable ZIP and retest without Python on PATH
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\CWS_Viewer_V8\* -DestinationPath CWS_Viewer_V8_Windows_x64.zip -Force
+          Expand-Archive CWS_Viewer_V8_Windows_x64.zip portable-test -Force
+          $originalPath = $env:PATH
+          $env:PATH = "$env:SystemRoot\system32;$env:SystemRoot"
+          portable-test\CWS_Viewer_V8.exe --self-test --output portable_runtime.json
+          portable-test\CWS_Viewer_V8.exe --gui-smoke --output portable_gui.json
+          $env:PATH = $originalPath
+          $hash = (Get-FileHash CWS_Viewer_V8_Windows_x64.zip -Algorithm SHA256).Hash.ToLower()
+          "$hash  CWS_Viewer_V8_Windows_x64.zip" | Set-Content SHA256SUMS.txt
+          Get-ChildItem dist\CWS_Viewer_V8 -Recurse | Measure-Object -Property Length -Sum | ConvertTo-Json | Set-Content packaged_size.json
+
+      - name: Upload Windows evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_V8_Windows_x64
+          path: |
+            CWS_Viewer_V8_Windows_x64.zip
+            SHA256SUMS.txt
+            packaged_size.json
+            source_runtime.json
+            source_gui.json
+            packaged_runtime.json
+            packaged_gui.json
+            portable_runtime.json
+            portable_gui.json
+            validation/viewer_v8/**
+            validation/viewer_v8_full_smokes/**
+          retention-days: 30

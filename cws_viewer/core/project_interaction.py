@@ -36,12 +36,17 @@ class ProjectInteractionModel:
         project: object,
         *,
         mesh_repository: object | None = None,
+        revision_report: object | None = None,
     ) -> None:
         self.controller = controller
         self.project = project
         self.search_index = ViewerSearchIndex(controller.index.scene, project)
         self.property_provider = ProjectPropertyProvider(project)
-        self.grid_model = ProjectGridModel(project)
+        self.grid_model = ProjectGridModel(
+            project,
+            scene=controller.index.scene,
+            revision_report=revision_report,
+        )
         self.colorizer = ProjectColorizer(project, controller.index)
         self.accuracy_provider = ViewerAccuracyProvider(
             controller.index, project, mesh_repository
@@ -85,9 +90,20 @@ class ProjectInteractionModel:
             origin=self._origin,
         )
         self._selection = current
+        self.refresh_grid_scope()
         for listener in tuple(self._listeners):
             listener(current)
         self._origin = "viewer"
+
+    def refresh_grid_scope(self) -> None:
+        """Refresh all/visible/selected grid scopes from stable viewer IDs."""
+        index = self.controller.index
+        visible_node_ids, _ghosted = self.controller.session.visible_and_ghosted(index)
+        visible_entity_ids = tuple(index.node(node_id).entity_id for node_id in visible_node_ids)
+        self.grid_model.set_scope_state(
+            visible_entity_ids=visible_entity_ids,
+            selected_entity_ids=self._selection.entity_ids,
+        )
 
     def node_for_entity(self, entity_id: str) -> str:
         hit = self._node_by_entity.get(str(entity_id))

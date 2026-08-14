@@ -1,0 +1,46 @@
+{
+  "created_at": "2026-08-14T15:04:43.025736+00:00",
+  "files": [
+    {
+      "path": "cws_convertor/project/canonical_rebuild.py",
+      "sha256": "e88f355824cbf9d4418a29250c98a12b1da62966efac01f0fced70fdfc77fd5a",
+      "size": 18783
+    },
+    {
+      "path": "cws_convertor/project/workbench.py",
+      "sha256": "ca3a99f1260a747289b263787e8d629581ee61fb5d7c9f5693ad8b85b5ef172c",
+      "size": 36066
+    },
+    {
+      "path": "cws_convertor/project/model.py",
+      "sha256": "28051fd4963b7585385f412cf4b3a74027baf668711b356bc5a9c89879d1f77b",
+      "size": 100164
+    },
+    {
+      "path": "cws_convertor/project/service.py",
+      "sha256": "f77a21de958b1579e18c8a4a636d6adfc4ee364e27ee79344b8e59f806ffa60a",
+      "size": 51987
+    },
+    {
+      "path": "cws_convertor/project/__init__.py",
+      "sha256": "5ca7a9c2885993a61d8c4c0d35e90b4e533df8df6c4a4db029e81ea338f4f388",
+      "size": 2075
+    },
+    {
+      "path": "cws_convertor/ui/part_workbench.py",
+      "sha256": "aa80ee8134f0fcc7e577666daf88cefbbafc838af1b169f0a49dccd03273a5ad",
+      "size": 55582
+    },
+    {
+      "path": "project_tab.py",
+      "sha256": "64e2d1d4e3ecaefd7d4a46c8124b806749cfcc5852f81f09f353d136b5bd9ab6",
+      "size": 63085
+    }
+  ],
+  "note": "This is not a remote Git merge and does not claim the remote branch contains V9.",
+  "observed_remote_head": "ba6744a",
+  "remote_branch": "v0.8-codex-handover",
+  "remote_repository": "CoenWessselink/Convertor",
+  "schema": "cws-codex-main-snapshot-sync-1.0",
+  "sync_method": "verified current-file snapshots from public GitHub branch; local V8 Git history retained"
+}

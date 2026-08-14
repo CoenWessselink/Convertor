@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://cws.example/schemas/viewer-workspace-1.0.schema.json",
+  "$id": "https://cws.example/schemas/viewer-workspace-1.1.schema.json",
   "title": "CWS Viewer Workspace 1.1",
   "type": "object",
   "additionalProperties": false,

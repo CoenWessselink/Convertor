@@ -14,6 +14,7 @@ from uuid import uuid4
 from cws_viewer.core.serialization import parse_semver, stable_sha256
 from cws_viewer.errors import ViewerError, ViewerErrorCode
 from cws_viewer.math3d import BoundingBox, Rgba, Vector3
+from cws_viewer.measurements import MeasurementRecord, MeasurementSettings
 from cws_viewer.version import VIEWER_STATE_SCHEMA_VERSION
 
 from .enums import ProjectionType, SelectionLevel
@@ -303,6 +304,9 @@ class ViewerWorkspaceState:
     clipping_box: ClippingBox | None
     viewpoints: tuple[Viewpoint, ...]
     visibility_sets: tuple[VisibilitySet, ...]
+    explode_offsets_by_node: tuple[tuple[str, Vector3], ...] = ()
+    measurements: tuple[MeasurementRecord, ...] = ()
+    measurement_settings: MeasurementSettings = MeasurementSettings()
     accuracy_mode: bool = False
     active_viewpoint_id: str | None = None
     created_at: str = ""
@@ -318,6 +322,16 @@ class ViewerWorkspaceState:
         object.__setattr__(self, "section_planes", tuple(self.section_planes))
         object.__setattr__(self, "viewpoints", tuple(self.viewpoints))
         object.__setattr__(self, "visibility_sets", tuple(self.visibility_sets))
+        object.__setattr__(
+            self,
+            "explode_offsets_by_node",
+            tuple((str(node_id), offset if isinstance(offset, Vector3) else _vec(offset)) for node_id, offset in self.explode_offsets_by_node),
+        )
+        object.__setattr__(self, "measurements", tuple(self.measurements))
+        if not isinstance(self.measurement_settings, MeasurementSettings):
+            object.__setattr__(
+                self, "measurement_settings", MeasurementSettings.from_dict(self.measurement_settings)
+            )
         now = utc_now_iso()
         if not self.created_at:
             object.__setattr__(self, "created_at", now)
@@ -347,6 +361,12 @@ class ViewerWorkspaceState:
             "clipping_box": clipping_to_dict(self.clipping_box),
             "viewpoints": [viewpoint_to_dict(item) for item in self.viewpoints],
             "visibility_sets": [item.to_dict() for item in self.visibility_sets],
+            "explode_offsets": [
+                {"node_id": node_id, "offset": _vec_dict(offset)}
+                for node_id, offset in self.explode_offsets_by_node
+            ],
+            "measurements": [item.to_dict() for item in self.measurements],
+            "measurement_settings": self.measurement_settings.to_dict(),
             "accuracy_mode": self.accuracy_mode,
             "active_viewpoint_id": self.active_viewpoint_id,
             "created_at": self.created_at,
@@ -387,6 +407,18 @@ class ViewerWorkspaceState:
                     f"Dubbele node ID in {label}",
                     code=ViewerErrorCode.SCENE_DUPLICATE_ID,
                 )
+        explode_ids = [node_id for node_id, _ in self.explode_offsets_by_node]
+        if len(explode_ids) != len(set(explode_ids)):
+            raise ViewerError(
+                "Dubbele node ID in explode_offsets",
+                code=ViewerErrorCode.SCENE_DUPLICATE_ID,
+            )
+        measurement_ids = [item.measurement_id for item in self.measurements]
+        if len(measurement_ids) != len(set(measurement_ids)):
+            raise ViewerError(
+                "Dubbele measurement ID",
+                code=ViewerErrorCode.SCENE_DUPLICATE_ID,
+            )
         viewpoint_ids = [item.viewpoint_id for item in self.viewpoints]
         visibility_ids = [item.visibility_set_id for item in self.visibility_sets]
         if len(viewpoint_ids) != len(set(viewpoint_ids)) or len(visibility_ids) != len(set(visibility_ids)):
@@ -425,6 +457,14 @@ class ViewerWorkspaceState:
             clipping_box=clipping_from_dict(value.get("clipping_box")),
             viewpoints=tuple(viewpoint_from_dict(item) for item in value.get("viewpoints", ())),
             visibility_sets=tuple(VisibilitySet.from_dict(item) for item in value.get("visibility_sets", ())),
+            explode_offsets_by_node=tuple(
+                (str(item["node_id"]), _vec(item["offset"]))
+                for item in value.get("explode_offsets", ())
+            ),
+            measurements=tuple(
+                MeasurementRecord.from_dict(item) for item in value.get("measurements", ())
+            ),
+            measurement_settings=MeasurementSettings.from_dict(value.get("measurement_settings")),
             accuracy_mode=bool(value.get("accuracy_mode", False)),
             active_viewpoint_id=(
                 None if value.get("active_viewpoint_id") is None else str(value["active_viewpoint_id"])
@@ -434,7 +474,22 @@ class ViewerWorkspaceState:
             state_hash=str(value.get("state_hash", "")),
         )
         if verify:
-            state.validate()
+            missing_v11_fields = any(
+                name not in value
+                for name in ("explode_offsets", "measurements", "measurement_settings")
+            )
+            if missing_v11_fields:
+                legacy_payload = dict(value)
+                supplied_hash = str(legacy_payload.pop("state_hash", ""))
+                if supplied_hash != stable_sha256(legacy_payload):
+                    state.validate()
+                else:
+                    # Normalize a historical implementation of schema 1.1 that
+                    # omitted the already documented V5 display fields.
+                    state = replace(state, state_hash=state.calculate_hash())
+                    state.validate()
+            else:
+                state.validate()
         return state
 
 
@@ -449,6 +504,9 @@ class WorkspaceRestoreReport:
     colors_restored: int
     viewpoints_restored: int
     visibility_sets_restored: int
+    explode_offsets_restored: int = 0
+    measurements_restored: int = 0
+    measurements_invalidated: int = 0
     dropped_node_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -462,6 +520,9 @@ class WorkspaceRestoreReport:
             "colors_restored": self.colors_restored,
             "viewpoints_restored": self.viewpoints_restored,
             "visibility_sets_restored": self.visibility_sets_restored,
+            "explode_offsets_restored": self.explode_offsets_restored,
+            "measurements_restored": self.measurements_restored,
+            "measurements_invalidated": self.measurements_invalidated,
             "dropped_node_ids": list(self.dropped_node_ids),
         }
 

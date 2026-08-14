@@ -3,7 +3,7 @@ setlocal EnableExtensions
 set PYTHONUTF8=1
 cd /d "%~dp0"
 
-set "CWS_VERSION=0.8.3-beta-dev"
+set "CWS_VERSION=0.9.0-alpha-dev"
 set "CWS_DIST=CWS_Convertor"
 set "CWS_RESULTS=%CD%\validation\results\windows-runtime"
 set "CWS_PORTABLE=%TEMP%\CWS_Convertor_Portable_Clean"
@@ -24,13 +24,10 @@ echo [3/9] Bronregressies, native selftest en GUI-smoke uitvoeren...
 set "PYTHONPATH=%CD%"
 if not exist "%CWS_RESULTS%" mkdir "%CWS_RESULTS%"
 ".venv-build\Scripts\python.exe" -m compileall -q . || goto :error
-for %%F in (tests\*_smoke.py) do (
-    echo   %%~nxF
-    ".venv-build\Scripts\python.exe" "%%F" || goto :error
-)
+".venv-build\Scripts\python.exe" validation\run_all_smokes_v9.py --headless-windows --output "%CWS_RESULTS%\source-smokes" || goto :error
 ".venv-build\Scripts\python.exe" cli.py --version || goto :error
-".venv-build\Scripts\python.exe" app.py --self-test --output "%CWS_RESULTS%\source-native-selftest.json" || goto :error
-".venv-build\Scripts\python.exe" app.py --gui-smoke --output "%CWS_RESULTS%\source-gui-smoke.json" || goto :error
+".venv-build\Scripts\python.exe" CWS_Convertor_App.py --self-test --output "%CWS_RESULTS%\source-native-selftest.json" || goto :error
+".venv-build\Scripts\python.exe" CWS_Convertor_App.py --gui-smoke --output "%CWS_RESULTS%\source-gui-smoke.json" || goto :error
 ".venv-build\Scripts\python.exe" validation\run_phase_b_progressive_loading.py --output "%CWS_RESULTS%\source-phase-b-progressive-loading.json" || goto :error
 
 echo [4/9] Schone PyInstaller onedir-build maken...

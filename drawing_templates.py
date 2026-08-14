@@ -32,7 +32,7 @@ class DrawingTemplate:
     company_name: str = "Tasche Staalbouw"
     company_subtitle: str = "Albergen - Fleringen"
     logo_path: str = field(default_factory=_default_logo_path)
-    sheet_format: str = "A4"
+    sheet_format: str = "A3"
     orientation: str = "landscape"
     projection_method: str = "first-angle"
     decimal_places: int = 1

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
 import tempfile
 import time
@@ -25,6 +26,10 @@ def _rectangle(width: float, height: float) -> list[dict]:
 
 
 class ViewerV6TkExactIntegrationTests(unittest.TestCase):
+    @unittest.skipIf(
+        os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+        "Headless Windows CI heeft geen stabiele Tk/OCCT-windowcontext",
+    )
     def test_integrated_part_workbench_opens_owner_source_and_canonical_brep(self) -> None:
         import cadquery as cq
 

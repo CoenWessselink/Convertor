@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0-alpha-dev - V9 viewer, centrale werkruimtes en A3-tekening
+
+- V9 Viewer componentgewijs geintegreerd met behoud van projectmodel 2.5 en de bestaande Part Workbench.
+- Hoofdschil geordend in elf werkruimtes met Viewer / Project als centrale selectie- en actiecontext.
+- Contextacties toegevoegd aan modeltree, 3D-viewer en property grid; selectie wordt doorgegeven aan converter, PDF, profielen, tekeningen, scribing, hoeveelheden en export.
+- Onderdeel-PDF vernieuwd naar Tasche A3-standaard met elevatie, planzichten, doorsnede, gatdetail, 3D-review en fabricagetabellen.
+- Horizontale maten blijven incrementeel plus absoluut; verticale maten absoluut; alle gaten worden geidentificeerd en gemaatvoerd.
+- Optimalisatie is als `UI integration gap` vastgelegd omdat de huidige backend geen solver aanbiedt.
+
 ## 0.8.3-beta-dev - Released production packages and drawings
 
 - Viewer V0-V6 is integrated into the existing CWS Convertor main application

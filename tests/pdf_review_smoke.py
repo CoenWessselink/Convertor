@@ -103,7 +103,7 @@ class CanonicalSchemaTests(unittest.TestCase):
         self.assertEqual(restored.schema_version, "1.0")
         self.assertEqual(restored.part_id, "LEGACY")
         self.assertEqual(restored.header.profile, "STRIP5*120")
-        self.assertEqual(restored.drawing.sheet_format, "A4")
+        self.assertEqual(restored.drawing.sheet_format, "A3")
 
     def test_geometry_hash_changes_only_when_production_geometry_changes(self) -> None:
         part = CanonicalPart(part_id="HASH", header=CanonicalHeader(profile="B", length=100.0))

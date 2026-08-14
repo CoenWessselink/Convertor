@@ -9,7 +9,7 @@ class ViewerV6WindowsConfigTests(unittest.TestCase):
     def test_pyinstaller_collects_native_exact_stack(self):
         text=(ROOT/'CWS_Convertor.spec').read_text(encoding='utf-8')
         for token in (
-            'app.py','PySide6','vtkmodules','cadquery','OCP','casadi',
+            'CWS_Convertor_App.py','PySide6','vtkmodules','cadquery','OCP','casadi',
             'ifcopenshell','fitz','pypdf','reportlab','profiles.json','materials.json',
             'pyi_rth_cws_native_dll_path.py','collect_submodules("cws_viewer")',
         ):
@@ -18,8 +18,9 @@ class ViewerV6WindowsConfigTests(unittest.TestCase):
     def test_workflow_runs_source_packaged_and_portable_gui_runtime(self):
         text=(ROOT/'.github'/'workflows'/'build-windows-exe.yml').read_text(encoding='utf-8')
         for token in (
-            'app.py --self-test',
-            'app.py --gui-smoke',
+            'CWS_Convertor_App.py --self-test',
+            'CWS_Convertor_App.py --gui-smoke',
+            'run_all_smokes_v9.py',
             'packaged_runtime_smoke.py',
             'CWS_Convertor_Portable_',
             'Install application silently',

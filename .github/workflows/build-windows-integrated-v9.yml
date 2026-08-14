@@ -1,0 +1,152 @@
+name: Build CWS Convertor V9 integrated Windows release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/viewer-v0-v6-integration
+      - feature/cws-viewer-v9-main-integration
+      - v0.8-codex-handover
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-package:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      PYTHONUTF8: "1"
+      QT_QPA_PLATFORM: windows
+      CWS_REQUIRE_VIEWER_GUI: "1"
+      CWS_REQUIRE_IFCOPENSHELL: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+          cache: pip
+
+      - name: Install locked dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip check
+          python -c "import casadi, cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('native source imports OK')"
+
+      - name: Compile source
+        run: python -m compileall -q .
+
+      - name: Run all smoke scripts
+        shell: pwsh
+        run: |
+          python validation/run_all_smokes_v9.py `
+            --headless-windows `
+            --output build\source-smokes
+          if ($LASTEXITCODE -ne 0) { throw "Source smoke suite failed" }
+
+      - name: Create packaged integration fixture
+        run: python CWS_Convertor_App.py --create-smoke-project build\v9-smoke.cwscproj --report build\create-project.json
+
+      - name: Source native and integrated self-test
+        run: python CWS_Convertor_App.py --self-test --project build\v9-smoke.cwscproj --require-gui-runtime --report build\source-selftest.json
+
+      - name: Source GUI smoke
+        run: python CWS_Convertor_App.py --gui-smoke --project build\v9-smoke.cwscproj --report build\source-gui-smoke.json
+
+      - name: Build PyInstaller onedir
+        run: pyinstaller --noconfirm --clean CWS_Convertor.spec
+
+      - name: Verify packaged files
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw "GUI executable missing" }
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw "CLI executable missing" }
+          Get-ChildItem dist\CWS_Convertor -Recurse | Measure-Object -Property Length -Sum | ConvertTo-Json | Out-File build\dist-size.json
+
+      - name: Packaged native and integration self-test
+        run: dist\CWS_Convertor\CWS_Convertor.exe --self-test --project build\v9-smoke.cwscproj --require-gui-runtime --report build\packaged-selftest.json
+
+      - name: Packaged GUI smoke
+        run: dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\v9-smoke.cwscproj --report build\packaged-gui-smoke.json
+
+      - name: Create and re-extract portable ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_Portable_0.9.0-alpha-dev_x64.zip -CompressionLevel Optimal
+          New-Item -ItemType Directory -Force build\portable | Out-Null
+          Expand-Archive release\CWS_Convertor_Portable_0.9.0-alpha-dev_x64.zip build\portable -Force
+
+      - name: Portable self-test without Python on PATH
+        shell: pwsh
+        run: |
+          $oldPath = $env:PATH
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          & build\portable\CWS_Convertor.exe --self-test --project build\v9-smoke.cwscproj --require-gui-runtime --report build\portable-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw "portable self-test failed" }
+          & build\portable\CWS_Convertor.exe --gui-smoke --project build\v9-smoke.cwscproj --report build\portable-gui-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "portable GUI smoke failed" }
+          $env:PATH = $oldPath
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { throw "Inno Setup not found" }
+          & $iscc installer\CWS_Convertor.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          Copy-Item dist_installer\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe release\
+
+      - name: Install silently to isolated folder
+        shell: pwsh
+        run: |
+          $installDir = "$env:RUNNER_TEMP\CWS-Convertor-V9-Installed"
+          $installer = (Resolve-Path release\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe)
+          Start-Process -FilePath $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$installDir`"" -Wait
+          if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw "installed GUI missing" }
+          "CWS_INSTALL_DIR=$installDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Installed self-test and GUI smoke without Python on PATH
+        shell: pwsh
+        run: |
+          $oldPath = $env:PATH
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          & "$env:CWS_INSTALL_DIR\CWS_Convertor.exe" --self-test --project build\v9-smoke.cwscproj --require-gui-runtime --report build\installed-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw "installed self-test failed" }
+          & "$env:CWS_INSTALL_DIR\CWS_Convertor.exe" --gui-smoke --project build\v9-smoke.cwscproj --report build\installed-gui-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw "installed GUI smoke failed" }
+          & "$env:CWS_INSTALL_DIR\CWS_Convertor_CLI.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "installed CLI failed" }
+          $env:PATH = $oldPath
+
+      - name: Uninstall and verify removal
+        shell: pwsh
+        run: |
+          $uninstaller = "$env:CWS_INSTALL_DIR\unins000.exe"
+          if (!(Test-Path $uninstaller)) { throw "uninstaller missing" }
+          Start-Process -FilePath $uninstaller -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
+          Start-Sleep -Seconds 2
+          if (Test-Path "$env:CWS_INSTALL_DIR\CWS_Convertor.exe") { throw "uninstall left GUI executable" }
+
+      - name: Generate SHA-256 manifest
+        shell: pwsh
+        run: |
+          Get-FileHash release\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii
+          Get-FileHash release\CWS_Convertor_Portable_0.9.0-alpha-dev_x64.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii -Append
+          Copy-Item build\*-selftest.json release\ -ErrorAction SilentlyContinue
+          Copy-Item build\*-gui-smoke.json release\ -ErrorAction SilentlyContinue
+          Copy-Item build\dist-size.json release\
+
+      - name: Upload integrated Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_0.9.0-alpha-dev_Windows_x64
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14

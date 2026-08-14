@@ -37,7 +37,7 @@ datas = [
     (str(ROOT / "docs"), "docs"),
     (str(ROOT / "cws_viewer" / "schemas"), "cws_viewer/schemas"),
     (str(ROOT / "cws_viewer" / "fixtures" / "data"), "cws_viewer/fixtures/data"),
-    (str(ROOT / "requirements-viewer-v6.lock.txt"), "."),
+    (str(ROOT / "requirements-viewer-v9.lock.txt"), "."),
 ]
 hiddenimports = [
     "fitz",
@@ -94,7 +94,7 @@ common = dict(
     optimize=1,
 )
 
-a_gui = Analysis([str(ROOT / "app.py")], **common)
+a_gui = Analysis([str(ROOT / "CWS_Convertor_App.py")], **common)
 pyz_gui = PYZ(a_gui.pure)
 exe_gui = EXE(
     pyz_gui,

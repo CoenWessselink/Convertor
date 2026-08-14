@@ -19,7 +19,7 @@ def main() -> int:
     spec = (ROOT / "CWS_Convertor.spec").read_text(encoding="utf-8")
     runtime_lock = (ROOT / "requirements-runtime.lock.txt").read_text(encoding="utf-8")
     runtime_hook = (ROOT / "pyinstaller_hooks" / "pyi_rth_casadi_dll_path.py").read_text(encoding="utf-8")
-    gui_entry = (ROOT / "app.py").read_text(encoding="utf-8")
+    gui_entry = (ROOT / "CWS_Convertor_App.py").read_text(encoding="utf-8")
     cli_entry = (ROOT / "cli.py").read_text(encoding="utf-8")
     packaged_smoke = (ROOT / "tests" / "packaged_runtime_smoke.py").read_text(encoding="utf-8")
 
@@ -39,8 +39,8 @@ def main() -> int:
     assert "name: CWS_Convertor_${{ env.CWS_VERSION }}_Windows_x64" in workflow
     assert "actions/checkout@v6" in workflow
     assert "actions/setup-python@v6" in workflow
-    assert 'Get-ChildItem tests -Filter "*_smoke.py"' in workflow
-    assert "Smoke script $($_.Name) failed with exit code" in workflow
+    assert "validation/run_all_smokes_v9.py" in workflow
+    assert "--headless-windows" in workflow
     assert "python tests/viewer_ci_headless_smoke.py" in workflow
     assert "run_viewer_v4_professional_controls.py" not in workflow
     assert '"assets/**"' in workflow
@@ -70,8 +70,8 @@ def main() -> int:
     assert "inspect_windows_native_dependencies.py" in workflow
     assert "WINDOWS_RELEASE_MANIFEST.json" in workflow
     assert "GITHUB_STEP_SUMMARY" in workflow
-    assert "app.py --self-test" in workflow
-    assert "app.py --gui-smoke" in workflow
+    assert "CWS_Convertor_App.py --self-test" in workflow
+    assert "CWS_Convertor_App.py --gui-smoke" in workflow
     assert "validation/run_core_phase0_baseline.py --skip-tests" in workflow
     assert "ci-core-phase0-baseline.json" in workflow
     assert "Start-Process -FilePath $installer.Path" in workflow
@@ -83,7 +83,7 @@ def main() -> int:
     assert "$installProcess.ExitCode" in workflow
     assert "$uninstallProcess.ExitCode" in workflow
     assert f'set "CWS_VERSION={APP_VERSION}"' in batch
-    assert "for %%F in (tests\\*_smoke.py)" in batch
+    assert "validation\\run_all_smokes_v9.py --headless-windows" in batch
     assert batch.count("packaged_runtime_smoke.py") == 3
     assert batch.count("/CURRENTUSER") == 1
     assert batch.count("/TASKS=fileassoc") == 1

@@ -33,7 +33,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.8.3-beta-dev
+      CWS_VERSION: 0.9.0-alpha-dev
       RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:
@@ -59,16 +59,10 @@ jobs:
         run: |
           $env:PYTHONPATH = (Get-Location).Path
           python -m compileall -q .
-          Get-ChildItem tests -Filter "*_smoke.py" |
-            Sort-Object Name |
-            ForEach-Object {
-              Write-Host "Running smoke script: $($_.Name)"
-              python $_.FullName
-              if ($LASTEXITCODE -ne 0) {
-                Write-Host "::error file=$($_.FullName)::Smoke script $($_.Name) failed with exit code $LASTEXITCODE"
-                exit $LASTEXITCODE
-              }
-            }
+          python validation/run_all_smokes_v9.py `
+            --headless-windows `
+            --output "$env:RUNTIME_RESULTS\source-smokes"
+          if ($LASTEXITCODE -ne 0) { throw "Source smoke suite faalde" }
           python cli.py --version
           python cli.py pdf-analyze --help
           python cli.py project-new --help
@@ -103,13 +97,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path $env:RUNTIME_RESULTS -Force | Out-Null
-          python app.py --self-test --output "$env:RUNTIME_RESULTS\source-native-selftest.json"
+          python CWS_Convertor_App.py --self-test --output "$env:RUNTIME_RESULTS\source-native-selftest.json"
           if ($LASTEXITCODE -ne 0) { throw "Source native self-test faalde" }
 
       - name: Source GUI smoke
         shell: pwsh
         run: |
-          python app.py --gui-smoke --output "$env:RUNTIME_RESULTS\source-gui-smoke.json"
+          python CWS_Convertor_App.py --gui-smoke --output "$env:RUNTIME_RESULTS\source-gui-smoke.json"
           if ($LASTEXITCODE -ne 0) { throw "Source GUI-smoke faalde" }
 
       - name: Record core phase 0 baseline evidence

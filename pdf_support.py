@@ -177,8 +177,8 @@ class PDFConversionResult:
 
 @dataclass
 class DrawingTemplate:
-    template_id: str = "default-a4"
-    sheet_format: str = "A4"
+    template_id: str = "tasche-a3-part-drawing"
+    sheet_format: str = "A3"
     orientation: str = "landscape"
     company_name: str = "Tasche Staalbouw"
     company_address: str = "Albergen - Fleringen"
@@ -466,8 +466,8 @@ def _fmt(value: float, decimals: int = 1) -> str:
 
 def _effective_title(part: CanonicalPart) -> str:
     for value in (
-        part.product.name,
         part.drawing.title_block.get("subject", ""),
+        part.product.name,
         part.header.position_number,
         part.header.part_number,
         part.part_id,
@@ -1015,6 +1015,270 @@ def _draw_sidebar(
         rows(y, (("-", "No holes"),), row_height=4.4 * mm)
 
 
+def _draw_fabrication_sidebar(
+    pdf: canvas.Canvas,
+    part: CanonicalPart,
+    *,
+    x: float,
+    y_top: float,
+    width: float,
+    y_bottom: float,
+) -> None:
+    """Compact fabrication tables matching the supplied Tasche sheet layout."""
+
+    def heading(y: float, text: str) -> float:
+        height = 5.3 * mm
+        pdf.setFillColorRGB(0.91, 0.93, 0.95)
+        pdf.rect(x, y - height, width, height, stroke=1, fill=1)
+        pdf.setFillColorRGB(0, 0, 0)
+        pdf.setFont("Helvetica-Bold", 6.0)
+        pdf.drawString(x + 1.4 * mm, y - 3.6 * mm, text)
+        return y - height
+
+    def two_column_rows(
+        y: float,
+        values: Sequence[tuple[str, str]],
+        *,
+        row_height: float = 4.5 * mm,
+    ) -> float:
+        split = x + width * 0.46
+        for label, value in values:
+            y -= row_height
+            pdf.rect(x, y, width, row_height, stroke=1, fill=0)
+            pdf.line(split, y, split, y + row_height)
+            pdf.setFont("Helvetica", 4.9)
+            pdf.drawString(x + 1.1 * mm, y + 1.5 * mm, str(label)[:28])
+            text = str(value or "-")
+            size = 5.1
+            while size > 3.8 and stringWidth(text, "Helvetica", size) > width * 0.52 - 2 * mm:
+                size -= 0.2
+            pdf.setFont("Helvetica", size)
+            pdf.drawString(split + 1.1 * mm, y + 1.5 * mm, text[:54])
+        return y
+
+    length = float(part.header.length or part.product.length_mm)
+    weight = float(part.header.weight or part.product.mass_each_kg)
+    y = heading(y_top, "MATERIAL / PROFILE")
+    y = two_column_rows(
+        y,
+        (
+            ("Profile", part.header.profile),
+            ("Material", part.header.material),
+            ("Standard", part.product.profile_standard),
+            ("Length", f"{_fmt(length, 2)} mm"),
+            ("Weight", f"{_fmt(weight, 2)} kg"),
+            ("Coating", part.product.coating or part.product.surface_treatment),
+        ),
+    )
+
+    y -= 3 * mm
+    y = heading(y, "BILL OF MATERIALS")
+    y = two_column_rows(
+        y,
+        ((
+            f"1 | QTY {int(part.header.quantity or 1)}",
+            f"{part.header.profile} / {part.header.material} / {_fmt(length, 2)} mm",
+        ),),
+        row_height=5.2 * mm,
+    )
+
+    y -= 3 * mm
+    y = heading(y, "HOLES")
+    hole_values = [
+        (
+            f"H{index}",
+            f"X={_fmt(hole.x - bounds_min(part, 'x'), 3)}  "
+            f"Y={_fmt(hole.q - bounds_min(part, 'y'), 3)}  "
+            f"DIA {_fmt(hole.diameter, 3)}  {str(hole.face).upper()}",
+        )
+        for index, hole in enumerate(part.holes, start=1)
+    ]
+    if not hole_values:
+        hole_values = [("-", "No holes")]
+    remaining = max(5.0 * mm, y - y_bottom - 46 * mm)
+    hole_height = min(4.2 * mm, max(2.8 * mm, remaining / len(hole_values)))
+    y = two_column_rows(y, hole_values, row_height=hole_height)
+
+    cuts = []
+    for label, value in (
+        ("Web front", part.header.web_miter_front),
+        ("Web rear", part.header.web_miter_rear),
+        ("Flange front", part.header.flange_miter_front),
+        ("Flange rear", part.header.flange_miter_rear),
+    ):
+        if abs(float(value or 0.0)) > 1e-9:
+            cuts.append((label, f"{_fmt(float(value), 2)} deg"))
+    y -= 3 * mm
+    y = heading(y, "CUTS")
+    y = two_column_rows(y, cuts or [("-", "No registered cuts")], row_height=4.2 * mm)
+
+    y -= 3 * mm
+    y = heading(y, "GENERAL NOTES")
+    notes = list(dict.fromkeys([
+        *part.drawing.notes,
+        "All dimensions in millimetres.",
+        "Horizontal dimensions: incremental and absolute.",
+        "Vertical dimensions: absolute.",
+        "All holes are dimensioned and identified.",
+    ]))
+    for index, note in enumerate(notes[:6], start=1):
+        if y - 3.4 * mm < y_bottom:
+            break
+        y -= 3.4 * mm
+        pdf.setFont("Helvetica", 4.7)
+        pdf.drawString(x + 1.2 * mm, y + 1.0 * mm, f"{index}. {str(note)[:82]}")
+
+
+def _draw_plan_view(
+    pdf: canvas.Canvas,
+    part: CanonicalPart,
+    *,
+    label: str,
+    faces: set[str],
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+) -> None:
+    bounds = _contour_bounds(_main_contour(part), part)
+    length = max(bounds[2] - bounds[0], float(part.header.length or 0.0), 1.0)
+    profile_width = max(float(part.header.dim2 or part.header.dim1 or 1.0), 1.0)
+    scale = min(width / length, max(height * 0.35, 1.0) / profile_width)
+    view_width = length * scale
+    view_height = max(profile_width * scale, 5 * mm)
+    ox = x + (width - view_width) / 2
+    oy = y + height * 0.55
+
+    pdf.setFont("Helvetica-Bold", 6.6)
+    pdf.drawString(x, y + height - 3.5 * mm, label)
+    pdf.setLineWidth(0.7)
+    pdf.rect(ox, oy, view_width, view_height, stroke=1, fill=0)
+    pdf.setDash(2, 2)
+    pdf.setLineWidth(0.25)
+    pdf.line(ox, oy + view_height / 2, ox + view_width, oy + view_height / 2)
+    pdf.setDash()
+
+    holes = [hole for hole in part.holes if str(hole.face).strip().lower() in faces]
+    for hole in holes:
+        hx = ox + (float(hole.x) - bounds[0]) * scale
+        hy = oy + view_height / 2
+        radius = max(0.5, float(hole.diameter) * scale / 2)
+        pdf.circle(hx, hy, radius, stroke=1, fill=0)
+        pdf.line(hx - radius * 1.4, hy, hx + radius * 1.4, hy)
+        pdf.line(hx, hy - radius * 1.4, hx, hy + radius * 1.4)
+
+    dimension_y = y + 5 * mm
+    stations = [bounds[0], *sorted({float(hole.x) for hole in holes}), bounds[0] + length]
+    stations = [value for index, value in enumerate(stations) if index == 0 or abs(value - stations[index - 1]) > 1e-6]
+    for first, second in zip(stations, stations[1:]):
+        _draw_horizontal_dimension_between(
+            pdf,
+            (ox + (first - bounds[0]) * scale, oy),
+            (ox + (second - bounds[0]) * scale, oy),
+            dimension_y,
+            _fmt(second - first, 3),
+        )
+    _draw_horizontal_dimension(
+        pdf,
+        ox,
+        ox + view_width,
+        oy,
+        y,
+        _fmt(length, 3),
+    )
+
+
+def _draw_hole_detail(
+    pdf: canvas.Canvas,
+    part: CanonicalPart,
+    *,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+) -> None:
+    pdf.setFont("Helvetica-Bold", 6.5)
+    pdf.drawString(x, y + height - 3.5 * mm, "DETAIL - HOLE H1")
+    if not part.holes:
+        pdf.setFont("Helvetica", 5.5)
+        pdf.drawString(x, y + height / 2, "No holes")
+        return
+    hole = part.holes[0]
+    radius = min(width, height) * 0.18
+    cx = x + width * 0.46
+    cy = y + height * 0.42
+    pdf.setLineWidth(0.7)
+    pdf.circle(cx, cy, radius, stroke=1, fill=0)
+    pdf.setDash(2, 2)
+    pdf.line(cx - radius * 1.8, cy, cx + radius * 1.8, cy)
+    pdf.line(cx, cy - radius * 1.8, cx, cy + radius * 1.8)
+    pdf.setDash()
+    pdf.setFont("Helvetica", 6.0)
+    pdf.drawString(cx + radius * 0.8, cy + radius * 1.4, f"DIA {_fmt(hole.diameter, 3)}")
+
+
+def _draw_isometric_profile(
+    pdf: canvas.Canvas,
+    part: CanonicalPart,
+    *,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+) -> None:
+    """Draw a deterministic review projection from exact header dimensions."""
+
+    pdf.setFont("Helvetica-Bold", 6.5)
+    pdf.drawString(x, y + height - 3.5 * mm, "3D VIEW - REVIEW")
+    left = x + 8 * mm
+    right = x + width - 7 * mm
+    bottom = y + 7 * mm
+    top = y + height - 11 * mm
+    dx = 13 * mm
+    dy = 5 * mm
+    web_low = bottom + (top - bottom) * 0.28
+    web_high = bottom + (top - bottom) * 0.72
+
+    pdf.setFillColorRGB(0.73, 0.78, 0.84)
+    pdf.setStrokeColorRGB(0.18, 0.24, 0.31)
+    pdf.setLineWidth(0.65)
+    web = pdf.beginPath()
+    web.moveTo(left, web_low)
+    web.lineTo(right, web_low)
+    web.lineTo(right + dx, web_low + dy)
+    web.lineTo(left + dx, web_low + dy)
+    web.close()
+    pdf.drawPath(web, stroke=1, fill=1)
+    web2 = pdf.beginPath()
+    web2.moveTo(left + dx, web_low + dy)
+    web2.lineTo(right + dx, web_low + dy)
+    web2.lineTo(right + dx, web_high + dy)
+    web2.lineTo(left + dx, web_high + dy)
+    web2.close()
+    pdf.setFillColorRGB(0.64, 0.69, 0.76)
+    pdf.drawPath(web2, stroke=1, fill=1)
+    for level in (bottom, top):
+        flange = pdf.beginPath()
+        flange.moveTo(left, level)
+        flange.lineTo(right, level)
+        flange.lineTo(right + dx, level + dy)
+        flange.lineTo(left + dx, level + dy)
+        flange.close()
+        pdf.setFillColorRGB(0.78, 0.82, 0.87)
+        pdf.drawPath(flange, stroke=1, fill=1)
+    if part.holes:
+        bounds = _contour_bounds(_main_contour(part), part)
+        length = max(bounds[2] - bounds[0], 1.0)
+        for hole in part.holes:
+            fraction = min(1.0, max(0.0, (float(hole.x) - bounds[0]) / length))
+            hx = left + dx + fraction * (right - left)
+            hy = web_low + dy + (web_high - web_low) * 0.5
+            pdf.setFillColorRGB(1, 1, 1)
+            pdf.circle(hx, hy, 1.2, stroke=1, fill=1)
+    pdf.setFillColorRGB(0, 0, 0)
+    pdf.setStrokeColorRGB(0, 0, 0)
+
+
 def bounds_min(part: CanonicalPart, axis: str) -> float:
     bounds = _contour_bounds(_main_contour(part), part)
     return bounds[0] if axis == "x" else bounds[1]
@@ -1213,17 +1477,16 @@ def render_part_pdf(
     )
 
     margin = 10 * mm
-    title_height = 46 * mm
-    table_height = 18 * mm
-    table_y = margin + 47 * mm
+    title_height = 43 * mm
+    table_y = margin + title_height + 5 * mm
     drawing_left = margin + 22 * mm
-    drawing_bottom = margin + title_height + table_height + 18 * mm
+    drawing_bottom = margin + title_height + 7 * mm
     drawing_right = page_width - margin - 4 * mm
     drawing_top = page_height - margin - 22 * mm
     available_width = drawing_right - drawing_left
     available_height = drawing_top - drawing_bottom
     has_profile_end_view = part.header.profile_type.upper() not in {"", "B"}
-    sidebar_width = min(68 * mm, available_width * 0.34)
+    sidebar_width = min(86 * mm, available_width * 0.30)
     sidebar_gap = 5 * mm
     main_available_width = max(available_width - sidebar_width - sidebar_gap, 40 * mm)
     sidebar_x = drawing_left + main_available_width + sidebar_gap
@@ -1232,11 +1495,13 @@ def render_part_pdf(
     bounds = _contour_bounds(contour, part)
     model_width = max(bounds[2] - bounds[0], 1e-6)
     model_height = max(bounds[3] - bounds[1], 1e-6)
-    factor = min(main_available_width / model_width, available_height / model_height)
-    factor *= 0.78
+    elevation_height = 36 * mm
+    factor = min(main_available_width * 0.94 / model_width, elevation_height / model_height)
+    factor *= 0.92
+    elevation_bottom = drawing_top - 51 * mm
     origin = (
         drawing_left + (main_available_width - model_width * factor) / 2,
-        drawing_bottom + (available_height - model_height * factor) / 2,
+        elevation_bottom + (elevation_height - model_height * factor) / 2,
     )
     scale_ratio = 72.0 / 25.4 / factor if factor > 0 else 1.0
     common_scales = [1, 2, 2.5, 5, 10, 20, 25, 50, 100]
@@ -1301,11 +1566,33 @@ def render_part_pdf(
         table_top=table_y + 16 * mm,
     )
 
+    plan_width = main_available_width
+    _draw_plan_view(
+        pdf,
+        part,
+        label="PLAN - TOP FLANGE",
+        faces={"o", "top"},
+        x=drawing_left,
+        y=drawing_top - 105 * mm,
+        width=plan_width,
+        height=31 * mm,
+    )
+    _draw_plan_view(
+        pdf,
+        part,
+        label="PLAN - BOTTOM FLANGE",
+        faces={"u", "bottom"},
+        x=drawing_left,
+        y=drawing_top - 145 * mm,
+        width=plan_width,
+        height=31 * mm,
+    )
+
     if part.holes:
         groups: dict[float, int] = {}
         for hole in part.holes:
             groups[round(float(hole.diameter), 3)] = groups.get(round(float(hole.diameter), 3), 0) + 1
-        labels = [f"{count}x Ø{_fmt(diameter, active.decimal_places)} THRU" for diameter, count in sorted(groups.items())]
+        labels = [f"{count}x DIA {_fmt(diameter, active.decimal_places)} THRU" for diameter, count in sorted(groups.items())]
         label = "; ".join(labels)
         anchor = part.holes[0]
         hx, hy = _transform_point(anchor.x, anchor.q, bounds=bounds, origin=origin, scale=factor)
@@ -1330,35 +1617,51 @@ def render_part_pdf(
         pdf.setFont("Helvetica", 7)
         pdf.drawString(drawing_left, drawing_top + 4 * mm, "Radii: " + ", ".join(labels))
 
-    section_height = 31 * mm if has_profile_end_view else 0.0
-    _draw_sidebar(
+    _draw_fabrication_sidebar(
         pdf,
         part,
         x=sidebar_x,
         y_top=drawing_top,
         width=sidebar_width,
-        height=max(45 * mm, available_height - section_height),
+        y_bottom=drawing_bottom,
     )
 
-    # For profiles, add a deterministic end view below the data tables.
+    detail_y = drawing_bottom + 3 * mm
+    detail_height = max(31 * mm, drawing_top - 151 * mm - detail_y)
+    _draw_hole_detail(
+        pdf,
+        part,
+        x=drawing_left,
+        y=detail_y,
+        width=main_available_width * 0.22,
+        height=detail_height,
+    )
+
     if has_profile_end_view:
+        section_x = drawing_left + main_available_width * 0.23
+        section_width = main_available_width * 0.19
         _draw_profile_end_view(
             pdf,
             part,
-            sidebar_x + 9 * mm,
-            drawing_bottom,
-            sidebar_width - 18 * mm,
-            25 * mm,
+            section_x,
+            detail_y + 2 * mm,
+            section_width,
+            max(23 * mm, detail_height - 7 * mm),
         )
-        pdf.setFont("Helvetica", 6.5)
-        pdf.drawCentredString(sidebar_x + sidebar_width / 2, drawing_bottom + 27 * mm, "SECTION")
+        pdf.setFont("Helvetica-Bold", 6.5)
+        pdf.drawString(section_x, detail_y + detail_height - 3.5 * mm, "SECTION A-A")
 
-    _draw_part_table(pdf, part, x=margin + 3 * mm, y=table_y, width=page_width - 2 * margin - 6 * mm)
-    pdf.setFont("Helvetica-Bold", 6.5)
-    pdf.drawString(margin + 3 * mm, table_y - 5 * mm, f"Totaal aantal keer uit te voeren: {int(part.header.quantity or 1)}")
+    iso_x = drawing_left + main_available_width * (0.43 if has_profile_end_view else 0.24)
+    _draw_isometric_profile(
+        pdf,
+        part,
+        x=iso_x,
+        y=detail_y,
+        width=sidebar_x - iso_x - 3 * mm,
+        height=detail_height,
+    )
 
     _draw_title_block(pdf, part, active, page_width, page_height, scale_label=scale_label)
-    _draw_part_trace_qr(pdf, part, margin + 3 * mm, margin + 3 * mm)
 
     warnings = list(
         dict.fromkeys(active.general_notes + part.drawing.notes + part.validation.warnings + part.warnings)

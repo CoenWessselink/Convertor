@@ -93,6 +93,7 @@ class VtkProjectBackend:
         self._base_signature = ""
         self._selection_signature = ""
         self._last_pick: PickResult | None = None
+        self._clipping_signature = ""
 
     def capabilities(self) -> ViewerCapabilities:
         return ViewerCapabilities(
@@ -101,12 +102,12 @@ class VtkProjectBackend:
             supports_large_mesh_scene=True,
             supports_exact_brep=False,
             supports_subshape_picking=False,
-            supports_multi_section=False,
+            supports_multi_section=True,
             supports_measurements=frozenset({MeasurementKind.POINT, MeasurementKind.COORDINATES}),
             supports_point_clouds=False,
             supports_offscreen_render=True,
             supports_hardware_acceleration=not self._offscreen,
-            max_clip_planes=0,
+            max_clip_planes=12,
             notes=(
                 "V2 gebruikt instanced bounding-box glyphs voor het synthetische projectmodel.",
                 "Exacte meshresources en lazy geometry volgen in V3; exact BREP blijft OCCT/V6.",
@@ -308,7 +309,7 @@ class VtkProjectBackend:
         for node_id in index.renderable_node_ids:
             if node_id not in state.visible_set:
                 continue
-            center = index.world_bounds_by_node[node_id].center
+            center = index.world_bounds_by_node[node_id].center + state.explode_offsets.get(node_id, Vector3.zero())
             point_id = points.InsertNextPoint(center.x, center.y, center.z)
             vertices.InsertNextCell(1)
             vertices.InsertCellPoint(point_id)
@@ -365,7 +366,7 @@ class VtkProjectBackend:
             )
             size_key = tuple(round(value, 6) for value in bounds.size.to_tuple())
             entries_by_key.setdefault((mode, size_key), []).append(
-                (node_id, bounds.center, color)
+                (node_id, bounds.center + state.explode_offsets.get(node_id, Vector3.zero()), color)
             )
         for mode, size_key in sorted(entries_by_key, key=lambda item: (item[0].value, item[1])):
             group = self._build_group(mode, Vector3(*size_key), entries_by_key[(mode, size_key)])
@@ -387,7 +388,11 @@ class VtkProjectBackend:
             bounds = index.world_bounds_by_node[node_id]
             size_key = tuple(round(value, 6) for value in bounds.size.to_tuple())
             entries_by_size.setdefault(size_key, []).append(
-                (node_id, bounds.center, state.display_preferences.selection_color)
+                (
+                    node_id,
+                    bounds.center + state.explode_offsets.get(node_id, Vector3.zero()),
+                    state.display_preferences.selection_color,
+                )
             )
         for size_key in sorted(entries_by_size):
             group = self._build_group(
@@ -414,6 +419,53 @@ class VtkProjectBackend:
             self._renderer.SetBackground2(0.11, 0.14, 0.19)
         self._renderer.GradientBackgroundOn()
 
+    def _clip_planes(self, state: RenderState) -> list[Any]:
+        """Build VTK clipping planes for the immutable render state."""
+        if self._vtk is None:
+            return []
+        planes: list[Any] = []
+        for section in state.section_planes[:12]:
+            if not section.enabled:
+                continue
+            normal = section.normal.normalized()
+            if section.flipped:
+                normal = -normal
+            plane = self._vtk.vtkPlane()
+            plane.SetOrigin(*section.origin.to_tuple())
+            plane.SetNormal(*normal.to_tuple())
+            planes.append(plane)
+        box = state.clipping_box
+        if box is not None and box.enabled:
+            minimum, maximum = box.bounds.minimum, box.bounds.maximum
+            definitions = (
+                (minimum, Vector3(1, 0, 0)),
+                (maximum, Vector3(-1, 0, 0)),
+                (minimum, Vector3(0, 1, 0)),
+                (maximum, Vector3(0, -1, 0)),
+                (minimum, Vector3(0, 0, 1)),
+                (maximum, Vector3(0, 0, -1)),
+            )
+            for origin, normal in definitions:
+                if box.inverted:
+                    normal = -normal
+                plane = self._vtk.vtkPlane()
+                plane.SetOrigin(*origin.to_tuple())
+                plane.SetNormal(*normal.to_tuple())
+                planes.append(plane)
+        return planes
+
+    @staticmethod
+    def _apply_planes_to_groups(groups: Iterable[_ActorGroup], planes: Iterable[Any]) -> None:
+        plane_values = tuple(planes)
+        for group in groups:
+            mapper = group.mapper
+            if not hasattr(mapper, "RemoveAllClippingPlanes"):
+                continue
+            mapper.RemoveAllClippingPlanes()
+            for plane in plane_values:
+                mapper.AddClippingPlane(plane)
+            mapper.Modified()
+
     def apply_state(self, state: RenderState, index: SceneIndex) -> None:
         self._ensure_initialized()
         if self._scene is None or state.scene_hash != self._scene.scene_hash:
@@ -430,20 +482,41 @@ class VtkProjectBackend:
             state.transparency_by_node,
             tuple((node_id, color) for node_id, color in state.color_by_node),
             state.display_preferences,
+            state.section_planes,
+            state.clipping_box,
+            state.explode_offsets_by_node,
         )
+        base_rebuilt = False
         if base_signature != self._base_signature:
             self._rebuild_base(state, index)
             self._base_signature = base_signature
             self._selection_signature = ""
+            base_rebuilt = True
         selection_signature = self._signature(
             state.selected_node_ids,
             state.visible_node_ids,
             state.display_preferences.selection_color,
             state.display_preferences.show_selection_outline,
         )
+        selection_rebuilt = False
         if selection_signature != self._selection_signature:
             self._rebuild_selection(state, index)
             self._selection_signature = selection_signature
+            selection_rebuilt = True
+
+        clipping_signature = self._signature(state.section_planes, state.clipping_box)
+        has_clipping = bool(state.section_planes) or (
+            state.clipping_box is not None and state.clipping_box.enabled
+        )
+        if base_rebuilt or clipping_signature != self._clipping_signature:
+            planes = self._clip_planes(state)
+            self._apply_planes_to_groups(self._groups, planes)
+            self._apply_planes_to_groups(self._selection_groups, planes)
+            self._clipping_signature = clipping_signature
+        elif selection_rebuilt and has_clipping:
+            # Selection actors are transient.  Reapply only to the new overlay;
+            # do not invalidate every 10k-instance base mapper on each pick.
+            self._apply_planes_to_groups(self._selection_groups, self._clip_planes(state))
 
     def set_camera(self, camera: CameraState) -> None:
         self._ensure_initialized()
@@ -581,6 +654,7 @@ class VtkProjectBackend:
         self._index = None
         self._base_signature = ""
         self._selection_signature = ""
+        self._clipping_signature = ""
         self._last_pick = None
 
     def shutdown(self) -> None:

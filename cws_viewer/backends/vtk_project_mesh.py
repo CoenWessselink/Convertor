@@ -95,14 +95,14 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             supports_large_mesh_scene=True,
             supports_exact_brep=False,
             supports_subshape_picking=False,
-            supports_multi_section=False,
+            supports_multi_section=True,
             supports_measurements=frozenset(
                 {MeasurementKind.POINT, MeasurementKind.COORDINATES}
             ),
             supports_point_clouds=False,
             supports_offscreen_render=True,
             supports_hardware_acceleration=not self._offscreen,
-            max_clip_planes=0,
+            max_clip_planes=12,
             notes=(
                 "V3 rendert echte bron-/proxy-meshresources met instancing.",
                 "Visibility en ghosting gebruiken per-instance mask/colour arrays.",
@@ -301,6 +301,12 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             changed = False
             for instance_index, node_id in enumerate(group.node_ids):
                 node = index.node(node_id)
+                base_position = index.world_transform_by_node[node_id].translation_vector
+                desired_position = base_position + state.explode_offsets.get(node_id, Vector3.zero())
+                current_position = Vector3(*group.points.GetPoint(instance_index))
+                if not current_position.almost_equal(desired_position, tolerance=1e-9):
+                    group.points.SetPoint(instance_index, *desired_position.to_tuple())
+                    changed = True
                 show = node_id in visible
                 desired_mask = 1 if show else 0
                 if int(group.mask.GetValue(instance_index)) != desired_mask:
@@ -423,7 +429,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             node = index.node(node_id)
             if not node.geometry_id or self.repository.get(node.geometry_id) is None:
                 continue
-            center = index.world_bounds_by_node[node_id].center
+            center = index.world_bounds_by_node[node_id].center + state.explode_offsets.get(node_id, Vector3.zero())
             point_id = points.InsertNextPoint(center.x, center.y, center.z)
             vertices.InsertNextCell(1)
             vertices.InsertCellPoint(point_id)
@@ -498,10 +504,12 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             node = index.node(node_id)
             if not node.geometry_id or self.repository.get(node.geometry_id) is None:
                 continue
+            offset = state.explode_offsets.get(node_id, Vector3.zero())
+            matrix = Matrix4.translation(offset) @ index.world_transform_by_node[node_id]
             groups.setdefault(node.geometry_id, []).append(
                 (
                     node_id,
-                    index.world_transform_by_node[node_id],
+                    matrix,
                     state.display_preferences.selection_color,
                 )
             )

@@ -3,7 +3,7 @@
   "company_name": "Tasche Staalbouw",
   "company_subtitle": "Albergen - Fleringen",
   "logo_path": "assets/branding/tasche_staalbouw.png",
-  "sheet_format": "A4",
+  "sheet_format": "A3",
   "orientation": "landscape",
   "projection_method": "first-angle",
   "decimal_places": 1,

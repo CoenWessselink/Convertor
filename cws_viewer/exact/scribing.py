@@ -31,6 +31,7 @@ class ScribeStatus(StrEnum):
     PROPOSED = "proposed"
     CONFIRMED = "confirmed"
     REJECTED = "rejected"
+    INVALIDATED = "invalidated"
 
 
 @dataclass(frozen=True, slots=True)

@@ -35,10 +35,35 @@ class ProjectSceneLoader:
                  provider_factory:Callable[[],Sequence[GeometryProvider]]|None=None)->None:
         self.cache_root=Path(cache_root or Path.home()/'.cws_convertor'/'viewer_mesh_cache').expanduser().resolve()
         self.source_search_roots=tuple(source_search_roots);self.settings=settings or TessellationSettings();self.provider_factory=provider_factory
+
     def load(self,project_path:str|Path,*,geometry_ids:Iterable[str]|None=None,load_all:bool=True,allow_proxy:bool=True,
              token:CancellationToken|None=None,progress:ProgressCallback|None=None)->ProjectSceneLoadResult:
+        """Open a project package and construct its viewer scene.
+
+        V9 also exposes :meth:`load_project`, which accepts the already-opened
+        canonical project instance used by the host application.  Keeping this
+        convenience method preserves the standalone viewer API while the main
+        CWS Convertor integration can prove that tree, grid, BOM and renderer
+        all reference one and the same in-memory project model.
+        """
+        start=time.perf_counter();path=Path(project_path).expanduser().resolve()
+        t=time.perf_counter();package=ProjectStore().open(path,read_only=True);project=package.project
+        open_elapsed=time.perf_counter()-t
+        result=self.load_project(project,path,geometry_ids=geometry_ids,load_all=load_all,allow_proxy=allow_proxy,token=token,progress=progress)
+        timings=(('open_project',open_elapsed),)+tuple(result.timings)
+        return ProjectSceneLoadResult(path,result.project,result.scene,result.repository,result.catalog,result.catalog_report,result.geometry_report,result.scene_report,time.perf_counter()-start,timings)
+
+    def load_project(self,project:object,project_path:str|Path,*,geometry_ids:Iterable[str]|None=None,load_all:bool=True,
+                     allow_proxy:bool=True,token:CancellationToken|None=None,
+                     progress:ProgressCallback|None=None)->ProjectSceneLoadResult:
+        """Build a scene from an already-opened Canonical Project Model.
+
+        The object is never cloned or re-opened.  This is the V9 integration
+        boundary that prevents a second project truth from being introduced by
+        the viewer.  Source files are still verified through the project package
+        path and SHA-256 identities before geometry is accepted.
+        """
         start=time.perf_counter();timings=[];path=Path(project_path).expanduser().resolve()
-        t=time.perf_counter();package=ProjectStore().open(path,read_only=True);project=package.project;timings.append(('open_project',time.perf_counter()-t))
         if token:token.check()
         t=time.perf_counter();resolver=ProjectSourceResolver(project,project_package_path=path,search_roots=self.source_search_roots);catalog=ProjectGeometryCatalog().build(project,resolver);timings.append(('build_catalog',time.perf_counter()-t))
         assert catalog.report is not None

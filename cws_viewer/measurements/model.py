@@ -14,6 +14,12 @@ from uuid import uuid4
 from cws_viewer.math3d import Vector3
 
 
+def _vector_from_dict(value: Mapping[str, Any] | None) -> Vector3 | None:
+    if value is None:
+        return None
+    return Vector3(float(value["x"]), float(value["y"]), float(value["z"]))
+
+
 class MeasurementProof(StrEnum):
     ANALYTICAL_BREP = "analytical_brep"
     CANONICAL_FEATURE = "canonical_feature"
@@ -98,6 +104,33 @@ class ExactMeasurementAnchor:
             "analytical_data": dict(self.analytical_data),
         }
 
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "ExactMeasurementAnchor":
+        analytical = value.get("analytical_data", {})
+        if isinstance(analytical, Mapping):
+            analytical_items = tuple((str(key), item) for key, item in analytical.items())
+        else:
+            analytical_items = tuple((str(key), item) for key, item in analytical)
+        world = _vector_from_dict(value.get("world_point"))
+        if world is None:
+            raise ValueError("Measurement anchor world_point ontbreekt")
+        return cls(
+            node_id=str(value["node_id"]),
+            entity_id=str(value["entity_id"]),
+            source_entity_id=str(value.get("source_entity_id", "")),
+            feature_id=None if value.get("feature_id") is None else str(value["feature_id"]),
+            subshape_type=None if value.get("subshape_type") is None else str(value["subshape_type"]),
+            subshape_id=None if value.get("subshape_id") is None else str(value["subshape_id"]),
+            world_point=world,
+            local_point=_vector_from_dict(value.get("local_point")),
+            geometry_hash=None if value.get("geometry_hash") is None else str(value["geometry_hash"]),
+            snap_type=SnapType(str(value.get("snap_type", SnapType.FREE.value))),
+            proof=MeasurementProof(str(value.get("proof", MeasurementProof.MANUAL.value))),
+            direction=_vector_from_dict(value.get("direction")),
+            normal=_vector_from_dict(value.get("normal")),
+            analytical_data=analytical_items,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class MeasurementRecord:
@@ -151,6 +184,30 @@ class MeasurementRecord:
             "metadata": dict(self.metadata),
         }
 
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "MeasurementRecord":
+        metadata = value.get("metadata", {})
+        if isinstance(metadata, Mapping):
+            metadata_items = tuple((str(key), str(item)) for key, item in metadata.items())
+        else:
+            metadata_items = tuple((str(key), str(item)) for key, item in metadata)
+        return cls(
+            measurement_id=str(value.get("measurement_id", "")),
+            kind=str(value["kind"]),
+            value=float(value["value"]),
+            unit=str(value["unit"]),
+            anchors=tuple(ExactMeasurementAnchor.from_dict(item) for item in value.get("anchors", ())),
+            formatted_text=str(value.get("formatted_text", "")),
+            validity_hash=str(value.get("validity_hash", "")),
+            proof=MeasurementProof(str(value.get("proof", MeasurementProof.MANUAL.value))),
+            name=str(value.get("name", "")),
+            note=str(value.get("note", "")),
+            visible=bool(value.get("visible", True)),
+            status=MeasurementStatus(str(value.get("status", MeasurementStatus.VALID.value))),
+            invalid_reason=str(value.get("invalid_reason", "")),
+            metadata=metadata_items,
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class MeasurementSettings:
@@ -167,6 +224,30 @@ class MeasurementSettings:
             raise ValueError("Niet-ondersteunde lengteeenheid")
         if not 0 <= int(self.precision) <= 9:
             raise ValueError("Measurement precision moet 0..9 zijn")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "length_unit": self.length_unit,
+            "area_unit": self.area_unit,
+            "volume_unit": self.volume_unit,
+            "angle_unit": self.angle_unit,
+            "mass_unit": self.mass_unit,
+            "precision": self.precision,
+            "trailing_zeroes": self.trailing_zeroes,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any] | None) -> "MeasurementSettings":
+        data = value or {}
+        return cls(
+            length_unit=str(data.get("length_unit", "mm")),
+            area_unit=str(data.get("area_unit", "mm2")),
+            volume_unit=str(data.get("volume_unit", "mm3")),
+            angle_unit=str(data.get("angle_unit", "deg")),
+            mass_unit=str(data.get("mass_unit", "kg")),
+            precision=int(data.get("precision", 3)),
+            trailing_zeroes=bool(data.get("trailing_zeroes", False)),
+        )
 
 
 @dataclass(slots=True)

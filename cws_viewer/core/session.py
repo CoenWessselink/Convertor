@@ -12,7 +12,7 @@ from cws_viewer.contracts.state import (
     ViewerDisplayPreferences,
 )
 from cws_viewer.core.scene_index import SceneIndex
-from cws_viewer.math3d import Rgba
+from cws_viewer.math3d import Rgba, Vector3
 from cws_viewer.rendering.contracts import RenderState
 
 
@@ -36,6 +36,7 @@ class ViewerSession:
     camera: CameraState = field(default_factory=CameraState.default)
     section_planes: dict[str, SectionPlane] = field(default_factory=dict)
     clipping_box: ClippingBox | None = None
+    explode_offsets: dict[str, Vector3] = field(default_factory=dict)
     display_preferences: ViewerDisplayPreferences = field(default_factory=ViewerDisplayPreferences)
     accuracy_mode: bool = False
 
@@ -61,6 +62,7 @@ class ViewerSession:
         self.camera = fresh.camera
         self.section_planes = fresh.section_planes
         self.clipping_box = fresh.clipping_box
+        self.explode_offsets = fresh.explode_offsets
         self.display_preferences = fresh.display_preferences
         self.accuracy_mode = fresh.accuracy_mode
 
@@ -80,6 +82,9 @@ class ViewerSession:
             node_id: value for node_id, value in self.transparency.items() if node_id in existing
         }
         colors = {node_id: value for node_id, value in self.colors.items() if node_id in existing}
+        explode_offsets = {
+            node_id: value for node_id, value in self.explode_offsets.items() if node_id in existing
+        }
 
         self.project_id = new_index.scene.project_id
         self.scene_hash = new_index.scene.scene_hash
@@ -88,12 +93,14 @@ class ViewerSession:
         self.isolation = isolation
         self.transparency = transparency
         self.colors = colors
+        self.explode_offsets = explode_offsets
         return {
             "same_project": True,
             "selection_preserved": len(selection),
             "hidden_preserved": len(hidden - base_hidden),
             "isolation_preserved": len(isolation),
             "style_preserved": len(transparency) + len(colors),
+            "explode_preserved": len(explode_offsets),
             "display_preferences_preserved": True,
             "accuracy_mode_preserved": self.accuracy_mode,
         }
@@ -136,6 +143,9 @@ class ViewerSession:
             transparency_by_node=tuple(sorted(self.transparency.items())),
             color_by_node=tuple(sorted(self.colors.items())),
             display_preferences=self.display_preferences,
+            section_planes=tuple(self.section_planes[key] for key in sorted(self.section_planes)),
+            clipping_box=self.clipping_box,
+            explode_offsets_by_node=tuple(sorted(self.explode_offsets.items())),
         )
 
     def camera_with_projection(self, projection) -> CameraState:

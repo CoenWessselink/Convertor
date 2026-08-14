@@ -20,4 +20,9 @@ validation/results/viewer-v6-integrated-*.json
 validation/results/viewer-v6-real-*.json
 validation/viewer_v6/
 validation/viewer_v6_full_smokes/
+validation/viewer_v9/
 validation/results/phase-c-*.png
+validation/results/CWS_V9_UI_SYNTHETIC.cwscproj
+validation/results/cws-v9-ui-target*.png
+validation/results/v9-*.json
+tmp/

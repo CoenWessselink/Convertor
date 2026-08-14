@@ -28,7 +28,7 @@ class CorePhase0BaselineTests(unittest.TestCase):
         product = collect_product_identity()
         self.assertEqual(product["name"], "SteelConverter")
         self.assertEqual(product["compatibility_name"], "CWS Convertor")
-        self.assertEqual(product["version"], "0.8.3-beta-dev")
+        self.assertEqual(product["version"], "0.9.0-alpha-dev")
         self.assertEqual(product["project_schema"], "2.5")
         self.assertEqual(REPORT_SCHEMA, "cws-core-phase0-baseline-v1")
 

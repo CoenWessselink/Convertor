@@ -17,8 +17,8 @@ APP_ID = "nl.cws.convertor"
 # Integration snapshot for Codex: semantic import, Part Workbench rebuild and
 # per-part format roundtrips are merged. Complete feature coverage and validated
 # external golden models remain later release gates.
-APP_VERSION = "0.8.3-beta-dev"
-APP_VERSION_NUMERIC = "0.8.3.0"
+APP_VERSION = "0.9.0-alpha-dev"
+APP_VERSION_NUMERIC = "0.9.0.0"
 APP_PUBLISHER = "CWS"
 APP_DESCRIPTION = (
     "Gevalideerde staalmodel-, productie- en conversieomgeving"

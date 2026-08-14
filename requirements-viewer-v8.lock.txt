@@ -1,0 +1,7 @@
+# CWS Viewer V8 Professional Property Grid — Windows x64 / Python 3.12
+-r requirements-runtime.lock.txt
+PySide6==6.9.2
+vtk==9.6.2
+psutil==7.2.2
+Pillow==12.3.0
+pyinstaller==6.15.0

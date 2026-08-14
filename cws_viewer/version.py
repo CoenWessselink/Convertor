@@ -6,15 +6,15 @@ Project Model versions so each contract can evolve explicitly.
 """
 from __future__ import annotations
 
-VIEWER_PACKAGE_VERSION = "0.7.0-integrated1"
-VIEWER_API_VERSION = "0.4.0"
+VIEWER_PACKAGE_VERSION = "1.0.0-dev0"
+VIEWER_API_VERSION = "0.7.0"
 SCENE_SCHEMA_VERSION = "1.0"
 VIEWER_STATE_SCHEMA_VERSION = "1.1"
 
-# V0-V6 was developed against 2.3. The controlled CWS Convertor integration
-# validates the immutable scene adapter against the current 2.5 owner model.
+# V9 validates the historical handover projects and the newer Project Model
+# 2.5 used by the integrated CWS Convertor build.
 SUPPORTED_PROJECT_SCHEMA_MAJORS = frozenset({2})
-VALIDATED_PROJECT_SCHEMA_VERSIONS = frozenset({"2.3", "2.5"})
+VALIDATED_PROJECT_SCHEMA_VERSIONS = frozenset({"2.3", "2.4", "2.5"})
 
 PRODUCT_NAME = "CWS Viewer Core"
 PRODUCT_ID = "nl.cws.convertor.viewer"

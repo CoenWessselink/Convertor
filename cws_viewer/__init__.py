@@ -6,6 +6,7 @@ from .contracts import *  # noqa: F401,F403
 from .adapters import CwsProjectSceneAdapter, SceneBuildOptions, SceneBuildReport
 from .backends import HeadlessViewerController, MemoryRenderBackend
 from .core import SceneIndex, ViewerCoreController, ViewerSession
+from .revisions import *  # noqa: F401,F403
 
 __all__ = [
     "ViewerError",
