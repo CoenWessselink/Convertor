@@ -52,6 +52,11 @@ hidden-import set and packaged native self-test.
   `975cd157e8b7fe9e774f2098285ae7d8e70579aa511e757c963d2b88fe972040`;
   installer 266,452,047 bytes with SHA-256
   `c230a70146a271e5d7f230ecd9a1190941383162da8f1089c2b6c155ecf5a2ed`.
+- GitHub Windows run `31776351027` passed the complete source, dist, fresh
+  portable, per-user installer, installed-runtime, file-association and
+  uninstall matrix on commit `3ec68ed`. Artifact `9210399390` is 727,369,191
+  bytes with digest
+  `sha256:d893a6869a958f413344459e5a437a99803026fc5f8d308754779a142ddc7cd2`.
 - Exact STEP visual structural golden: passed at 360 x 260 pixels.
 - Transform proof: entity-local mesh center moved exactly to
   `[1000.0, 2000.0, 3000.0]` mm by the SteelModel global transform.
@@ -89,8 +94,7 @@ Phase B is not complete. The next controlled batches still require:
 - accepted measurement state and export contracts;
 - section planes and persisted viewpoints;
 - trustworthy model/revision compare;
-- broader visual goldens across IFC, canonical edits and representative models;
-- GitHub Windows CI evidence for the exact pushed batch-2 commit.
+- broader visual goldens across IFC, canonical edits and representative models.
 
 The Viewer V2 synthetic-box implementation remains excluded. This batch uses
 its accepted architectural ideas but no synthetic geometry or PySide6 shell.

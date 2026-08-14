@@ -111,7 +111,11 @@ installed associations and silent uninstall also passed. The portable ZIP is
 `975cd157e8b7fe9e774f2098285ae7d8e70579aa511e757c963d2b88fe972040`.
 The installer is 266,452,047 bytes with SHA-256
 `c230a70146a271e5d7f230ecd9a1190941383162da8f1089c2b6c155ecf5a2ed`.
-GitHub CI evidence for the exact pushed commit remains required.
+GitHub Windows run `31776351027` passed the complete matrix on commit
+`3ec68ed`, including the headless native VTK pipeline, per-user installation,
+installed runtime, file associations and uninstall. Artifact `9210399390` is
+727,369,191 bytes with digest
+`sha256:d893a6869a958f413344459e5a437a99803026fc5f8d308754779a142ddc7cd2`.
 
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the

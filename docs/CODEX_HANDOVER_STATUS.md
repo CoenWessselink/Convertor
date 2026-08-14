@@ -61,8 +61,10 @@ not conflict with these sources.
   self-test and GUI smoke pass; the new VTK check produces a valid off-screen
   PNG. The local Windows source/dist/fresh-portable/installed matrix passes
   without Python on the child PATH, including production-package, VTK,
-  per-user file-association and uninstall checks. GitHub CI evidence for the
-  exact pushed batch is pending.
+  per-user file-association and uninstall checks.
+- Phase B batch 2 Windows run `31776351027` passed the complete matrix on
+  commit `3ec68ed`. Artifact `9210399390` is 727,369,191 bytes with digest
+  `sha256:d893a6869a958f413344459e5a437a99803026fc5f8d308754779a142ddc7cd2`.
 - The batch-2 generated load regression renders 600 transformed actors and
   7,200 triangles through one shared geometry buffer. This is engineering load
   evidence, not an owner-validated representative model.

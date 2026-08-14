@@ -65,6 +65,10 @@ SteelConverter drawing environment.
   `31720996524`.
 - Core phase 3: 34/34 smoke scripts, 122 tests with seven explicit fixture
   skips, and Windows run `31728698072`.
+- Phase A: SteelModel/viewer-host foundation and Windows run `31734275341`.
+- Phase B batches 1-2: integrated host plus real mesh renderer, 38/38 local
+  smoke scripts, 148 tests with seven fixture skips, and Windows run
+  `31776351027`.
 - The local registry contains 481 model/result pairs, all still marked
   `manual_validation_required` and therefore not engineering truth.
 

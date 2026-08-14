@@ -121,6 +121,7 @@ BELANGRIJKE GRENZEN
 - Windows CI-run 31728698072: fase 3 source, dist, portable, installer, installed runtime, productiepakket en uninstall geslaagd.
 - Windows CI-run 31734275341: fase A source, dist, portable, installer, installed runtime, SteelModel/viewer-hostexport en uninstall geslaagd; artifact 9195086063.
 - Windows CI-run 31744026521: fase B batch 1 source, viewerhost-UI, dist, portable, installer, installed runtime en uninstall geslaagd; artifact 9198752611.
-- Fase B batch 2 lokale Windows-matrix: native selftest, GUI, packaged runtime en VTK geslaagd in source, dist, verse portable extractie en installatie zonder Python op child-PATH; associaties en uninstall geslaagd. Exacte GitHub CI-run volgt na push.
+- Fase B batch 2 lokale Windows-matrix: native selftest, GUI, packaged runtime en VTK geslaagd in source, dist, verse portable extractie en installatie zonder Python op child-PATH; associaties en uninstall geslaagd.
+- Windows CI-run 31776351027: fase B batch 2 source, dist, portable, per-user installer, installed runtime, native VTK-pipeline, associaties en uninstall geslaagd op commit 3ec68ed; artifact 9210399390, 727369191 bytes, digest sha256:d893a6869a958f413344459e5a437a99803026fc5f8d308754779a142ddc7cd2.
 - GitHub Windows-pipeline 31685684421 op commit 2b003e4 is ingetrokken als releasebewijs: de verpakte GUI/CAD-stack werd niet gestart.
 - Windows CI-run 31720996524: source, dist, portable, installer, geïnstalleerde runtime en uninstall geslaagd.
