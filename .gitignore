@@ -13,4 +13,11 @@ output/
 reference-models-local/
 reference-results-local/
 validation/results/windows-runtime/
+validation/results/windows-runtime-v6/
+validation/results/viewer-v4-integrated/
+validation/results/viewer-v6-integrated-real-project/
+validation/results/viewer-v6-integrated-*.json
+validation/results/viewer-v6-real-*.json
+validation/viewer_v6/
+validation/viewer_v6_full_smokes/
 validation/results/phase-c-*.png

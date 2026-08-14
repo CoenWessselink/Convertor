@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 from cws_convertor.project import Part, ProjectSession, propose_scribes_from_explicit_contacts
+from cws_convertor.ui.exact_part_viewer import ExactPartViewerPanel
 
 
 STATUS_COLORS = {
@@ -250,14 +251,31 @@ class PartWorkbenchPanel(ttk.Frame):
         preview.rowconfigure(1, weight=1)
         preview_header = ttk.Frame(preview)
         preview_header.grid(row=0, column=0, sticky="ew", padx=6)
-        ttk.Label(preview_header, text="Bronomhulling en analytisch model", font=("Segoe UI", 10, "bold")).pack(side="left")
-        ttk.Label(preview_header, text="grijs: bron  |  kleur: werkrevisie", foreground="#64748b").pack(side="right")
+        ttk.Label(preview_header, text="Exact onderdeel en werkrevisie", font=("Segoe UI", 10, "bold")).pack(side="left")
+        ttk.Label(preview_header, text="bron grijs  |  canonical cyaan", foreground="#64748b").pack(side="right")
+        self.preview_tabs = ttk.Notebook(preview)
+        self.preview_tabs.grid(row=1, column=0, sticky="nsew")
+        exact_page = ttk.Frame(self.preview_tabs)
+        exact_page.columnconfigure(0, weight=1)
+        exact_page.rowconfigure(0, weight=1)
+        analytic_page = ttk.Frame(self.preview_tabs)
+        analytic_page.columnconfigure(0, weight=1)
+        analytic_page.rowconfigure(0, weight=1)
+        self.preview_tabs.add(exact_page, text="Exact BREP")
+        self.preview_tabs.add(analytic_page, text="Analytische controle")
+        self.exact_viewer = ExactPartViewerPanel(
+            exact_page,
+            session_provider=self.session_provider,
+            selection_callback=self._exact_subshape_selected,
+            status_callback=self.status_callback,
+        )
+        self.exact_viewer.grid(row=0, column=0, sticky="nsew")
         self.figure = Figure(figsize=(8.2, 4.1), dpi=100, constrained_layout=True)
         self.figure.patch.set_facecolor("#f8fafc")
         self.axis_3d = self.figure.add_subplot(121, projection="3d")
         self.axis_2d = self.figure.add_subplot(122)
-        self.canvas = FigureCanvasTkAgg(self.figure, master=preview)
-        self.canvas.get_tk_widget().grid(row=1, column=0, sticky="nsew")
+        self.canvas = FigureCanvasTkAgg(self.figure, master=analytic_page)
+        self.canvas.get_tk_widget().grid(row=0, column=0, sticky="nsew")
         upper.add(preview, weight=5)
 
         right = ttk.Frame(upper, padding=(6, 4))
@@ -642,6 +660,7 @@ class PartWorkbenchPanel(ttk.Frame):
         self._set_badge("idle")
         for grid in self._all_detail_grids():
             grid.delete(*grid.get_children())
+        self.exact_viewer.clear()
         self._render_preview(None)
 
     def _all_detail_grids(self) -> tuple[ttk.Treeview, ...]:
@@ -772,6 +791,7 @@ class PartWorkbenchPanel(ttk.Frame):
         self._loading = False
         self._set_controls_enabled(True)
         self._populate_detail_grids(part, state, revision)
+        self.exact_viewer.load_part(part.internal_id)
         self._render_preview(part)
 
     def _populate_detail_grids(self, part: Part, state: dict[str, Any], revision: dict[str, Any]) -> None:
@@ -1231,6 +1251,11 @@ class PartWorkbenchPanel(ttk.Frame):
         self.hole_x_var.set(str(parameters.get("x_mm", 0.0)))
         self.hole_y_var.set(str(parameters.get("y_mm", 0.0)))
         self.hole_diameter_var.set(str(parameters.get("diameter_mm", 14.0)))
+        try:
+            diameter = float(parameters.get("diameter_mm", 14.0))
+        except (TypeError, ValueError):
+            diameter = None
+        self.exact_viewer.highlight_feature("hole", diameter)
 
     def add_or_update_hole(self) -> None:
         try:
@@ -1298,6 +1323,7 @@ class PartWorkbenchPanel(ttk.Frame):
         self.slot_length_var.set(str(parameters.get("length_mm", 30.0)))
         self.slot_width_var.set(str(parameters.get("width_mm", 14.0)))
         self.slot_angle_var.set(str(parameters.get("angle_deg", 0.0)))
+        self.exact_viewer.highlight_feature("slot")
 
     def add_or_update_slot(self) -> None:
         try:
@@ -1550,11 +1576,53 @@ class PartWorkbenchPanel(ttk.Frame):
         self.status_callback(f"{title}: {error}")
         messagebox.showerror(title, str(error), parent=self.winfo_toplevel())
 
+    def _exact_subshape_selected(self, payload: dict[str, Any]) -> None:
+        feature_type = str(payload.get("feature_type") or "").lower()
+        if "hole" in feature_type or "cylind" in feature_type:
+            diameter = payload.get("diameter_mm")
+            matches = []
+            for feature in self._features:
+                if feature.get("kind") != "hole":
+                    continue
+                value = dict(feature.get("parameters") or {}).get("diameter_mm")
+                if diameter is None or value is None:
+                    matches.append(feature)
+                    continue
+                try:
+                    if abs(float(value) - float(diameter)) <= 1e-6:
+                        matches.append(feature)
+                except (TypeError, ValueError):
+                    continue
+            if len(matches) == 1:
+                feature_id = str(matches[0].get("feature_id") or "")
+                if feature_id and self.hole_grid.exists(feature_id):
+                    self._selected_hole_id = feature_id
+                    self.hole_grid.selection_set(feature_id)
+                    self.hole_grid.focus(feature_id)
+                    self.hole_grid.see(feature_id)
+                    self.editor_tabs.select(self.hole_grid.master)
+        elif payload.get("kind") == "edge" and len(self._contours) == 1:
+            contour_id = str(self._contours[0].get("contour_id") or "")
+            if contour_id and self.contour_grid.exists(contour_id):
+                self.contour_grid.selection_set(contour_id)
+                self.editor_tabs.select(self.contour_grid.master)
+        self.status_var.set(
+            f"Exact {payload.get('kind', 'subshape')} geselecteerd: {payload.get('stable_id', '-')}; "
+            f"bewijs {payload.get('evidence', 'onbekend')}"
+        )
+
     def set_view(self, elevation: float, azimuth: float) -> None:
         self.axis_3d.view_init(elev=elevation, azim=azimuth)
         self.canvas.draw_idle()
+        if elevation >= 80:
+            self.exact_viewer.set_top()
+        elif abs(elevation) < 1 and azimuth <= -80:
+            self.exact_viewer.set_front()
+        else:
+            self.exact_viewer.set_isometric()
 
     def fit_view(self) -> None:
+        self.exact_viewer.fit_all()
         self._render_preview(self._current_part())
 
     def _render_preview(self, part: Part | None) -> None:
@@ -1759,6 +1827,11 @@ class PartWorkbenchPanel(ttk.Frame):
         self.axis_3d.set_zlim(0.0, max(z_max, 1.0))
         self.axis_3d.set_box_aspect((max(x_max, 1.0), max(y_max, 1.0), max(z_max, 1.0)))
         self.axis_3d.view_init(elev=24, azim=-58)
+
+    def destroy(self) -> None:
+        if hasattr(self, "exact_viewer"):
+            self.exact_viewer.destroy()
+        super().destroy()
 
 
 __all__ = ["PartWorkbenchPanel", "rectangle_contour", "source_dimensions_mm"]

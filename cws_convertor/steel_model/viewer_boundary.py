@@ -206,6 +206,16 @@ class ViewerHostSnapshot:
     def to_json_bytes(self) -> bytes:
         return canonical_json_bytes(self.to_dict())
 
+    def binding(self, steel_model_id: str) -> ViewerEntityBinding | None:
+        return next(
+            (
+                item
+                for item in self.bindings
+                if item.steel_model_id == str(steel_model_id)
+            ),
+            None,
+        )
+
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "ViewerHostSnapshot":
         raw = dict(value)

@@ -6,11 +6,20 @@ Compatibiliteit:     CWS_Convertor binaries/installer/.cwscproj/ProgIDs behouden
 Versie:              0.8.3-beta-dev
 Project Model:       2.5
 Projectbestand:      .cwscproj
-Fase:                Fase B Viewer & Import Accuracy actief; batches 1-2 afgerond
-Productiestatus:     BETA-DEV - synthetische releaseketen getest; golden projectvalidatie blijft vereist
+Fase:                Viewer V0-V6 geintegreerd; V7 niet gestart
+Productiestatus:     BETA-DEV - integratiegate technisch groen; eigenaarvalidatie blijft vereist
 
 NIEUW IN DEZE VERSIE
 --------------------
+- CWS Viewer V0-V6 geintegreerd in de bestaande CWS Convertor-hoofdapp.
+- Een Project Viewer en een Experimental Exact Part Workbench delen dezelfde
+  Canonical Project Model-, SteelModel- en productie-identiteiten.
+- Projectboom, grid, properties, 3D-selectie, visibility, sections, clipping,
+  explode, metingen, screenshots en viewerworkspace 1.1 zijn gekoppeld.
+- Exacte source/canonical BREP-inspectie, stabiele face/edge/vertex-ID's,
+  snapping, overlay en geometrische/featurevergelijking zijn gekoppeld.
+- Viewerreview kan nooit zelfstandig NC1/STEP/IFC/Trusted-PDF vrijgeven.
+- PySide6, VTK en OCCT zijn opgenomen in source, dist, portable en installer.
 - SteelModel 1.0 als deterministische read-only adapter boven Project Model 2.5.
 - Centrale tolerantiepolicy voor exact, numeriek, variabele metadata en manual validation.
 - Stabiel viewer-hostcontract met source/SteelModel/node/geometry-ID-keten en aparte mesh-contenthash.
@@ -81,6 +90,15 @@ REFERENTIE-STEP
 
 TESTRESULTATEN
 --------------
+Viewer V0-V6 volledige runner:          86/86 scripts geslaagd; 2 expliciete skips
+Geobserveerde unittest-cases:            257 passed / 2 skipped / 0 failed
+V6 exact-workbench-poorten:               20/20 geslaagd
+Source native/GUI-poorten:                 11/11 geslaagd
+Dist native/GUI-poorten:                   11/11 geslaagd
+Portable native/GUI-poorten:               11/11 geslaagd
+Installed native/GUI-poorten:              11/11 geslaagd
+Echt project:                    6.168 nodes / 5.809 renderables geladen
+Echte geometrie:                  577 exact/verified, 94 approximations, 2 proxies
 Semantische fase:                     82/82 geslaagd
 NC1 -> STEP:                          24/24 geslaagd
 STEP -> NC1:                          19/19 geslaagd
@@ -106,6 +124,13 @@ Handmatige referentievalidering:       0/481 afgerond
 
 BELANGRIJKE GRENZEN
 -------------------
+- V7 compare/revisions/correspondence is niet gestart.
+- De Exact Part Workbench heeft reviewstatus en kan geen productie vrijgeven.
+- In het echte Tekla-project blijven 94 IFC-geometrieen displaybenaderingen en
+  2 geometrieen displayproxy; deze zijn uitgesloten van exacte productieclaims.
+- Niet alle externe IFC-parts hebben isoleerbare native source-BREP.
+- Het echte grote-modelresultaat is een meting op de lokale testmachine en geen
+  algemene GPU- of hardwaregarantie.
 - Externe IFC/STEP-parts zijn nog niet automatisch NC1-geschikt.
 - De bronvergelijking vereist aantoonbare exacte per-part BREP; IFC-tessellatie blijft handmatige validatie.
 - Slots, pockets, chamfers en complexe eindbewerkingen zijn nog rebuild-geblokkeerd.
@@ -116,10 +141,10 @@ BELANGRIJKE GRENZEN
 - Grote productie-export wacht op een door de eigenaar gevalideerd, vrijgegeven groot model.
 - De centrale viewer laadt echte projectmeshes progressief, begrensd en annuleerbaar; eigenaar-validatie op een groot/complex model is nog open.
 - IFC-entiteitsmeshes worden nog per onderdeel in een geisoleerde worker geparsed; veilige bronbatching/parse-reuse is nog open.
-- Meten, doorsneden en vergelijken blijven uitgeschakeld totdat hun contracts en regressies zijn geaccepteerd.
+- Meten en doorsneden zijn als reviewfunctionaliteit actief; revision compare blijft V7.
 - De 600-instance test is gegenereerd bewijs en vervangt geen eigenaar-gevalideerd groot/complex model.
 - De 5.000-entity schedulerproef bewijst begrenzing en wachtrijgedrag, niet de parse- en renderbelasting van een echt productiemodel.
-- Viewer V2 blijft uitgesloten: de synthetische boxes en PySide6-shell zijn niet overgenomen.
+- Viewer V2-contracten zijn geintegreerd; synthetische fixtures blijven alleen testdata.
 - Negen optionele grote/handover-fixtures waren niet aanwezig in de ontwikkelrun.
 - Windows CI-run 31728698072: fase 3 source, dist, portable, installer, installed runtime, productiepakket en uninstall geslaagd.
 - Windows CI-run 31734275341: fase A source, dist, portable, installer, installed runtime, SteelModel/viewer-hostexport en uninstall geslaagd; artifact 9195086063.

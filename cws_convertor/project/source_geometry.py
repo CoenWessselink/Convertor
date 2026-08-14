@@ -781,6 +781,13 @@ def persist_source_geometry_inspection(
     descriptor["source_inspection"] = inspection.to_dict()
     if inspection.geometry_kind == "native_brep" and inspection.selection_verified:
         descriptor["cad_metrics"] = dict(inspection.metrics)
+        if part.canonical_part is None:
+            area_mm2 = inspection.metrics.get("area_mm2")
+            volume_mm3 = inspection.metrics.get("volume_mm3")
+            if isinstance(area_mm2, (int, float)) and not isinstance(area_mm2, bool):
+                part.surface_area_each_m2 = float(area_mm2) / 1_000_000.0
+            if isinstance(volume_mm3, (int, float)) and not isinstance(volume_mm3, bool):
+                part.properties["volume_mm3"] = float(volume_mm3)
     elif inspection.geometry_kind == "triangulated_mesh" and inspection.selection_verified:
         descriptor["source_mesh_metrics"] = dict(inspection.metrics)
     part.geometry_descriptor = descriptor

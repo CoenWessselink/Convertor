@@ -7,7 +7,7 @@ import json
 import queue
 import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, ttk
 from typing import Any, Callable, Mapping
 
 from cws_convertor.project.model import ProjectModel
@@ -52,9 +52,14 @@ class ProjectViewerPanel(ttk.Frame):
         self.status_callback = status_callback or (lambda _message: None)
         self.state: ViewerWorkspaceState | None = None
         self._project: ProjectModel | None = None
+        self._integrated_scene: Any | None = None
         self._tree_to_model_id: dict[str, str] = {}
         self._model_to_tree_id: dict[str, str] = {}
+        self._grid_to_model_id: dict[str, str] = {}
+        self._model_to_grid_id: dict[str, str] = {}
         self._issue_to_model_id: dict[str, str] = {}
+        self._selection_syncing = False
+        self._selected_model_ids: tuple[str, ...] = ()
         self._renderer_handshake: ViewerHandshake | None = None
         self._renderer_command: Callable[[str, dict[str, Any]], None] | None = None
         self._builtin_renderer: Any | None = None
@@ -78,6 +83,15 @@ class ProjectViewerPanel(ttk.Frame):
         self._mouse_dragged = False
         self.search_var = tk.StringVar(value="")
         self.accuracy_mode_var = tk.BooleanVar(value=True)
+        self.projection_var = tk.StringVar(value="Perspectief")
+        self.render_mode_var = tk.StringVar(value="Shaded + randen")
+        self.color_scheme_var = tk.StringVar(value="Nauwkeurigheid")
+        self.background_var = tk.StringVar(value="Donker")
+        self.section_axis_var = tk.StringVar(value="Z")
+        self.section_offset_var = tk.DoubleVar(value=0.0)
+        self.explode_var = tk.DoubleVar(value=0.0)
+        self._section_active = False
+        self._last_renderer_telemetry: dict[str, Any] = {}
         self.renderer_status_var = tk.StringVar(value="Renderer niet gekoppeld")
         self.selection_status_var = tk.StringVar(value="Geen object geselecteerd")
         self.mesh_progress_var = tk.DoubleVar(value=0.0)
@@ -88,7 +102,7 @@ class ProjectViewerPanel(ttk.Frame):
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
 
         toolbar = ttk.Frame(self, padding=(8, 6))
         toolbar.grid(row=0, column=0, sticky="ew")
@@ -130,7 +144,7 @@ class ProjectViewerPanel(ttk.Frame):
         self.section_button = ttk.Button(
             toolbar,
             text="Doorsnede",
-            command=lambda: self._run_renderer_command("section.begin"),
+            command=self._toggle_section,
             state="disabled",
         )
         self.section_button.pack(side="left", padx=(5, 0))
@@ -152,8 +166,92 @@ class ProjectViewerPanel(ttk.Frame):
             side="right", fill="x", expand=True, padx=(12, 0)
         )
 
+        display_toolbar = ttk.Frame(self, padding=(8, 0, 8, 6))
+        display_toolbar.grid(row=1, column=0, sticky="ew")
+        self.projection_combo = ttk.Combobox(
+            display_toolbar,
+            textvariable=self.projection_var,
+            values=("Perspectief", "Orthografisch"),
+            state="readonly",
+            width=13,
+        )
+        self.projection_combo.pack(side="left")
+        self.projection_combo.bind("<<ComboboxSelected>>", self._projection_changed)
+        self.render_mode_combo = ttk.Combobox(
+            display_toolbar,
+            textvariable=self.render_mode_var,
+            values=("Shaded", "Shaded + randen", "Wireframe"),
+            state="readonly",
+            width=17,
+        )
+        self.render_mode_combo.pack(side="left", padx=(5, 0))
+        self.render_mode_combo.bind("<<ComboboxSelected>>", self._render_mode_changed)
+        self.color_scheme_combo = ttk.Combobox(
+            display_toolbar,
+            textvariable=self.color_scheme_var,
+            values=("Origineel", "Nauwkeurigheid", "Materiaal", "Profiel", "Assembly", "Fase", "Status"),
+            state="readonly",
+            width=15,
+        )
+        self.color_scheme_combo.pack(side="left", padx=(5, 0))
+        self.color_scheme_combo.bind("<<ComboboxSelected>>", self._color_scheme_changed)
+        self.background_combo = ttk.Combobox(
+            display_toolbar,
+            textvariable=self.background_var,
+            values=("Donker", "Licht", "Wit"),
+            state="readonly",
+            width=9,
+        )
+        self.background_combo.pack(side="left", padx=(5, 0))
+        self.background_combo.bind("<<ComboboxSelected>>", self._background_changed)
+        ttk.Separator(display_toolbar, orient="vertical").pack(side="left", fill="y", padx=7)
+        self.hide_button = ttk.Button(display_toolbar, text="Verberg", command=self._hide_selected)
+        self.hide_button.pack(side="left")
+        self.show_all_button = ttk.Button(display_toolbar, text="Alles", command=self._show_all)
+        self.show_all_button.pack(side="left", padx=(4, 0))
+        self.isolate_button = ttk.Button(display_toolbar, text="Isoleer", command=self._isolate_selected)
+        self.isolate_button.pack(side="left", padx=(4, 0))
+        self.ghost_button = ttk.Button(display_toolbar, text="Ghost", command=self._ghost_selected)
+        self.ghost_button.pack(side="left", padx=(4, 0))
+        ttk.Separator(display_toolbar, orient="vertical").pack(side="left", fill="y", padx=7)
+        self.section_axis_combo = ttk.Combobox(
+            display_toolbar,
+            textvariable=self.section_axis_var,
+            values=("X", "Y", "Z"),
+            state="readonly",
+            width=3,
+        )
+        self.section_axis_combo.pack(side="left")
+        self.section_offset_input = ttk.Spinbox(
+            display_toolbar,
+            textvariable=self.section_offset_var,
+            from_=-100000.0,
+            to=100000.0,
+            increment=10.0,
+            width=8,
+        )
+        self.section_offset_input.pack(side="left", padx=(3, 0))
+        self.clipping_button = ttk.Button(display_toolbar, text="Clipbox", command=self._toggle_clipping_box)
+        self.clipping_button.pack(side="left", padx=(4, 0))
+        ttk.Label(display_toolbar, text="Explode").pack(side="left", padx=(8, 3))
+        self.explode_scale = ttk.Scale(
+            display_toolbar,
+            variable=self.explode_var,
+            from_=0.0,
+            to=1.0,
+            command=self._explode_changed,
+            length=80,
+        )
+        self.explode_scale.pack(side="left")
+        self.screenshot_button = ttk.Button(display_toolbar, text="Screenshot", command=self._save_screenshot)
+        self.screenshot_button.pack(side="right")
+        self.workspace_open_button = ttk.Button(display_toolbar, text="Open view", command=self._open_workspace)
+        self.workspace_open_button.pack(side="right", padx=(0, 4))
+        self.workspace_save_button = ttk.Button(display_toolbar, text="Bewaar view", command=self._save_workspace)
+        self.workspace_save_button.pack(side="right", padx=(0, 4))
+
         body = ttk.Panedwindow(self, orient="horizontal")
-        body.grid(row=1, column=0, sticky="nsew")
+        body.grid(row=2, column=0, sticky="nsew")
 
         tree_panel = ttk.Frame(body, width=260)
         tree_panel.columnconfigure(0, weight=1)
@@ -166,8 +264,8 @@ class ProjectViewerPanel(ttk.Frame):
         search.columnconfigure(0, weight=1)
         search_entry = ttk.Entry(search, textvariable=self.search_var)
         search_entry.grid(row=0, column=0, sticky="ew")
-        search_entry.bind("<KeyRelease>", lambda _event: self._refresh_tree())
-        self.tree = ttk.Treeview(tree_panel, show="tree", selectmode="browse")
+        search_entry.bind("<KeyRelease>", self._search_changed)
+        self.tree = ttk.Treeview(tree_panel, show="tree", selectmode="extended")
         self.tree.grid(row=2, column=0, sticky="nsew", padx=(8, 0), pady=(0, 8))
         tree_scroll = ttk.Scrollbar(tree_panel, orient="vertical", command=self.tree.yview)
         tree_scroll.grid(row=2, column=1, sticky="ns", pady=(0, 8))
@@ -179,6 +277,38 @@ class ProjectViewerPanel(ttk.Frame):
         self.tree.tag_configure("accuracy_manual", foreground="#a31515")
         self.tree.tag_configure("accuracy_na", foreground="#64748b")
         body.add(tree_panel, weight=1)
+
+        grid_panel = ttk.Frame(body, width=390)
+        grid_panel.columnconfigure(0, weight=1)
+        grid_panel.rowconfigure(1, weight=1)
+        ttk.Label(grid_panel, text="Onderdelen / merken", style="Heading.TLabel").grid(
+            row=0, column=0, sticky="ew", padx=8, pady=(8, 5)
+        )
+        grid_columns = ("type", "position", "assembly", "profile", "material", "status")
+        self.entity_grid = ttk.Treeview(
+            grid_panel,
+            columns=grid_columns,
+            show="headings",
+            selectmode="extended",
+        )
+        for name, label, width in (
+            ("type", "Type", 74),
+            ("position", "Pos.", 70),
+            ("assembly", "Merk", 70),
+            ("profile", "Profiel", 118),
+            ("material", "Materiaal", 85),
+            ("status", "Status", 92),
+        ):
+            self.entity_grid.heading(name, text=label)
+            self.entity_grid.column(name, width=width, minwidth=50, anchor="w")
+        self.entity_grid.grid(row=1, column=0, sticky="nsew", padx=(8, 0), pady=(0, 8))
+        entity_scroll_y = ttk.Scrollbar(grid_panel, orient="vertical", command=self.entity_grid.yview)
+        entity_scroll_y.grid(row=1, column=1, sticky="ns", pady=(0, 8))
+        entity_scroll_x = ttk.Scrollbar(grid_panel, orient="horizontal", command=self.entity_grid.xview)
+        entity_scroll_x.grid(row=2, column=0, sticky="ew", padx=(8, 0))
+        self.entity_grid.configure(yscrollcommand=entity_scroll_y.set, xscrollcommand=entity_scroll_x.set)
+        self.entity_grid.bind("<<TreeviewSelect>>", self._grid_selected)
+        body.add(grid_panel, weight=2)
 
         center = ttk.Panedwindow(body, orient="vertical")
         scene = ttk.Frame(center)
@@ -275,7 +405,7 @@ class ProjectViewerPanel(ttk.Frame):
         body.add(properties, weight=2)
 
         footer = ttk.Frame(self, padding=(8, 5))
-        footer.grid(row=2, column=0, sticky="ew")
+        footer.grid(row=3, column=0, sticky="ew")
         footer.columnconfigure(0, weight=1)
         self.model_summary_label = ttk.Label(footer, text="Geen SteelModel geladen")
         self.model_summary_label.grid(row=0, column=0, sticky="w")
@@ -313,6 +443,7 @@ class ProjectViewerPanel(ttk.Frame):
         self._project = project
         if project is None:
             self.state = None
+            self._integrated_scene = None
             self._renderer_handshake = None
             self._renderer_command = None
             self.renderer_status_var.set("Renderer niet gekoppeld")
@@ -322,6 +453,9 @@ class ProjectViewerPanel(ttk.Frame):
             return
         steel_model = build_steel_model_snapshot(project)
         viewer_host = build_viewer_host_snapshot(steel_model)
+        from cws_convertor.viewer.v6_integration import build_integrated_project_scene
+
+        self._integrated_scene = build_integrated_project_scene(project)
         state = ViewerWorkspaceState(steel_model, viewer_host)
         if self._renderer_handshake is not None:
             report = state.register_handshake(self._renderer_handshake)
@@ -421,9 +555,17 @@ class ProjectViewerPanel(ttk.Frame):
     def cancel_mesh_requests(self, *, clear_plan: bool = True) -> None:
         plan = self._mesh_plan
         was_loading = bool(plan is not None and not plan.is_finished)
+        loaded_ids = tuple(plan.loaded_ids) if plan is not None and was_loading else ()
         self._mesh_cancel_event.set()
         if plan is not None:
             plan.cancel()
+        if loaded_ids and self.state is not None:
+            self.state.detach_mesh_resources(loaded_ids)
+            if self._renderer_command is not None and self.state.renderer_compatible:
+                try:
+                    self._renderer_command("scene.load", self.state.scene_payload())
+                except Exception as exc:
+                    self.status_callback(f"Viewerrollback na annuleren mislukt: {exc}")
         self._mesh_generation += 1
         self._mesh_cancel_event = threading.Event()
         if clear_plan:
@@ -708,10 +850,20 @@ class ProjectViewerPanel(ttk.Frame):
             return False
         self.state.select(steel_model_id)
         tree_id = self._model_to_tree_id.get(steel_model_id)
-        if tree_id and self.tree.exists(tree_id):
-            self.tree.selection_set(tree_id)
-            self.tree.focus(tree_id)
-            self.tree.see(tree_id)
+        self._selection_syncing = True
+        try:
+            if tree_id and self.tree.exists(tree_id):
+                self.tree.selection_set(tree_id)
+                self.tree.focus(tree_id)
+                self.tree.see(tree_id)
+            grid_id = self._model_to_grid_id.get(steel_model_id)
+            if grid_id and self.entity_grid.exists(grid_id):
+                self.entity_grid.selection_set(grid_id)
+                self.entity_grid.focus(grid_id)
+                self.entity_grid.see(grid_id)
+        finally:
+            self._selection_syncing = False
+        self._selected_model_ids = (steel_model_id,)
         self._refresh_selection()
         if sync_renderer and self.state.selected_binding is not None:
             self._run_renderer_command(
@@ -751,6 +903,7 @@ class ProjectViewerPanel(ttk.Frame):
 
     def _refresh_all(self) -> None:
         self._refresh_tree()
+        self._refresh_grid()
         self._refresh_renderer_controls()
         self._refresh_issues()
         self._refresh_selection()
@@ -796,6 +949,51 @@ class ProjectViewerPanel(ttk.Frame):
             self.tree.selection_set(tree_id)
             self.tree.focus(tree_id)
 
+    def _refresh_grid(self) -> None:
+        previous = set()
+        if self.state is not None:
+            previous = {
+                self._grid_to_model_id[item]
+                for item in self.entity_grid.selection()
+                if item in self._grid_to_model_id
+            }
+            if self.state.selected_id:
+                previous.add(self.state.selected_id)
+        self.entity_grid.delete(*self.entity_grid.get_children())
+        self._grid_to_model_id.clear()
+        self._model_to_grid_id.clear()
+        if self.state is None:
+            return
+        search = self.search_var.get().strip().casefold()
+        for entity in sorted(
+            self.state.steel_model.entities,
+            key=lambda item: (
+                str(item.display_properties.get("part_position") or item.display_properties.get("assembly_mark") or "~"),
+                item.name,
+                item.steel_model_id,
+            ),
+        ):
+            if entity.entity_type not in {"assembly", "part", "purchased_item"}:
+                continue
+            properties = dict(entity.display_properties)
+            values = (
+                entity.entity_type.replace("purchased_item", "inkoop"),
+                properties.get("part_position") or "-",
+                properties.get("assembly_mark") or properties.get("assembly_position") or "-",
+                properties.get("normalized_profile") or properties.get("profile") or "-",
+                properties.get("normalized_material") or properties.get("material_grade") or properties.get("material") or "-",
+                entity.status,
+            )
+            if search and search not in " ".join((entity.name, entity.steel_model_id, *(str(item) for item in values))).casefold():
+                continue
+            row_id = self.entity_grid.insert("", "end", values=values)
+            self._grid_to_model_id[row_id] = entity.steel_model_id
+            self._model_to_grid_id[entity.steel_model_id] = row_id
+        selected_rows = [self._model_to_grid_id[item] for item in previous if item in self._model_to_grid_id]
+        if selected_rows:
+            self.entity_grid.selection_set(selected_rows)
+            self.entity_grid.focus(selected_rows[-1])
+
     def _refresh_renderer_controls(self) -> None:
         state = self.state
         compatible = bool(state and state.renderer_compatible and self._renderer_command)
@@ -827,6 +1025,28 @@ class ProjectViewerPanel(ttk.Frame):
                     else "disabled"
                 )
             )
+        display_state = "normal" if compatible else "disabled"
+        for button in (
+            self.hide_button,
+            self.show_all_button,
+            self.isolate_button,
+            self.ghost_button,
+            self.clipping_button,
+            self.screenshot_button,
+            self.workspace_open_button,
+            self.workspace_save_button,
+        ):
+            button.configure(state=display_state)
+        for combo in (
+            self.projection_combo,
+            self.render_mode_combo,
+            self.color_scheme_combo,
+            self.background_combo,
+            self.section_axis_combo,
+        ):
+            combo.configure(state="readonly" if compatible else "disabled")
+        self.section_offset_input.configure(state=display_state)
+        self.explode_scale.configure(state=display_state)
 
     def _refresh_issues(self) -> None:
         self.issue_grid.delete(*self.issue_grid.get_children())
@@ -940,6 +1160,158 @@ class ProjectViewerPanel(ttk.Frame):
             )
         self._draw_scene_status()
 
+    def _projection_changed(self, _event=None) -> None:
+        value = "orthographic" if self.projection_var.get() == "Orthografisch" else "perspective"
+        self._run_renderer_command("display.projection", {"projection": value}, require_attached=False)
+
+    def _render_mode_changed(self, _event=None) -> None:
+        value = {
+            "Shaded": "shaded",
+            "Shaded + randen": "shaded_edges",
+            "Wireframe": "wireframe",
+        }[self.render_mode_var.get()]
+        self._run_renderer_command("display.render_mode", {"mode": value}, require_attached=False)
+
+    def _color_scheme_changed(self, _event=None) -> None:
+        value = {
+            "Origineel": "original",
+            "Nauwkeurigheid": "accuracy",
+            "Materiaal": "material",
+            "Profiel": "profile",
+            "Assembly": "assembly",
+            "Fase": "phase",
+            "Status": "status",
+        }[self.color_scheme_var.get()]
+        self._run_renderer_command("display.color_scheme", {"scheme": value}, require_attached=False)
+
+    def _background_changed(self, _event=None) -> None:
+        value = {"Donker": "dark", "Licht": "light", "Wit": "white"}[self.background_var.get()]
+        self._run_renderer_command("display.background", {"theme": value}, require_attached=False)
+
+    def _hide_selected(self) -> None:
+        self._run_renderer_command(
+            "visibility.hide",
+            {"viewer_node_ids": self._selected_viewer_node_ids()},
+            require_attached=False,
+        )
+
+    def _show_all(self) -> None:
+        self._run_renderer_command("visibility.show_all", require_attached=False)
+
+    def _isolate_selected(self) -> None:
+        self._run_renderer_command(
+            "visibility.isolate",
+            {"viewer_node_ids": self._selected_viewer_node_ids()},
+            require_attached=False,
+        )
+
+    def _ghost_selected(self) -> None:
+        self._run_renderer_command(
+            "visibility.ghost",
+            {"viewer_node_ids": self._selected_viewer_node_ids()},
+            require_attached=False,
+        )
+
+    def _toggle_section(self) -> None:
+        self._run_renderer_command(
+            "section.begin",
+            {
+                "axis": self.section_axis_var.get().lower(),
+                "offset_mm": float(self.section_offset_var.get()),
+            },
+            require_attached=False,
+        )
+        self._section_active = not self._section_active
+        self.section_button.configure(text="Doorsnede uit" if self._section_active else "Doorsnede")
+
+    def _toggle_clipping_box(self) -> None:
+        self._run_renderer_command("clipping_box.toggle", require_attached=False)
+
+    def _explode_changed(self, raw: str) -> None:
+        try:
+            factor = float(raw)
+        except (TypeError, ValueError):
+            return
+        self._run_renderer_command(
+            "display.explode", {"factor": factor}, require_attached=False
+        )
+
+    def _renderer_request(
+        self,
+        command: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if self._renderer_command is None or self.state is None or not self.state.renderer_compatible:
+            return {}
+        result = self._renderer_command(command, dict(payload or {}))
+        return dict(result or {})
+
+    def _save_workspace(self) -> None:
+        try:
+            result = self._renderer_request("workspace.export")
+            workspace = result.get("workspace")
+            if not workspace:
+                raise RuntimeError("Renderer leverde geen viewerworkspace")
+            name = filedialog.asksaveasfilename(
+                parent=self.winfo_toplevel(),
+                title="Viewerweergave opslaan",
+                defaultextension=".cwsview.json",
+                filetypes=(("CWS viewerworkspace", "*.cwsview.json"), ("JSON", "*.json")),
+            )
+            if not name:
+                return
+            from pathlib import Path
+
+            target = Path(name).expanduser().resolve()
+            target.write_text(json.dumps(workspace, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            self.status_callback(f"Viewerworkspace opgeslagen: {target}")
+        except Exception as exc:
+            self.status_callback(f"Viewerworkspace opslaan mislukt: {exc}")
+
+    def _open_workspace(self) -> None:
+        name = filedialog.askopenfilename(
+            parent=self.winfo_toplevel(),
+            title="Viewerweergave openen",
+            filetypes=(("CWS viewerworkspace", "*.cwsview.json"), ("JSON", "*.json")),
+        )
+        if not name:
+            return
+        try:
+            from pathlib import Path
+
+            workspace = json.loads(Path(name).read_text(encoding="utf-8"))
+            self._renderer_request("workspace.load", {"workspace": workspace})
+            display = dict(workspace.get("display_preferences") or {})
+            self.projection_var.set("Orthografisch" if workspace["camera"]["projection"] == "orthographic" else "Perspectief")
+            self.render_mode_var.set({"shaded": "Shaded", "shaded_edges": "Shaded + randen", "wireframe": "Wireframe"}.get(display.get("render_mode"), "Shaded + randen"))
+            self.explode_var.set(float((workspace.get("explode_offsets") or [{"factor": 0.0}])[0].get("factor", 0.0)))
+            self._section_active = bool(workspace.get("section_planes"))
+            self.section_button.configure(text="Doorsnede uit" if self._section_active else "Doorsnede")
+            self.status_callback(f"Viewerworkspace hersteld: {name}")
+        except Exception as exc:
+            self.status_callback(f"Viewerworkspace openen mislukt: {exc}")
+
+    def _save_screenshot(self) -> None:
+        name = filedialog.asksaveasfilename(
+            parent=self.winfo_toplevel(),
+            title="Viewerbeeld opslaan",
+            defaultextension=".png",
+            filetypes=(("PNG-afbeelding", "*.png"),),
+        )
+        if not name:
+            return
+        try:
+            from pathlib import Path
+
+            result = self._renderer_request("screenshot.capture")
+            png = result.get("png")
+            if not isinstance(png, (bytes, bytearray)):
+                raise RuntimeError("Renderer leverde geen PNG")
+            Path(name).write_bytes(bytes(png))
+            self.status_callback(f"Viewerbeeld opgeslagen: {name}")
+        except Exception as exc:
+            self.status_callback(f"Screenshot opslaan mislukt: {exc}")
+
     def _renderer_image_ready(
         self,
         png: bytes,
@@ -959,6 +1331,13 @@ class ProjectViewerPanel(ttk.Frame):
         )
         self.scene_canvas.tag_lower(image_id)
         self._scene_rendered = True
+        self._last_renderer_telemetry = dict(_telemetry)
+        measurement = self._last_renderer_telemetry.get("last_measurement")
+        if measurement:
+            self._scene_message = (
+                f"Meting {float(measurement['value_mm']):.3f} mm "
+                f"({measurement.get('evidence', 'display_mesh')})"
+            )
         self._draw_scene_status()
 
     def _scene_configured(self, _event=None) -> None:
@@ -1111,14 +1490,92 @@ class ProjectViewerPanel(ttk.Frame):
             )
 
     def _tree_selected(self, _event=None) -> None:
-        selected = list(self.tree.selection())
-        if not selected:
+        if self._selection_syncing:
             return
-        steel_model_id = self._tree_to_model_id.get(selected[0], "")
-        if self.state is not None and self.state.selected_id == steel_model_id:
+        model_ids = [
+            self._tree_to_model_id[item]
+            for item in self.tree.selection()
+            if item in self._tree_to_model_id
+        ]
+        self._apply_multi_selection(model_ids, source="tree")
+
+    def _grid_selected(self, _event=None) -> None:
+        if self._selection_syncing:
             return
-        if steel_model_id:
-            self.select_entity(steel_model_id, notify=True)
+        model_ids = [
+            self._grid_to_model_id[item]
+            for item in self.entity_grid.selection()
+            if item in self._grid_to_model_id
+        ]
+        self._apply_multi_selection(model_ids, source="grid")
+
+    def _apply_multi_selection(self, model_ids: list[str], *, source: str) -> None:
+        if not model_ids or self.state is None:
+            return
+        normalised = tuple(dict.fromkeys(model_ids))
+        if normalised == self._selected_model_ids:
+            return
+        model_ids = list(normalised)
+        primary = model_ids[-1]
+        if self.state.entity(primary) is None:
+            return
+        self.state.select(primary)
+        self._selection_syncing = True
+        try:
+            if source != "tree":
+                tree_rows = [self._model_to_tree_id[item] for item in model_ids if item in self._model_to_tree_id]
+                if tree_rows:
+                    self.tree.selection_set(tree_rows)
+                    self.tree.focus(tree_rows[-1])
+                    self.tree.see(tree_rows[-1])
+            if source != "grid":
+                grid_rows = [self._model_to_grid_id[item] for item in model_ids if item in self._model_to_grid_id]
+                if grid_rows:
+                    self.entity_grid.selection_set(grid_rows)
+                    self.entity_grid.focus(grid_rows[-1])
+                    self.entity_grid.see(grid_rows[-1])
+        finally:
+            self._selection_syncing = False
+        self._selected_model_ids = tuple(model_ids)
+        node_ids = [
+            self.state.viewer_host.binding(item).viewer_node_id
+            for item in model_ids
+            if self.state.entity(item) is not None
+        ]
+        self._run_renderer_command(
+            "selection.set",
+            {"viewer_node_ids": node_ids},
+            require_attached=False,
+        )
+        self._refresh_selection()
+        self.selection_callback(primary)
+        self._request_selected_mesh()
+
+    def _selected_viewer_node_ids(self) -> list[str]:
+        if self.state is None:
+            return []
+        model_ids = [
+            self._grid_to_model_id[item]
+            for item in self.entity_grid.selection()
+            if item in self._grid_to_model_id
+        ]
+        if not model_ids:
+            model_ids = [
+                self._tree_to_model_id[item]
+                for item in self.tree.selection()
+                if item in self._tree_to_model_id
+            ]
+        if not model_ids and self.state.selected_id:
+            model_ids = [self.state.selected_id]
+        return [
+            self.state.viewer_host.binding(item).viewer_node_id
+            for item in model_ids
+            if self.state.entity(item) is not None
+        ]
+
+    def _search_changed(self, _event=None) -> None:
+        self._refresh_tree()
+        self._refresh_grid()
 
     def _run_renderer_command(
         self,
@@ -1174,10 +1631,14 @@ class ProjectViewerPanel(ttk.Frame):
 
     def _render_empty_state(self) -> None:
         self.tree.delete(*self.tree.get_children())
+        self.entity_grid.delete(*self.entity_grid.get_children())
         self.issue_grid.delete(*self.issue_grid.get_children())
         self.property_grid.delete(*self.property_grid.get_children())
         self._tree_to_model_id.clear()
         self._model_to_tree_id.clear()
+        self._grid_to_model_id.clear()
+        self._model_to_grid_id.clear()
+        self._selected_model_ids = ()
         self._issue_to_model_id.clear()
         self.issue_summary_label.configure(text="Geen project")
         self.model_summary_label.configure(text="Geen SteelModel geladen")
@@ -1211,6 +1672,8 @@ class ProjectViewerPanel(ttk.Frame):
             )
         if self._builtin_renderer is not None:
             value["builtin_renderer_telemetry"] = self._builtin_renderer.telemetry()
+        if self._integrated_scene is not None:
+            value["viewer_v0_v6_scene"] = self._integrated_scene.to_dict()
         return json.dumps(value, indent=2, sort_keys=True)
 
     def destroy(self) -> None:

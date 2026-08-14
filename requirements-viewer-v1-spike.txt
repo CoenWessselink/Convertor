@@ -1,0 +1,3 @@
+# Compatibility entry point for the V1 technology spike.
+# The authoritative, reproducible dependency set is pinned below.
+-r requirements-viewer-v1.lock.txt

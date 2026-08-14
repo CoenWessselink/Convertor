@@ -397,7 +397,9 @@ class ViewerMeshRendererTests(unittest.TestCase):
                 self.assertIsNotNone(panel._scene_photo)
                 self.assertEqual(panel._builtin_renderer.actor_count, 1)
                 self.assertEqual(str(panel.fit_button["state"]), "normal")
-                self.assertEqual(str(panel.measure_button["state"]), "disabled")
+                self.assertEqual(str(panel.measure_button["state"]), "normal")
+                self.assertEqual(str(panel.section_button["state"]), "normal")
+                self.assertEqual(str(panel.compare_button["state"]), "disabled")
                 self.assertFalse(panel.state.handshake_report["complete"])
             finally:
                 if panel is not None:

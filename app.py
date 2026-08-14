@@ -1481,12 +1481,23 @@ def _run_gui_smoke(output_path: str | None) -> int:
         application = ConverterApp()
         application.update_idletasks()
         application.update()
+        project_tab = application.project_tab
+        if not hasattr(project_tab, "project_viewer"):
+            raise AssertionError("Project Viewer-widget ontbreekt in de hoofdapp")
+        if not hasattr(project_tab, "part_workbench"):
+            raise AssertionError("Part Workbench-widget ontbreekt in de hoofdapp")
         application.after(100, application.destroy)
         application.mainloop()
         gui_check = {
             "name": "gui",
             "status": "passed",
-            "details": {"window_created": True, "event_loop_processed": True},
+            "details": {
+                "window_created": True,
+                "event_loop_processed": True,
+                "project_production_tab_created": True,
+                "viewer_widget_created": True,
+                "part_workbench_imported": True,
+            },
         }
     except Exception as exc:
         gui_check["error"] = {"type": type(exc).__name__, "message": str(exc)}

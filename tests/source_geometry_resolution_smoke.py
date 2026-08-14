@@ -17,6 +17,7 @@ from cws_convertor.steel_model.adapter import build_steel_model_snapshot
 from cws_convertor.steel_model.viewer_boundary import build_viewer_host_snapshot
 from cws_convertor.viewer.mesh_resources import build_viewer_mesh_resource
 from cws_convertor.viewer.workspace import ViewerWorkspaceState
+from canonical_model import CanonicalPart
 from cli import EXIT_OK, EXIT_REVIEW_REQUIRED, main as cli_main
 
 
@@ -182,6 +183,8 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             self.assertIsNotNone(inspection.native_shape)
             self.assertEqual(inspection.metrics["solid_count"], 1)
             self.assertAlmostEqual(inspection.metrics["volume_mm3"], 50_000.0, places=6)
+            self.assertAlmostEqual(part.surface_area_each_m2, 0.013, places=9)
+            self.assertAlmostEqual(part.properties["volume_mm3"], 50_000.0, places=6)
             self.assertEqual(
                 sorted(inspection.metrics["bbox_mm"], reverse=True),
                 [100.0, 50.0, 10.0],
@@ -195,11 +198,39 @@ class SourceGeometryResolutionTests(unittest.TestCase):
                 stored = reopened.project.parts[part.internal_id].geometry_descriptor
                 self.assertEqual(stored["source_inspection"]["status"], "resolved_exact")
                 self.assertEqual(stored["cad_metrics"]["scope"], "exact_part")
+                self.assertAlmostEqual(
+                    reopened.project.parts[part.internal_id].surface_area_each_m2,
+                    0.013,
+                    places=9,
+                )
+                self.assertAlmostEqual(
+                    reopened.project.parts[part.internal_id].properties["volume_mm3"],
+                    50_000.0,
+                    places=6,
+                )
                 resolved_again = reopened.inspect_part_source_geometry(
                     part.internal_id,
                     persist=False,
                 )
                 self.assertEqual(resolved_again.status, "resolved_exact")
+
+    def test_exact_source_inspection_never_overwrites_canonical_metrics(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="cws_source_canonical_") as folder_name:
+            source = Path(folder_name) / "single.step"
+            export_step(source)
+            session = ProjectSession.new("Canonical metric ownership")
+            registration = session.register_sources([source], include_step_geometry=True)[0]
+            session.semantic_import_source(registration.source.source_id)
+            part = next(iter(session.project.parts.values()))
+            part.set_canonical(CanonicalPart(part_id=part.internal_id))
+            part.surface_area_each_m2 = 9.25
+            part.properties["volume_mm3"] = 123.0
+
+            inspection = session.inspect_part_source_geometry(part.internal_id, user="tester")
+
+            self.assertEqual(inspection.status, "resolved_exact")
+            self.assertEqual(part.surface_area_each_m2, 9.25)
+            self.assertEqual(part.properties["volume_mm3"], 123.0)
 
     def test_multi_solid_step_never_selects_a_part_by_native_list_order(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_source_multistep_") as folder_name:

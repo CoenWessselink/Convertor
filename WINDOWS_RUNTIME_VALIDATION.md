@@ -26,7 +26,8 @@ failing GUI import chain.
 - `casadi==3.7.2` is pinned in the direct runtime lock.
 - `CWS_Convertor.spec` explicitly collects CasADi and uses local PyInstaller hooks.
 - `hook-casadi.py` collects the complete wheel, including native plugins and metadata.
-- `pyi_rth_casadi_dll_path.py` registers the bundled CasADi directory before app imports start.
+- `pyi_rth_cws_native_dll_path.py` registers bundled native package directories
+  for CasADi, Qt, VTK and OCCT before app imports start.
 - `CWS_Convertor.exe --self-test` executes native and functional runtime checks.
 - `CWS_Convertor.exe --gui-smoke` creates the main window, processes the event loop and closes it.
 - The packaged regression performs an NC1-to-STEP conversion, project create/read cycle and
@@ -48,6 +49,8 @@ failing GUI import chain.
 | Matplotlib | Render a line using the non-interactive Agg backend |
 | NumPy/SciPy | Create a native array and calculate a determinant |
 | Pillow | Create an in-memory RGB image |
+| PySide6 | Import Qt runtime and validate the integrated viewer Qt contract |
+| OCCT exact viewer | Create native BREP, catalog stable subshapes and repeat an exact pick |
 | VTK | Local/package gate: render real geometry and validate PNG; headless GitHub gate: load native rendering modules and execute a polydata/mapper pipeline |
 
 `inspect_windows_native_dependencies.py` additionally reads the PE import table
@@ -135,3 +138,31 @@ Artifact `9213845091` is 727,225,659 bytes with digest
 No separate Visual C++ or MinGW installation is requested from the user. The
 release is accepted only when all required wheel runtimes are present and the
 installed functional checks pass on the Windows runner.
+
+## Integrated Viewer V0-V6 local gate
+
+On 2026-08-14 the final integrated build passed independently in source, the
+PyInstaller dist folder, a fresh extraction of the portable ZIP and a fresh
+per-user installation. Each environment passed CasADi, CadQuery/OCP,
+IfcOpenShell, PySide6, VTK, the integrated viewer, exact OCCT picking, project
+roundtrips and the real GUI smoke. Packaged child processes had no external
+Python on `PATH`.
+
+The final dist inventory contains 724 DLL files and 422 PYD files (1,146 native
+files total), including 97 CasADi DLLs. Direct dependencies of `_casadi.pyd`
+resolve from the package. The final GUI smoke is 11/11 in dist, portable and
+installed form. File associations passed, silent uninstall returned exit code
+0 and the installed GUI/CLI files were absent afterwards.
+
+Final binary sizes before hashing:
+
+| Artifact | Bytes |
+| --- | ---: |
+| `dist/CWS_Convertor/CWS_Convertor.exe` | 38,279,554 |
+| `dist/CWS_Convertor/CWS_Convertor_CLI.exe` | 38,162,007 |
+| `dist/CWS_Convertor_Portable_0.8.3-beta-dev_x64.zip` | 691,014,614 |
+| `dist_installer/CWS_Convertor_Setup_0.8.3-beta-dev_x64.exe` | 416,907,694 |
+
+Hashes are recorded in the release `SHA256SUMS.txt`; the release manifest is
+generated only after the source, validation and complete handover archives are
+physically present and their ZIP CRC checks have passed.

@@ -4,7 +4,23 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = Path(SPECPATH)
 
-packages = ["cadquery", "OCP", "casadi", "matplotlib", "numpy", "scipy", "PIL", "ifcopenshell", "xlsxwriter", "pymupdf", "pypdf", "reportlab", "ezdxf"]
+packages = [
+    "cadquery",
+    "OCP",
+    "casadi",
+    "matplotlib",
+    "numpy",
+    "scipy",
+    "PIL",
+    "ifcopenshell",
+    "xlsxwriter",
+    "pymupdf",
+    "pypdf",
+    "reportlab",
+    "ezdxf",
+    "vtkmodules",
+    "PySide6",
+]
 binaries = []
 datas = [
     (str(ROOT / "profiles.json"), "."),
@@ -18,6 +34,9 @@ datas = [
     (str(ROOT / "requirements-runtime.lock.txt"), "."),
     (str(ROOT / "requirements-build.lock.txt"), "."),
     (str(ROOT / "docs"), "docs"),
+    (str(ROOT / "cws_viewer" / "schemas"), "cws_viewer/schemas"),
+    (str(ROOT / "cws_viewer" / "fixtures" / "data"), "cws_viewer/fixtures/data"),
+    (str(ROOT / "requirements-viewer-v6.lock.txt"), "."),
 ]
 hiddenimports = [
     "fitz",
@@ -52,6 +71,14 @@ for package in packages:
 hiddenimports += collect_submodules("ifcopenshell.api")
 hiddenimports += collect_submodules("scipy._external.array_api_compat")
 hiddenimports += collect_submodules("scipy._lib.array_api_compat")
+hiddenimports += collect_submodules("cws_viewer")
+hiddenimports += collect_submodules("cws_convertor")
+hiddenimports += [
+    "vtk",
+    "vtkmodules.qt.QVTKRenderWindowInteractor",
+    "PySide6.QtOpenGLWidgets",
+    "casadi._casadi",
+]
 
 common = dict(
     pathex=[str(ROOT)],
@@ -60,7 +87,7 @@ common = dict(
     hiddenimports=sorted(set(hiddenimports)),
     hookspath=[str(ROOT / "pyinstaller_hooks")],
     hooksconfig={},
-    runtime_hooks=[str(ROOT / "pyinstaller_hooks" / "pyi_rth_casadi_dll_path.py")],
+    runtime_hooks=[str(ROOT / "pyinstaller_hooks" / "pyi_rth_cws_native_dll_path.py")],
     excludes=[],
     noarchive=False,
     optimize=1,

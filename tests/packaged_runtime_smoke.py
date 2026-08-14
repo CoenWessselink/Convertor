@@ -135,12 +135,18 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
                 "ifcopenshell",
                 "pymupdf",
                 "scientific_rendering",
+                "pyside6",
+                "viewer_integration",
+                "exact_occt_viewer",
                 "vtk_viewer",
                 "project_roundtrips",
             },
         )
         _run([str(gui), "--gui-smoke", "--output", str(gui_path)], environment=environment, cwd=work)
-        gui_result = _read_passed_result(gui_path, {"casadi", "cadquery_ocp", "gui"})
+        gui_result = _read_passed_result(
+            gui_path,
+            {"casadi", "cadquery_ocp", "pyside6", "viewer_integration", "exact_occt_viewer", "vtk_viewer", "gui"},
+        )
 
         version = _run([str(cli), "--version"], environment=environment, cwd=work)
         assert f"{APP_NAME} {APP_VERSION}" in version.stdout, version.stdout

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cws.example/schemas/viewer-workspace-1.0.schema.json",
+  "title": "CWS Viewer Workspace 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "scene_hash",
+    "camera",
+    "selection_level",
+    "selected_node_ids",
+    "hidden_node_ids",
+    "isolation_node_ids",
+    "ghost_context",
+    "transparency_by_node",
+    "color_by_node",
+    "display_preferences",
+    "section_planes",
+    "viewpoints",
+    "visibility_sets",
+    "accuracy_mode",
+    "state_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "project_id": {"type": "string", "minLength": 1},
+    "scene_hash": {"type": "string", "minLength": 1},
+    "camera": {"$ref": "#/$defs/camera"},
+    "selection_level": {"enum": ["model", "assembly", "part", "feature"]},
+    "selected_node_ids": {"$ref": "#/$defs/nodeIds"},
+    "hidden_node_ids": {"$ref": "#/$defs/nodeIds"},
+    "isolation_node_ids": {"$ref": "#/$defs/nodeIds"},
+    "ghost_context": {"type": "boolean"},
+    "transparency_by_node": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [{"type": "string"}, {"type": "number", "minimum": 0, "maximum": 1}],
+        "items": false
+      }
+    },
+    "color_by_node": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "prefixItems": [{"type": "string"}, {"$ref": "#/$defs/rgba"}],
+        "items": false
+      }
+    },
+    "display_preferences": {"$ref": "#/$defs/displayPreferences"},
+    "section_planes": {"type": "array", "items": {"type": "object"}},
+    "clipping_box": {"type": ["object", "null"]},
+    "viewpoints": {"type": "array", "items": {"type": "object"}},
+    "visibility_sets": {"type": "array", "items": {"type": "object"}},
+    "accuracy_mode": {"type": "boolean"},
+    "active_viewpoint_id": {"type": ["string", "null"]},
+    "created_at": {"type": "string"},
+    "updated_at": {"type": "string"},
+    "state_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "nodeIds": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "vector3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "z": {"type": "number"}}
+    },
+    "rgba": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["red", "green", "blue", "alpha"],
+      "properties": {
+        "red": {"type": "number", "minimum": 0, "maximum": 1},
+        "green": {"type": "number", "minimum": 0, "maximum": 1},
+        "blue": {"type": "number", "minimum": 0, "maximum": 1},
+        "alpha": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "camera": {
+      "type": "object",
+      "required": ["position", "target", "up", "projection"],
+      "properties": {
+        "position": {"$ref": "#/$defs/vector3"},
+        "target": {"$ref": "#/$defs/vector3"},
+        "up": {"$ref": "#/$defs/vector3"},
+        "projection": {"enum": ["perspective", "orthographic"]},
+        "field_of_view_deg": {"type": "number"},
+        "ortho_scale": {"type": "number"},
+        "near_plane": {"type": "number"},
+        "far_plane": {"type": "number"},
+        "coordinate_system": {"type": "string"},
+        "version": {"type": "integer"}
+      }
+    },
+    "displayPreferences": {
+      "type": "object",
+      "required": ["render_mode", "color_scheme", "background_theme", "ghost_opacity", "selection_color", "edge_width", "show_selection_outline", "version"],
+      "properties": {
+        "render_mode": {"type": ["string", "null"], "enum": [null, "shaded", "shaded_edges", "wireframe", "hidden_line"]},
+        "color_scheme": {"enum": ["original", "category", "material", "profile", "status", "phase", "source_model", "assembly", "monochrome"]},
+        "background_theme": {"enum": ["dark", "slate", "light"]},
+        "ghost_opacity": {"type": "number", "minimum": 0, "maximum": 1},
+        "selection_color": {"$ref": "#/$defs/rgba"},
+        "edge_width": {"type": "number", "exclusiveMinimum": 0},
+        "show_selection_outline": {"type": "boolean"},
+        "version": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

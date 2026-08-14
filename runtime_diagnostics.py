@@ -178,6 +178,129 @@ def _scientific_rendering_check() -> dict[str, Any]:
     }
 
 
+def _pyside6_check() -> dict[str, Any]:
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6 import QtCore, QtWidgets
+
+    application = QtWidgets.QApplication.instance()
+    owns_application = application is None
+    if application is None:
+        application = QtWidgets.QApplication(["cws-runtime-probe"])
+    widget = QtWidgets.QWidget()
+    widget.setObjectName("cwsRuntimeViewerProbe")
+    widget.resize(320, 180)
+    widget.show()
+    application.processEvents()
+    if not widget.isVisible() or widget.size().width() != 320:
+        raise AssertionError("PySide6 kon geen geldige viewerhost initialiseren")
+    platform_name = QtWidgets.QApplication.platformName()
+    widget.close()
+    application.processEvents()
+    if owns_application:
+        application.quit()
+    return {
+        "version": QtCore.qVersion(),
+        "distribution_version": _version("PySide6"),
+        "platform": platform_name,
+        "widget_created": True,
+        "event_loop_processed": True,
+    }
+
+
+def _integrated_viewer_contract_check() -> dict[str, Any]:
+    from cws_convertor.project import Part, ProjectSession, SourceFileRecord, SourceIdentity
+    from cws_convertor.viewer.v6_integration import build_integrated_project_scene
+    from cws_viewer.backends import HeadlessViewerController
+
+    session = ProjectSession.new("Integrated viewer runtime probe", created_by="runtime-self-test")
+    try:
+        session.project.sources["viewer-runtime-source"] = SourceFileRecord(
+            source_id="viewer-runtime-source",
+            file_name="viewer-runtime.step",
+            source_format="STEP",
+            sha256="c" * 64,
+            size_bytes=1,
+        )
+        part = Part(
+            internal_id="viewer-runtime-part",
+            name="Viewer runtime plate",
+            part_position="VIEWER-1",
+            source_identity=SourceIdentity(
+                source_format="STEP",
+                source_file_id="viewer-runtime-source",
+                source_sha256="c" * 64,
+                source_entity_id="#1",
+            ),
+            profile="PL10",
+            material="S355JR",
+            geometry_descriptor={
+                "source_geometry_hash": "d" * 64,
+                "bbox_mm": [100.0, 50.0, 10.0],
+            },
+        )
+        part.recompute_hashes()
+        session.project.add_entity(part, user="runtime-self-test")
+        integrated = build_integrated_project_scene(session.project)
+        controller = HeadlessViewerController()
+        try:
+            controller.load_scene(integrated.scene)
+            node = next(item for item in integrated.scene.nodes if item.entity_id == part.internal_id)
+            controller.set_selection((node.node_id,))
+            if controller.get_selection() != (node.node_id,):
+                raise AssertionError("Geintegreerde viewerselectie bleef niet stabiel")
+        finally:
+            controller.shutdown()
+        return {
+            **integrated.to_dict(),
+            "selected_entity_id": part.internal_id,
+            "headless_controller": "passed",
+            "production_owner": "cws_convertor.project",
+        }
+    finally:
+        session.close()
+
+
+def _exact_occt_viewer_check() -> dict[str, Any]:
+    from cws_viewer.backends.occt_exact import OcctExactPartBackend
+    from cws_viewer.exact import build_exact_runtime, build_plate, p1811_definition
+    from cws_viewer.exact.model import SubshapeKind
+    from cws_viewer.technology.host import TkNativeWindowHost
+
+    source = build_exact_runtime(build_plate(p1811_definition()), part_id="runtime-source")
+    canonical = build_exact_runtime(build_plate(p1811_definition()), part_id="runtime-canonical")
+    face = next(
+        item
+        for item in source.snapshot.subshapes
+        if item.kind == SubshapeKind.FACE
+        and item.geometry_type == "PLANE"
+        and item.normal is not None
+        and item.normal.z > 0.9
+    )
+    host = TkNativeWindowHost(640, 420, "CWS exact runtime probe")
+    backend = OcctExactPartBackend()
+    try:
+        native = host.open()
+        backend.initialize(width=native.width, height=native.height, native_window=native)
+        backend.load_parts(source, canonical)
+        backend.set_selection_kind(SubshapeKind.FACE)
+        host.process_events()
+        picked = backend.pick_at(*backend.world_to_display(face.center))
+        if picked != face.stable_id:
+            raise AssertionError(f"OCCT exact pick leverde {picked!r}, verwacht {face.stable_id!r}")
+        return {
+            "backend": "occt_ais_exact_brep",
+            "source_face_count": source.snapshot.properties.face_count,
+            "source_edge_count": source.snapshot.properties.edge_count,
+            "source_vertex_count": source.snapshot.properties.vertex_count,
+            "stable_pick_match": True,
+            "picked_subshape_id": picked,
+            "native_window_created": True,
+        }
+    finally:
+        backend.dispose()
+        host.close()
+
+
 def _vtk_viewer_check() -> dict[str, Any]:
     if os.environ.get("GITHUB_ACTIONS", "").lower() == "true":
         from vtkmodules.vtkCommonCore import vtkPoints
@@ -385,6 +508,9 @@ def run_native_self_test() -> dict[str, Any]:
         _run_check("ifcopenshell", _ifcopenshell_check),
         _run_check("pymupdf", _pdf_check),
         _run_check("scientific_rendering", _scientific_rendering_check),
+        _run_check("pyside6", _pyside6_check),
+        _run_check("viewer_integration", _integrated_viewer_contract_check),
+        _run_check("exact_occt_viewer", _exact_occt_viewer_check),
         _run_check("vtk_viewer", _vtk_viewer_check),
         _run_check("project_roundtrips", _project_roundtrip_check),
     ]

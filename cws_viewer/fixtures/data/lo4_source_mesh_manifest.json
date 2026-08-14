@@ -1,0 +1,30 @@
+{
+  "fixture_version": "cws-viewer-v3-fixture-v1",
+  "source_file": "TAS_RVB Defensie onderbouw te Leeuwarden- Rev4 [definitief].ifc",
+  "source_sha256": "c3ccd9b1db66f6db9e6a1141e52384f24946ca820739a408821ac93dc69aec3c",
+  "source_entity_id": "161",
+  "source_item_ids": [
+    "154"
+  ],
+  "source_geometry_hash": "b0958b236f69cd4181a911a6282f6566c2f4f3aa15b8c0268fc58cd163f16348",
+  "geometry_id": "geometry:b0958b236f69cd4181a911a6282f6566c2f4f3aa15b8c0268fc58cd163f16348",
+  "mesh_hash": "587ff2ac2495375321bf8f53c996115ebbcfbaee5e3abbedf6ca4017b6ede6fa",
+  "fixture_sha256": "a41eb5ff9424fe607b0ed37ffc5a2c04a894d542f7be00e93898a1b0e6db169b",
+  "vertex_count": 180,
+  "triangle_count": 116,
+  "exactness": "source_tessellation",
+  "bounds_size_mm": [
+    120.0,
+    160.0,
+    5.000000000000001
+  ],
+  "settings": {
+    "linear_deflection_mm": 2.0,
+    "angular_deflection_rad": 0.45,
+    "circle_segments": 20,
+    "relative": false,
+    "weld_proxy_sides": 8,
+    "version": "cws-tessellation-v1"
+  },
+  "note": "Deterministische displaymeshfixture; niet de manufacturing source of truth."
+}

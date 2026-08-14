@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cws.local/schemas/viewer/project-scene-1.0.schema.json",
+  "title": "CWS Viewer ProjectScene 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "api_version",
+    "project_id",
+    "models",
+    "nodes",
+    "geometry",
+    "styles",
+    "scene_hash"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "api_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+"},
+    "project_id": {"type": "string", "minLength": 1},
+    "revision_id": {"type": ["string", "null"]},
+    "models": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/sceneModel"}
+    },
+    "nodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/sceneNode"}
+    },
+    "geometry": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/geometryResource"}
+    },
+    "styles": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/styleDefinition"}
+    },
+    "scene_hash": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-fA-F]{64}$"},
+    "matrix4": {
+      "type": "array",
+      "minItems": 16,
+      "maxItems": 16,
+      "items": {"type": "number"}
+    },
+    "vector3": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "z": {"type": "number"}
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {
+        "minimum": {"$ref": "#/$defs/vector3"},
+        "maximum": {"$ref": "#/$defs/vector3"}
+      }
+    },
+    "sceneModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model_id", "name", "root_node_ids", "transform", "tags"],
+      "properties": {
+        "model_id": {"type": "string", "minLength": 1},
+        "name": {"type": "string"},
+        "source_file_id": {"type": ["string", "null"]},
+        "root_node_ids": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "transform": {"$ref": "#/$defs/matrix4"},
+        "revision_id": {"type": ["string", "null"]},
+        "tags": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "sceneNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id", "entity_id", "kind", "name", "transform", "local_bounds",
+        "selectable", "clippable", "visible", "tags"
+      ],
+      "properties": {
+        "node_id": {"type": "string", "minLength": 1},
+        "entity_id": {"type": "string", "minLength": 1},
+        "source_entity_id": {"type": ["string", "null"]},
+        "parent_node_id": {"type": ["string", "null"]},
+        "kind": {
+          "enum": ["project", "group", "model", "assembly", "part", "purchased_item", "fastener", "weld", "reference", "feature"]
+        },
+        "name": {"type": "string"},
+        "transform": {"$ref": "#/$defs/matrix4"},
+        "local_bounds": {"$ref": "#/$defs/bounds"},
+        "geometry_id": {"type": ["string", "null"]},
+        "selectable": {"type": "boolean"},
+        "clippable": {"type": "boolean"},
+        "visible": {"type": "boolean"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+        "properties_ref": {"type": ["string", "null"]},
+        "geometry_hash": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "manufacturing_hash": {"anyOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "style_id": {"type": ["string", "null"]}
+      }
+    },
+    "meshLod": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "content_hash", "payload_ref", "vertex_count", "triangle_count", "byte_length"],
+      "properties": {
+        "level": {"type": "integer", "minimum": 0},
+        "content_hash": {"$ref": "#/$defs/sha256"},
+        "payload_ref": {"type": "string", "minLength": 1},
+        "vertex_count": {"type": "integer", "minimum": 0},
+        "triangle_count": {"type": "integer", "minimum": 0},
+        "byte_length": {"type": "integer", "minimum": 0},
+        "max_error_mm": {"type": ["number", "null"]}
+      }
+    },
+    "geometryResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["geometry_id", "representation", "content_hash", "units", "payload_ref", "lods", "byte_length", "metadata"],
+      "properties": {
+        "geometry_id": {"type": "string", "minLength": 1},
+        "representation": {"enum": ["mesh_lod", "brep", "analytical", "point_cloud"]},
+        "content_hash": {"$ref": "#/$defs/sha256"},
+        "units": {"type": "string", "minLength": 1},
+        "payload_ref": {"type": "string", "minLength": 1},
+        "lods": {"type": "array", "items": {"$ref": "#/$defs/meshLod"}},
+        "feature_map_ref": {"type": ["string", "null"]},
+        "byte_length": {"type": "integer", "minimum": 0},
+        "metadata": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {"type": "string"}
+          }
+        }
+      }
+    },
+    "styleDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["style_id", "color", "mode", "line_width", "visible", "tags"],
+      "properties": {
+        "style_id": {"type": "string", "minLength": 1},
+        "color": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["red", "green", "blue", "alpha"],
+          "properties": {
+            "red": {"type": "number", "minimum": 0, "maximum": 1},
+            "green": {"type": "number", "minimum": 0, "maximum": 1},
+            "blue": {"type": "number", "minimum": 0, "maximum": 1},
+            "alpha": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "mode": {"enum": ["shaded", "shaded_edges", "wireframe", "hidden_line"]},
+        "line_width": {"type": "number", "exclusiveMinimum": 0},
+        "visible": {"type": "boolean"},
+        "tags": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

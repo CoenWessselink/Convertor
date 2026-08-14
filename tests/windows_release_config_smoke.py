@@ -45,7 +45,7 @@ def main() -> int:
     assert '"scipy"' in spec
     assert '"ezdxf"' in spec
     assert "scipy._external.array_api_compat" in spec
-    assert "pyi_rth_casadi_dll_path.py" in spec
+    assert "pyi_rth_cws_native_dll_path.py" in spec
     assert "hook-casadi.py" in workflow or "pyinstaller_hooks/**" in workflow
     assert "casadi==3.7.2" in runtime_lock
     assert "ezdxf==1.4.4" in runtime_lock

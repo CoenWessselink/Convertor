@@ -667,6 +667,8 @@ class ProjectSession:
             return inspection
 
         original_descriptor = deepcopy(part.geometry_descriptor)
+        original_surface_area_each_m2 = part.surface_area_each_m2
+        original_properties = deepcopy(part.properties)
         original_geometry_hash = part.geometry_hash
         original_manufacturing_hash = part.manufacturing_hash
         original_modified_at = self.project.modified_at
@@ -690,6 +692,8 @@ class ProjectSession:
             self.project.validate()
         except Exception:
             part.geometry_descriptor = original_descriptor
+            part.surface_area_each_m2 = original_surface_area_each_m2
+            part.properties = original_properties
             part.geometry_hash = original_geometry_hash
             part.manufacturing_hash = original_manufacturing_hash
             del self.project.audit_log[original_audit_count:]

@@ -239,6 +239,37 @@ class ViewerWorkspaceState:
             "resources": [resource.to_dict() for resource in values],
         }
 
+    def detach_mesh_resources(self, steel_model_ids: Iterable[str]) -> tuple[str, ...]:
+        """Remove resources loaded by a cancelled transactional load plan."""
+
+        requested = tuple(dict.fromkeys(str(item) for item in steel_model_ids))
+        removed = tuple(item for item in requested if item in self._mesh_resources)
+        if not removed:
+            return ()
+        replacements = {
+            item: replace(
+                self._bindings[item],
+                viewer_geometry_content_sha256="",
+            )
+            for item in removed
+        }
+        bindings = tuple(
+            replacements.get(item.steel_model_id, item)
+            for item in self.viewer_host.bindings
+        )
+        self.viewer_host = ViewerHostSnapshot(
+            project_id=self.viewer_host.project_id,
+            steel_model_snapshot_sha256=self.viewer_host.steel_model_snapshot_sha256,
+            bindings=bindings,
+            contract_version=self.viewer_host.contract_version,
+            steel_model_schema_version=self.viewer_host.steel_model_schema_version,
+            required_capabilities=self.viewer_host.required_capabilities,
+        )
+        self._bindings.update(replacements)
+        for item in removed:
+            self._mesh_resources.pop(item, None)
+        return removed
+
     def _validate_mesh_resource(self, resource: ViewerMeshResource) -> None:
         if resource.project_id != self.steel_model.project_id:
             raise ValueError("Viewer mesh belongs to another project")

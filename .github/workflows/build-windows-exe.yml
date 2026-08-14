@@ -13,6 +13,8 @@ on:
       - "*.json"
       - "cws_project/**"
       - "cws_convertor/**"
+      - "cws_viewer/**"
+      - "viewer_harness/**"
       - "project_tab.py"
       - "pyinstaller_hooks/**"
       - "templates/**"
@@ -83,6 +85,10 @@ jobs:
             --output "$env:RUNTIME_RESULTS\source-phase-b-viewer-ui.json"
           python validation/run_phase_b_progressive_loading.py `
             --output "$env:RUNTIME_RESULTS\source-phase-b-progressive-loading.json"
+          python validation/run_viewer_v4_professional_controls.py `
+            --output "$env:RUNTIME_RESULTS\viewer-v4-professional-controls" `
+            --nodes 1000
+          python validation/run_viewer_v6_smoke_batch.py --timeout 360
 
       - name: Source project contract smoke
         shell: pwsh

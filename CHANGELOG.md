@@ -2,6 +2,20 @@
 
 ## 0.8.3-beta-dev - Released production packages and drawings
 
+- Viewer V0-V6 is integrated into the existing CWS Convertor main application
+  through the canonical SteelModel and ViewerHost boundaries.
+- The Project Viewer now combines the project tree, parts grid, properties,
+  validation and the VTK total-model renderer with synchronized stable IDs.
+- Professional display controls, workspace schema 1.1, measurements, sections,
+  viewpoints and display-only history are included without changing project truth.
+- The Part Workbench now contains an experimental exact OCCT/BREP viewer for
+  source/canonical inspection, stable subshape picking, snapping and compare.
+- Viewer code cannot authorize production release; NC1, STEP, IFC and Trusted PDF
+  remain controlled by the existing canonical validation and release services.
+- PyInstaller now registers native package DLL directories for CasADi, Qt, VTK
+  and OCCT before application imports.
+- Two permanent regressions cover exact STEP metric persistence and deterministic
+  replay of IFC display-approximation warnings from the shared mesh cache.
 - Phase B batch 3 adds bounded progressive whole-project mesh loading with
   selected-part priority, cooperative cancellation and stale-result guards.
 - Mesh resources are attached in grouped scene patches; a rejected resource is

@@ -17,6 +17,13 @@ from .workspace import (
     ViewerTreeNode,
     ViewerWorkspaceState,
 )
+from .v6_integration import (
+    IntegratedExactPart,
+    IntegratedSceneResult,
+    ViewerIntegrationBlocked,
+    build_integrated_exact_part,
+    build_integrated_project_scene,
+)
 
 __all__ = [
     "AccuracySummary",
@@ -28,6 +35,11 @@ __all__ = [
     "ViewerTessellationPolicy",
     "ViewerTreeNode",
     "ViewerWorkspaceState",
+    "IntegratedExactPart",
+    "IntegratedSceneResult",
+    "ViewerIntegrationBlocked",
+    "build_integrated_exact_part",
+    "build_integrated_project_scene",
     "build_canonical_viewer_mesh_resource",
     "build_viewer_mesh_resource",
 ]
