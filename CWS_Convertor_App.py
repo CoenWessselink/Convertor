@@ -104,6 +104,7 @@ def _self_test(
 
 def _gui_smoke(project: Path | None) -> dict[str, Any]:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ["CWS_HEADLESS_GUI_SMOKE"] = "1"
     from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
     if not qt_available():
@@ -133,6 +134,11 @@ def _gui_smoke(project: Path | None) -> dict[str, Any]:
         "qt_platform": application.platformName(),
         "production_release_allowed": False,
     }
+    project_viewer = getattr(getattr(window, "project_page", None), "viewer", None)
+    gui_details["viewer_widget"] = type(project_viewer).__name__ if project_viewer is not None else ""
+    gui_details["headless_viewer"] = bool(
+        getattr(project_viewer, "is_headless_gui_smoke", False)
+    )
     if window.workspace is not None:
         gui_details["workspace"] = window.workspace.report.to_dict()
     window.close()

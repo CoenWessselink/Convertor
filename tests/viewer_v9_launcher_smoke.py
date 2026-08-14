@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -53,6 +54,34 @@ class ViewerV9LauncherTests(unittest.TestCase):
             self.assertIn("runtime", payload)
             self.assertIn("checks", payload)
             self.assertIn("viewer_integration", {item["name"] for item in payload["checks"]})
+
+            gui_report_path = Path(directory) / "gui-report.json"
+            gui = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "CWS_Convertor_App.py"),
+                    "--gui-smoke",
+                    "--project",
+                    str(project),
+                    "--report",
+                    str(gui_report_path),
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=120,
+                env={
+                    **os.environ,
+                    "GITHUB_ACTIONS": "true",
+                    "QT_QPA_PLATFORM": "offscreen",
+                },
+            )
+            self.assertEqual(0, gui.returncode, gui.stderr or gui.stdout)
+            gui_payload = json.loads(gui_report_path.read_text(encoding="utf-8"))
+            self.assertEqual("passed", gui_payload["status"])
+            self.assertTrue(gui_payload["v9_gui"]["headless_viewer"])
+            self.assertEqual("_HeadlessGuiSmokeViewer", gui_payload["v9_gui"]["viewer_widget"])
 
 
 if __name__ == "__main__":

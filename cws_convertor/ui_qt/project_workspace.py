@@ -1,6 +1,7 @@
 """Integrated Project/Production workspace for the CWS Convertor Qt shell."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -11,12 +12,39 @@ if qt_available():
 
     from cws_convertor.bom import export_bom_package
     from cws_convertor.integration import IntegratedProjectWorkspace
+    from cws_viewer.backends.memory import MemoryRenderBackend
+    from cws_viewer.core.controller import ViewerCoreController
     from cws_viewer.ui_qt.exact_part_workbench import ExactPartWorkbenchPanel
     from cws_viewer.ui_qt.property_grid import ProfessionalPropertyGridPanel
     from cws_viewer.ui_qt.vtk_project_widget import VtkProjectWidget
     from cws_viewer.ui_qt.vtk_real_project_widget import VtkRealProjectWidget
     from cws_viewer.properties import GridLayoutIdentity, GridLayoutStore
     from .viewer_tools import IntegratedViewerToolsPanel
+
+    class _HeadlessGuiSmokeViewer(QtWidgets.QFrame):
+        """QWidget host for GUI integration tests that cannot create OpenGL windows."""
+
+        is_headless_gui_smoke = True
+
+        def __init__(self, parent: Any | None = None) -> None:
+            super().__init__(parent)
+            self.setObjectName("cwsHeadlessGuiSmokeViewer")
+            self.controller = ViewerCoreController(
+                MemoryRenderBackend(),
+                width=1280,
+                height=720,
+            )
+            layout = QtWidgets.QVBoxLayout(self)
+            label = QtWidgets.QLabel("Headless GUI smoke viewer")
+            label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(label)
+
+        def load_scene(self, scene: Any) -> None:
+            self.controller.load_scene(scene)
+
+        def closeEvent(self, event: Any) -> None:
+            self.controller.shutdown()
+            super().closeEvent(event)
 
     class _LoadWorker(QtCore.QObject):
         loaded = QtCore.Signal(object)
@@ -176,7 +204,10 @@ if qt_available():
 
             # Use exact source meshes when loaded; otherwise show deterministic
             # project envelopes and keep the evidence limitation visible.
-            if len(workspace.load_result.repository):
+            if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
+                viewer = _HeadlessGuiSmokeViewer()
+                display_evidence = "headless GUI-integratierenderer"
+            elif len(workspace.load_result.repository):
                 viewer = VtkRealProjectWidget(workspace.load_result.repository)
                 display_evidence = "source/proxy meshrepository"
             else:
