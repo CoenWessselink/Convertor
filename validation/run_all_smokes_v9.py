@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -16,6 +17,30 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _failure_excerpt(stdout: str, stderr: str, returncode: int, *, limit: int = 3500) -> str:
+    details = (stderr.strip() or stdout.strip()).replace("\x00", "")
+    if not details:
+        details = f"Process exited without diagnostic output (exit code {returncode})."
+    return details[-limit:]
+
+
+def _workflow_command_escape(value: str) -> str:
+    return value.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
+def _emit_github_failure(script: Path, status: str, returncode: int, excerpt: str) -> None:
+    if os.environ.get("GITHUB_ACTIONS", "").lower() != "true":
+        return
+    relative = script.relative_to(ROOT).as_posix()
+    message = _workflow_command_escape(
+        f"{script.name} {status} with exit code {returncode}.\n{excerpt}"
+    )
+    print(
+        f"::error file={relative},title=Smoke regression {status}::{message}",
+        flush=True,
+    )
 
 
 def main() -> int:
@@ -53,7 +78,7 @@ def main() -> int:
         tick = time.perf_counter()
         timed_out = False
         try:
-            child_env = {**__import__("os").environ, "PYTHONUNBUFFERED": "1"}
+            child_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
             if args.headless_windows:
                 child_env["GITHUB_ACTIONS"] = "true"
             result = subprocess.run(
@@ -99,6 +124,13 @@ def main() -> int:
             if explicitly_skipped
             else "failed"
         )
+        failure_excerpt = ""
+        if status in {"failed", "timeout"}:
+            failure_excerpt = _failure_excerpt(stdout, stderr, returncode)
+            print("    FAILURE DETAILS", flush=True)
+            for line in failure_excerpt.splitlines():
+                print(f"      {line}", flush=True)
+            _emit_github_failure(script, status, returncode, failure_excerpt)
         log_path = logs / f"{script.stem}.log"
         log_path.write_text(
             f"COMMAND: {' '.join(command)}\nSTATUS: {status}\nRETURNCODE: {returncode}\nDURATION_SECONDS: {duration:.6f}\n\nSTDOUT\n{stdout}\n\nSTDERR\n{stderr}\n",
@@ -112,6 +144,7 @@ def main() -> int:
                 "returncode": returncode,
                 "duration_seconds": duration,
                 "log": str(log_path.relative_to(output)),
+                "failure_excerpt": failure_excerpt,
             }
         )
         print(f"    {status.upper()} {duration:.2f}s", flush=True)

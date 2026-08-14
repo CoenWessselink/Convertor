@@ -85,6 +85,15 @@ jobs:
           python tests/viewer_ci_headless_smoke.py
           python validation/run_viewer_v6_smoke_batch.py --timeout 360
 
+      - name: Upload source smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-smoke-diagnostics-${{ github.run_id }}
+          path: ${{ env.RUNTIME_RESULTS }}\source-smokes
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Source project contract smoke
         shell: pwsh
         run: |

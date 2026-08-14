@@ -22,10 +22,10 @@ jobs:
       CWS_REQUIRE_IFCOPENSHELL: "1"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python 3.12 x64
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           architecture: x64
@@ -49,6 +49,15 @@ jobs:
             --headless-windows `
             --output build\source-smokes
           if ($LASTEXITCODE -ne 0) { throw "Source smoke suite failed" }
+
+      - name: Upload source smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v9-source-smoke-diagnostics-${{ github.run_id }}
+          path: build\source-smokes
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Create packaged integration fixture
         run: python CWS_Convertor_App.py --create-smoke-project build\v9-smoke.cwscproj --report build\create-project.json
