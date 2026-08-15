@@ -9,14 +9,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import sys
 import tempfile
 import traceback
 
+# IMPORTANT — keep this before importing Qt, VTK, CadQuery/OCP or application
+# modules.  The viewer deliberately isolates native IFC/OCP tessellation in a
+# multiprocessing "spawn" worker.  In a PyInstaller-frozen executable the
+# worker is started through sys.executable (CWS_Viewer.exe) and must be diverted
+# into multiprocessing.spawn before our normal CLI/GUI startup is evaluated.
+# Without this, selecting an IFC/STEP project can start a second normal viewer
+# instance or terminate the process instead of running the geometry worker.
+# Calling freeze_support() in source mode is harmless.
+multiprocessing.freeze_support()
+
 PRODUCT = "CWS Viewer"
-VERSION = "1.2.0-rc2"
+VERSION = "1.2.0-rc3"
 
 
 def _json_out(payload: dict, output: str | None = None) -> None:
@@ -32,9 +43,67 @@ def _env_flag(name: str) -> bool:
     return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _native_self_test(*, require_qt: bool) -> dict:
+def _multiprocessing_self_test() -> dict:
+    """Prove that a frozen CWS_Viewer.exe can execute a spawn child safely.
+
+    This is intentionally tiny and does not depend on a GPU.  Its purpose is to
+    catch the exact PyInstaller/multiprocessing regression that caused a real
+    Windows viewer to disappear as soon as geometry loading spawned the native
+    IFC isolation worker.
+    """
+    import multiprocessing as mp
+
+    context = mp.get_context("spawn")
+    parent, child = context.Pipe(duplex=False)
+
+    def worker(connection) -> None:  # type: ignore[no-untyped-def]
+        try:
+            connection.send(
+                {
+                    "pid": os.getpid(),
+                    "parent_pid": os.getppid(),
+                    "executable": sys.executable,
+                    "frozen": bool(getattr(sys, "frozen", False)),
+                    "value": 42,
+                }
+            )
+        finally:
+            connection.close()
+
+    process = context.Process(target=worker, args=(child,), name="CWS-Viewer-Spawn-Selftest")
+    process.start()
+    child.close()
+    try:
+        if not parent.poll(20.0):
+            process.terminate()
+            process.join(timeout=5.0)
+            raise RuntimeError("Spawn-worker gaf binnen 20 s geen antwoord")
+        payload = parent.recv()
+    finally:
+        parent.close()
+    process.join(timeout=20.0)
+    if process.is_alive():
+        process.terminate()
+        process.join(timeout=5.0)
+        raise RuntimeError("Spawn-worker bleef actief")
+    if process.exitcode != 0:
+        raise RuntimeError(f"Spawn-worker eindigde met exitcode {process.exitcode}")
+    if int(payload.get("value", -1)) != 42:
+        raise RuntimeError("Spawn-worker antwoord is ongeldig")
+    return {
+        "status": "passed",
+        "start_method": "spawn",
+        "worker_pid": payload.get("pid"),
+        "worker_parent_pid": payload.get("parent_pid"),
+        "worker_executable": payload.get("executable"),
+        "worker_frozen": payload.get("frozen"),
+        "worker_exitcode": process.exitcode,
+    }
+
+
+def _native_self_test(*, require_qt: bool, include_multiprocessing: bool = True) -> dict:
     result: dict = {
-        "schema": "cws-viewer-standalone-selftest-1.1",
+        "schema": "cws-viewer-standalone-selftest-1.2",
         "product": PRODUCT,
         "version": VERSION,
         "status": "passed",
@@ -91,6 +160,8 @@ def _native_self_test(*, require_qt: bool) -> dict:
     contract = run_contract_self_test()
     assert all(item.status == "passed" for item in contract)
     result["checks"]["viewer_contract"] = len(contract)
+    if include_multiprocessing:
+        result["checks"]["multiprocessing_spawn"] = _multiprocessing_self_test()
     return result
 
 
@@ -241,6 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="store_true")
     p.add_argument("--self-test", action="store_true", help="Volledige packaged runtime-selftest")
     p.add_argument("--quick-self-test", action="store_true", help="Lokale selftest zonder verplichte Qt")
+    p.add_argument("--multiprocessing-self-test", action="store_true", help="Test frozen spawn-worker zonder GUI/GPU")
     p.add_argument("--gui-smoke", action="store_true", help="Start projectviewer smoke en sluit automatisch")
     p.add_argument(
         "--startup-smoke",
@@ -264,8 +336,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.version:
             print(f"{PRODUCT} {VERSION}")
             return 0
+        if args.multiprocessing_self_test:
+            payload = {
+                "schema": "cws-viewer-multiprocessing-selftest-1.0",
+                "product": PRODUCT,
+                "version": VERSION,
+                "status": "passed",
+                "frozen": bool(getattr(sys, "frozen", False)),
+                "multiprocessing": _multiprocessing_self_test(),
+            }
+            _json_out(payload, report)
+            return 0
         if args.self_test or args.quick_self_test:
-            payload = _native_self_test(require_qt=bool(args.self_test))
+            payload = _native_self_test(require_qt=bool(args.self_test), include_multiprocessing=True)
             _json_out(payload, report)
             return 0
         path = Path(args.input) if args.input else None
@@ -283,6 +366,7 @@ def main(argv: list[str] | None = None) -> int:
             (
                 args.self_test,
                 args.quick_self_test,
+                args.multiprocessing_self_test,
                 args.gui_smoke,
                 startup_smoke,
                 ci_headless,
