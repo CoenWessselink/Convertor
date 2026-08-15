@@ -1,0 +1,240 @@
+name: Build CWS Viewer 1.2.0-rc4 Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cws-viewer-v13-integration
+    paths:
+      - 'cws_viewer/**'
+      - 'cws_convertor/**'
+      - 'CWS_Viewer_RC4.py'
+      - 'CWS_Viewer_RC4.spec'
+      - 'CWS_Viewer_Standalone.py'
+      - 'installer/CWS_Viewer_RC4.iss'
+      - 'requirements-viewer-standalone.lock.txt'
+      - 'pyinstaller_hooks/**'
+      - 'pyinstaller_runtime_hooks/**'
+      - 'tests/viewer_rc4_ux_contract_smoke.py'
+      - '.github/workflows/build-standalone-cws-viewer-rc4.yml'
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      VIEWER_VERSION: 1.2.0-rc4
+      EVIDENCE: ${{ github.workspace }}\validation\standalone-viewer-rc4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install standalone viewer dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-standalone.lock.txt
+          python -m pip check
+
+      - name: Compile source and run RC4 UX/grid gate
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:EVIDENCE | Out-Null
+          python -m compileall -q CWS_Viewer_RC4.py CWS_Viewer_Standalone.py cws_viewer cws_convertor
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 source compile failed' }
+          python tests/viewer_rc4_ux_contract_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 UX/grid contract failed' }
+          python -c "from cws_viewer.ui_qt.cockpit import CwsViewerCockpitWindow; from cws_viewer.ui_qt.geometry_status import GeometryStatusPanel; print('RC4 cockpit imports OK')"
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 cockpit import failed' }
+
+      - name: Source native plus isolated IFC worker self-test
+        shell: pwsh
+        run: |
+          python CWS_Viewer_RC4.py --self-test --report "$env:EVIDENCE\source_selftest.json"
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 source native/IFC-worker self-test failed' }
+          $payload = Get-Content "$env:EVIDENCE\source_selftest.json" -Raw | ConvertFrom-Json
+          if ($payload.version -ne $env:VIEWER_VERSION) { throw "Wrong source version: $($payload.version)" }
+          if ($payload.checks.isolated_ifc_worker.status -ne 'passed') { throw 'Source isolated IFC worker not certified' }
+          if ($payload.checks.isolated_ifc_worker.transport -ne 'multiprocessing_spawn') { throw 'Unexpected source worker transport' }
+          python -m cws_viewer --self-test --deep-native --json --output "$env:EVIDENCE\viewer_contract_selftest.json"
+          if ($LASTEXITCODE -ne 0) { throw 'Viewer contract/native self-test failed' }
+
+      - name: Source no-argument startup gate
+        shell: pwsh
+        run: |
+          $env:CWS_VIEWER_STARTUP_SMOKE='1'
+          $env:CWS_VIEWER_CI_HEADLESS='1'
+          $env:CWS_VIEWER_REPORT=Join-Path $env:EVIDENCE 'source_startup.json'
+          $env:CWS_VIEWER_SCREENSHOT=Join-Path $env:EVIDENCE 'source_startup.png'
+          python CWS_Viewer_RC4.py
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 source startup failed' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE,Env:CWS_VIEWER_CI_HEADLESS,Env:CWS_VIEWER_REPORT,Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
+
+      - name: Create canonical project fixture
+        shell: pwsh
+        run: |
+          $fixture = Join-Path $env:EVIDENCE 'gui_fixture.cwscproj'
+          python cli.py project-new $fixture --name 'CWS Viewer RC4 Fixture' --client 'CWS' --order 'VIEWER-RC4'
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fixture)) { throw 'RC4 fixture creation failed' }
+          "CWS_VIEWER_FIXTURE=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Source hosted-headless project gate
+        shell: pwsh
+        run: |
+          python CWS_Viewer_RC4.py "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\source_project_gate.json" --screenshot "$env:EVIDENCE\source_project_gate.png"
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 source project gate failed' }
+
+      - name: Build RC4 PyInstaller onedir
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean CWS_Viewer_RC4.spec
+          if (-not (Test-Path 'dist\CWS_Viewer\CWS_Viewer.exe')) { throw 'RC4 CWS_Viewer.exe missing' }
+
+      - name: Frozen native and explicit IFC worker gate
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
+          $report=Join-Path $env:EVIDENCE 'packaged_selftest.json'
+          $p=Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$report) -Wait -PassThru -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw "RC4 packaged selftest failed: $($p.ExitCode)" }
+          $payload=Get-Content $report -Raw | ConvertFrom-Json
+          if ($payload.version -ne $env:VIEWER_VERSION) { throw "Wrong frozen version: $($payload.version)" }
+          if ($payload.checks.isolated_ifc_worker.status -ne 'passed') { throw 'Frozen IFC worker failed' }
+          if ($payload.checks.isolated_ifc_worker.transport -ne 'frozen_subprocess') { throw 'Frozen viewer did not use explicit subprocess worker' }
+          if (-not $payload.checks.isolated_ifc_worker.worker_frozen) { throw 'Frozen IFC worker was not frozen' }
+          if ($payload.checks.isolated_ifc_worker.bounds_mm[0] -ne 100 -or $payload.checks.isolated_ifc_worker.bounds_mm[1] -ne 50 -or $payload.checks.isolated_ifc_worker.bounds_mm[2] -ne 10) { throw 'Frozen IFC worker dimensions wrong' }
+
+      - name: Packaged startup and project gates
+        shell: pwsh
+        run: |
+          $exe=(Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
+          $env:CWS_VIEWER_STARTUP_SMOKE='1'
+          $env:CWS_VIEWER_CI_HEADLESS='1'
+          $env:CWS_VIEWER_REPORT=Join-Path $env:EVIDENCE 'packaged_startup.json'
+          $env:CWS_VIEWER_SCREENSHOT=Join-Path $env:EVIDENCE 'packaged_startup.png'
+          $p=Start-Process -FilePath $exe -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'RC4 packaged startup failed' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE,Env:CWS_VIEWER_CI_HEADLESS,Env:CWS_VIEWER_REPORT,Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
+          $report=Join-Path $env:EVIDENCE 'packaged_project_gate.json'
+          $shot=Join-Path $env:EVIDENCE 'packaged_project_gate.png'
+          $p=Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$report,'--screenshot',$shot) -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'RC4 packaged project gate failed' }
+
+      - name: Build and re-test portable without Python
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release_windows | Out-Null
+          $portable="release_windows\CWS_Viewer_Portable_${env:VIEWER_VERSION}_x64.zip"
+          Compress-Archive -Path 'dist\CWS_Viewer\*' -DestinationPath $portable -Force
+          $root=Join-Path $env:RUNNER_TEMP 'CWSViewerRC4Portable'
+          if (Test-Path $root) { Remove-Item $root -Recurse -Force }
+          Expand-Archive $portable -DestinationPath $root
+          $env:PATH="$env:SystemRoot\System32;$env:SystemRoot"
+          $exe=Join-Path $root 'CWS_Viewer.exe'
+          $report=Join-Path $env:EVIDENCE 'portable_selftest.json'
+          $p=Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$report) -Wait -PassThru -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw 'RC4 portable selftest failed' }
+          $payload=Get-Content $report -Raw | ConvertFrom-Json
+          if ($payload.version -ne $env:VIEWER_VERSION) { throw 'Portable version mismatch' }
+          if ($payload.checks.isolated_ifc_worker.transport -ne 'frozen_subprocess') { throw 'Portable frozen IFC worker transport failed' }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build RC4 installer
+        shell: pwsh
+        run: |
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' installer\CWS_Viewer_RC4.iss
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 Inno Setup failed' }
+          if (-not (Test-Path "release_windows\CWS_Viewer_Setup_${env:VIEWER_VERSION}_x64.exe")) { throw 'RC4 installer missing' }
+
+      - name: Installed application gates without Python
+        shell: pwsh
+        run: |
+          $setup=(Resolve-Path "release_windows\CWS_Viewer_Setup_${env:VIEWER_VERSION}_x64.exe").Path
+          $target=Join-Path $env:RUNNER_TEMP 'CWSViewerRC4Installed'
+          $p=Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',("/DIR=$target")) -Wait -PassThru -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw 'RC4 install failed' }
+          $env:PATH="$env:SystemRoot\System32;$env:SystemRoot"
+          $exe=Join-Path $target 'CWS_Viewer.exe'
+          $report=Join-Path $env:EVIDENCE 'installed_selftest.json'
+          $p=Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$report) -Wait -PassThru -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw 'RC4 installed selftest failed' }
+          $payload=Get-Content $report -Raw | ConvertFrom-Json
+          if ($payload.version -ne $env:VIEWER_VERSION) { throw 'Installed version mismatch' }
+          if ($payload.checks.isolated_ifc_worker.transport -ne 'frozen_subprocess') { throw 'Installed IFC worker transport failed' }
+          $env:CWS_VIEWER_STARTUP_SMOKE='1'
+          $env:CWS_VIEWER_CI_HEADLESS='1'
+          $env:CWS_VIEWER_REPORT=Join-Path $env:EVIDENCE 'installed_startup.json'
+          $env:CWS_VIEWER_SCREENSHOT=Join-Path $env:EVIDENCE 'installed_startup.png'
+          $p=Start-Process -FilePath $exe -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'RC4 installed startup failed' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE,Env:CWS_VIEWER_CI_HEADLESS,Env:CWS_VIEWER_REPORT,Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
+          $un=Join-Path $target 'unins000.exe'
+          if (Test-Path $un) {
+            $p=Start-Process -FilePath $un -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden
+            if ($p.ExitCode -ne 0) { throw 'RC4 uninstall failed' }
+          }
+
+      - name: Build manifest and checksums
+        shell: pwsh
+        run: |
+          $files=Get-ChildItem release_windows -File | Sort-Object Name
+          $lines=foreach($file in $files){ $hash=(Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant(); "$hash  $($file.Name)" }
+          $lines | Set-Content -Encoding ascii release_windows\SHA256SUMS.txt
+          [ordered]@{
+            version=$env:VIEWER_VERSION
+            run_id=$env:GITHUB_RUN_ID
+            commit=$env:GITHUB_SHA
+            branch=$env:GITHUB_REF_NAME
+            status='passed'
+            ux_certification='light_cockpit_navigation_surface_pick_ifc_grids_measurement_tools'
+            worker_certification='source_multiprocessing_packaged_portable_installed_explicit_subprocess'
+            render_certification='hosted_headless_plus_previous_physical_rc3_opengl'
+            physical_rc4_gpu_test_required=$true
+            files=@($files | ForEach-Object { [ordered]@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()} })
+          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 release_windows\WINDOWS_VIEWER_RELEASE_MANIFEST.json
+          Get-Content release_windows\SHA256SUMS.txt
+
+      - name: Upload RC4 installer artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc4_INSTALLER_x64
+          path: |
+            release_windows/CWS_Viewer_Setup_1.2.0-rc4_x64.exe
+            release_windows/SHA256SUMS.txt
+            release_windows/WINDOWS_VIEWER_RELEASE_MANIFEST.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload RC4 portable artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc4_PORTABLE_x64
+          path: release_windows/CWS_Viewer_Portable_1.2.0-rc4_x64.zip
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload RC4 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc4_EVIDENCE
+          path: |
+            validation/standalone-viewer-rc4/*.json
+            validation/standalone-viewer-rc4/*.png
+          if-no-files-found: warn
+          retention-days: 30
