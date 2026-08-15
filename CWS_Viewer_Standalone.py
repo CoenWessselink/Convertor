@@ -15,6 +15,7 @@ from pathlib import Path
 import sys
 import tempfile
 import traceback
+from typing import Callable
 
 # IMPORTANT — keep this before importing Qt, VTK, CadQuery/OCP or application
 # modules. The viewer deliberately isolates native IFC/OCP tessellation in a
@@ -169,13 +170,17 @@ def _native_self_test(*, require_qt: bool, include_multiprocessing: bool = True)
     return result
 
 
-def _temporary_project_for_model(source: Path) -> tuple[Path, tempfile.TemporaryDirectory[str]]:
-    """Create a temporary .cwscproj using the canonical importer.
-
-    This makes direct IFC/STEP opening convenient without introducing a second
-    importer. The temporary project is never production-released.
-    """
+def _temporary_project_for_model(
+    source: Path,
+    *,
+    progress: Callable[[float, str], None] | None = None,
+) -> tuple[Path, tempfile.TemporaryDirectory[str]]:
+    """Create a temporary .cwscproj using the canonical importer."""
     from cws_convertor.project.service import ProjectSession
+
+    def update(fraction: float, message: str) -> None:
+        if progress is not None:
+            progress(max(0.0, min(1.0, float(fraction))), message)
 
     temp = tempfile.TemporaryDirectory(prefix="cws-viewer-direct-")
     root = Path(temp.name)
@@ -186,8 +191,20 @@ def _temporary_project_for_model(source: Path) -> tuple[Path, tempfile.Temporary
         created_by="CWS Viewer",
     )
     try:
+        update(0.03, "Bronbestand analyseren…")
         session.add_source(source, embed=True, include_geometry=True, user="viewer")
-        session.semantic_import_sources(user="viewer")
+        update(0.12, "Bron geregistreerd · modelstructuur analyseren…")
+
+        def semantic_progress(current: float, total: int, message: str) -> None:
+            denominator = max(int(total), 1)
+            fraction = max(0.0, min(1.0, float(current) / float(denominator)))
+            update(0.12 + 0.28 * fraction, message or "Semantische modelimport…")
+
+        session.semantic_import_sources(
+            user="viewer",
+            progress_callback=semantic_progress,
+        )
+        update(0.41, "Tijdelijk CWS-project opslaan…")
         session.save(
             project_path,
             embed_sources=True,
@@ -195,9 +212,50 @@ def _temporary_project_for_model(source: Path) -> tuple[Path, tempfile.Temporary
             user="viewer",
             revision_message="Temporary viewer intake",
         )
+        update(0.45, "Modelstructuur gereed · 3D-geometrie voorbereiden…")
     finally:
         session.close()
     return project_path, temp
+
+
+def _run_loaded_project_viewer(
+    project_path: Path,
+    *,
+    cache_root: Path,
+    source_search_roots: tuple[Path, ...],
+    loading_dialog,
+) -> int:  # type: ignore[no-untyped-def]
+    """Preload a real project scene while keeping a visible progress window."""
+    from cws_viewer.adapters.project_scene_loader import ProjectSceneLoader
+    from cws_viewer.ui_qt.project_viewer import RealProjectViewerWindow
+    from cws_viewer.ui_qt.qt_compat import require_qt
+
+    QtCore, QtGui, QtWidgets = require_qt()
+
+    def geometry_progress(fraction: float, message: str) -> None:
+        loading_dialog.restore_determinate()
+        loading_dialog.set_progress(
+            0.45 + 0.50 * max(0.0, min(1.0, float(fraction))),
+            message or "3D-geometrie laden…",
+            "IFC/STEP-displaygeometrie wordt crash-geïsoleerd opgebouwd. De productiegeometrie blijft ongewijzigd.",
+        )
+
+    loading_dialog.set_progress(0.45, "3D-geometrie laden…")
+    result = ProjectSceneLoader(
+        cache_root=cache_root,
+        source_search_roots=source_search_roots,
+    ).load(project_path, progress=geometry_progress)
+    loading_dialog.set_progress(0.97, "3D-werkruimte opbouwen…")
+
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    app.setApplicationName("CWS Viewer")
+    app.setOrganizationName("CWS")
+    window = RealProjectViewerWindow(result)
+    loading_dialog.finish_loading()
+    window.show()
+    window.raise_()
+    window.activateWindow()
+    return int(app.exec())
 
 
 def _run_gui(
@@ -231,16 +289,33 @@ def _run_gui(
         input_path = selected
 
     temp: tempfile.TemporaryDirectory[str] | None = None
+    loading = None
     try:
         input_path = input_path.expanduser().resolve()
         if not input_path.is_file():
             raise FileNotFoundError(input_path)
-        if input_path.suffix.lower() in {".ifc", ".step", ".stp"}:
-            project_path, temp = _temporary_project_for_model(input_path)
-        elif input_path.suffix.lower() == ".cwscproj":
-            project_path = input_path
-        else:
+        if input_path.suffix.lower() not in {".ifc", ".step", ".stp", ".cwscproj"}:
             raise ValueError(f"Niet ondersteund bestandstype: {input_path.suffix}")
+
+        if not ci_headless and not ci_smoke:
+            from cws_viewer.ui_qt.loading_dialog import create_loading_dialog
+
+            loading = create_loading_dialog(version=VERSION, source_path=input_path)
+            loading.set_progress(0.02, "Bestand controleren…")
+
+        if input_path.suffix.lower() in {".ifc", ".step", ".stp"}:
+            project_path, temp = _temporary_project_for_model(
+                input_path,
+                progress=(
+                    None
+                    if loading is None
+                    else lambda fraction, message: loading.set_progress(fraction, message)
+                ),
+            )
+        else:
+            project_path = input_path
+            if loading is not None:
+                loading.set_progress(0.08, "CWS-project openen…")
 
         if ci_headless:
             from cws_convertor.integration.ci_gui import run_hosted_headless_gui_gate
@@ -259,30 +334,49 @@ def _run_gui(
             / "Viewer"
             / "mesh-cache"
         )
+        source_roots = (input_path.parent,)
+
         if not classic_ui:
             try:
                 from cws_viewer.ui_qt.cockpit import run_cws_viewer_cockpit
             except Exception:
                 run_cws_viewer_cockpit = None
             if run_cws_viewer_cockpit is not None:
+                if loading is not None:
+                    loading.set_progress(0.95, "CWS Viewer-cockpit openen…")
+                    loading.finish_loading()
+                    loading = None
                 return run_cws_viewer_cockpit(
                     project_path,
                     cache_root=cache_root,
-                    source_search_roots=(input_path.parent,),
+                    source_search_roots=source_roots,
                     ci_smoke=ci_smoke,
                     screenshot_path=screenshot,
                 )
+
+        if loading is not None:
+            return _run_loaded_project_viewer(
+                project_path,
+                cache_root=cache_root,
+                source_search_roots=source_roots,
+                loading_dialog=loading,
+            )
 
         from cws_viewer.ui_qt.project_viewer import run_real_project_viewer
         return run_real_project_viewer(
             project_path,
             cache_root=cache_root,
-            source_search_roots=(input_path.parent,),
+            source_search_roots=source_roots,
             ci_smoke=ci_smoke,
             report_path=report,
             screenshot_path=screenshot,
         )
     finally:
+        if loading is not None:
+            try:
+                loading.close()
+            except Exception:
+                pass
         if temp is not None:
             temp.cleanup()
 
