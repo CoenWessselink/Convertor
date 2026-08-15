@@ -17,8 +17,8 @@ import tempfile
 import traceback
 
 # IMPORTANT — keep this before importing Qt, VTK, CadQuery/OCP or application
-# modules.  The viewer deliberately isolates native IFC/OCP tessellation in a
-# multiprocessing "spawn" worker.  In a PyInstaller-frozen executable the
+# modules. The viewer deliberately isolates native IFC/OCP tessellation in a
+# multiprocessing "spawn" worker. In a PyInstaller-frozen executable the
 # worker is started through sys.executable (CWS_Viewer.exe) and must be diverted
 # into multiprocessing.spawn before our normal CLI/GUI startup is evaluated.
 # Without this, selecting an IFC/STEP project can start a second normal viewer
@@ -43,34 +43,37 @@ def _env_flag(name: str) -> bool:
     return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _spawn_selftest_worker(connection) -> None:  # type: ignore[no-untyped-def]
+    """Top-level spawn target; must remain pickleable on Windows."""
+    try:
+        connection.send(
+            {
+                "pid": os.getpid(),
+                "parent_pid": os.getppid(),
+                "executable": sys.executable,
+                "frozen": bool(getattr(sys, "frozen", False)),
+                "value": 42,
+            }
+        )
+    finally:
+        connection.close()
+
+
 def _multiprocessing_self_test() -> dict:
     """Prove that a frozen CWS_Viewer.exe can execute a spawn child safely.
 
-    This is intentionally tiny and does not depend on a GPU.  Its purpose is to
+    This is intentionally tiny and does not depend on a GPU. Its purpose is to
     catch the exact PyInstaller/multiprocessing regression that caused a real
     Windows viewer to disappear as soon as geometry loading spawned the native
     IFC isolation worker.
     """
-    import multiprocessing as mp
-
-    context = mp.get_context("spawn")
+    context = multiprocessing.get_context("spawn")
     parent, child = context.Pipe(duplex=False)
-
-    def worker(connection) -> None:  # type: ignore[no-untyped-def]
-        try:
-            connection.send(
-                {
-                    "pid": os.getpid(),
-                    "parent_pid": os.getppid(),
-                    "executable": sys.executable,
-                    "frozen": bool(getattr(sys, "frozen", False)),
-                    "value": 42,
-                }
-            )
-        finally:
-            connection.close()
-
-    process = context.Process(target=worker, args=(child,), name="CWS-Viewer-Spawn-Selftest")
+    process = context.Process(
+        target=_spawn_selftest_worker,
+        args=(child,),
+        name="CWS-Viewer-Spawn-Selftest",
+    )
     process.start()
     child.close()
     try:
