@@ -1,0 +1,56 @@
+name: CWS Viewer RC4 UX gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cws-viewer-v13-integration
+    paths:
+      - 'cws_viewer/ui_qt/**'
+      - 'cws_viewer/model_grids.py'
+      - 'cws_convertor/ui_qt/viewer_tools.py'
+      - 'tests/viewer_rc4_ux_contract_smoke.py'
+      - '.github/workflows/viewer-rc4-ux-gate.yml'
+
+jobs:
+  ux-contract:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+      - name: Install focused viewer dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ifcopenshell==0.8.5 numpy==2.3.5
+          python -m pip check
+      - name: Compile RC4 viewer surfaces
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_viewer/ui_qt cws_viewer/model_grids.py cws_convertor/ui_qt/viewer_tools.py
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 viewer compile failed' }
+      - name: Run RC4 UX and IFC grid contract
+        shell: pwsh
+        run: |
+          python tests/viewer_rc4_ux_contract_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'RC4 UX contract failed' }
+      - name: Static source-surface assertions
+        shell: pwsh
+        run: |
+          $cockpit = Get-Content cws_viewer/ui_qt/cockpit.py -Raw
+          $widget = Get-Content cws_viewer/ui_qt/vtk_real_project_widget.py -Raw
+          $tools = Get-Content cws_convertor/ui_qt/viewer_tools.py -Raw
+          foreach ($token in @('Exact Part Workbench','Revisie vergelijken','Geometriestatus','Stamien','Meten','Doorsnede','Modelkleur','Thema')) {
+            if (-not $cockpit.Contains($token)) { throw "Cockpit token ontbreekt: $token" }
+          }
+          foreach ($token in @('vtkCellPicker','start_measurement','measurement_completed','Ctrl+U','Ctrl+I','Ctrl+O','Ctrl+P')) {
+            if (-not $widget.Contains($token)) { throw "Interaction token ontbreekt: $token" }
+          }
+          foreach ($token in @('Afstand','Horizontaal','Verticaal','XYZ','Meetmodus stoppen')) {
+            if (-not $tools.Contains($token)) { throw "Measurement token ontbreekt: $token" }
+          }
