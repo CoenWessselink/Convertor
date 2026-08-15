@@ -2,7 +2,9 @@
 
 All operations are display/review state over the already-bound viewer
 controller.  They never mutate canonical manufacturing geometry and can never
-release production output.
+release production output.  On the real VTK viewer, measurements are driven by
+actual mesh-surface clicks; headless/test viewers retain deterministic
+selection-centre fallback behaviour.
 """
 from __future__ import annotations
 
@@ -38,11 +40,25 @@ if qt_available():
             self.workspace = workspace
             self.setObjectName("cwsIntegratedViewerTools")
             self._build_ui()
+            self._bind_interactive_viewer()
             self.refresh()
 
         @property
         def controller(self):
             return self.workspace.controller
+
+        @property
+        def viewer(self):
+            return getattr(self.workspace, "viewer", None)
+
+        def _bind_interactive_viewer(self) -> None:
+            viewer = self.viewer
+            signal = getattr(viewer, "measurement_completed", None)
+            if signal is not None:
+                signal.connect(self._interactive_measurement_completed)
+            status_signal = getattr(viewer, "measurement_status", None)
+            if status_signal is not None:
+                status_signal.connect(self.status_changed)
 
         def _build_ui(self) -> None:
             root = QtWidgets.QVBoxLayout(self)
@@ -123,8 +139,9 @@ if qt_available():
             measurement_layout.addLayout(controls)
 
             note = QtWidgets.QLabel(
-                "Projectviewer: meten op geselecteerde objectreferenties/geverifieerde displaymesh. "
-                "Exacte face-, edge-, radius- en diametercontrole gebeurt in de Exact Part Workbench."
+                "Klik op zichtbare modeloppervlakken voor afstand/horizontaal/verticaal/XYZ. "
+                "Projectmesh-metingen blijven reviewbewijs. Exacte face-, edge-, radius- en "
+                "diametercontrole gebeurt in de Exact Part Workbench."
             )
             note.setWordWrap(True)
             note.setObjectName("cwsMuted")
@@ -142,10 +159,12 @@ if qt_available():
 
             export_row = QtWidgets.QHBoxLayout()
             self.delete_measurement = QtWidgets.QPushButton("Meting verwijderen")
+            self.stop_measurement = QtWidgets.QPushButton("Meetmodus stoppen")
             self.export_json = QtWidgets.QPushButton("JSON")
             self.export_csv = QtWidgets.QPushButton("CSV")
             self.export_pdf = QtWidgets.QPushButton("PDF")
             export_row.addWidget(self.delete_measurement)
+            export_row.addWidget(self.stop_measurement)
             export_row.addStretch(1)
             export_row.addWidget(QtWidgets.QLabel("Meetrapport"))
             export_row.addWidget(self.export_json)
@@ -173,15 +192,20 @@ if qt_available():
             self.section_z.clicked.connect(lambda: self._add_section(Vector3(0, 0, 1)))
             self.clear_sections.clicked.connect(self._clear_sections)
             self.clip_box.clicked.connect(self._set_clip_box)
-            self.clear_clip.clicked.connect(lambda: self._run("Clipping gewist", self.controller.set_clipping_box, None))
+            self.clear_clip.clicked.connect(
+                lambda: self._run("Clipping gewist", self.controller.set_clipping_box, None)
+            )
             self.explode_selection.clicked.connect(self._explode_selection)
-            self.reset_explode.clicked.connect(lambda: self._run("Explode gereset", self.controller.reset_explode))
+            self.reset_explode.clicked.connect(
+                lambda: self._run("Explode gereset", self.controller.reset_explode)
+            )
             self.undo.clicked.connect(lambda: self._run("Viewer undo", self.controller.undo_viewer))
             self.redo.clicked.connect(lambda: self._run("Viewer redo", self.controller.redo_viewer))
             self.quick_distance.clicked.connect(lambda: self._measure_pair("distance"))
             self.quick_horizontal.clicked.connect(lambda: self._measure_pair("horizontal"))
             self.quick_vertical.clicked.connect(lambda: self._measure_pair("vertical"))
             self.quick_coordinates.clicked.connect(self._measure_coordinates)
+            self.stop_measurement.clicked.connect(self._stop_interactive_measurement)
             self.delete_measurement.clicked.connect(self._delete_measurement)
             self.export_json.clicked.connect(lambda: self._export("json"))
             self.export_csv.clicked.connect(lambda: self._export("csv"))
@@ -265,6 +289,23 @@ if qt_available():
                 proof=self._proof_for_node(node_id),
             )
 
+        def _anchor_from_pick(self, pick: Any) -> ExactMeasurementAnchor:
+            node = self.controller.index.node(str(pick.node_id))
+            return ExactMeasurementAnchor(
+                node_id=str(pick.node_id),
+                entity_id=str(pick.entity_id),
+                source_entity_id=str(pick.source_entity_id or node.source_entity_id or ""),
+                feature_id=pick.feature_id,
+                subshape_type=pick.subshape_type,
+                subshape_id=pick.subshape_id,
+                world_point=pick.world_point,
+                local_point=pick.local_point,
+                geometry_hash=node.geometry_hash,
+                snap_type=SnapType.NEAREST,
+                proof=self._proof_for_node(str(pick.node_id)),
+                normal=pick.normal,
+            )
+
         def _settings_changed(self, *_: Any) -> None:
             try:
                 self.controller.set_measurement_settings(
@@ -278,51 +319,80 @@ if qt_available():
             except Exception:
                 return
 
+        def _start_interactive_measurement(self, mode: str) -> bool:
+            starter = getattr(self.viewer, "start_measurement", None)
+            if callable(starter):
+                starter(mode)
+                self.status_changed.emit(
+                    "Meetmodus actief · klik op het model · Esc of 'Meetmodus stoppen' beëindigt"
+                )
+                return True
+            return False
+
+        def _stop_interactive_measurement(self) -> None:
+            cancel = getattr(self.viewer, "cancel_measurement", None)
+            if callable(cancel):
+                cancel()
+
         def _measure_pair(self, mode: str) -> None:
+            if self._start_interactive_measurement(mode):
+                return
             selected = tuple(self.controller.get_selection())
             if len(selected) != 2:
                 QtWidgets.QMessageBox.information(
                     self,
                     "Meten",
-                    "Selecteer exact twee renderbare objecten. De projectviewer gebruikt hun "
-                    "wereldreferentie; voor exact face/edge-meten gebruik je de Part Workbench.",
+                    "Selecteer exact twee renderbare objecten. De headless/fallbackviewer meet tussen hun referentiepunten.",
                 )
                 return
-            first, second = (self._anchor_for_center(node_id) for node_id in selected)
-            settings = self.controller.get_measurement_settings()
-            try:
-                if mode == "horizontal":
-                    record = horizontal_distance(first, second, settings)
-                    kind = MeasurementKind.HORIZONTAL_DISTANCE
-                elif mode == "vertical":
-                    record = vertical_distance(first, second, settings)
-                    kind = MeasurementKind.VERTICAL_DISTANCE
-                else:
-                    record = distance(first, second, settings)
-                    kind = MeasurementKind.DISTANCE
-                self.controller.add_measurement(record)
-                self.controller.begin_measurement(kind)
-                self.refresh()
-                self.status_changed.emit(f"Meting: {record.formatted_text} · {record.proof.value}")
-            except Exception as exc:
-                QtWidgets.QMessageBox.critical(self, "Meten", f"{type(exc).__name__}: {exc}")
+            self._create_pair_record(mode, tuple(self._anchor_for_center(node_id) for node_id in selected))
 
         def _measure_coordinates(self) -> None:
+            if self._start_interactive_measurement("coordinates"):
+                return
             selected = tuple(self.controller.get_selection())
             if len(selected) != 1:
                 QtWidgets.QMessageBox.information(self, "XYZ", "Selecteer één renderbaar object.")
                 return
+            self._create_coordinate_record(self._anchor_for_center(selected[0]))
+
+        @QtCore.Slot(str, object)
+        def _interactive_measurement_completed(self, mode: str, picks: Any) -> None:
             try:
-                record = point(
-                    self._anchor_for_center(selected[0]),
-                    self.controller.get_measurement_settings(),
-                )
-                self.controller.add_measurement(record)
-                self.controller.begin_measurement(MeasurementKind.COORDINATES)
-                self.refresh()
-                self.status_changed.emit(record.formatted_text)
+                anchors = tuple(self._anchor_from_pick(pick) for pick in tuple(picks))
+                if mode == "coordinates":
+                    self._create_coordinate_record(anchors[0])
+                else:
+                    self._create_pair_record(mode, anchors)
             except Exception as exc:
-                QtWidgets.QMessageBox.critical(self, "XYZ", f"{type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(
+                    self, "Interactief meten", f"{type(exc).__name__}: {exc}"
+                )
+
+        def _create_pair_record(self, mode: str, anchors: tuple[ExactMeasurementAnchor, ...]) -> None:
+            if len(anchors) != 2:
+                raise ValueError("Afstandsmeting vereist twee ankers")
+            first, second = anchors
+            settings = self.controller.get_measurement_settings()
+            if mode == "horizontal":
+                record = horizontal_distance(first, second, settings)
+            elif mode == "vertical":
+                record = vertical_distance(first, second, settings)
+            else:
+                record = distance(first, second, settings)
+            self.controller.add_measurement(record)
+            self.refresh()
+            self.status_changed.emit(
+                f"{record.formatted_text} · bewijs {record.proof.value} · productie-evidence {'JA' if record.production_eligible else 'NEE'}"
+            )
+
+        def _create_coordinate_record(self, anchor: ExactMeasurementAnchor) -> None:
+            record = point(anchor, self.controller.get_measurement_settings())
+            self.controller.add_measurement(record)
+            self.refresh()
+            self.status_changed.emit(
+                f"{record.formatted_text} · bewijs {record.proof.value}"
+            )
 
         def _selected_measurement_id(self) -> str | None:
             rows = self.measure_table.selectionModel().selectedRows()
@@ -354,14 +424,18 @@ if qt_available():
                 elif kind == "csv":
                     export_csv(records, path)
                 else:
-                    project_name = str(getattr(self.workspace.project, "project_name", "CWS Project") or "CWS Project")
+                    project_name = str(
+                        getattr(self.workspace.project, "project_name", "CWS Project") or "CWS Project"
+                    )
                     export_pdf(records, path, project_name=project_name)
                 self.status_changed.emit(f"Meetrapport gemaakt: {path}")
             except Exception as exc:
                 QtWidgets.QMessageBox.critical(self, "Meetrapport", f"{type(exc).__name__}: {exc}")
 
         def _save_workspace(self) -> None:
-            project_name = str(getattr(self.workspace.project, "project_name", "CWS Project") or "CWS Project")
+            project_name = str(
+                getattr(self.workspace.project, "project_name", "CWS Project") or "CWS Project"
+            )
             name, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self,
                 "Viewerworkspace opslaan",
@@ -410,11 +484,12 @@ if qt_available():
             self.measure_table.resizeColumnsToContents()
             self.undo.setEnabled(self.controller.can_undo())
             self.redo.setEnabled(self.controller.can_redo())
+            active_mode = str(getattr(self.viewer, "measurement_mode", "") or "")
             self.state.setText(
                 f"Sections: {len(self.controller.session.section_planes)} · "
                 f"Clipping: {'actief' if self.controller.session.clipping_box else 'uit'} · "
                 f"Exploded: {len(self.controller.session.explode_offsets)} · "
-                f"Metingen: {len(records)}"
+                f"Metingen: {len(records)} · Meetmodus: {active_mode or 'uit'}"
             )
 
 else:
