@@ -1,10 +1,10 @@
 """PySide6/QVTK host for the real-project mesh renderer.
 
-This widget owns desktop interaction only.  The viewer controller remains the
-single state authority.  Mouse/keyboard behaviour intentionally follows the
-interaction model familiar from professional BIM viewers: explicit rotate,
-pan, walk and look modes, wheel zoom, middle-button orbit, right-button look,
-rectangle selection and discoverable keyboard shortcuts.
+Desktop interaction is explicit and deterministic.  The widget uses actual
+visible VTK mesh surfaces for picking whenever possible; the historical
+centre-point picker remains a fallback only.  This makes selection and review
+measurements behave like a professional BIM viewer without pretending a
+triangulated display mesh is exact manufacturing BREP.
 """
 from __future__ import annotations
 
@@ -12,11 +12,12 @@ import math
 from typing import Any
 
 from cws_viewer.backends.vtk_project_mesh import VtkProjectMeshBackend
-from cws_viewer.contracts.enums import SelectionLevel
+from cws_viewer.contracts.enums import NodeKind, SelectionLevel
 from cws_viewer.contracts.scene import ProjectScene
+from cws_viewer.contracts.state import PickResult
 from cws_viewer.core.controller import ViewerCoreController
 from cws_viewer.geometry.loader import MeshRepository
-from cws_viewer.math3d import Vector3
+from cws_viewer.math3d import BoundingBox, Vector3
 from cws_viewer.model_grids import ModelGridCatalog
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
@@ -25,7 +26,7 @@ if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
     try:
         from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
-    except Exception as _vtk_qt_error:  # pragma: no cover - packaged diagnostics
+    except Exception as _vtk_qt_error:  # pragma: no cover
         _VTK_QT_ERROR_TEXT = f"{type(_vtk_qt_error).__name__}: {_vtk_qt_error}"
         QVTKRenderWindowInteractor = None  # type: ignore[assignment]
 
@@ -38,8 +39,11 @@ if qt_available():
             navigation_mode_changed = QtCore.Signal(str)
             context_requested = QtCore.Signal(object)
             grids_changed = QtCore.Signal(bool, object)
+            measurement_status = QtCore.Signal(str)
+            measurement_completed = QtCore.Signal(str, object)
 
             NAVIGATION_MODES = ("rotate", "pan", "walk", "look")
+            MEASUREMENT_MODES = ("distance", "horizontal", "vertical", "coordinates")
 
             def __init__(self, repository: MeshRepository, parent: Any | None = None) -> None:
                 super().__init__(parent)
@@ -72,6 +76,8 @@ if qt_available():
                 self._grid_labels_by_level: dict[float, list[Any]] = {}
                 self._grid_levels_visible: set[float] = set()
                 self._grids_enabled = True
+                self._measurement_mode: str | None = None
+                self._measurement_picks: list[PickResult] = []
                 self.backend_ready.emit()
 
             @property
@@ -86,6 +92,10 @@ if qt_available():
             def navigation_mode(self) -> str:
                 return self._navigation_mode
 
+            @property
+            def measurement_mode(self) -> str | None:
+                return self._measurement_mode
+
             def set_navigation_mode(self, mode: str) -> None:
                 value = str(mode).strip().lower()
                 if value not in self.NAVIGATION_MODES:
@@ -95,11 +105,32 @@ if qt_available():
                     self.navigation_mode_changed.emit(value)
                 self.setFocus(QtCore.Qt.FocusReason.OtherFocusReason)
 
+            def start_measurement(self, mode: str) -> None:
+                value = str(mode).strip().lower()
+                if value not in self.MEASUREMENT_MODES:
+                    raise ValueError(f"Onbekende meetmodus: {mode}")
+                self._measurement_mode = value
+                self._measurement_picks.clear()
+                if value == "coordinates":
+                    text = "XYZ: klik een punt op het model · Esc annuleert"
+                else:
+                    text = f"{value}: klik punt 1 en punt 2 · Esc annuleert"
+                self.measurement_status.emit(text)
+                self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
+                self.setFocus(QtCore.Qt.FocusReason.OtherFocusReason)
+
+            def cancel_measurement(self) -> None:
+                if self._measurement_mode is not None:
+                    self._measurement_mode = None
+                    self._measurement_picks.clear()
+                    self.unsetCursor()
+                    self.measurement_status.emit("Meetmodus beëindigd")
+
             def load_scene(self, scene: ProjectScene) -> None:
                 self._controller.load_scene(scene)
 
             # -----------------------------------------------------------------
-            # IFC model grids — separate read-only reference presentation.
+            # IFC model-grid overlay.  Reference presentation only.
             # -----------------------------------------------------------------
             def _renderer(self):
                 collection = self.GetRenderWindow().GetRenderers()
@@ -208,10 +239,94 @@ if qt_available():
                     enabled = self._grids_enabled and level in self._grid_levels_visible
                     for actor in actors:
                         actor.SetVisibility(1 if enabled else 0)
-                    for actor in self._grid_labels_by_level.get(level, ()): 
+                    for actor in self._grid_labels_by_level.get(level, ()):
                         actor.SetVisibility(1 if enabled else 0)
                 if render:
                     self._controller.render()
+
+            # -----------------------------------------------------------------
+            # Real surface picking over instanced mesh actors.
+            # -----------------------------------------------------------------
+            @staticmethod
+            def _point_box_distance_squared(point: Vector3, bounds: BoundingBox) -> float:
+                dx = max(bounds.minimum.x - point.x, 0.0, point.x - bounds.maximum.x)
+                dy = max(bounds.minimum.y - point.y, 0.0, point.y - bounds.maximum.y)
+                dz = max(bounds.minimum.z - point.z, 0.0, point.z - bounds.maximum.z)
+                return dx * dx + dy * dy + dz * dz
+
+            def _surface_pick_at(self, x: int, y: int) -> PickResult | None:
+                backend = self._backend
+                renderer = getattr(backend, "_renderer", None)
+                vtk = getattr(backend, "_vtk", None)
+                index = self._controller.index
+                if renderer is None or vtk is None:
+                    return None
+                groups = tuple(getattr(backend, "_mesh_groups", ()) or ())
+                if not groups:
+                    return None
+                picker = vtk.vtkCellPicker()
+                picker.SetTolerance(0.0008)
+                picker.PickFromListOn()
+                for group in groups:
+                    picker.AddPickList(group.actor)
+                if not picker.Pick(float(x), float(y), 0.0, renderer):
+                    return None
+                actor = picker.GetActor()
+                group = getattr(backend, "_actor_to_group", {}).get(id(actor))
+                if group is None:
+                    return None
+                world = Vector3(*picker.GetPickPosition())
+                state = getattr(backend, "_state", None)
+                visible = set(index.renderable_node_ids) if state is None else set(state.visible_set)
+                candidates: list[tuple[float, float, str]] = []
+                for node_id in group.node_ids:
+                    if node_id not in visible:
+                        continue
+                    bounds = index.world_bounds_by_node[node_id]
+                    if state is not None:
+                        offset = state.explode_offsets.get(node_id, Vector3.zero())
+                        bounds = BoundingBox(bounds.minimum + offset, bounds.maximum + offset)
+                    box_distance = self._point_box_distance_squared(world, bounds)
+                    center_distance = (bounds.center - world).dot(bounds.center - world)
+                    candidates.append((box_distance, center_distance, node_id))
+                if not candidates:
+                    return None
+                _, _, node_id = min(candidates)
+                node = index.node(node_id)
+                try:
+                    inverse = index.world_transform_by_node[node_id].inverse_rigid()
+                    local = inverse.transform_point(world)
+                except Exception:
+                    local = node.local_bounds.center
+                try:
+                    normal_values = picker.GetPickNormal()
+                    normal = Vector3(*normal_values).normalized()
+                except Exception:
+                    normal = None
+                return PickResult(
+                    node_id=node_id,
+                    entity_id=node.entity_id,
+                    part_id=(
+                        node.entity_id
+                        if node.kind in {NodeKind.PART, NodeKind.PURCHASED_ITEM}
+                        else None
+                    ),
+                    feature_id=(node.entity_id if node.kind == NodeKind.FEATURE else None),
+                    source_entity_id=node.source_entity_id,
+                    subshape_type=None,
+                    subshape_id=None,
+                    world_point=world,
+                    local_point=local,
+                    normal=normal,
+                )
+
+            def pick_result_at(self, x: int, y: int) -> PickResult | None:
+                result = self._surface_pick_at(x, y)
+                if result is not None:
+                    return result
+                # Safe fallback for drivers/VTK versions that cannot cell-pick
+                # vtkGlyph3DMapper actors.
+                return self._backend.pick_at(x, y, self._controller.index)
 
             # -----------------------------------------------------------------
             # Navigation helpers.
@@ -249,12 +364,10 @@ if qt_available():
                 yaw = -dx * 0.18
                 view = (camera.target - camera.position).normalized()
                 shift = view * forward
-                moved_position = camera.position + shift
-                moved_target = camera.target + shift
                 self._controller.set_camera(
                     type(camera)(
-                        position=moved_position,
-                        target=moved_target,
+                        position=camera.position + shift,
+                        target=camera.target + shift,
                         up=camera.up,
                         projection=camera.projection,
                         field_of_view_deg=camera.field_of_view_deg,
@@ -288,23 +401,33 @@ if qt_available():
                     return "toggle"
                 return "replace"
 
-            def _pick(self, event: Any) -> None:
+            def _display_xy(self, event: Any) -> tuple[int, int]:
                 point = event.position()
-                mode = self._selection_mode(event)
+                return int(point.x()), max(0, self.height() - int(point.y()) - 1)
+
+            def _pick_selection(self, event: Any) -> PickResult | None:
+                x, y = self._display_xy(event)
+                result = self.pick_result_at(x, y)
+                if result is None:
+                    if self._selection_mode(event) == "replace":
+                        self._controller.set_selection((), mode="replace")
+                    return None
                 old_level = self._controller.session.selection_level
                 if event.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier:
                     self._controller.set_selection_level(SelectionLevel.ASSEMBLY)
                 try:
-                    pick = self._controller.pick_at(
-                        int(point.x()),
-                        max(0, self.height() - int(point.y()) - 1),
-                        mode=mode,
+                    selectable = self._controller.index.selectable_node_for_level(
+                        result.node_id,
+                        self._controller.session.selection_level,
+                    )
+                    self._controller.set_selection(
+                        (selectable,), mode=self._selection_mode(event)
                     )
                 finally:
                     if self._controller.session.selection_level != old_level:
                         self._controller.set_selection_level(old_level)
-                if pick is not None:
-                    self.node_picked.emit(pick.node_id)
+                self.node_picked.emit(result.node_id)
+                return result
 
             def _rectangle_select(self, start: Any, end: Any, mode: str) -> None:
                 y0 = max(0, self.height() - int(start.y()) - 1)
@@ -312,7 +435,10 @@ if qt_available():
                 crossing = int(end.x()) < int(start.x())
                 method = getattr(self._controller, "select_rectangle", None)
                 if method is not None:
-                    method(int(start.x()), y0, int(end.x()), y1, mode=mode, crossing=crossing)
+                    method(
+                        int(start.x()), y0, int(end.x()), y1,
+                        mode=mode, crossing=crossing,
+                    )
                     return
                 backend_method = getattr(self._backend, "nodes_in_screen_rect", None)
                 if backend_method is None:
@@ -334,9 +460,30 @@ if qt_available():
                 )
                 self._controller.set_selection(mapped, mode=mode)
 
+            def _measurement_pick(self, event: Any) -> bool:
+                if self._measurement_mode is None:
+                    return False
+                x, y = self._display_xy(event)
+                result = self.pick_result_at(x, y)
+                if result is None:
+                    self.measurement_status.emit("Geen modeloppervlak onder cursor")
+                    return True
+                self._measurement_picks.append(result)
+                required = 1 if self._measurement_mode == "coordinates" else 2
+                if len(self._measurement_picks) < required:
+                    self.measurement_status.emit("Punt 1 vastgelegd · klik punt 2 · Esc annuleert")
+                    return True
+                picks = tuple(self._measurement_picks[:required])
+                self._measurement_picks.clear()
+                self.measurement_completed.emit(self._measurement_mode, picks)
+                if required == 1:
+                    self.measurement_status.emit("XYZ gemeten · klik opnieuw of Esc om te stoppen")
+                else:
+                    self.measurement_status.emit("Meting toegevoegd · klik opnieuw voor volgende meting of Esc")
+                return True
+
             # -----------------------------------------------------------------
-            # Qt input.  We intentionally do not call the default QVTK camera
-            # handlers for handled events, otherwise two camera systems fight.
+            # Qt input. Do not also let QVTK run a second camera system.
             # -----------------------------------------------------------------
             def mousePressEvent(self, event: Any) -> None:
                 self.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
@@ -345,7 +492,8 @@ if qt_available():
                 self._press_button = event.button()
                 self._dragged = False
                 if (
-                    event.button() == QtCore.Qt.MouseButton.LeftButton
+                    self._measurement_mode is None
+                    and event.button() == QtCore.Qt.MouseButton.LeftButton
                     and event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier
                     and not event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
                 ):
@@ -373,6 +521,9 @@ if qt_available():
                 if self._rectangle_start is not None:
                     event.accept()
                     return
+                if self._measurement_mode is not None and self._press_button == QtCore.Qt.MouseButton.LeftButton:
+                    event.accept()
+                    return
                 if self._press_button == QtCore.Qt.MouseButton.MiddleButton:
                     self._drag_navigation(dx, dy, forced="rotate")
                 elif self._press_button == QtCore.Qt.MouseButton.RightButton:
@@ -392,7 +543,8 @@ if qt_available():
                 if event.button() == self._press_button:
                     if not self._dragged:
                         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-                            self._pick(event)
+                            if not self._measurement_pick(event):
+                                self._pick_selection(event)
                         elif event.button() == QtCore.Qt.MouseButton.RightButton:
                             self.context_requested.emit(event.globalPosition().toPoint())
                     self._press_pos = self._last_pos = self._press_button = None
@@ -402,8 +554,8 @@ if qt_available():
                 super().mouseReleaseEvent(event)
 
             def mouseDoubleClickEvent(self, event: Any) -> None:
-                if event.button() == QtCore.Qt.MouseButton.LeftButton:
-                    self._pick(event)
+                if event.button() == QtCore.Qt.MouseButton.LeftButton and self._measurement_mode is None:
+                    self._pick_selection(event)
                     if self._controller.get_selection():
                         self._controller.fit_selection()
                     else:
@@ -415,8 +567,7 @@ if qt_available():
             def wheelEvent(self, event: Any) -> None:
                 delta = event.angleDelta().y()
                 if delta:
-                    steps = float(delta) / 120.0
-                    self._controller.zoom(1.16 ** steps)
+                    self._controller.zoom(1.16 ** (float(delta) / 120.0))
                     event.accept()
                     return
                 super().wheelEvent(event)
@@ -451,8 +602,11 @@ if qt_available():
                         else:
                             self._controller.hide(selected)
                 elif key == QtCore.Qt.Key.Key_Escape:
-                    self._controller.cancel_tool()
-                    self._controller.set_selection((), mode="replace")
+                    if self._measurement_mode is not None:
+                        self.cancel_measurement()
+                    else:
+                        self._controller.cancel_tool()
+                        self._controller.set_selection((), mode="replace")
                 elif key == QtCore.Qt.Key.Key_F11:
                     window = self.window()
                     if window.isFullScreen():
@@ -490,6 +644,7 @@ if qt_available():
                     self._controller.resize(size.width(), size.height())
 
             def closeEvent(self, event: Any) -> None:
+                self.cancel_measurement()
                 self._remove_grid_actors()
                 self._controller.shutdown()
                 super().closeEvent(event)
