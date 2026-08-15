@@ -1,0 +1,101 @@
+name: Split standalone CWS Viewer artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cws-viewer-v13-integration
+    paths:
+      - '.github/workflows/split-standalone-viewer-artifact.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download successful standalone viewer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc1_Windows_x64
+          path: downloaded
+          github-token: ${{ github.token }}
+          run-id: 31882851866
+
+      - name: Inspect downloaded release and stage split artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Downloaded files:'
+          find downloaded -type f -printf '%p\t%s bytes\n' | sort
+
+          portable=$(find downloaded -type f -name 'CWS_Viewer_Portable_1.2.0-rc1_x64.zip' -print -quit)
+          installer=$(find downloaded -type f -name 'CWS_Viewer_Setup_1.2.0-rc1_x64.exe' -print -quit)
+          checksums=$(find downloaded -type f -name 'SHA256SUMS.txt' -print -quit)
+          manifest=$(find downloaded -type f -name 'WINDOWS_VIEWER_RELEASE_MANIFEST.json' -print -quit)
+
+          test -n "$portable" && test -f "$portable"
+          test -n "$installer" && test -f "$installer"
+          test -n "$checksums" && test -f "$checksums"
+          test -n "$manifest" && test -f "$manifest"
+
+          mkdir -p split/portable split/installer split/evidence
+          cp "$portable" split/portable/
+          cp "$checksums" split/portable/
+          cp "$manifest" split/portable/
+
+          cp "$installer" split/installer/
+          cp "$checksums" split/installer/
+          cp "$manifest" split/installer/
+
+          find downloaded -type f \( -name '*.json' -o -name '*.png' -o -name 'SHA256SUMS.txt' -o -name 'WINDOWS_VIEWER_RELEASE_MANIFEST.json' \) -print0 |
+            while IFS= read -r -d '' file; do cp "$file" "split/evidence/$(basename "$file")"; done
+
+          echo 'Split sizes:'
+          du -ah split | sort -h | tail -40
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, json
+          roots = [Path('split/portable'), Path('split/installer'), Path('split/evidence')]
+          data = {}
+          for root in roots:
+              rows = []
+              for p in sorted(root.iterdir()):
+                  if p.is_file():
+                      h = hashlib.sha256(p.read_bytes()).hexdigest()
+                      rows.append({'name': p.name, 'bytes': p.stat().st_size, 'sha256': h})
+              data[root.name] = rows
+          Path('split/SPLIT_MANIFEST.json').write_text(json.dumps(data, indent=2), encoding='utf-8')
+          print(json.dumps(data, indent=2))
+          PY
+
+      - name: Upload portable viewer only
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc1_PORTABLE_x64
+          path: split/portable/*
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload installer only
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc1_INSTALLER_x64
+          path: split/installer/*
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc1_EVIDENCE
+          path: |
+            split/evidence/*
+            split/SPLIT_MANIFEST.json
+          compression-level: 6
+          if-no-files-found: error
+          retention-days: 30
