@@ -24,7 +24,7 @@ jobs:
       contents: read
 
     env:
-      VIEWER_VERSION: 1.2.0-rc2
+      VIEWER_VERSION: 1.2.0-rc3
       EVIDENCE: ${{ github.workspace }}\validation\standalone-viewer
 
     steps:
@@ -45,13 +45,13 @@ jobs:
           python -m pip install -r requirements-viewer-standalone.lock.txt
           python -m pip check
 
-      - name: Compile and source native self-test
+      - name: Compile and source native plus spawn self-test
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force $env:EVIDENCE | Out-Null
           python -m compileall -q CWS_Viewer_Standalone.py cws_viewer cws_convertor
           python CWS_Viewer_Standalone.py --self-test --report "$env:EVIDENCE\source_selftest.json"
-          if ($LASTEXITCODE -ne 0) { throw 'Source native self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Source native/spawn self-test failed' }
           python -m cws_viewer --self-test --deep-native --json --output "$env:EVIDENCE\viewer_contract_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Viewer contract/native self-test failed' }
 
@@ -64,6 +64,10 @@ jobs:
           $env:CWS_VIEWER_SCREENSHOT = Join-Path $env:EVIDENCE 'source_startup_smoke.png'
           python CWS_Viewer_Standalone.py
           if ($LASTEXITCODE -ne 0) { throw 'Source no-argument startup gate failed' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_CI_HEADLESS -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_REPORT -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
 
       - name: Create canonical GUI fixture
         shell: pwsh
@@ -85,14 +89,17 @@ jobs:
           python -m PyInstaller --noconfirm --clean CWS_Viewer_Standalone.spec
           if (-not (Test-Path 'dist\CWS_Viewer\CWS_Viewer.exe')) { throw 'CWS_Viewer.exe missing' }
 
-      - name: Packaged native self-test
+      - name: Packaged native plus frozen spawn self-test
         shell: pwsh
         run: |
           $exe = (Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
           $report = Join-Path $env:EVIDENCE 'packaged_selftest.json'
           $process = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$report) -Wait -PassThru -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) { throw "Packaged self-test failed with exit code $($process.ExitCode)" }
+          if ($process.ExitCode -ne 0) { throw "Packaged native/spawn self-test failed with exit code $($process.ExitCode)" }
           if (-not (Test-Path $report)) { throw 'Packaged self-test evidence missing' }
+          $payload = Get-Content $report -Raw | ConvertFrom-Json
+          if ($payload.checks.multiprocessing_spawn.status -ne 'passed') { throw 'Frozen multiprocessing spawn was not certified' }
+          if (-not $payload.checks.multiprocessing_spawn.worker_frozen) { throw 'Spawn child did not run as frozen CWS_Viewer.exe' }
 
       - name: Packaged no-argument desktop startup gate
         shell: pwsh
@@ -107,6 +114,10 @@ jobs:
           $process = Start-Process -FilePath $exe -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "Packaged no-argument startup gate failed with exit code $($process.ExitCode)" }
           if (-not (Test-Path $report)) { throw 'Packaged startup evidence missing' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_CI_HEADLESS -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_REPORT -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
 
       - name: Packaged hosted headless project GUI gate
         shell: pwsh
@@ -133,6 +144,8 @@ jobs:
           $self = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$selfReport) -Wait -PassThru -WindowStyle Hidden
           if ($self.ExitCode -ne 0) { throw "Portable self-test failed with exit code $($self.ExitCode)" }
           if (-not (Test-Path $selfReport)) { throw 'Portable self-test evidence missing' }
+          $portablePayload = Get-Content $selfReport -Raw | ConvertFrom-Json
+          if ($portablePayload.checks.multiprocessing_spawn.status -ne 'passed') { throw 'Portable frozen spawn gate failed' }
 
           $startupReport = Join-Path $env:EVIDENCE 'portable_startup_smoke.json'
           $startupScreenshot = Join-Path $env:EVIDENCE 'portable_startup_smoke.png'
@@ -181,6 +194,8 @@ jobs:
           $self = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$selfReport) -Wait -PassThru -WindowStyle Hidden
           if ($self.ExitCode -ne 0) { throw "Installed self-test failed with exit code $($self.ExitCode)" }
           if (-not (Test-Path $selfReport)) { throw 'Installed self-test evidence missing' }
+          $installedPayload = Get-Content $selfReport -Raw | ConvertFrom-Json
+          if ($installedPayload.checks.multiprocessing_spawn.status -ne 'passed') { throw 'Installed frozen spawn gate failed' }
 
           $startupReport = Join-Path $env:EVIDENCE 'installed_startup_smoke.json'
           $startupScreenshot = Join-Path $env:EVIDENCE 'installed_startup_smoke.png'
@@ -224,6 +239,7 @@ jobs:
             branch = $env:GITHUB_REF_NAME
             status = 'passed'
             startup_certification = 'source_packaged_portable_installed_no_argument'
+            multiprocessing_certification = 'source_packaged_portable_installed_spawn'
             render_certification = 'hosted_headless_only'
             physical_windows_gpu_test_required = $true
             files = @($files | ForEach-Object {
@@ -240,9 +256,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.2.0-rc2_INSTALLER_x64
+          name: CWS_Viewer_1.2.0-rc3_INSTALLER_x64
           path: |
-            release_windows/CWS_Viewer_Setup_1.2.0-rc2_x64.exe
+            release_windows/CWS_Viewer_Setup_1.2.0-rc3_x64.exe
             release_windows/SHA256SUMS.txt
             release_windows/WINDOWS_VIEWER_RELEASE_MANIFEST.json
           if-no-files-found: warn
@@ -252,8 +268,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.2.0-rc2_PORTABLE_x64
-          path: release_windows/CWS_Viewer_Portable_1.2.0-rc2_x64.zip
+          name: CWS_Viewer_1.2.0-rc3_PORTABLE_x64
+          path: release_windows/CWS_Viewer_Portable_1.2.0-rc3_x64.zip
           if-no-files-found: warn
           retention-days: 30
 
@@ -261,7 +277,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.2.0-rc2_EVIDENCE
+          name: CWS_Viewer_1.2.0-rc3_EVIDENCE
           path: |
             validation/standalone-viewer/*.json
             validation/standalone-viewer/*.png
