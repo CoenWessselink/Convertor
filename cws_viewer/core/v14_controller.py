@@ -1,7 +1,7 @@
 """V14 interaction extensions for the stable viewer core controller.
 
 The base controller remains the renderer-neutral contract used by previous
-releases.  V14 adds desktop interaction operations required by the professional
+releases. V14 adds desktop interaction operations required by the professional
 project viewer without changing canonical project data or production gates.
 """
 from __future__ import annotations
@@ -23,7 +23,6 @@ class V14ViewerCoreController(ViewerCoreController):
         # True hidden-line is implemented by the real VTK mesh backend in V14.
         # Keep it blocked on synthetic/non-mesh backends so display remains honest.
         if preferences.render_mode == RenderMode.HIDDEN_LINE:
-            # Validation is completed at instance level in set_display_preferences.
             return
 
     def set_display_preferences(self, preferences: ViewerDisplayPreferences) -> None:
@@ -36,6 +35,14 @@ class V14ViewerCoreController(ViewerCoreController):
                     context={"renderer_backend": backend_name},
                 )
         super().set_display_preferences(preferences)
+
+    # Friendly aliases used by the V14 cockpit and standard desktop shortcuts.
+    # The stable core keeps its explicit undo_viewer/redo_viewer names.
+    def undo(self) -> bool:
+        return self.undo_viewer()
+
+    def redo(self) -> bool:
+        return self.redo_viewer()
 
     def look(self, azimuth_deg: float, elevation_deg: float = 0.0) -> None:
         """Rotate camera direction around its fixed eye position."""
@@ -106,10 +113,17 @@ class V14ViewerCoreController(ViewerCoreController):
                 "Vensterselectie wordt niet door deze renderer ondersteund",
                 code=ViewerErrorCode.RENDERER_CAPABILITY_MISSING,
             )
-        raw = tuple(selector(int(x0), int(y0), int(x1), int(y1), index, crossing=bool(crossing)))
+        raw = tuple(
+            selector(
+                int(x0), int(y0), int(x1), int(y1), index,
+                crossing=bool(crossing),
+            )
+        )
         requested: list[str] = []
         for node_id in raw:
-            selectable = index.selectable_node_for_level(node_id, self.session.selection_level)
+            selectable = index.selectable_node_for_level(
+                node_id, self.session.selection_level
+            )
             if selectable not in requested:
                 requested.append(selectable)
         operation = SelectionOperation(mode)
