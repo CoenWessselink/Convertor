@@ -1,7 +1,7 @@
 """Official standalone desktop launcher for CWS Viewer.
 
 The standalone viewer is a read/review product built on the exact same
-Canonical Project Model and viewer modules as CWS Convertor.  It does not
+Canonical Project Model and viewer modules as CWS Convertor. It does not
 implement an independent production model and it cannot release production
 outputs.
 """
@@ -16,7 +16,7 @@ import tempfile
 import traceback
 
 PRODUCT = "CWS Viewer"
-VERSION = "1.2.0-rc1"
+VERSION = "1.2.0-rc2"
 
 
 def _json_out(payload: dict, output: str | None = None) -> None:
@@ -26,6 +26,10 @@ def _json_out(payload: dict, output: str | None = None) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
     print(text, end="")
+
+
+def _env_flag(name: str) -> bool:
+    return os.getenv(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _native_self_test(*, require_qt: bool) -> dict:
@@ -67,7 +71,8 @@ def _native_self_test(*, require_qt: bool) -> dict:
         result["checks"]["ifcopenshell"] = "not_installed_in_local_non_windows_environment"
 
     import fitz
-    doc = fitz.open(); doc.new_page()
+    doc = fitz.open()
+    doc.new_page()
     assert doc.tobytes().startswith(b"%PDF")
     result["checks"]["pymupdf"] = "pdf_in_memory_passed"
 
@@ -93,54 +98,67 @@ def _temporary_project_for_model(source: Path) -> tuple[Path, tempfile.Temporary
     """Create a temporary .cwscproj using the canonical importer.
 
     This makes direct IFC/STEP opening convenient without introducing a second
-    importer.  The temporary project is never production-released.
+    importer. The temporary project is never production-released.
     """
     from cws_convertor.project.service import ProjectSession
 
     temp = tempfile.TemporaryDirectory(prefix="cws-viewer-direct-")
     root = Path(temp.name)
     project_path = root / (source.stem + ".cwscproj")
-    session = ProjectSession.new(source.stem, description="Temporary CWS Viewer intake", created_by="CWS Viewer")
+    session = ProjectSession.new(
+        source.stem,
+        description="Temporary CWS Viewer intake",
+        created_by="CWS Viewer",
+    )
     try:
         session.add_source(source, embed=True, include_geometry=True, user="viewer")
         session.semantic_import_sources(user="viewer")
-        session.save(project_path, embed_sources=True, create_backup=False, user="viewer", revision_message="Temporary viewer intake")
+        session.save(
+            project_path,
+            embed_sources=True,
+            create_backup=False,
+            user="viewer",
+            revision_message="Temporary viewer intake",
+        )
     finally:
         session.close()
     return project_path, temp
-
-
-def _choose_file_dialog() -> str | None:
-    from PySide6 import QtWidgets
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    filename, _ = QtWidgets.QFileDialog.getOpenFileName(
-        None,
-        "Openen in CWS Viewer",
-        "",
-        "CWS project (*.cwscproj);;IFC model (*.ifc);;STEP model (*.step *.stp);;Alle ondersteunde bestanden (*.cwscproj *.ifc *.step *.stp)",
-    )
-    return filename or None
 
 
 def _run_gui(
     input_path: Path | None,
     *,
     ci_smoke: bool = False,
+    startup_smoke: bool = False,
     ci_headless: bool = False,
     report: str | None = None,
     screenshot: str | None = None,
     classic_ui: bool = False,
 ) -> int:
-    if input_path is None and not ci_smoke:
-        picked = _choose_file_dialog()
-        if not picked:
+    # A desktop shortcut has no input argument. That is a valid application
+    # state: show the CWS start centre first. Never open QFileDialog implicitly.
+    if input_path is None:
+        if ci_smoke and not startup_smoke:
+            raise RuntimeError(
+                "--gui-smoke vereist een .cwscproj fixture; gebruik --startup-smoke voor de no-argument startgate"
+            )
+        from cws_viewer.ui_qt.start_center import run_start_center
+
+        status, selected = run_start_center(
+            version=VERSION,
+            ci_smoke=startup_smoke,
+            ci_headless=ci_headless,
+            report_path=report,
+            screenshot_path=screenshot,
+        )
+        if status != 0 or startup_smoke:
+            return status
+        if selected is None:
             return 0
-        input_path = Path(picked)
+        input_path = selected
 
     temp: tempfile.TemporaryDirectory[str] | None = None
     try:
-        if input_path is None:
-            raise RuntimeError("--gui-smoke vereist --input met een .cwscproj fixture")
         input_path = input_path.expanduser().resolve()
         if not input_path.is_file():
             raise FileNotFoundError(input_path)
@@ -162,9 +180,14 @@ def _run_gui(
             _json_out(payload, report)
             return 0 if payload.get("status") == "passed" else 2
 
-        cache_root = Path(os.getenv("LOCALAPPDATA", tempfile.gettempdir())) / "CWS" / "Viewer" / "mesh-cache"
+        cache_root = (
+            Path(os.getenv("LOCALAPPDATA", tempfile.gettempdir()))
+            / "CWS"
+            / "Viewer"
+            / "mesh-cache"
+        )
         # V13 cockpit is preferred. During staged integration we deliberately
-        # retain the proven V9 project viewer as a diagnostic fallback.
+        # retain the proven V9/V4 project viewer as a diagnostic fallback.
         if not classic_ui:
             try:
                 from cws_viewer.ui_qt.cockpit import run_cws_viewer_cockpit
@@ -193,13 +216,37 @@ def _run_gui(
             temp.cleanup()
 
 
+def _show_interactive_error(exc: Exception) -> None:
+    """Make GUI-subsystem startup failures visible to a Windows user."""
+    try:
+        from PySide6 import QtWidgets
+
+        app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        QtWidgets.QMessageBox.critical(
+            None,
+            "CWS Viewer kon niet starten",
+            f"{type(exc).__name__}: {exc}\n\n"
+            "De fout is niet genegeerd. Maak indien mogelijk een screenshot van deze melding.",
+        )
+        if QtWidgets.QApplication.instance() is app:
+            app.processEvents()
+    except Exception:
+        # The JSON error below remains the deterministic diagnostic channel.
+        pass
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="CWS_Viewer")
     p.add_argument("input", nargs="?", help=".cwscproj, .ifc, .step of .stp")
     p.add_argument("--version", action="store_true")
     p.add_argument("--self-test", action="store_true", help="Volledige packaged runtime-selftest")
     p.add_argument("--quick-self-test", action="store_true", help="Lokale selftest zonder verplichte Qt")
-    p.add_argument("--gui-smoke", action="store_true", help="Start viewer smoke en sluit automatisch")
+    p.add_argument("--gui-smoke", action="store_true", help="Start projectviewer smoke en sluit automatisch")
+    p.add_argument(
+        "--startup-smoke",
+        action="store_true",
+        help="Test de no-argument desktopstart zonder automatisch bestandsvenster",
+    )
     p.add_argument("--ci-headless", action="store_true", help="Hosted-CI Qt/project gate zonder native OpenGL-window")
     p.add_argument("--report", help="Schrijf JSON-bewijsrapport")
     p.add_argument("--screenshot", help="Schrijf GUI-smoke screenshot")
@@ -209,24 +256,40 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    startup_smoke = bool(args.startup_smoke or _env_flag("CWS_VIEWER_STARTUP_SMOKE"))
+    ci_headless = bool(args.ci_headless or _env_flag("CWS_VIEWER_CI_HEADLESS"))
+    report = args.report or os.getenv("CWS_VIEWER_REPORT")
+    screenshot = args.screenshot or os.getenv("CWS_VIEWER_SCREENSHOT")
     try:
         if args.version:
             print(f"{PRODUCT} {VERSION}")
             return 0
         if args.self_test or args.quick_self_test:
             payload = _native_self_test(require_qt=bool(args.self_test))
-            _json_out(payload, args.report)
+            _json_out(payload, report)
             return 0
         path = Path(args.input) if args.input else None
         return _run_gui(
             path,
             ci_smoke=args.gui_smoke,
-            ci_headless=args.ci_headless,
-            report=args.report,
-            screenshot=args.screenshot,
+            startup_smoke=startup_smoke,
+            ci_headless=ci_headless,
+            report=report,
+            screenshot=screenshot,
             classic_ui=args.classic_ui,
         )
     except Exception as exc:
+        interactive = not any(
+            (
+                args.self_test,
+                args.quick_self_test,
+                args.gui_smoke,
+                startup_smoke,
+                ci_headless,
+            )
+        )
+        if interactive:
+            _show_interactive_error(exc)
         payload = {
             "schema": "cws-viewer-standalone-error-1.0",
             "product": PRODUCT,
@@ -236,7 +299,7 @@ def main(argv: list[str] | None = None) -> int:
             "traceback": traceback.format_exc(),
             "production_release_allowed": False,
         }
-        _json_out(payload, args.report)
+        _json_out(payload, report)
         return 2
 
 
