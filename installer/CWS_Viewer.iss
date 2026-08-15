@@ -1,5 +1,5 @@
 #define MyAppName "CWS Viewer"
-#define MyAppVersion "1.2.0-rc1"
+#define MyAppVersion "1.2.0-rc2"
 #define MyAppPublisher "CWS"
 #define MyAppExeName "CWS_Viewer.exe"
 
@@ -19,6 +19,8 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
+CloseApplications=yes
+RestartApplications=no
 
 [Files]
 Source: "..\dist\CWS_Viewer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
