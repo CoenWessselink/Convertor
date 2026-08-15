@@ -1,0 +1,48 @@
+name: Promote CWS Viewer branch to 1.2.0-rc4
+
+on:
+  push:
+    branches:
+      - feature/cws-viewer-v13-integration
+    paths:
+      - '.github/workflows/promote-viewer-rc4-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/cws-viewer-v13-integration
+          fetch-depth: 0
+      - name: Replace rc3 release identity with rc4
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          files = [
+              Path('CWS_Viewer_Standalone.py'),
+              Path('installer/CWS_Viewer.iss'),
+              Path('.github/workflows/build-standalone-cws-viewer.yml'),
+          ]
+          changed = []
+          for path in files:
+              text = path.read_text(encoding='utf-8')
+              new = text.replace('1.2.0-rc3', '1.2.0-rc4')
+              if new == text:
+                  raise SystemExit(f'Expected rc3 identity not found in {path}')
+              path.write_text(new, encoding='utf-8')
+              changed.append(str(path))
+          print('Updated:', ', '.join(changed))
+          PY
+      - name: Commit promotion
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CWS_Viewer_Standalone.py installer/CWS_Viewer.iss .github/workflows/build-standalone-cws-viewer.yml
+          git commit -m "build(viewer): promote usability release to 1.2.0-rc4"
+          git push origin HEAD:feature/cws-viewer-v13-integration
