@@ -78,14 +78,21 @@ jobs:
       - name: Packaged native self-test
         shell: pwsh
         run: |
-          & .\dist\CWS_Viewer\CWS_Viewer.exe --self-test --report "$env:EVIDENCE\packaged_selftest.json"
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
+          $exe = (Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
+          $report = Join-Path $env:EVIDENCE 'packaged_selftest.json'
+          $process = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$report) -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw "Packaged self-test failed with exit code $($process.ExitCode)" }
+          if (-not (Test-Path $report)) { throw 'Packaged self-test evidence missing' }
 
       - name: Packaged hosted headless GUI gate
         shell: pwsh
         run: |
-          & .\dist\CWS_Viewer\CWS_Viewer.exe "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\packaged_gui_smoke.json" --screenshot "$env:EVIDENCE\packaged_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged hosted headless GUI gate failed' }
+          $exe = (Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
+          $report = Join-Path $env:EVIDENCE 'packaged_gui_smoke.json'
+          $screenshot = Join-Path $env:EVIDENCE 'packaged_gui_smoke.png'
+          $process = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$report,'--screenshot',$screenshot) -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw "Packaged hosted headless GUI gate failed with exit code $($process.ExitCode)" }
+          if (-not (Test-Path $report)) { throw 'Packaged GUI evidence missing' }
 
       - name: Create and re-test portable ZIP without Python on PATH
         shell: pwsh
@@ -97,10 +104,16 @@ jobs:
           if (Test-Path $portableRoot) { Remove-Item $portableRoot -Recurse -Force }
           Expand-Archive $portable -DestinationPath $portableRoot
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-          & "$portableRoot\CWS_Viewer.exe" --self-test --report "$env:EVIDENCE\portable_selftest.json"
-          if ($LASTEXITCODE -ne 0) { throw 'Portable self-test failed' }
-          & "$portableRoot\CWS_Viewer.exe" "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\portable_gui_smoke.json" --screenshot "$env:EVIDENCE\portable_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Portable hosted headless GUI gate failed' }
+          $exe = Join-Path $portableRoot 'CWS_Viewer.exe'
+          $selfReport = Join-Path $env:EVIDENCE 'portable_selftest.json'
+          $self = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$selfReport) -Wait -PassThru -WindowStyle Hidden
+          if ($self.ExitCode -ne 0) { throw "Portable self-test failed with exit code $($self.ExitCode)" }
+          if (-not (Test-Path $selfReport)) { throw 'Portable self-test evidence missing' }
+          $guiReport = Join-Path $env:EVIDENCE 'portable_gui_smoke.json'
+          $guiScreenshot = Join-Path $env:EVIDENCE 'portable_gui_smoke.png'
+          $gui = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$guiReport,'--screenshot',$guiScreenshot) -Wait -PassThru -WindowStyle Hidden
+          if ($gui.ExitCode -ne 0) { throw "Portable hosted headless GUI gate failed with exit code $($gui.ExitCode)" }
+          if (-not (Test-Path $guiReport)) { throw 'Portable GUI evidence missing' }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -124,10 +137,15 @@ jobs:
           $exe = Join-Path $target 'CWS_Viewer.exe'
           if (-not (Test-Path $exe)) { throw 'Installed CWS_Viewer.exe missing' }
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
-          & $exe --self-test --report "$env:EVIDENCE\installed_selftest.json"
-          if ($LASTEXITCODE -ne 0) { throw 'Installed self-test failed' }
-          & $exe "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\installed_gui_smoke.json" --screenshot "$env:EVIDENCE\installed_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Installed hosted headless GUI gate failed' }
+          $selfReport = Join-Path $env:EVIDENCE 'installed_selftest.json'
+          $self = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$selfReport) -Wait -PassThru -WindowStyle Hidden
+          if ($self.ExitCode -ne 0) { throw "Installed self-test failed with exit code $($self.ExitCode)" }
+          if (-not (Test-Path $selfReport)) { throw 'Installed self-test evidence missing' }
+          $guiReport = Join-Path $env:EVIDENCE 'installed_gui_smoke.json'
+          $guiScreenshot = Join-Path $env:EVIDENCE 'installed_gui_smoke.png'
+          $gui = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$guiReport,'--screenshot',$guiScreenshot) -Wait -PassThru -WindowStyle Hidden
+          if ($gui.ExitCode -ne 0) { throw "Installed hosted headless GUI gate failed with exit code $($gui.ExitCode)" }
+          if (-not (Test-Path $guiReport)) { throw 'Installed GUI evidence missing' }
           $uninstaller = Join-Path $target 'unins000.exe'
           if (Test-Path $uninstaller) {
             $un = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden
