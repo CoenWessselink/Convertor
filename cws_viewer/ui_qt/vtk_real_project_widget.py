@@ -12,7 +12,7 @@ from enum import StrEnum
 import math
 from typing import Any
 
-from cws_viewer.backends.vtk_project_mesh import VtkProjectMeshBackend
+from cws_viewer.backends.vtk_project_mesh_v14 import VtkProjectMeshV14Backend
 from cws_viewer.contracts.scene import ProjectScene
 from cws_viewer.core.v14_controller import V14ViewerCoreController
 from cws_viewer.geometry.loader import MeshRepository
@@ -52,7 +52,7 @@ if qt_available():
                 self.setMinimumSize(620, 420)
                 self.setMouseTracking(True)
                 self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
-                self._backend = VtkProjectMeshBackend(
+                self._backend = VtkProjectMeshV14Backend(
                     repository,
                     render_window=self.GetRenderWindow(),
                     offscreen=False,
@@ -80,7 +80,7 @@ if qt_available():
                 self.backend_ready.emit()
 
             @property
-            def backend(self) -> VtkProjectMeshBackend:
+            def backend(self) -> VtkProjectMeshV14Backend:
                 return self._backend
 
             @property
