@@ -49,9 +49,10 @@ def run_v14_selftest() -> dict:
     qss = theme_qss(DEFAULT_THEME)
     assert "QToolBar" in qss and "QTreeWidget" in qss and "QTableView" in qss
 
-    # Import the actual shipped cockpit/backend/controller; this catches missing
-    # V14 composition modules in PyInstaller before a physical user opens a file.
+    # Import the actual shipped cockpit/backend/controller/progress runner. This
+    # catches PyInstaller omissions before a physical user opens a large model.
     from cws_viewer.ui_qt.cockpit import CwsViewerCockpitWindow  # noqa: F401
+    from cws_viewer.ui_qt.cockpit_progress import run_cws_viewer_cockpit_with_progress  # noqa: F401
     from cws_viewer.backends.vtk_project_mesh_v14 import VtkProjectMeshV14Backend  # noqa: F401
     from cws_viewer.core.v14_controller import V14ViewerCoreController  # noqa: F401
 
@@ -67,13 +68,22 @@ def run_v14_selftest() -> dict:
         assert abs(float(grid["grids"][0]["elevation_mm"]) - 3800.0) < 1e-9
         assert {axis["tag"] for axis in grid["grids"][0]["axes"]} == {"1", "A"}
 
-        markup = MarkupRecord.create(MarkupKind.TEXT, text="Controle", world_points_mm=((1.0,2.0,3.0),))
-        issue = ReviewIssue.create("Controlepunt", linked_entity_ids=("part:1",), markup_ids=(markup.markup_id,))
+        markup = MarkupRecord.create(
+            MarkupKind.TEXT,
+            text="Controle",
+            world_points_mm=((1.0, 2.0, 3.0),),
+        )
+        issue = ReviewIssue.create(
+            "Controlepunt",
+            linked_entity_ids=("part:1",),
+            markup_ids=(markup.markup_id,),
+        )
         package = root / "review.cwsreview"
         ReviewPackageBuilder().build(
             package,
-            project={"project_id":"project:test","revision_id":"rev:test"},
-            issues=(issue,), markups=(markup,),
+            project={"project_id": "project:test", "revision_id": "rev:test"},
+            issues=(issue,),
+            markups=(markup,),
         )
         manifest = ReviewPackageVerifier().verify(package)
         assert manifest["project_id"] == "project:test"
@@ -81,7 +91,7 @@ def run_v14_selftest() -> dict:
         package_sha = sha256(package.read_bytes()).hexdigest()
 
     return {
-        "schema": "cws-viewer-v14-selftest-1.0",
+        "schema": "cws-viewer-v14-selftest-1.1",
         "status": "passed",
         "default_theme": DEFAULT_THEME,
         "available_themes": sorted(THEMES),
@@ -91,6 +101,7 @@ def run_v14_selftest() -> dict:
         "grid_axis_count": grid["axis_count"],
         "review_package_sha256": package_sha,
         "cockpit_imported": True,
+        "progress_runner_imported": True,
         "surface_backend_imported": True,
         "v14_controller_imported": True,
     }
