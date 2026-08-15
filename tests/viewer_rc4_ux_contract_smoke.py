@@ -3,7 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 import hashlib
+import sys
 import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_viewer.model_grids import extract_project_model_grids
 from cws_viewer.ui_qt.design_system import CWS_LIGHT, DEFAULT_THEME_KEY, LIGHT_QSS
@@ -16,23 +21,24 @@ def test_light_theme_is_product_default() -> None:
 
 
 def test_cockpit_and_navigation_sources_expose_required_controls() -> None:
-    root = Path(__file__).resolve().parents[1]
-    cockpit = (root / "cws_viewer" / "ui_qt" / "cockpit.py").read_text(encoding="utf-8")
-    widget = (root / "cws_viewer" / "ui_qt" / "vtk_real_project_widget.py").read_text(encoding="utf-8")
-    tools = (root / "cws_convertor" / "ui_qt" / "viewer_tools.py").read_text(encoding="utf-8")
+    cockpit = (ROOT / "cws_viewer" / "ui_qt" / "cockpit.py").read_text(encoding="utf-8")
+    widget = (ROOT / "cws_viewer" / "ui_qt" / "vtk_real_project_widget.py").read_text(encoding="utf-8")
+    tools = (ROOT / "cws_convertor" / "ui_qt" / "viewer_tools.py").read_text(encoding="utf-8")
     for token in (
         "Rotate", "Pan", "Walk", "Look", "Stamien", "Meten", "Doorsnede",
-        "Explode", "Modelkleur", "Thema", "Volledig scherm",
+        "Explode", "Modelkleur", "Thema", "Volledig scherm", "Exact Part Workbench",
+        "Revisie vergelijken", "Geometriestatus",
     ):
         assert token in cockpit, token
     for token in (
         "Ctrl+U", "Ctrl+I", "Ctrl+O", "Ctrl+P", "Backspace", "Key_F11",
-        "set_model_grids", "set_grid_level_visible", "select_rectangle",
+        "set_model_grids", "set_grid_level_visible", "select_rectangle", "vtkCellPicker",
+        "start_measurement", "measurement_completed",
     ):
         assert token in widget, token
     for token in (
         "Afstand", "Horizontaal", "Verticaal", "XYZ", "Clipping box",
-        "Explode selectie", "Werkruimte opslaan",
+        "Explode selectie", "Werkruimte opslaan", "Meetmodus stoppen",
     ):
         assert token in tools, token
 
