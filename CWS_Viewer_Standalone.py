@@ -1,8 +1,9 @@
-"""Official standalone CWS Viewer launcher.
+"""Official standalone desktop launcher for CWS Viewer.
 
-The standalone viewer reuses the same Canonical Project Model and semantic
-importers as the integrated SteelConverter/CWS Convertor build. It is a read
-and review product and cannot release production outputs.
+The standalone viewer is a read/review product built on the exact same
+Canonical Project Model and viewer modules as CWS Convertor.  It does not
+implement an independent production model and it cannot release production
+outputs.
 """
 from __future__ import annotations
 
@@ -66,8 +67,7 @@ def _native_self_test(*, require_qt: bool) -> dict:
         result["checks"]["ifcopenshell"] = "not_installed_in_local_non_windows_environment"
 
     import fitz
-    doc = fitz.open()
-    doc.new_page()
+    doc = fitz.open(); doc.new_page()
     assert doc.tobytes().startswith(b"%PDF")
     result["checks"]["pymupdf"] = "pdf_in_memory_passed"
 
@@ -90,7 +90,11 @@ def _native_self_test(*, require_qt: bool) -> dict:
 
 
 def _temporary_project_for_model(source: Path) -> tuple[Path, tempfile.TemporaryDirectory[str]]:
-    """Open IFC/STEP through the canonical project importer, never a viewer parser."""
+    """Create a temporary .cwscproj using the canonical importer.
+
+    This makes direct IFC/STEP opening convenient without introducing a second
+    importer.  The temporary project is never production-released.
+    """
     from cws_convertor.project.service import ProjectSession
 
     temp = tempfile.TemporaryDirectory(prefix="cws-viewer-direct-")
@@ -100,13 +104,7 @@ def _temporary_project_for_model(source: Path) -> tuple[Path, tempfile.Temporary
     try:
         session.add_source(source, embed=True, include_geometry=True, user="viewer")
         session.semantic_import_sources(user="viewer")
-        session.save(
-            project_path,
-            embed_sources=True,
-            create_backup=False,
-            user="viewer",
-            revision_message="Temporary standalone viewer intake",
-        )
+        session.save(project_path, embed_sources=True, create_backup=False, user="viewer", revision_message="Temporary viewer intake")
     finally:
         session.close()
     return project_path, temp
@@ -128,6 +126,7 @@ def _run_gui(
     input_path: Path | None,
     *,
     ci_smoke: bool = False,
+    ci_headless: bool = False,
     report: str | None = None,
     screenshot: str | None = None,
     classic_ui: bool = False,
@@ -151,6 +150,17 @@ def _run_gui(
             project_path = input_path
         else:
             raise ValueError(f"Niet ondersteund bestandstype: {input_path.suffix}")
+
+        if ci_headless:
+            from cws_convertor.integration.ci_gui import run_hosted_headless_gui_gate
+
+            payload = run_hosted_headless_gui_gate(
+                project_path,
+                shell="viewer",
+                screenshot_path=screenshot,
+            )
+            _json_out(payload, report)
+            return 0 if payload.get("status") == "passed" else 2
 
         cache_root = Path(os.getenv("LOCALAPPDATA", tempfile.gettempdir())) / "CWS" / "Viewer" / "mesh-cache"
         # V13 cockpit is preferred. During staged integration we deliberately
@@ -184,16 +194,17 @@ def _run_gui(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="CWS_Viewer")
-    parser.add_argument("input", nargs="?", help=".cwscproj, .ifc, .step of .stp")
-    parser.add_argument("--version", action="store_true")
-    parser.add_argument("--self-test", action="store_true", help="Volledige packaged runtime-selftest")
-    parser.add_argument("--quick-self-test", action="store_true", help="Lokale selftest zonder verplichte Qt")
-    parser.add_argument("--gui-smoke", action="store_true", help="Start echte Qt/VTK-viewer en sluit automatisch")
-    parser.add_argument("--report", help="Schrijf JSON-bewijsrapport")
-    parser.add_argument("--screenshot", help="Schrijf GUI-smoke screenshot")
-    parser.add_argument("--classic-ui", action="store_true", help="Gebruik de bewezen V9 viewer-shell voor diagnose")
-    return parser
+    p = argparse.ArgumentParser(prog="CWS_Viewer")
+    p.add_argument("input", nargs="?", help=".cwscproj, .ifc, .step of .stp")
+    p.add_argument("--version", action="store_true")
+    p.add_argument("--self-test", action="store_true", help="Volledige packaged runtime-selftest")
+    p.add_argument("--quick-self-test", action="store_true", help="Lokale selftest zonder verplichte Qt")
+    p.add_argument("--gui-smoke", action="store_true", help="Start viewer smoke en sluit automatisch")
+    p.add_argument("--ci-headless", action="store_true", help="Hosted-CI Qt/project gate zonder native OpenGL-window")
+    p.add_argument("--report", help="Schrijf JSON-bewijsrapport")
+    p.add_argument("--screenshot", help="Schrijf GUI-smoke screenshot")
+    p.add_argument("--classic-ui", action="store_true", help="Gebruik de oudere/deterministische viewer-shell voor diagnose")
+    return p
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -210,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         return _run_gui(
             path,
             ci_smoke=args.gui_smoke,
+            ci_headless=args.ci_headless,
             report=args.report,
             screenshot=args.screenshot,
             classic_ui=args.classic_ui,
