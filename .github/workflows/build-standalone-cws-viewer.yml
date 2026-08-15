@@ -24,7 +24,7 @@ jobs:
       contents: read
 
     env:
-      VIEWER_VERSION: 1.2.0-rc1
+      VIEWER_VERSION: 1.2.0-rc2
       EVIDENCE: ${{ github.workspace }}\validation\standalone-viewer
 
     steps:
@@ -55,6 +55,16 @@ jobs:
           python -m cws_viewer --self-test --deep-native --json --output "$env:EVIDENCE\viewer_contract_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Viewer contract/native self-test failed' }
 
+      - name: Source no-argument desktop startup gate
+        shell: pwsh
+        run: |
+          $env:CWS_VIEWER_STARTUP_SMOKE = '1'
+          $env:CWS_VIEWER_CI_HEADLESS = '1'
+          $env:CWS_VIEWER_REPORT = Join-Path $env:EVIDENCE 'source_startup_smoke.json'
+          $env:CWS_VIEWER_SCREENSHOT = Join-Path $env:EVIDENCE 'source_startup_smoke.png'
+          python CWS_Viewer_Standalone.py
+          if ($LASTEXITCODE -ne 0) { throw 'Source no-argument startup gate failed' }
+
       - name: Create canonical GUI fixture
         shell: pwsh
         run: |
@@ -63,11 +73,11 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fixture)) { throw 'GUI fixture creation failed' }
           "CWS_VIEWER_FIXTURE=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Source hosted headless GUI gate
+      - name: Source hosted headless project GUI gate
         shell: pwsh
         run: |
           python CWS_Viewer_Standalone.py "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\source_gui_smoke.json" --screenshot "$env:EVIDENCE\source_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Source hosted headless GUI gate failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Source hosted headless project GUI gate failed' }
 
       - name: Build PyInstaller onedir
         shell: pwsh
@@ -84,14 +94,28 @@ jobs:
           if ($process.ExitCode -ne 0) { throw "Packaged self-test failed with exit code $($process.ExitCode)" }
           if (-not (Test-Path $report)) { throw 'Packaged self-test evidence missing' }
 
-      - name: Packaged hosted headless GUI gate
+      - name: Packaged no-argument desktop startup gate
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
+          $report = Join-Path $env:EVIDENCE 'packaged_startup_smoke.json'
+          $screenshot = Join-Path $env:EVIDENCE 'packaged_startup_smoke.png'
+          $env:CWS_VIEWER_STARTUP_SMOKE = '1'
+          $env:CWS_VIEWER_CI_HEADLESS = '1'
+          $env:CWS_VIEWER_REPORT = $report
+          $env:CWS_VIEWER_SCREENSHOT = $screenshot
+          $process = Start-Process -FilePath $exe -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Packaged no-argument startup gate failed with exit code $($process.ExitCode)" }
+          if (-not (Test-Path $report)) { throw 'Packaged startup evidence missing' }
+
+      - name: Packaged hosted headless project GUI gate
         shell: pwsh
         run: |
           $exe = (Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
           $report = Join-Path $env:EVIDENCE 'packaged_gui_smoke.json'
           $screenshot = Join-Path $env:EVIDENCE 'packaged_gui_smoke.png'
-          $process = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$report,'--screenshot',$screenshot) -Wait -PassThru -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) { throw "Packaged hosted headless GUI gate failed with exit code $($process.ExitCode)" }
+          $process = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$report,'--screenshot',$screenshot) -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Packaged hosted headless project GUI gate failed with exit code $($process.ExitCode)" }
           if (-not (Test-Path $report)) { throw 'Packaged GUI evidence missing' }
 
       - name: Create and re-test portable ZIP without Python on PATH
@@ -109,10 +133,25 @@ jobs:
           $self = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$selfReport) -Wait -PassThru -WindowStyle Hidden
           if ($self.ExitCode -ne 0) { throw "Portable self-test failed with exit code $($self.ExitCode)" }
           if (-not (Test-Path $selfReport)) { throw 'Portable self-test evidence missing' }
+
+          $startupReport = Join-Path $env:EVIDENCE 'portable_startup_smoke.json'
+          $startupScreenshot = Join-Path $env:EVIDENCE 'portable_startup_smoke.png'
+          $env:CWS_VIEWER_STARTUP_SMOKE = '1'
+          $env:CWS_VIEWER_CI_HEADLESS = '1'
+          $env:CWS_VIEWER_REPORT = $startupReport
+          $env:CWS_VIEWER_SCREENSHOT = $startupScreenshot
+          $startup = Start-Process -FilePath $exe -Wait -PassThru
+          if ($startup.ExitCode -ne 0) { throw "Portable no-argument startup gate failed with exit code $($startup.ExitCode)" }
+          if (-not (Test-Path $startupReport)) { throw 'Portable startup evidence missing' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_CI_HEADLESS -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_REPORT -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
+
           $guiReport = Join-Path $env:EVIDENCE 'portable_gui_smoke.json'
           $guiScreenshot = Join-Path $env:EVIDENCE 'portable_gui_smoke.png'
-          $gui = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$guiReport,'--screenshot',$guiScreenshot) -Wait -PassThru -WindowStyle Hidden
-          if ($gui.ExitCode -ne 0) { throw "Portable hosted headless GUI gate failed with exit code $($gui.ExitCode)" }
+          $gui = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$guiReport,'--screenshot',$guiScreenshot) -Wait -PassThru
+          if ($gui.ExitCode -ne 0) { throw "Portable hosted headless project GUI gate failed with exit code $($gui.ExitCode)" }
           if (-not (Test-Path $guiReport)) { throw 'Portable GUI evidence missing' }
 
       - name: Install Inno Setup
@@ -127,7 +166,7 @@ jobs:
           $setup = Get-ChildItem release_windows -Filter 'CWS_Viewer_Setup_*_x64.exe' | Select-Object -First 1
           if ($null -eq $setup) { throw 'Installer missing' }
 
-      - name: Installed-app gate without Python on PATH
+      - name: Installed-app gates without Python on PATH
         shell: pwsh
         run: |
           $setup = Get-ChildItem release_windows -Filter 'CWS_Viewer_Setup_*_x64.exe' | Select-Object -First 1
@@ -137,15 +176,32 @@ jobs:
           $exe = Join-Path $target 'CWS_Viewer.exe'
           if (-not (Test-Path $exe)) { throw 'Installed CWS_Viewer.exe missing' }
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+
           $selfReport = Join-Path $env:EVIDENCE 'installed_selftest.json'
           $self = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$selfReport) -Wait -PassThru -WindowStyle Hidden
           if ($self.ExitCode -ne 0) { throw "Installed self-test failed with exit code $($self.ExitCode)" }
           if (-not (Test-Path $selfReport)) { throw 'Installed self-test evidence missing' }
+
+          $startupReport = Join-Path $env:EVIDENCE 'installed_startup_smoke.json'
+          $startupScreenshot = Join-Path $env:EVIDENCE 'installed_startup_smoke.png'
+          $env:CWS_VIEWER_STARTUP_SMOKE = '1'
+          $env:CWS_VIEWER_CI_HEADLESS = '1'
+          $env:CWS_VIEWER_REPORT = $startupReport
+          $env:CWS_VIEWER_SCREENSHOT = $startupScreenshot
+          $startup = Start-Process -FilePath $exe -Wait -PassThru
+          if ($startup.ExitCode -ne 0) { throw "Installed no-argument startup gate failed with exit code $($startup.ExitCode)" }
+          if (-not (Test-Path $startupReport)) { throw 'Installed startup evidence missing' }
+          Remove-Item Env:CWS_VIEWER_STARTUP_SMOKE -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_CI_HEADLESS -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_REPORT -ErrorAction SilentlyContinue
+          Remove-Item Env:CWS_VIEWER_SCREENSHOT -ErrorAction SilentlyContinue
+
           $guiReport = Join-Path $env:EVIDENCE 'installed_gui_smoke.json'
           $guiScreenshot = Join-Path $env:EVIDENCE 'installed_gui_smoke.png'
-          $gui = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$guiReport,'--screenshot',$guiScreenshot) -Wait -PassThru -WindowStyle Hidden
-          if ($gui.ExitCode -ne 0) { throw "Installed hosted headless GUI gate failed with exit code $($gui.ExitCode)" }
+          $gui = Start-Process -FilePath $exe -ArgumentList @($env:CWS_VIEWER_FIXTURE,'--gui-smoke','--ci-headless','--report',$guiReport,'--screenshot',$guiScreenshot) -Wait -PassThru
+          if ($gui.ExitCode -ne 0) { throw "Installed hosted headless project GUI gate failed with exit code $($gui.ExitCode)" }
           if (-not (Test-Path $guiReport)) { throw 'Installed GUI evidence missing' }
+
           $uninstaller = Join-Path $target 'unins000.exe'
           if (Test-Path $uninstaller) {
             $un = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden
@@ -167,6 +223,7 @@ jobs:
             commit = $env:GITHUB_SHA
             branch = $env:GITHUB_REF_NAME
             status = 'passed'
+            startup_certification = 'source_packaged_portable_installed_no_argument'
             render_certification = 'hosted_headless_only'
             physical_windows_gpu_test_required = $true
             files = @($files | ForEach-Object {
@@ -179,13 +236,33 @@ jobs:
           } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 release_windows\WINDOWS_VIEWER_RELEASE_MANIFEST.json
           Get-Content release_windows\SHA256SUMS.txt
 
-      - name: Upload standalone Windows release
+      - name: Upload installer artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.2.0-rc1_Windows_x64
+          name: CWS_Viewer_1.2.0-rc2_INSTALLER_x64
           path: |
-            release_windows/*
+            release_windows/CWS_Viewer_Setup_1.2.0-rc2_x64.exe
+            release_windows/SHA256SUMS.txt
+            release_windows/WINDOWS_VIEWER_RELEASE_MANIFEST.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload portable artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc2_PORTABLE_x64
+          path: release_windows/CWS_Viewer_Portable_1.2.0-rc2_x64.zip
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_1.2.0-rc2_EVIDENCE
+          path: |
             validation/standalone-viewer/*.json
             validation/standalone-viewer/*.png
           if-no-files-found: warn
