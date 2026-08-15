@@ -45,13 +45,16 @@ jobs:
           python -m pip install -r requirements-viewer-standalone.lock.txt
           python -m pip check
 
-      - name: Compile and source native plus spawn self-test
+      - name: Compile and source native plus IFC worker self-test
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force $env:EVIDENCE | Out-Null
           python -m compileall -q CWS_Viewer_Standalone.py cws_viewer cws_convertor
           python CWS_Viewer_Standalone.py --self-test --report "$env:EVIDENCE\source_selftest.json"
-          if ($LASTEXITCODE -ne 0) { throw 'Source native/spawn self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Source native/IFC-worker self-test failed' }
+          $sourcePayload = Get-Content "$env:EVIDENCE\source_selftest.json" -Raw | ConvertFrom-Json
+          if ($sourcePayload.checks.isolated_ifc_worker.status -ne 'passed') { throw 'Source isolated IFC worker was not certified' }
+          if ($sourcePayload.checks.isolated_ifc_worker.transport -ne 'multiprocessing_spawn') { throw "Unexpected source IFC-worker transport: $($sourcePayload.checks.isolated_ifc_worker.transport)" }
           python -m cws_viewer --self-test --deep-native --json --output "$env:EVIDENCE\viewer_contract_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Viewer contract/native self-test failed' }
 
@@ -89,17 +92,19 @@ jobs:
           python -m PyInstaller --noconfirm --clean CWS_Viewer_Standalone.spec
           if (-not (Test-Path 'dist\CWS_Viewer\CWS_Viewer.exe')) { throw 'CWS_Viewer.exe missing' }
 
-      - name: Packaged native plus frozen spawn self-test
+      - name: Packaged native plus explicit frozen IFC worker self-test
         shell: pwsh
         run: |
           $exe = (Resolve-Path '.\dist\CWS_Viewer\CWS_Viewer.exe').Path
           $report = Join-Path $env:EVIDENCE 'packaged_selftest.json'
           $process = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$report) -Wait -PassThru -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) { throw "Packaged native/spawn self-test failed with exit code $($process.ExitCode)" }
+          if ($process.ExitCode -ne 0) { throw "Packaged native/IFC-worker self-test failed with exit code $($process.ExitCode)" }
           if (-not (Test-Path $report)) { throw 'Packaged self-test evidence missing' }
           $payload = Get-Content $report -Raw | ConvertFrom-Json
-          if ($payload.checks.multiprocessing_spawn.status -ne 'passed') { throw 'Frozen multiprocessing spawn was not certified' }
-          if (-not $payload.checks.multiprocessing_spawn.worker_frozen) { throw 'Spawn child did not run as frozen CWS_Viewer.exe' }
+          if ($payload.checks.isolated_ifc_worker.status -ne 'passed') { throw 'Frozen isolated IFC worker was not certified' }
+          if ($payload.checks.isolated_ifc_worker.transport -ne 'frozen_subprocess') { throw "Frozen viewer did not use explicit subprocess worker: $($payload.checks.isolated_ifc_worker.transport)" }
+          if (-not $payload.checks.isolated_ifc_worker.worker_frozen) { throw 'Explicit subprocess IFC worker was not frozen CWS_Viewer.exe' }
+          if ($payload.checks.isolated_ifc_worker.bounds_mm[0] -ne 100 -or $payload.checks.isolated_ifc_worker.bounds_mm[1] -ne 50 -or $payload.checks.isolated_ifc_worker.bounds_mm[2] -ne 10) { throw 'Frozen IFC-worker geometry dimensions are wrong' }
 
       - name: Packaged no-argument desktop startup gate
         shell: pwsh
@@ -145,7 +150,9 @@ jobs:
           if ($self.ExitCode -ne 0) { throw "Portable self-test failed with exit code $($self.ExitCode)" }
           if (-not (Test-Path $selfReport)) { throw 'Portable self-test evidence missing' }
           $portablePayload = Get-Content $selfReport -Raw | ConvertFrom-Json
-          if ($portablePayload.checks.multiprocessing_spawn.status -ne 'passed') { throw 'Portable frozen spawn gate failed' }
+          if ($portablePayload.checks.isolated_ifc_worker.status -ne 'passed') { throw 'Portable isolated IFC worker gate failed' }
+          if ($portablePayload.checks.isolated_ifc_worker.transport -ne 'frozen_subprocess') { throw 'Portable viewer did not use explicit frozen IFC subprocess' }
+          if (-not $portablePayload.checks.isolated_ifc_worker.worker_frozen) { throw 'Portable IFC worker was not a frozen executable' }
 
           $startupReport = Join-Path $env:EVIDENCE 'portable_startup_smoke.json'
           $startupScreenshot = Join-Path $env:EVIDENCE 'portable_startup_smoke.png'
@@ -195,7 +202,9 @@ jobs:
           if ($self.ExitCode -ne 0) { throw "Installed self-test failed with exit code $($self.ExitCode)" }
           if (-not (Test-Path $selfReport)) { throw 'Installed self-test evidence missing' }
           $installedPayload = Get-Content $selfReport -Raw | ConvertFrom-Json
-          if ($installedPayload.checks.multiprocessing_spawn.status -ne 'passed') { throw 'Installed frozen spawn gate failed' }
+          if ($installedPayload.checks.isolated_ifc_worker.status -ne 'passed') { throw 'Installed isolated IFC worker gate failed' }
+          if ($installedPayload.checks.isolated_ifc_worker.transport -ne 'frozen_subprocess') { throw 'Installed viewer did not use explicit frozen IFC subprocess' }
+          if (-not $installedPayload.checks.isolated_ifc_worker.worker_frozen) { throw 'Installed IFC worker was not a frozen executable' }
 
           $startupReport = Join-Path $env:EVIDENCE 'installed_startup_smoke.json'
           $startupScreenshot = Join-Path $env:EVIDENCE 'installed_startup_smoke.png'
@@ -239,7 +248,7 @@ jobs:
             branch = $env:GITHUB_REF_NAME
             status = 'passed'
             startup_certification = 'source_packaged_portable_installed_no_argument'
-            multiprocessing_certification = 'source_packaged_portable_installed_spawn'
+            geometry_worker_certification = 'source_multiprocessing_packaged_portable_installed_explicit_subprocess'
             render_certification = 'hosted_headless_only'
             physical_windows_gpu_test_required = $true
             files = @($files | ForEach-Object {
