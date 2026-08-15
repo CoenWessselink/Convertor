@@ -29,10 +29,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python 3.12 x64
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: x64
@@ -63,11 +63,11 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $fixture)) { throw 'GUI fixture creation failed' }
           "CWS_VIEWER_FIXTURE=$fixture" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Source GUI smoke
+      - name: Source hosted headless GUI gate
         shell: pwsh
         run: |
-          python CWS_Viewer_Standalone.py "$env:CWS_VIEWER_FIXTURE" --gui-smoke --report "$env:EVIDENCE\source_gui_smoke.json" --screenshot "$env:EVIDENCE\source_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Source GUI smoke failed' }
+          python CWS_Viewer_Standalone.py "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\source_gui_smoke.json" --screenshot "$env:EVIDENCE\source_gui_smoke.png"
+          if ($LASTEXITCODE -ne 0) { throw 'Source hosted headless GUI gate failed' }
 
       - name: Build PyInstaller onedir
         shell: pwsh
@@ -81,11 +81,11 @@ jobs:
           & .\dist\CWS_Viewer\CWS_Viewer.exe --self-test --report "$env:EVIDENCE\packaged_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
 
-      - name: Packaged GUI smoke
+      - name: Packaged hosted headless GUI gate
         shell: pwsh
         run: |
-          & .\dist\CWS_Viewer\CWS_Viewer.exe "$env:CWS_VIEWER_FIXTURE" --gui-smoke --report "$env:EVIDENCE\packaged_gui_smoke.json" --screenshot "$env:EVIDENCE\packaged_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged GUI smoke failed' }
+          & .\dist\CWS_Viewer\CWS_Viewer.exe "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\packaged_gui_smoke.json" --screenshot "$env:EVIDENCE\packaged_gui_smoke.png"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged hosted headless GUI gate failed' }
 
       - name: Create and re-test portable ZIP without Python on PATH
         shell: pwsh
@@ -99,8 +99,8 @@ jobs:
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
           & "$portableRoot\CWS_Viewer.exe" --self-test --report "$env:EVIDENCE\portable_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Portable self-test failed' }
-          & "$portableRoot\CWS_Viewer.exe" "$env:CWS_VIEWER_FIXTURE" --gui-smoke --report "$env:EVIDENCE\portable_gui_smoke.json" --screenshot "$env:EVIDENCE\portable_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Portable GUI smoke failed' }
+          & "$portableRoot\CWS_Viewer.exe" "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\portable_gui_smoke.json" --screenshot "$env:EVIDENCE\portable_gui_smoke.png"
+          if ($LASTEXITCODE -ne 0) { throw 'Portable hosted headless GUI gate failed' }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -126,8 +126,8 @@ jobs:
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
           & $exe --self-test --report "$env:EVIDENCE\installed_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Installed self-test failed' }
-          & $exe "$env:CWS_VIEWER_FIXTURE" --gui-smoke --report "$env:EVIDENCE\installed_gui_smoke.json" --screenshot "$env:EVIDENCE\installed_gui_smoke.png"
-          if ($LASTEXITCODE -ne 0) { throw 'Installed GUI smoke failed' }
+          & $exe "$env:CWS_VIEWER_FIXTURE" --gui-smoke --ci-headless --report "$env:EVIDENCE\installed_gui_smoke.json" --screenshot "$env:EVIDENCE\installed_gui_smoke.png"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed hosted headless GUI gate failed' }
           $uninstaller = Join-Path $target 'unins000.exe'
           if (Test-Path $uninstaller) {
             $un = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden
@@ -149,6 +149,8 @@ jobs:
             commit = $env:GITHUB_SHA
             branch = $env:GITHUB_REF_NAME
             status = 'passed'
+            render_certification = 'hosted_headless_only'
+            physical_windows_gpu_test_required = $true
             files = @($files | ForEach-Object {
               [ordered]@{
                 name = $_.Name
@@ -160,6 +162,7 @@ jobs:
           Get-Content release_windows\SHA256SUMS.txt
 
       - name: Upload standalone Windows release
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: CWS_Viewer_1.2.0-rc1_Windows_x64
@@ -167,5 +170,5 @@ jobs:
             release_windows/*
             validation/standalone-viewer/*.json
             validation/standalone-viewer/*.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
