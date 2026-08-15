@@ -71,9 +71,9 @@ class ViewerCapabilities:
 class ViewerDisplayPreferences:
     """Display-only settings; never manufacturing or canonical truth."""
 
-    render_mode: RenderMode | None = None
+    render_mode: RenderMode | None = RenderMode.SHADED_EDGES
     color_scheme: ColorScheme = ColorScheme.ORIGINAL
-    background_theme: BackgroundTheme = BackgroundTheme.DARK
+    background_theme: BackgroundTheme = BackgroundTheme.LIGHT
     ghost_opacity: float = 0.12
     selection_color: Rgba = Rgba(0.12, 0.92, 1.0, 1.0)
     edge_width: float = 0.65
@@ -121,7 +121,7 @@ class ViewerDisplayPreferences:
             ),
             color_scheme=ColorScheme(str(data.get("color_scheme", ColorScheme.ORIGINAL.value))),
             background_theme=BackgroundTheme(
-                str(data.get("background_theme", BackgroundTheme.DARK.value))
+                str(data.get("background_theme", BackgroundTheme.LIGHT.value))
             ),
             ghost_opacity=float(data.get("ghost_opacity", 0.12)),
             selection_color=Rgba(
