@@ -25,13 +25,13 @@ def test_cockpit_and_navigation_sources_expose_required_controls() -> None:
     widget = (ROOT / "cws_viewer" / "ui_qt" / "vtk_real_project_widget.py").read_text(encoding="utf-8")
     tools = (ROOT / "cws_convertor" / "ui_qt" / "viewer_tools.py").read_text(encoding="utf-8")
     for token in (
-        "Rotate", "Pan", "Walk", "Look", "Stamien", "Meten", "Doorsnede",
-        "Explode", "Modelkleur", "Thema", "Volledig scherm", "Exact Part Workbench",
-        "Revisie vergelijken", "Geometriestatus",
+        "Rotate", "Pan", "Walk", "Look", "Ctrl+U", "Ctrl+I", "Ctrl+O", "Ctrl+P",
+        "Stamien", "Meten", "Doorsnede", "Explode", "Modelkleur", "Thema", "Volledig scherm",
+        "Exact Part Workbench", "Revisie vergelijken", "Geometriestatus",
     ):
         assert token in cockpit, token
     for token in (
-        "Ctrl+U", "Ctrl+I", "Ctrl+O", "Ctrl+P", "Backspace", "Key_F11",
+        "Key_U", "Key_I", "Key_O", "Key_P", "Key_Backspace", "Key_F11",
         "set_model_grids", "set_grid_level_visible", "select_rectangle", "vtkCellPicker",
         "start_measurement", "measurement_completed",
     ):
