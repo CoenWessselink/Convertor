@@ -1,8 +1,8 @@
 """Runtime proof for the crash-isolated IFC geometry worker.
 
-This test intentionally executes the same multiprocessing spawn boundary used
-by the real project viewer.  It requires no GPU/OpenGL window, so it can run in
-source, PyInstaller, portable and installed Windows release gates.
+The same high-level provider is exercised in every release gate. Source mode
+uses multiprocessing spawn; a PyInstaller-frozen CWS Viewer uses the explicit
+persistent subprocess service. No GPU/OpenGL window is required.
 """
 from __future__ import annotations
 
@@ -50,8 +50,17 @@ def run_isolated_ifc_worker_selftest() -> dict:
             source_item_ids=("100",),
         )
         provider = IsolatedIfcMeshProvider(timeout_seconds=30.0, start_method="spawn")
+        transport = provider.transport_mode
+        worker_pid = None
+        worker_frozen = None
+        worker_executable = ""
         try:
             mesh = provider.load(request, TessellationSettings())
+            client = getattr(provider, "_frozen_client", None)
+            if client is not None:
+                worker_pid = getattr(client, "worker_pid", None)
+                worker_frozen = getattr(client, "worker_frozen", None)
+                worker_executable = str(getattr(client, "worker_executable", "") or "")
         finally:
             provider.close()
         if mesh.vertex_count < 8 or mesh.triangle_count < 12:
@@ -68,6 +77,10 @@ def run_isolated_ifc_worker_selftest() -> dict:
                 raise RuntimeError(f"IFC-worker maat wijkt af: {actual} verwacht {expected}")
         return {
             "status": "passed",
+            "transport": transport,
+            "worker_pid": worker_pid,
+            "worker_frozen": worker_frozen,
+            "worker_executable": worker_executable,
             "provider": mesh.provider,
             "exactness": mesh.exactness,
             "vertex_count": mesh.vertex_count,
