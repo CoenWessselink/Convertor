@@ -1,10 +1,10 @@
 """CWS Viewer light engineering cockpit.
 
-The V4 project window already owns the proven project tree/grid/property and
-workspace synchronisation.  This module deliberately *reuses* that one-model
-workspace instead of creating another viewer truth.  It replaces the dark
-legacy presentation, exposes the V5–V11 tools that already exist in the core,
-and adds grid/navigation controls expected in a professional BIM viewer.
+This is the standalone product shell.  It intentionally reuses the proven
+V4/V9 tree/grid/property/scene core and exposes the V5–V11 functions instead of
+introducing a second viewer truth.  The interaction model follows familiar
+professional BIM-viewer conventions, while all implementation, styling and
+assets remain original CWS work.
 """
 from __future__ import annotations
 
@@ -35,26 +35,29 @@ from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
     from cws_convertor.ui_qt.viewer_tools import IntegratedViewerToolsPanel
+    from cws_viewer.ui_qt.geometry_status import GeometryStatusPanel
 
     class CwsViewerCockpitWindow(RealProjectViewerWindow):
-        """Light, function-complete standalone viewer shell over the proven core."""
+        """One-model professional CWS desktop viewer."""
 
         def __init__(self, load_result: ProjectSceneLoadResult) -> None:
             super().__init__(load_result)
             self.setObjectName("cwsCockpitRoot")
             self.setWindowTitle("CWS Viewer — Projectviewer")
-            self.resize(1720, 980)
+            self.resize(1760, 1020)
             self.controller = self.viewer.controller
             self.project = load_result.project
             self._theme_key = CWS_LIGHT.key
             self._grid_level_actions: dict[float, Any] = {}
             self._navigation_actions: dict[str, Any] = {}
+            self._exact_workspace: Any | None = None
 
             self._apply_theme(self._theme_key)
             self._reconfigure_legacy_surfaces()
-            self._create_cockpit_navigation_toolbar()
-            self._create_cockpit_tools_toolbar()
+            self._create_navigation_toolbar()
+            self._create_tools_toolbar()
             self._create_viewer_tools_dock()
+            self._create_geometry_status_dock()
             self._install_context_menu()
             self._load_model_grids()
             self._connect_cockpit_signals()
@@ -62,12 +65,12 @@ if qt_available():
             self.controller.set_background_theme(BackgroundTheme.LIGHT)
             self.controller.set_render_mode(RenderMode.SHADED_EDGES)
             self.statusBar().showMessage(
-                "CWS Viewer gereed · Ctrl+U rotate · Ctrl+I pan · Ctrl+O walk · Ctrl+P look · Space fit",
-                8000,
+                "CWS Viewer gereed · Ctrl+U Rotate · Ctrl+I Pan · Ctrl+O Walk · Ctrl+P Look · Space Fit",
+                9000,
             )
 
         # ------------------------------------------------------------------
-        # Layout / theme
+        # Theme/layout
         # ------------------------------------------------------------------
         def _apply_theme(self, key: str) -> None:
             palette = theme_by_key(key)
@@ -80,8 +83,6 @@ if qt_available():
                 pass
 
         def _reconfigure_legacy_surfaces(self) -> None:
-            # Hide the old dense three-row developer toolbars. Their stateful
-            # widgets/methods stay alive and are reused by the cockpit actions.
             for name in ("cwsV4ViewerToolbar", "cwsV4WorkspaceToolbar"):
                 toolbar = self.findChild(QtWidgets.QToolBar, name)
                 if toolbar is not None:
@@ -112,9 +113,17 @@ if qt_available():
             if tree_dock is not None and props_dock is not None:
                 self.resizeDocks([tree_dock, props_dock], [270, 335], QtCore.Qt.Orientation.Horizontal)
             if grid_dock is not None:
-                self.resizeDocks([grid_dock], [205], QtCore.Qt.Orientation.Vertical)
+                self.resizeDocks([grid_dock], [210], QtCore.Qt.Orientation.Vertical)
 
-        def _action(self, toolbar: Any, text: str, slot: Any, shortcut: str | None = None, *, checkable: bool = False):
+        def _action(
+            self,
+            toolbar: Any,
+            text: str,
+            slot: Any,
+            shortcut: str | None = None,
+            *,
+            checkable: bool = False,
+        ) -> Any:
             action = QtGui.QAction(text, self)
             action.setCheckable(checkable)
             if shortcut:
@@ -132,17 +141,16 @@ if qt_available():
             return button
 
         # ------------------------------------------------------------------
-        # Top cockpit toolbars
+        # Main controls
         # ------------------------------------------------------------------
-        def _create_cockpit_navigation_toolbar(self) -> None:
+        def _create_navigation_toolbar(self) -> None:
+            self.addToolBarBreak()
             toolbar = QtWidgets.QToolBar("Navigatie en selectie", self)
             toolbar.setObjectName("cwsCockpitNavigationToolbar")
             toolbar.setMovable(False)
-            self.insertToolBarBreak(toolbar)
             self.addToolBar(toolbar)
 
-            select_label = QtWidgets.QLabel("Selectie ")
-            toolbar.addWidget(select_label)
+            toolbar.addWidget(QtWidgets.QLabel("Selectie "))
             self._selection_level_combo = QtWidgets.QComboBox()
             self._selection_level_combo.addItem("Onderdeel", SelectionLevel.PART.value)
             self._selection_level_combo.addItem("Assembly", SelectionLevel.ASSEMBLY.value)
@@ -158,7 +166,11 @@ if qt_available():
                 ("look", "Look", "Ctrl+P"),
             ):
                 self._navigation_actions[mode] = self._action(
-                    toolbar, title, lambda _checked=False, value=mode: self._set_navigation_mode(value), shortcut, checkable=True
+                    toolbar,
+                    title,
+                    lambda _checked=False, value=mode: self._set_navigation_mode(value),
+                    shortcut,
+                    checkable=True,
                 )
             toolbar.addSeparator()
             self._action(toolbar, "Fit", self.controller.fit_all, "F")
@@ -174,16 +186,23 @@ if qt_available():
                 ("Boven", StandardView.TOP),
                 ("Onder", StandardView.BOTTOM),
             ):
-                view_menu.addAction(title, lambda checked=False, preset=value: self.controller.set_standard_view(preset))
+                view_menu.addAction(
+                    title,
+                    lambda checked=False, preset=value: self.controller.set_standard_view(preset),
+                )
             self._tool_button(toolbar, "Aanzicht ▾", view_menu)
 
             projection_menu = QtWidgets.QMenu(self)
-            projection_menu.addAction("Perspectief", lambda: self.controller.set_projection(ProjectionType.PERSPECTIVE))
-            projection_menu.addAction("Orthografisch", lambda: self.controller.set_projection(ProjectionType.ORTHOGRAPHIC))
+            projection_menu.addAction(
+                "Perspectief", lambda: self.controller.set_projection(ProjectionType.PERSPECTIVE)
+            )
+            projection_menu.addAction(
+                "Orthografisch", lambda: self.controller.set_projection(ProjectionType.ORTHOGRAPHIC)
+            )
             self._tool_button(toolbar, "Projectie ▾", projection_menu)
             self._action(toolbar, "Volledig scherm", self._toggle_fullscreen, "F11")
 
-        def _create_cockpit_tools_toolbar(self) -> None:
+        def _create_tools_toolbar(self) -> None:
             toolbar = QtWidgets.QToolBar("Viewer gereedschappen", self)
             toolbar.setObjectName("cwsCockpitToolsToolbar")
             toolbar.setMovable(False)
@@ -201,14 +220,15 @@ if qt_available():
             self._grid_menu = QtWidgets.QMenu(self._grid_button)
             self._grid_button.setMenu(self._grid_menu)
             toolbar.addWidget(self._grid_button)
-            toolbar.addSeparator()
 
             measure_menu = QtWidgets.QMenu(self)
-            measure_menu.addAction("Meetwerkruimte openen", self._show_viewer_tools)
+            measure_menu.addAction("Afstand", lambda: self._measurement_button("distance"))
+            measure_menu.addAction("Horizontaal", lambda: self._measurement_button("horizontal"))
+            measure_menu.addAction("Verticaal", lambda: self._measurement_button("vertical"))
+            measure_menu.addAction("XYZ / punt", lambda: self._measurement_button("coordinates"))
             measure_menu.addSeparator()
-            measure_menu.addAction("Afstand tussen 2 geselecteerde objecten", self._quick_distance)
-            measure_menu.addAction("Meetinstellingen / rapport", self._show_viewer_tools)
-            measure_menu.addAction("Exact meten op face/edge/vertex", self._exact_measurement_hint)
+            measure_menu.addAction("Meetwerkruimte / rapport", self._show_viewer_tools)
+            measure_menu.addAction("Exact face/edge/radius/diameter", self._open_exact_workbench)
             self._tool_button(toolbar, "Meten ▾", measure_menu)
 
             section_menu = QtWidgets.QMenu(self)
@@ -228,9 +248,16 @@ if qt_available():
             toolbar.addSeparator()
 
             display_menu = QtWidgets.QMenu(self)
-            display_menu.addAction("Shaded + randen", lambda: self.controller.set_render_mode(RenderMode.SHADED_EDGES))
+            display_menu.addAction(
+                "Shaded + randen", lambda: self.controller.set_render_mode(RenderMode.SHADED_EDGES)
+            )
             display_menu.addAction("Shaded", lambda: self.controller.set_render_mode(RenderMode.SHADED))
-            display_menu.addAction("Wireframe", lambda: self.controller.set_render_mode(RenderMode.WIREFRAME))
+            display_menu.addAction(
+                "Hidden line", lambda: self.controller.set_render_mode(RenderMode.HIDDEN_LINE)
+            )
+            display_menu.addAction(
+                "Wireframe", lambda: self.controller.set_render_mode(RenderMode.WIREFRAME)
+            )
             self._tool_button(toolbar, "Weergave ▾", display_menu)
 
             color_menu = QtWidgets.QMenu(self)
@@ -240,29 +267,59 @@ if qt_available():
                 ("Materiaal", ColorScheme.MATERIAL),
                 ("Profiel", ColorScheme.PROFILE),
                 ("Status", ColorScheme.STATUS),
+                ("Fase", ColorScheme.PHASE),
                 ("Bronmodel", ColorScheme.SOURCE_MODEL),
                 ("Assembly", ColorScheme.ASSEMBLY),
                 ("Monochroom", ColorScheme.MONOCHROME),
             ):
-                color_menu.addAction(title, lambda checked=False, value=scheme: self._apply_color_scheme(value))
+                color_menu.addAction(
+                    title,
+                    lambda checked=False, value=scheme: self._apply_color_scheme(value),
+                )
             self._tool_button(toolbar, "Modelkleur ▾", color_menu)
+
+            toolbar.addWidget(QtWidgets.QLabel(" Transparantie "))
+            self._cockpit_transparency = QtWidgets.QSpinBox()
+            self._cockpit_transparency.setRange(0, 95)
+            self._cockpit_transparency.setValue(50)
+            self._cockpit_transparency.setSuffix(" %")
+            self._cockpit_transparency.setMaximumWidth(78)
+            toolbar.addWidget(self._cockpit_transparency)
+            self._action(toolbar, "Toepassen", self._apply_cockpit_transparency)
+            self._action(toolbar, "Reset stijl", self.controller.reset_styles)
+            toolbar.addSeparator()
 
             theme_menu = QtWidgets.QMenu(self)
             for key, theme in THEMES.items():
-                theme_menu.addAction(theme.title, lambda checked=False, value=key: self._apply_theme(value))
+                theme_menu.addAction(
+                    theme.title, lambda checked=False, value=key: self._apply_theme(value)
+                )
             self._tool_button(toolbar, "Thema ▾", theme_menu)
+
+            review_menu = QtWidgets.QMenu(self)
+            review_menu.addAction("Exact Part Workbench", self._open_exact_workbench)
+            review_menu.addAction("Revisie vergelijken", self._compare_revision)
+            review_menu.addAction("Geometriestatus", self._show_geometry_status)
+            review_menu.addAction("Accuracy / herkomst", lambda: self._toggle_accuracy_mode(True))
+            self._tool_button(toolbar, "Controleren ▾", review_menu)
             toolbar.addSeparator()
 
             self._action(toolbar, "Undo", self.controller.undo_viewer, "Ctrl+Z")
             self._action(toolbar, "Redo", self.controller.redo_viewer, "Ctrl+Y")
             self._action(toolbar, "Viewpoint", self._save_viewpoint_dialog, "Ctrl+B")
             self._action(toolbar, "Screenshot", self._save_screenshot_dialog, "Ctrl+Shift+S")
-            self._action(toolbar, "Accuracy", lambda: self._toggle_accuracy_mode(True), "Ctrl+D")
 
+        # ------------------------------------------------------------------
+        # Existing V11 tools exposed in cockpit docks
+        # ------------------------------------------------------------------
         def _create_viewer_tools_dock(self) -> None:
             self._viewer_tools = IntegratedViewerToolsPanel(self, self)
-            self._viewer_tools.status_changed.connect(lambda text: self.statusBar().showMessage(text, 5000))
-            self._tools_dock = QtWidgets.QDockWidget("Viewer Tools — meten / doorsnede / explode", self)
+            self._viewer_tools.status_changed.connect(
+                lambda text: self.statusBar().showMessage(text, 5000)
+            )
+            self._tools_dock = QtWidgets.QDockWidget(
+                "Viewer Tools — meten / doorsnede / explode", self
+            )
             self._tools_dock.setObjectName("cwsCockpitViewerToolsDock")
             self._tools_dock.setWidget(self._viewer_tools)
             self._tools_dock.setMinimumHeight(180)
@@ -272,8 +329,20 @@ if qt_available():
                 self.tabifyDockWidget(grid_dock, self._tools_dock)
                 grid_dock.raise_()
 
+        def _create_geometry_status_dock(self) -> None:
+            self._geometry_status = GeometryStatusPanel(self.load_result, self)
+            self._geometry_dock = QtWidgets.QDockWidget("Geometriestatus", self)
+            self._geometry_dock.setObjectName("cwsCockpitGeometryStatusDock")
+            self._geometry_dock.setWidget(self._geometry_status)
+            self._geometry_dock.setMinimumWidth(440)
+            self.addDockWidget(QtCore.Qt.DockWidgetArea.RightDockWidgetArea, self._geometry_dock)
+            workspace_dock = self.findChild(QtWidgets.QDockWidget, "cwsV4WorkspaceDock")
+            if workspace_dock is not None:
+                self.tabifyDockWidget(workspace_dock, self._geometry_dock)
+                workspace_dock.raise_()
+
         # ------------------------------------------------------------------
-        # Model grids
+        # IFC model grids / stamien
         # ------------------------------------------------------------------
         def _source_search_roots(self) -> tuple[Path, ...]:
             roots: list[Path] = []
@@ -296,10 +365,13 @@ if qt_available():
                 self._rebuild_grid_menu(catalog.levels)
                 if catalog.axis_count:
                     self.statusBar().showMessage(
-                        f"Stamien geladen: {catalog.axis_count} assen · {len(catalog.levels)} niveau(s)", 6000
+                        f"Stamien: {catalog.axis_count} assen · {len(catalog.levels)} niveau(s)",
+                        6000,
                     )
                 elif catalog.warnings:
-                    self.statusBar().showMessage("Geen bruikbare IFC-stamienassen gevonden", 5000)
+                    self.statusBar().showMessage(
+                        "IFC bevat geen ondersteunde/resolveerbare stamienassen", 5000
+                    )
             except Exception as exc:
                 self._grid_button.setEnabled(False)
                 self._grid_button.setToolTip(f"Stamien kon niet worden geladen: {exc}")
@@ -324,8 +396,102 @@ if qt_available():
                 action = self._grid_menu.addAction(label)
                 action.setCheckable(True)
                 action.setChecked(level in visible)
-                action.toggled.connect(lambda checked, value=level: self.viewer.set_grid_level_visible(value, checked))
+                action.toggled.connect(
+                    lambda checked, value=level: self.viewer.set_grid_level_visible(value, checked)
+                )
                 self._grid_level_actions[level] = action
+
+        # ------------------------------------------------------------------
+        # Review / exact / diagnostics
+        # ------------------------------------------------------------------
+        def _selected_entity_id(self) -> str | None:
+            return self.interaction.selection.primary_entity_id
+
+        def _ensure_exact_workspace(self):
+            if self._exact_workspace is not None:
+                return self._exact_workspace
+            from cws_convertor.integration import IntegratedProjectWorkspace
+
+            self.statusBar().showMessage("Exacte brongeometrie voorbereiden…")
+            self._exact_workspace = IntegratedProjectWorkspace.open(
+                self.load_result.project_path,
+                read_only=True,
+                source_search_roots=self._source_search_roots(),
+                load_all_geometry=False,
+                allow_proxy=False,
+            )
+            return self._exact_workspace
+
+        def _open_exact_workbench(self) -> None:
+            entity_id = self._selected_entity_id()
+            if not entity_id:
+                QtWidgets.QMessageBox.information(
+                    self, "Exact Part Workbench", "Selecteer eerst één productieonderdeel."
+                )
+                return
+            try:
+                workspace = self._ensure_exact_workspace()
+                result = workspace.open_exact_part(entity_id)
+            except Exception as exc:
+                QtWidgets.QMessageBox.critical(
+                    self, "Exact Part Workbench", f"{type(exc).__name__}: {exc}"
+                )
+                return
+            if not result.available:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Exact Part Workbench geblokkeerd",
+                    "\n".join([result.status, *result.blocking_codes, *result.notes]),
+                )
+                return
+            from cws_viewer.ui_qt.exact_part_workbench import ExactPartWorkbenchPanel
+
+            dialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle(f"Exact Part Workbench — {entity_id}")
+            dialog.resize(1500, 900)
+            layout = QtWidgets.QVBoxLayout(dialog)
+            banner = QtWidgets.QLabel(
+                "Exact OCCT/BREP review · viewer kan productie niet zelfstandig vrijgeven"
+            )
+            banner.setObjectName("warningPill")
+            layout.addWidget(banner)
+            layout.addWidget(ExactPartWorkbenchPanel(result.service), 1)
+            dialog.exec()
+
+        def _compare_revision(self) -> None:
+            name, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self,
+                "Vergelijk huidige projectversie met oudere CWS-revisie",
+                "",
+                "CWS-project (*.cwscproj)",
+            )
+            if not name:
+                return
+            try:
+                from cws_convertor.project.service import ProjectSession
+                from cws_viewer.revisions.project_compare import compare_project_revisions
+                from cws_viewer.ui_qt.revision_compare import RevisionComparePanel
+
+                old_session = ProjectSession.open(Path(name), read_only=True)
+                try:
+                    report = compare_project_revisions(old_session.project, self.project)
+                finally:
+                    old_session.close()
+                dialog = QtWidgets.QDialog(self)
+                dialog.setWindowTitle("CWS Viewer — revisiecompare")
+                dialog.resize(1550, 900)
+                layout = QtWidgets.QVBoxLayout(dialog)
+                layout.addWidget(RevisionComparePanel(report), 1)
+                dialog.exec()
+            except Exception as exc:
+                QtWidgets.QMessageBox.critical(
+                    self, "Revisiecompare", f"{type(exc).__name__}: {exc}"
+                )
+
+        def _show_geometry_status(self) -> None:
+            self._geometry_status.refresh()
+            self._geometry_dock.show()
+            self._geometry_dock.raise_()
 
         # ------------------------------------------------------------------
         # Interaction / menus
@@ -343,17 +509,26 @@ if qt_available():
             fit = menu.addAction("Fit selectie", self.controller.fit_selection)
             fit.setEnabled(selected)
             menu.addSeparator()
-            hide = menu.addAction("Verbergen", self._hide_selected)
-            isolate = menu.addAction("Alleen selectie tonen", self._isolate_selected)
-            ghost = menu.addAction("Selectie + omgeving ghost", self._ghost_selected)
-            for action in (hide, isolate, ghost):
+            for title, callback in (
+                ("Verbergen", self._hide_selected),
+                ("Alleen selectie tonen", self._isolate_selected),
+                ("Selectie + omgeving ghost", self._ghost_selected),
+            ):
+                action = menu.addAction(title, callback)
                 action.setEnabled(selected)
             menu.addAction("Alles tonen", self.controller.show_all)
             menu.addSeparator()
-            menu.addAction("Meten…", self._show_viewer_tools)
-            menu.addAction("Doorsnede…", self._show_viewer_tools)
+            measure = menu.addMenu("Meten")
+            measure.addAction("Afstand", lambda: self._measurement_button("distance"))
+            measure.addAction("Horizontaal", lambda: self._measurement_button("horizontal"))
+            measure.addAction("Verticaal", lambda: self._measurement_button("vertical"))
+            measure.addAction("XYZ", lambda: self._measurement_button("coordinates"))
+            menu.addAction("Doorsnede / clipping…", self._show_viewer_tools)
+            exact = menu.addAction("Exact Part Workbench", self._open_exact_workbench)
+            exact.setEnabled(bool(self._selected_entity_id()))
             menu.addAction("Eigenschappen", self._show_properties_dock)
             menu.addAction("Accuracy / herkomst", lambda: self._toggle_accuracy_mode(True))
+            menu.addAction("Geometriestatus", self._show_geometry_status)
             menu.addSeparator()
             menu.addAction("Screenshot", self._save_screenshot_dialog)
             menu.exec(global_pos)
@@ -379,24 +554,26 @@ if qt_available():
             self._populate_legend(legend)
             self.statusBar().showMessage(f"Modelkleur: {scheme.value}", 3000)
 
+        def _apply_cockpit_transparency(self) -> None:
+            blocked = self._transparency.blockSignals(True)
+            self._transparency.setValue(float(self._cockpit_transparency.value()))
+            self._transparency.blockSignals(blocked)
+            self._apply_transparency_to_selection()
+
         def _show_viewer_tools(self) -> None:
             self._tools_dock.show()
             self._tools_dock.raise_()
             self._viewer_tools.refresh()
 
-        def _quick_distance(self) -> None:
+        def _measurement_button(self, mode: str) -> None:
             self._show_viewer_tools()
-            self._viewer_tools.quick_distance.click()
-
-        def _exact_measurement_hint(self) -> None:
-            QtWidgets.QMessageBox.information(
-                self,
-                "Exact meten",
-                "Projectmetingen gebruiken geverifieerde displaymesh of objectreferenties. "
-                "Voor exacte radius/diameter/edge/face-metingen op productiegeometrie open je "
-                "het onderdeel in de Exact Part Workbench. Displayproxy's worden nooit als "
-                "productiewaarheid gebruikt.",
-            )
+            mapping = {
+                "distance": self._viewer_tools.quick_distance,
+                "horizontal": self._viewer_tools.quick_horizontal,
+                "vertical": self._viewer_tools.quick_vertical,
+                "coordinates": self._viewer_tools.quick_coordinates,
+            }
+            mapping[mode].click()
 
         def _show_properties_dock(self) -> None:
             dock = self.findChild(QtWidgets.QDockWidget, "cwsV4PropertiesDock")
@@ -410,6 +587,15 @@ if qt_available():
             else:
                 self.showFullScreen()
 
+        def closeEvent(self, event: Any) -> None:
+            if self._exact_workspace is not None:
+                try:
+                    self._exact_workspace.close()
+                except Exception:
+                    pass
+                self._exact_workspace = None
+            super().closeEvent(event)
+
 
     def run_cws_viewer_cockpit(
         project_path: str | Path,
@@ -419,7 +605,6 @@ if qt_available():
         ci_smoke: bool = False,
         screenshot_path: str | Path | None = None,
     ) -> int:
-        """Open the light cockpit using the same ProjectSceneLoader as V4/V9."""
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         app.setApplicationName("CWS Viewer")
         app.setOrganizationName("CWS")
