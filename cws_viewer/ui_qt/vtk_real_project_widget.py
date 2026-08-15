@@ -14,7 +14,7 @@ from typing import Any
 
 from cws_viewer.backends.vtk_project_mesh import VtkProjectMeshBackend
 from cws_viewer.contracts.scene import ProjectScene
-from cws_viewer.core.controller import ViewerCoreController
+from cws_viewer.core.v14_controller import V14ViewerCoreController
 from cws_viewer.geometry.loader import MeshRepository
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
@@ -57,7 +57,7 @@ if qt_available():
                     render_window=self.GetRenderWindow(),
                     offscreen=False,
                 )
-                self._controller = ViewerCoreController(
+                self._controller = V14ViewerCoreController(
                     self._backend,
                     width=max(1, self.width()),
                     height=max(1, self.height()),
@@ -84,7 +84,7 @@ if qt_available():
                 return self._backend
 
             @property
-            def controller(self) -> ViewerCoreController:
+            def controller(self) -> V14ViewerCoreController:
                 return self._controller
 
             @property
