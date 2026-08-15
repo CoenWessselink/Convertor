@@ -60,13 +60,7 @@ def _spawn_selftest_worker(connection) -> None:  # type: ignore[no-untyped-def]
 
 
 def _multiprocessing_self_test() -> dict:
-    """Prove that a frozen CWS_Viewer.exe can execute a spawn child safely.
-
-    This is intentionally tiny and does not depend on a GPU. Its purpose is to
-    catch the exact PyInstaller/multiprocessing regression that caused a real
-    Windows viewer to disappear as soon as geometry loading spawned the native
-    IFC isolation worker.
-    """
+    """Prove that a frozen CWS_Viewer.exe can execute a spawn child safely."""
     context = multiprocessing.get_context("spawn")
     parent, child = context.Pipe(duplex=False)
     process = context.Process(
@@ -104,9 +98,15 @@ def _multiprocessing_self_test() -> dict:
     }
 
 
+def _isolated_ifc_worker_self_test() -> dict:
+    from cws_viewer.geometry.worker_selftest import run_isolated_ifc_worker_selftest
+
+    return run_isolated_ifc_worker_selftest()
+
+
 def _native_self_test(*, require_qt: bool, include_multiprocessing: bool = True) -> dict:
     result: dict = {
-        "schema": "cws-viewer-standalone-selftest-1.2",
+        "schema": "cws-viewer-standalone-selftest-1.3",
         "product": PRODUCT,
         "version": VERSION,
         "status": "passed",
@@ -165,6 +165,7 @@ def _native_self_test(*, require_qt: bool, include_multiprocessing: bool = True)
     result["checks"]["viewer_contract"] = len(contract)
     if include_multiprocessing:
         result["checks"]["multiprocessing_spawn"] = _multiprocessing_self_test()
+        result["checks"]["isolated_ifc_worker"] = _isolated_ifc_worker_self_test()
     return result
 
 
@@ -209,8 +210,6 @@ def _run_gui(
     screenshot: str | None = None,
     classic_ui: bool = False,
 ) -> int:
-    # A desktop shortcut has no input argument. That is a valid application
-    # state: show the CWS start centre first. Never open QFileDialog implicitly.
     if input_path is None:
         if ci_smoke and not startup_smoke:
             raise RuntimeError(
@@ -260,8 +259,6 @@ def _run_gui(
             / "Viewer"
             / "mesh-cache"
         )
-        # V13 cockpit is preferred. During staged integration we deliberately
-        # retain the proven V9/V4 project viewer as a diagnostic fallback.
         if not classic_ui:
             try:
                 from cws_viewer.ui_qt.cockpit import run_cws_viewer_cockpit
@@ -305,7 +302,6 @@ def _show_interactive_error(exc: Exception) -> None:
         if QtWidgets.QApplication.instance() is app:
             app.processEvents()
     except Exception:
-        # The JSON error below remains the deterministic diagnostic channel.
         pass
 
 
@@ -315,7 +311,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="store_true")
     p.add_argument("--self-test", action="store_true", help="Volledige packaged runtime-selftest")
     p.add_argument("--quick-self-test", action="store_true", help="Lokale selftest zonder verplichte Qt")
-    p.add_argument("--multiprocessing-self-test", action="store_true", help="Test frozen spawn-worker zonder GUI/GPU")
+    p.add_argument("--multiprocessing-self-test", action="store_true", help="Test frozen spawn- en IFC-worker zonder GUI/GPU")
     p.add_argument("--gui-smoke", action="store_true", help="Start projectviewer smoke en sluit automatisch")
     p.add_argument(
         "--startup-smoke",
@@ -341,12 +337,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.multiprocessing_self_test:
             payload = {
-                "schema": "cws-viewer-multiprocessing-selftest-1.0",
+                "schema": "cws-viewer-multiprocessing-selftest-1.1",
                 "product": PRODUCT,
                 "version": VERSION,
                 "status": "passed",
                 "frozen": bool(getattr(sys, "frozen", False)),
                 "multiprocessing": _multiprocessing_self_test(),
+                "isolated_ifc_worker": _isolated_ifc_worker_self_test(),
             }
             _json_out(payload, report)
             return 0
