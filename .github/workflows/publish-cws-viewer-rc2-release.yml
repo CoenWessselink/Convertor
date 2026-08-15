@@ -1,0 +1,74 @@
+name: Publish CWS Viewer 1.2.0-rc2 release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cws-viewer-v13-integration
+    paths:
+      - '.github/workflows/publish-cws-viewer-rc2-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: windows-2022
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: cws-viewer-v1.2.0-rc2
+      RELEASE_NAME: CWS Viewer 1.2.0-rc2
+      CERTIFIED_ARTIFACT_ID: '9247519301'
+      CERTIFIED_RUN_ID: '31886363810'
+      CERTIFIED_COMMIT: e99e544a16191b79efd6d6f7baeee4b0a40188b5
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+
+      - name: Download certified installer artifact from green Windows run
+        shell: pwsh
+        run: |
+          gh api -H 'Accept: application/vnd.github+json' "/repos/${env:GITHUB_REPOSITORY}/actions/artifacts/${env:CERTIFIED_ARTIFACT_ID}/zip" > installer-artifact.zip
+          Expand-Archive installer-artifact.zip -DestinationPath release-asset
+          $setup = Get-ChildItem release-asset -Recurse -Filter 'CWS_Viewer_Setup_1.2.0-rc2_x64.exe' | Select-Object -First 1
+          if ($null -eq $setup) { throw 'Certified rc2 installer not found in artifact' }
+          Copy-Item $setup.FullName '.\CWS_Viewer_Setup_1.2.0-rc2_x64.exe'
+          foreach ($name in @('SHA256SUMS.txt','WINDOWS_VIEWER_RELEASE_MANIFEST.json')) {
+            $item = Get-ChildItem release-asset -Recurse -Filter $name | Select-Object -First 1
+            if ($null -ne $item) { Copy-Item $item.FullName ".\$name" }
+          }
+
+      - name: Verify certified installer checksum
+        shell: pwsh
+        run: |
+          $actual = (Get-FileHash -Algorithm SHA256 '.\CWS_Viewer_Setup_1.2.0-rc2_x64.exe').Hash.ToLowerInvariant()
+          $expected = '46229875797de5afc0715d926cf4d50f14aa5bd23c454e3937d042f96784b30c'
+          if ($actual -ne $expected) { throw "Installer SHA-256 mismatch: $actual" }
+          Write-Host "Verified SHA-256 $actual"
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        run: |
+          $notes = @"
+          Official standalone Windows test release of CWS Viewer 1.2.0-rc2.
+
+          Certified by GitHub Actions run ${env:CERTIFIED_RUN_ID} on commit ${env:CERTIFIED_COMMIT}.
+
+          Verified gates include source, frozen executable, portable and installed-app native self-tests; no-argument desktop startup; Qt/project workspace headless gates; installation without external Python; and uninstall.
+
+          SHA-256 of installer:
+          46229875797de5afc0715d926cf4d50f14aa5bd23c454e3937d042f96784b30c
+
+          Note: the GitHub hosted runner does not provide a normal physical GPU/OpenGL desktop. Real VTK/OpenGL rendering is therefore the remaining physical-PC test.
+          "@
+          if (gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 2>$null) {
+            gh release upload $env:RELEASE_TAG '.\CWS_Viewer_Setup_1.2.0-rc2_x64.exe' '.\SHA256SUMS.txt' '.\WINDOWS_VIEWER_RELEASE_MANIFEST.json' --clobber --repo $env:GITHUB_REPOSITORY
+            gh release edit $env:RELEASE_TAG --title $env:RELEASE_NAME --notes $notes --repo $env:GITHUB_REPOSITORY
+          } else {
+            gh release create $env:RELEASE_TAG '.\CWS_Viewer_Setup_1.2.0-rc2_x64.exe' '.\SHA256SUMS.txt' '.\WINDOWS_VIEWER_RELEASE_MANIFEST.json' --target $env:CERTIFIED_COMMIT --title $env:RELEASE_NAME --notes $notes --prerelease --repo $env:GITHUB_REPOSITORY
+          }
+
+      - name: Show published assets
+        shell: pwsh
+        run: gh release view $env:RELEASE_TAG --json url,tagName,name,assets --repo $env:GITHUB_REPOSITORY
