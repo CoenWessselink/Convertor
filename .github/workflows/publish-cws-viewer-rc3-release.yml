@@ -1,0 +1,103 @@
+name: Publish CWS Viewer 1.2.0-rc3 release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/cws-viewer-v13-integration
+    paths:
+      - '.github/workflows/publish-cws-viewer-rc3-release.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+
+      - name: Download certified installer artifact from green Windows run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release
+          gh run download 31889329431 \
+            --repo "${{ github.repository }}" \
+            --name CWS_Viewer_1.2.0-rc3_INSTALLER_x64 \
+            --dir release
+          ls -lh release
+
+      - name: Verify certified installer checksum and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected='aa4abf75ca33e6d93c6fc948c5c95faf256f60f0e08b7d8a8402024f113eea29'
+          actual="$(sha256sum release/CWS_Viewer_Setup_1.2.0-rc3_x64.exe | awk '{print $1}')"
+          test "$actual" = "$expected"
+          grep -q '"status": "passed"' release/WINDOWS_VIEWER_RELEASE_MANIFEST.json
+          grep -q 'source_multiprocessing_packaged_portable_installed_explicit_subprocess' release/WINDOWS_VIEWER_RELEASE_MANIFEST.json
+          grep -q '31889329431' release/WINDOWS_VIEWER_RELEASE_MANIFEST.json
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='cws-viewer-v1.2.0-rc3'
+          title='CWS Viewer 1.2.0-rc3'
+          notes=$(cat <<'EOF'
+          Standalone Windows test release of CWS Viewer 1.2.0-rc3.
+
+          This release fixes the model-open failure observed on a physical Windows PC after selecting an IFC model.
+
+          Root cause and fix:
+          - frozen PyInstaller geometry isolation no longer depends on Python multiprocessing spawning the GUI executable;
+          - packaged/portable/installed builds use an explicit hidden CWS_Viewer.exe IFC worker service;
+          - the worker owns IFC/CadQuery/OCP tessellation and returns display meshes to the main viewer;
+          - a native worker failure remains isolated from the GUI process;
+          - a visible Model laden... window now remains on screen during semantic import and 3D geometry preparation.
+
+          Certified by GitHub Actions run 31889329431 on commit 5c9401451dc01dc91d456c6fe9ea28421607afa0.
+
+          Passed gates include:
+          - source isolated IFC worker;
+          - PyInstaller frozen isolated IFC worker using explicit subprocess transport;
+          - portable isolated IFC worker without external Python;
+          - installed isolated IFC worker without external Python;
+          - source/packaged/portable/installed no-argument desktop startup;
+          - Qt/project workspace hosted-headless gates;
+          - installation and uninstall.
+
+          Installer SHA-256:
+          aa4abf75ca33e6d93c6fc948c5c95faf256f60f0e08b7d8a8402024f113eea29
+
+          The GitHub hosted runner does not provide a normal physical GPU/OpenGL desktop. Real VTK/OpenGL rendering of the user's actual model therefore remains the physical-PC acceptance test.
+          EOF
+          )
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" \
+              release/CWS_Viewer_Setup_1.2.0-rc3_x64.exe \
+              release/SHA256SUMS.txt \
+              release/WINDOWS_VIEWER_RELEASE_MANIFEST.json \
+              --clobber \
+              --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" \
+              release/CWS_Viewer_Setup_1.2.0-rc3_x64.exe \
+              release/SHA256SUMS.txt \
+              release/WINDOWS_VIEWER_RELEASE_MANIFEST.json \
+              --repo "${{ github.repository }}" \
+              --target 5c9401451dc01dc91d456c6fe9ea28421607afa0 \
+              --title "$title" \
+              --notes "$notes" \
+              --prerelease
+          fi
+
+      - name: Show published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view cws-viewer-v1.2.0-rc3 --repo "${{ github.repository }}"
