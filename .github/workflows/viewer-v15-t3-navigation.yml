@@ -6,13 +6,9 @@ on:
     branches:
       - feature/trimble-parity-v15
     paths:
-      - 'cws_viewer/core/v15_navigation.py'
-      - 'cws_viewer/ui_qt/vtk_real_project_widget_v15.py'
-      - 'cws_viewer/ui_qt/view_navigation_v15.py'
-      - 'cws_viewer/ui_qt/cockpit_t3_v15.py'
-      - 'cws_viewer/ui_qt/cockpit_progress_v15.py'
+      - 'cws_viewer/**'
       - 'CWS_Viewer_V15_Standalone.py'
-      - 'tests/viewer_v15_navigation_contract_smoke.py'
+      - 'tests/viewer_v15_**'
       - '.github/workflows/viewer-v15-t3-navigation.yml'
 
 permissions:
@@ -62,4 +58,4 @@ jobs:
         shell: pwsh
         run: |
           python CWS_Viewer_V15_Standalone.py --v15-self-test
-          if ($LASTEXITCODE -ne 0) { throw 'V15 T3 self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'V15 T3/T4 self-test failed' }

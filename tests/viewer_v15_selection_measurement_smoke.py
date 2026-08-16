@@ -19,7 +19,6 @@ from cws_viewer.core.v15_selection_measurement import (
 )
 from cws_viewer.exact import candidates_for_subshape, load_step_exact
 from cws_viewer.fixtures import build_synthetic_product_scene
-from cws_viewer.math3d import Vector3
 from cws_viewer.measurements import MeasurementProof, SnapType
 
 
@@ -73,7 +72,7 @@ class ViewerV15SelectionMeasurementTests(unittest.TestCase):
     def test_project_pick_without_exact_repository_is_review_only(self) -> None:
         node_id = self.controller.index.renderable_node_ids[0]
         self.backend.pick_node_id = node_id
-        pick = self.controller.pick(10, 10)
+        pick = self.controller.pick_at(10, 10)
         self.assertIsNotNone(pick)
         assert pick is not None
         anchor = self.service.anchor_from_project_pick(pick)
