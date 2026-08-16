@@ -40,9 +40,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_t6_v15 import t6_workspace_contract
+    from cws_viewer.ui_qt.cockpit_t7_v15 import t7_workspace_contract
 
-    contract = t6_workspace_contract()
+    contract = t7_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -106,10 +106,30 @@ def _run_v15_selftest() -> dict[str, object]:
         "sequence_visibility_timeline",
         "coordination_audit_evidence",
     )
+    required_t7 = (
+        "scope_first_export",
+        "full_project_scope",
+        "current_selection_scope",
+        "explicit_entity_scope",
+        "part_position_scope",
+        "assembly_mark_scope",
+        "project_phase_scope",
+        "revision_delta_scope",
+        "batch_scope",
+        "nesting_run_scope",
+        "nesting_bar_scope",
+        "deterministic_scope_manifest",
+        "release_preflight",
+        "production_export_engine_reuse",
+        "job_lifecycle",
+        "job_cancel_before_write",
+        "checksum_manifest",
+    )
+    export_safety = dict(contract.get("export_center", {}).get("safety", {}))
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.1"
         and contract.get("version") == VERSION
-        and len(docks) == 7
+        and len(docks) == 8
         and bool(capabilities.get("dockable_panels"))
         and bool(capabilities.get("persistent_layout"))
         and bool(capabilities.get("v14_functionality_preserved"))
@@ -117,9 +137,14 @@ def _run_v15_selftest() -> dict[str, object]:
         and all(bool(capabilities.get(name)) for name in required_t4)
         and all(bool(capabilities.get(name)) for name in required_t5)
         and all(bool(capabilities.get(name)) for name in required_t6)
+        and all(bool(capabilities.get(name)) for name in required_t7)
         and not bool(capabilities.get("ai_derived_dimensions", True))
         and not bool(capabilities.get("silent_reference_remap", True))
         and not bool(capabilities.get("review_mutates_canonical_geometry", True))
+        and not bool(export_safety.get("silent_scope_broadening", True))
+        and not bool(export_safety.get("missing_scope_metadata_falls_back_to_project", True))
+        and not bool(export_safety.get("blocked_artifact_counts_as_released", True))
+        and not bool(export_safety.get("machine_transfer_enabled", True))
     )
     return {
         "status": "passed" if passed else "failed",
@@ -132,6 +157,7 @@ def _run_v15_selftest() -> dict[str, object]:
         "t4_selection_measurement_imported": True,
         "t5_review_workspace_imported": True,
         "t6_coordination_imported": True,
+        "t7_export_center_imported": True,
         "worker_transport_preserved": True,
         "production_machine_transfer_allowed": False,
     }

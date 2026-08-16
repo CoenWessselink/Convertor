@@ -1,0 +1,98 @@
+name: CWS Viewer V15 T7 export center gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/trimble-parity-v15
+    paths:
+      - 'cws_viewer/export_center/**'
+      - 'cws_viewer/ui_qt/export_center_v15.py'
+      - 'cws_viewer/ui_qt/cockpit_t7_v15.py'
+      - 'cws_viewer/ui_qt/cockpit_progress_v15.py'
+      - 'cws_convertor/production_export/**'
+      - 'CWS_Viewer_V15_Standalone.py'
+      - 'tests/viewer_v15_**'
+      - '.github/workflows/viewer-v15-t7-export-center.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  t7-contract:
+    runs-on: windows-2022
+    timeout-minutes: 55
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install standalone viewer dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-standalone.lock.txt
+          python -m pip check
+
+      - name: Compile T7 modules
+        shell: pwsh
+        run: |
+          python -m compileall -q `
+            cws_viewer/export_center `
+            cws_viewer/ui_qt/export_center_v15.py `
+            cws_viewer/ui_qt/cockpit_t7_v15.py `
+            cws_viewer/ui_qt/cockpit_progress_v15.py `
+            CWS_Viewer_V15_Standalone.py
+          if ($LASTEXITCODE -ne 0) { throw 'T7 compileall failed' }
+
+      - name: Run T3 no-regression
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_navigation_contract_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'T3 regression failed' }
+
+      - name: Run T4 no-regression
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_selection_measurement_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'T4 regression failed' }
+
+      - name: Run T5 no-regression
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_review_workspace_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'T5 regression failed' }
+
+      - name: Run T6 no-regression
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_coordination_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'T6 regression failed' }
+
+      - name: Run deterministic T7 export-center contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\viewer-v15-t7 | Out-Null
+          python tests/viewer_v15_export_center_smoke.py 2>&1 | Tee-Object validation\viewer-v15-t7\t7_export_center_test.txt
+          if ($LASTEXITCODE -ne 0) { throw 'T7 export-center contract failed' }
+
+      - name: Run V15 self-test contract
+        shell: pwsh
+        run: |
+          python CWS_Viewer_V15_Standalone.py --v15-self-test | Tee-Object validation\viewer-v15-t7\v15_selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'V15 T7 self-test failed' }
+
+      - name: Upload T7 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_V15_T7_diagnostics
+          path: validation/viewer-v15-t7/*
+          if-no-files-found: warn
+          retention-days: 14
