@@ -269,9 +269,7 @@ class ExactContactGeometryEngine:
     def _contact_for_pair(self, pair: _PairEvidence) -> tuple[ContactPatch | None, tuple[str, ...], tuple[str, ...]]:
         main_secondary = pair.main_secondary()
         if main_secondary is None:
-            return None, (CONTACT_AMBIGUOUS,), (
-                f"Pair {pair.a}/{pair.b} heeft conflicterende assembly-main relaties.",
-            )
+            return None, (CONTACT_AMBIGUOUS,), (f"Pair {pair.a}/{pair.b} heeft conflicterende assembly-main relaties.",)
         main_id, secondary_id = main_secondary
         left = self._world_shape(main_id)
         right = self._world_shape(secondary_id)
@@ -282,9 +280,7 @@ class ExactContactGeometryEngine:
             )
         gap = _distance(left, right)
         if gap is None:
-            return None, (CONTACT_NOT_FOUND,), (
-                f"Exacte minimumafstand voor {main_id}/{secondary_id} kon niet worden bepaald.",
-            )
+            return None, (CONTACT_NOT_FOUND,), (f"Exacte minimumafstand voor {main_id}/{secondary_id} kon niet worden bepaald.",)
         if gap > self.contact_tolerance_mm:
             message = (
                 f"{main_id}/{secondary_id} heeft {gap:.4f} mm afstand; "
@@ -311,15 +307,11 @@ class ExactContactGeometryEngine:
         main_face = self._face_by_index(main_report, main_index)
         secondary_face = self._face_by_index(secondary_report, secondary_index)
         if main_face is None or secondary_face is None:
-            return None, (CONTACT_AMBIGUOUS,), (
-                "Exact contactoppervlak kon niet naar canonical ManufacturingFace IDs worden gekoppeld.",
-            )
+            return None, (CONTACT_AMBIGUOUS,), ("Exact contactoppervlak kon niet naar canonical ManufacturingFace IDs worden gekoppeld.",)
 
         world_loops = tuple(loop for loop in (_wire_loop(wire) for wire in common_face.Wires()) if loop)
         if not world_loops:
-            return None, (CONTACT_AMBIGUOUS,), (
-                "Exact contactoppervlak bevat geen bruikbare gesloten boundary-loop.",
-            )
+            return None, (CONTACT_AMBIGUOUS,), ("Exact contactoppervlak bevat geen bruikbare gesloten boundary-loop.",)
         main_matrix = self.project.parts[main_id].global_placement.matrix
         secondary_matrix = self.project.parts[secondary_id].global_placement.matrix
         main_projected: list[tuple[tuple[float, float], ...]] = []
@@ -333,32 +325,31 @@ class ExactContactGeometryEngine:
                 main_uvn = main_face.local_frame.to_local(main_local)
                 secondary_uvn = secondary_face.local_frame.to_local(secondary_local)
                 if abs(main_uvn[2]) > 2e-4 or abs(secondary_uvn[2]) > 2e-4:
-                    return None, (CONTACT_WRONG_GEOMETRY,), (
-                        "Contactboundary ligt niet op beide gekozen canonical face-frames.",
-                    )
+                    return None, (CONTACT_WRONG_GEOMETRY,), ("Contactboundary ligt niet op beide gekozen canonical face-frames.",)
                 main_loop.append((main_uvn[0], main_uvn[1]))
                 secondary_loop.append((secondary_uvn[0], secondary_uvn[1]))
             main_projected.append(tuple(main_loop))
             secondary_projected.append(tuple(secondary_loop))
 
-        if pair.weld_ids:
-            relation_type = ContactRelationType.WELDED_CONTACT
-        elif pair.fastener_ids:
-            relation_type = ContactRelationType.BOLTED_CONTACT
-        elif pair.assembly_ids:
-            relation_type = ContactRelationType.PROJECTED_ATTACHMENT
-        else:
-            relation_type = ContactRelationType.GEOMETRIC_TOUCH
+        relation_type = (
+            ContactRelationType.WELDED_CONTACT
+            if pair.weld_ids
+            else ContactRelationType.BOLTED_CONTACT
+            if pair.fastener_ids
+            else ContactRelationType.PROJECTED_ATTACHMENT
+            if pair.assembly_ids
+            else ContactRelationType.GEOMETRIC_TOUCH
+        )
         local_identity = {
             "main": main_id,
             "secondary": secondary_id,
             "main_face": main_face.face_id,
             "secondary_face": secondary_face.face_id,
+            "relation_type": relation_type.value,
             "main_boundary": main_projected,
             "secondary_boundary": secondary_projected,
             "area_mm2": round(area, 6),
         }
-        geometry_hash = stable_sha256(local_identity)
         contact_id = "CP-" + stable_sha256({"assembly_ids": sorted(pair.assembly_ids), **local_identity})[:20].upper()
         patch = ContactPatch(
             contact_id=contact_id,
@@ -389,7 +380,6 @@ class ExactContactGeometryEngine:
                 "no_global_n_squared_scan": True,
                 "face_mapping": "canonical_local_face_index_transformed_individually",
             },
-            geometry_hash=geometry_hash,
         )
         return patch, (), ()
 
