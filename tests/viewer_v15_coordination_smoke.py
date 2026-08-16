@@ -101,6 +101,10 @@ class ViewerV15CoordinationTests(unittest.TestCase):
         self.controller.shutdown()
         self.temp.cleanup()
 
+    def _visible_node_ids(self) -> tuple[str, ...]:
+        visible, _ghosted = self.controller.session.visible_and_ghosted(self.controller.index)
+        return visible
+
     def test_contract_is_viewer_coordination_not_machine_release(self) -> None:
         contract = coordination_contract()
         self.assertTrue(contract["capabilities"]["assembly_drilldown"])
@@ -138,10 +142,11 @@ class ViewerV15CoordinationTests(unittest.TestCase):
         self.assertEqual(2, len(plan1.steps))
         step = self.service.apply_sequence_step(plan1, 0)
         self.assertEqual(0, step.index)
-        visible = self.controller.export_workspace_state().visible_node_ids
+        visible = self._visible_node_ids()
         self.assertTrue(visible)
+        self.assertEqual(set(step.cumulative_entity_ids), {self.controller.index.node(node_id).entity_id for node_id in visible})
         self.service.reset_sequence()
-        self.assertEqual((), self.controller.export_workspace_state().visible_node_ids)
+        self.assertEqual(tuple(self.controller.index.renderable_node_ids), self._visible_node_ids())
 
     def test_production_review_sequence_is_not_machine_operation_order(self) -> None:
         plan = self.service.build_sequence(SequenceKind.PRODUCTION_REVIEW)
