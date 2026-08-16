@@ -15,6 +15,18 @@ from .faces import (
     ManufacturingFaceService,
     ManufacturingFaceValidator,
 )
+from .contact_model import (
+    CONTACT_PATCH_SCHEMA,
+    CONTACT_ALGORITHM,
+    ContactPatch,
+    ContactRelationType,
+    ContactResolutionReport,
+)
+from .contact import (
+    ExactContactGeometryEngine,
+    ContactPatchValidator,
+    ContactGeometryService,
+)
 
 __all__ = [
     "MANUFACTURING_FACE_SCHEMA",
@@ -29,4 +41,12 @@ __all__ = [
     "ManufacturingFaceResolver",
     "ManufacturingFaceService",
     "ManufacturingFaceValidator",
+    "CONTACT_PATCH_SCHEMA",
+    "CONTACT_ALGORITHM",
+    "ContactPatch",
+    "ContactRelationType",
+    "ContactResolutionReport",
+    "ExactContactGeometryEngine",
+    "ContactPatchValidator",
+    "ContactGeometryService",
 ]

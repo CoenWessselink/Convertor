@@ -1,4 +1,4 @@
-name: CWS Viewer V15 T8 manufacturing face gate
+name: CWS Viewer V15 T8 manufacturing geometry gate
 
 on:
   workflow_dispatch:
@@ -8,10 +8,12 @@ on:
     paths:
       - 'cws_convertor/manufacturing/**'
       - 'cws_viewer/ui_qt/manufacturing_faces_v15.py'
+      - 'cws_viewer/ui_qt/contact_geometry_v15.py'
       - 'cws_viewer/ui_qt/cockpit_t8_v15.py'
       - 'cws_viewer/ui_qt/cockpit_progress_v15.py'
       - 'CWS_Viewer_V15_Standalone.py'
       - 'tests/manufacturing_face_core_smoke.py'
+      - 'tests/manufacturing_contact_core_smoke.py'
       - 'tests/viewer_v15_**'
       - '.github/workflows/viewer-v15-t8-manufacturing.yml'
 
@@ -21,7 +23,7 @@ permissions:
 jobs:
   t8-contract:
     runs-on: windows-2022
-    timeout-minutes: 60
+    timeout-minutes: 70
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -71,6 +73,12 @@ jobs:
           New-Item -ItemType Directory -Force validation\viewer-v15-t8 | Out-Null
           python tests/manufacturing_face_core_smoke.py 2>&1 | Tee-Object validation\viewer-v15-t8\manufacturing_face_core.txt
           if ($LASTEXITCODE -ne 0) { throw 'ManufacturingFace core failed' }
+
+      - name: Run exact ContactPatch core tests
+        shell: pwsh
+        run: |
+          python tests/manufacturing_contact_core_smoke.py 2>&1 | Tee-Object validation\viewer-v15-t8\manufacturing_contact_core.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Exact ContactPatch core failed' }
 
       - name: Run V15 self-test contract
         shell: pwsh
