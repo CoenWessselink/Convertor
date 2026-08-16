@@ -1,4 +1,4 @@
-name: CWS Viewer V15 T4 selection and measurement gate
+name: CWS Viewer V15 T5 review workspace gate
 
 on:
   workflow_dispatch:
@@ -9,13 +9,13 @@ on:
       - 'cws_viewer/**'
       - 'CWS_Viewer_V15_Standalone.py'
       - 'tests/viewer_v15_**'
-      - '.github/workflows/viewer-v15-t4-selection-measurement.yml'
+      - '.github/workflows/viewer-v15-t5-review.yml'
 
 permissions:
   contents: read
 
 jobs:
-  t4-contract:
+  t5-contract:
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
@@ -36,31 +36,37 @@ jobs:
           python -m pip install -r requirements-viewer-standalone.lock.txt
           python -m pip check
 
-      - name: Compile T4 modules
+      - name: Compile T5 modules
         shell: pwsh
         run: |
           python -m compileall -q `
-            cws_viewer/core/v15_selection_measurement.py `
-            cws_viewer/ui_qt/selection_measurement_v15.py `
-            cws_viewer/ui_qt/cockpit_t4_v15.py `
+            cws_viewer/review `
+            cws_viewer/ui_qt/review_v15.py `
+            cws_viewer/ui_qt/cockpit_t5_v15.py `
             cws_viewer/ui_qt/cockpit_progress_v15.py `
             CWS_Viewer_V15_Standalone.py
-          if ($LASTEXITCODE -ne 0) { throw 'T4 compileall failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'T5 compileall failed' }
 
-      - name: Run T3 no-regression contract
+      - name: Run T3 navigation no-regression
         shell: pwsh
         run: |
           python tests/viewer_v15_navigation_contract_smoke.py
           if ($LASTEXITCODE -ne 0) { throw 'T3 regression failed' }
 
-      - name: Run deterministic T4 geometry measurement contract
+      - name: Run T4 selection measurement no-regression
         shell: pwsh
         run: |
           python tests/viewer_v15_selection_measurement_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'T4 selection/measurement contract failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'T4 regression failed' }
+
+      - name: Run deterministic T5 review contract
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_review_workspace_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'T5 review workspace contract failed' }
 
       - name: Run V15 self-test contract
         shell: pwsh
         run: |
           python CWS_Viewer_V15_Standalone.py --v15-self-test
-          if ($LASTEXITCODE -ne 0) { throw 'V15 T4/T5 self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'V15 T5 self-test failed' }

@@ -75,6 +75,7 @@ jobs:
 
           wait_for_workflow 'viewer-v15-t3-navigation.yml' 'T3 navigation gate' 'T3_RUN_ID'
           wait_for_workflow 'viewer-v15-t4-selection-measurement.yml' 'T4 selection/measurement gate' 'T4_RUN_ID'
+          wait_for_workflow 'viewer-v15-t5-review.yml' 'T5 review workspace gate' 'T5_RUN_ID'
           wait_for_workflow 'build-standalone-cws-viewer-v15.yml' 'Windows standalone build' 'RUN_ID'
 
       - name: Download all certified Windows artifacts
@@ -100,6 +101,7 @@ jobs:
           test -n "$sums" && test -f "$sums"
           test -n "$portable" && test -f "$portable"
           grep -q '"status": "passed"' "$manifest"
+          grep -q '"t5_review_workspace_certified": true' "$manifest"
           expected="$(grep "$(basename "$installer")" "$sums" | awk '{print $1}' | head -n1)"
           actual="$(sha256sum "$installer" | awk '{print $1}')"
           test -n "$expected" && test "$actual" = "$expected"
@@ -136,11 +138,12 @@ jobs:
           Windows build run: ${RUN_ID}
           T3 navigation run: ${T3_RUN_ID}
           T4 selection/measurement run: ${T4_RUN_ID}
+          T5 review workspace run: ${T5_RUN_ID}
           Installer SHA-256: ${INSTALLER_SHA256}
 
           This is a development preview. Production-machine transfer remains blocked until the dedicated manufacturing and owner-validation gates are complete.
 
-          Download policy: installers and portable packages are published as GitHub Release assets so delivery does not depend on transient ChatGPT/sandbox file uploads.
+          Download policy: installer, portable package and evidence are GitHub Release assets. Normal delivery does not depend on transient ChatGPT/sandbox file uploads.
           EOF
           )
           assets=("$INSTALLER" "$PORTABLE" "$MANIFEST" "$SUMS")

@@ -7,13 +7,24 @@ import os
 from pathlib import Path
 from typing import Any, Iterable
 
+from cws_viewer.contracts.workspace import viewpoint_to_dict
+
 from .model import MarkupRecord, ReviewIssue
 
-SCHEMA = "cws-viewer-review-2.0"
+SCHEMA = "cws-viewer-review-2.1"
+SUPPORTED_SCHEMAS = {"cws-viewer-review-2.0", SCHEMA}
 
 
 def _digest(data: dict[str, Any]) -> str:
-    return sha256(json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str).encode("utf-8")).hexdigest()
+    return sha256(
+        json.dumps(
+            data,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            default=str,
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 class ReviewStore:
@@ -27,6 +38,7 @@ class ReviewStore:
         scene_hash: str,
         markups: Iterable[MarkupRecord] = (),
         issues: Iterable[ReviewIssue] = (),
+        viewpoints: Iterable[Any] = (),
         clash_records: Iterable[Any] = (),
         metadata: dict[str, Any] | None = None,
     ) -> Path:
@@ -36,16 +48,25 @@ class ReviewStore:
             "scene_hash": str(scene_hash),
             "markups": [m.to_dict() for m in markups],
             "issues": [i.to_dict() for i in issues],
-            "clash_records": [r.to_dict() if hasattr(r, "to_dict") else dict(r) for r in clash_records],
+            "viewpoints": [viewpoint_to_dict(v) for v in viewpoints],
+            "clash_records": [
+                r.to_dict() if hasattr(r, "to_dict") else dict(r)
+                for r in clash_records
+            ],
             "metadata": dict(metadata or {}),
         }
         data["sha256"] = _digest(data)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temp = self.path.with_suffix(self.path.suffix + ".tmp")
-        temp.write_text(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        temp.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
         os.replace(temp, self.path)
         sidecar = self.path.with_suffix(self.path.suffix + ".sha256")
-        sidecar.write_text(sha256(self.path.read_bytes()).hexdigest() + "\n", encoding="ascii")
+        sidecar.write_text(
+            sha256(self.path.read_bytes()).hexdigest() + "\n", encoding="ascii"
+        )
         return self.path
 
     def load(self, *, expected_project_id: str | None = None) -> dict[str, Any]:
@@ -54,12 +75,18 @@ class ReviewStore:
         actual = _digest(data)
         if expected != actual:
             raise ValueError("CWS review store checksum mismatch")
-        if data.get("schema_version") != SCHEMA:
-            raise ValueError(f"Niet-ondersteund review-schema: {data.get('schema_version')!r}")
-        if expected_project_id is not None and str(data.get("project_id")) != str(expected_project_id):
+        schema = str(data.get("schema_version") or "")
+        if schema not in SUPPORTED_SCHEMAS:
+            raise ValueError(f"Niet-ondersteund review-schema: {schema!r}")
+        if expected_project_id is not None and str(data.get("project_id")) != str(
+            expected_project_id
+        ):
             raise ValueError("Reviewpakket hoort bij een ander project")
+        # Review 2.0 had no independent viewpoint list. Keep the field explicit
+        # so callers can restore old packages without guessing.
+        data.setdefault("viewpoints", [])
         data["sha256"] = expected
         return data
 
 
-__all__ = ["SCHEMA", "ReviewStore"]
+__all__ = ["SCHEMA", "SUPPORTED_SCHEMAS", "ReviewStore"]

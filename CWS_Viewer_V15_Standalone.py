@@ -40,9 +40,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_t4_v15 import t4_workspace_contract
+    from cws_viewer.ui_qt.cockpit_t5_v15 import t5_workspace_contract
 
-    contract = t4_workspace_contract()
+    contract = t5_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -71,16 +71,37 @@ def _run_v15_selftest() -> dict[str, object]:
         "radius_diameter_measurement",
         "measurement_export_review_state",
     )
+    required_t5 = (
+        "saved_views_independent_from_issues",
+        "saved_view_camera_visibility_sections_clipping",
+        "markup_text",
+        "markup_arrow",
+        "markup_cloud",
+        "issues",
+        "issue_status",
+        "issue_priority",
+        "issue_assignee",
+        "issue_due_date",
+        "issue_comments",
+        "issue_attachments",
+        "issue_optional_viewpoint_link",
+        "review_checksum_store",
+        "portable_cwsreview_export",
+        "stale_reference_detection",
+    )
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.1"
         and contract.get("version") == VERSION
-        and len(docks) == 5
+        and len(docks) == 6
         and bool(capabilities.get("dockable_panels"))
         and bool(capabilities.get("persistent_layout"))
         and bool(capabilities.get("v14_functionality_preserved"))
         and all(bool(capabilities.get(name)) for name in required_t3)
         and all(bool(capabilities.get(name)) for name in required_t4)
+        and all(bool(capabilities.get(name)) for name in required_t5)
         and not bool(capabilities.get("ai_derived_dimensions", True))
+        and not bool(capabilities.get("silent_reference_remap", True))
+        and not bool(capabilities.get("review_mutates_canonical_geometry", True))
     )
     return {
         "status": "passed" if passed else "failed",
@@ -91,6 +112,7 @@ def _run_v15_selftest() -> dict[str, object]:
         "v15_cockpit_imported": True,
         "t3_navigation_imported": True,
         "t4_selection_measurement_imported": True,
+        "t5_review_workspace_imported": True,
         "worker_transport_preserved": True,
         "production_machine_transfer_allowed": False,
     }
