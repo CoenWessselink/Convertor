@@ -155,6 +155,7 @@ class ViewerV15CoordinationTests(unittest.TestCase):
         new = deepcopy(self.project)
         new.parts["P2"].global_placement = _transform(140.0)
         new.parts["P2"].local_placement = _transform(140.0)
+        new.parts["P2"].recompute_hashes()
         new.parts["P3"].material_grade = "S355J2"
         new.parts["P3"].recompute_hashes()
         evidence1 = self.service.compare_revisions(old, new)
