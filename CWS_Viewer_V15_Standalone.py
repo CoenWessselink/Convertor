@@ -40,9 +40,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_t5_v15 import t5_workspace_contract
+    from cws_viewer.ui_qt.cockpit_t6_v15 import t6_workspace_contract
 
-    contract = t5_workspace_contract()
+    contract = t6_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -89,16 +89,34 @@ def _run_v15_selftest() -> dict[str, object]:
         "portable_cwsreview_export",
         "stale_reference_detection",
     )
+    required_t6 = (
+        "assembly_drilldown",
+        "assembly_main_secondary_hierarchy",
+        "assembly_parent_child_navigation",
+        "canonical_revision_compare",
+        "compare_added_removed_changed_moved",
+        "compare_manifest_hash",
+        "clash_spatial_broad_phase",
+        "clash_no_global_n_squared_bruteforce",
+        "clash_exact_narrow_phase_extension",
+        "clash_approximate_evidence_not_hard_claim",
+        "construction_sequence",
+        "assembly_sequence",
+        "production_review_sequence",
+        "sequence_visibility_timeline",
+        "coordination_audit_evidence",
+    )
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.1"
         and contract.get("version") == VERSION
-        and len(docks) == 6
+        and len(docks) == 7
         and bool(capabilities.get("dockable_panels"))
         and bool(capabilities.get("persistent_layout"))
         and bool(capabilities.get("v14_functionality_preserved"))
         and all(bool(capabilities.get(name)) for name in required_t3)
         and all(bool(capabilities.get(name)) for name in required_t4)
         and all(bool(capabilities.get(name)) for name in required_t5)
+        and all(bool(capabilities.get(name)) for name in required_t6)
         and not bool(capabilities.get("ai_derived_dimensions", True))
         and not bool(capabilities.get("silent_reference_remap", True))
         and not bool(capabilities.get("review_mutates_canonical_geometry", True))
@@ -113,6 +131,7 @@ def _run_v15_selftest() -> dict[str, object]:
         "t3_navigation_imported": True,
         "t4_selection_measurement_imported": True,
         "t5_review_workspace_imported": True,
+        "t6_coordination_imported": True,
         "worker_transport_preserved": True,
         "production_machine_transfer_allowed": False,
     }

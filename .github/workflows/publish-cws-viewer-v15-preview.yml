@@ -25,7 +25,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 110
+    timeout-minutes: 120
     steps:
       - name: Checkout exact source commit
         uses: actions/checkout@v6
@@ -45,7 +45,7 @@ jobs:
             local run_id=''
             local status=''
             local conclusion=''
-            for attempt in $(seq 1 210); do
+            for attempt in $(seq 1 225); do
               row="$(gh run list \
                 --repo "${{ github.repository }}" \
                 --workflow "$workflow" \
@@ -76,6 +76,7 @@ jobs:
           wait_for_workflow 'viewer-v15-t3-navigation.yml' 'T3 navigation gate' 'T3_RUN_ID'
           wait_for_workflow 'viewer-v15-t4-selection-measurement.yml' 'T4 selection/measurement gate' 'T4_RUN_ID'
           wait_for_workflow 'viewer-v15-t5-review.yml' 'T5 review workspace gate' 'T5_RUN_ID'
+          wait_for_workflow 'viewer-v15-t6-coordination.yml' 'T6 coordination gate' 'T6_RUN_ID'
           wait_for_workflow 'build-standalone-cws-viewer-v15.yml' 'Windows standalone build' 'RUN_ID'
 
       - name: Download all certified Windows artifacts
@@ -102,6 +103,8 @@ jobs:
           test -n "$portable" && test -f "$portable"
           grep -q '"status": "passed"' "$manifest"
           grep -q '"t5_review_workspace_certified": true' "$manifest"
+          grep -q '"t6_coordination_certified": true' "$manifest"
+          grep -q '"production_machine_transfer_allowed": false' "$manifest"
           expected="$(grep "$(basename "$installer")" "$sums" | awk '{print $1}' | head -n1)"
           actual="$(sha256sum "$installer" | awk '{print $1}')"
           test -n "$expected" && test "$actual" = "$expected"
@@ -139,7 +142,10 @@ jobs:
           T3 navigation run: ${T3_RUN_ID}
           T4 selection/measurement run: ${T4_RUN_ID}
           T5 review workspace run: ${T5_RUN_ID}
+          T6 coordination run: ${T6_RUN_ID}
           Installer SHA-256: ${INSTALLER_SHA256}
+
+          T6 adds assembly drilldown, canonical revision compare, spatial clash/preflight evidence and viewer-only construction/assembly/production-review sequences. Approximate AABB candidates are never promoted to exact clash claims.
 
           This is a development preview. Production-machine transfer remains blocked until the dedicated manufacturing and owner-validation gates are complete.
 
