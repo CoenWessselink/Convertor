@@ -16,6 +16,7 @@ on:
       - 'requirements-viewer-standalone.lock.txt'
       - 'pyinstaller_hooks/**'
       - 'pyinstaller_runtime_hooks/**'
+      - '.github/workflows/publish-cws-viewer-v15-preview.yml'
 
 permissions:
   contents: write
@@ -29,40 +30,52 @@ jobs:
       - name: Checkout exact source commit
         uses: actions/checkout@v6
 
-      - name: Wait for matching certified Windows build
+      - name: Wait for matching certified V15 gates
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          run_id=''
-          for attempt in $(seq 1 180); do
-            row="$(gh run list \
-              --repo "${{ github.repository }}" \
-              --workflow 'Build standalone CWS Viewer V15 Windows x64' \
-              --commit "$SOURCE_SHA" \
-              --limit 1 \
-              --json databaseId,status,conclusion \
-              --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv' 2>/dev/null || true)"
-            if [ -n "$row" ]; then
-              IFS=$'\t' read -r run_id status conclusion <<< "$row"
-              echo "Windows run $run_id: $status ${conclusion:-}"
-              if [ "$status" = 'completed' ]; then
-                if [ "$conclusion" != 'success' ]; then
-                  echo "Matching Windows build failed: $conclusion" >&2
-                  exit 1
+          wait_for_workflow() {
+            local workflow="$1"
+            local label="$2"
+            local export_name="$3"
+            local row=''
+            local run_id=''
+            local status=''
+            local conclusion=''
+            for attempt in $(seq 1 210); do
+              row="$(gh run list \
+                --repo "${{ github.repository }}" \
+                --workflow "$workflow" \
+                --commit "$SOURCE_SHA" \
+                --limit 1 \
+                --json databaseId,status,conclusion \
+                --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv' 2>/dev/null || true)"
+              if [ -n "$row" ]; then
+                IFS=$'\t' read -r run_id status conclusion <<< "$row"
+                echo "$label run $run_id: $status ${conclusion:-}"
+                if [ "$status" = 'completed' ]; then
+                  if [ "$conclusion" != 'success' ]; then
+                    echo "$label failed: $conclusion" >&2
+                    exit 1
+                  fi
+                  echo "$export_name=$run_id" >> "$GITHUB_ENV"
+                  return 0
                 fi
-                echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
-                exit 0
+              else
+                echo "Waiting for $label registration for $SOURCE_SHA"
               fi
-            else
-              echo "Waiting for Windows build registration for $SOURCE_SHA"
-            fi
-            sleep 30
-          done
-          echo 'Timed out waiting for matching Windows build' >&2
-          exit 1
+              sleep 30
+            done
+            echo "Timed out waiting for $label" >&2
+            exit 1
+          }
+
+          wait_for_workflow 'viewer-v15-t3-navigation.yml' 'T3 navigation gate' 'T3_RUN_ID'
+          wait_for_workflow 'viewer-v15-t4-selection-measurement.yml' 'T4 selection/measurement gate' 'T4_RUN_ID'
+          wait_for_workflow 'build-standalone-cws-viewer-v15.yml' 'Windows standalone build' 'RUN_ID'
 
       - name: Download all certified Windows artifacts
         env:
@@ -117,10 +130,12 @@ jobs:
           tag="cws-viewer-v15-preview-${short}"
           title="CWS Viewer V15 preview ${short}"
           notes=$(cat <<EOF
-          Automated standalone Windows x64 preview from a successful GitHub Actions build.
+          Automated standalone Windows x64 preview from certified V15 gates.
 
           Source commit: ${SOURCE_SHA}
           Windows build run: ${RUN_ID}
+          T3 navigation run: ${T3_RUN_ID}
+          T4 selection/measurement run: ${T4_RUN_ID}
           Installer SHA-256: ${INSTALLER_SHA256}
 
           This is a development preview. Production-machine transfer remains blocked until the dedicated manufacturing and owner-validation gates are complete.

@@ -40,9 +40,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_t3_v15 import t3_workspace_contract
+    from cws_viewer.ui_qt.cockpit_t4_v15 import t4_workspace_contract
 
-    contract = t3_workspace_contract()
+    contract = t4_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -55,14 +55,32 @@ def _run_v15_selftest() -> dict[str, object]:
         "saved_view_contract",
         "deterministic_view_state",
     )
+    required_t4 = (
+        "area_selection",
+        "multi_selection",
+        "hierarchy_aware_picking",
+        "grouped_properties",
+        "property_search",
+        "property_copy",
+        "project_pick_measurement_proof",
+        "exact_brep_snapping",
+        "snap_tolerance_profiles",
+        "snap_feedback",
+        "distance_measurement",
+        "angle_measurement",
+        "radius_diameter_measurement",
+        "measurement_export_review_state",
+    )
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.1"
         and contract.get("version") == VERSION
-        and len(docks) == 4
+        and len(docks) == 5
         and bool(capabilities.get("dockable_panels"))
         and bool(capabilities.get("persistent_layout"))
         and bool(capabilities.get("v14_functionality_preserved"))
         and all(bool(capabilities.get(name)) for name in required_t3)
+        and all(bool(capabilities.get(name)) for name in required_t4)
+        and not bool(capabilities.get("ai_derived_dimensions", True))
     )
     return {
         "status": "passed" if passed else "failed",
@@ -72,6 +90,7 @@ def _run_v15_selftest() -> dict[str, object]:
         "workspace": contract,
         "v15_cockpit_imported": True,
         "t3_navigation_imported": True,
+        "t4_selection_measurement_imported": True,
         "worker_transport_preserved": True,
         "production_machine_transfer_allowed": False,
     }

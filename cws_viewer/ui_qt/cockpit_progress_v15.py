@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from cws_viewer.adapters.project_scene_loader import ProjectSceneLoader
-from cws_viewer.ui_qt.cockpit_t3_v15 import CwsViewerV15T3CockpitWindow, V15_T3_VERSION
+from cws_viewer.ui_qt.cockpit_t4_v15 import CwsViewerV15T4CockpitWindow, V15_T4_VERSION
 from cws_viewer.ui_qt.design_system import DEFAULT_THEME, theme_qss
 from cws_viewer.ui_qt.loading_dialog import create_loading_dialog
 from cws_viewer.ui_qt.qt_compat import require_qt
@@ -18,7 +18,7 @@ def run_cws_viewer_cockpit_v15(
     ci_smoke: bool = False,
     screenshot_path: str | Path | None = None,
 ) -> int:
-    """Open a project in the V15 T3 workspace while keeping progress visible."""
+    """Open a project in the V15 T4 workspace while keeping progress visible."""
     QtCore, _QtGui, QtWidgets = require_qt()
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("CWS Viewer")
@@ -26,7 +26,7 @@ def run_cws_viewer_cockpit_v15(
     app.setStyleSheet(theme_qss(DEFAULT_THEME))
 
     path = Path(project_path).expanduser().resolve()
-    loading = create_loading_dialog(version=V15_T3_VERSION, source_path=path)
+    loading = create_loading_dialog(version=V15_T4_VERSION, source_path=path)
     loading.set_progress(
         0.04,
         "Projectstructuur openen…",
@@ -49,10 +49,10 @@ def run_cws_viewer_cockpit_v15(
         ).load(path, progress=geometry_progress)
         loading.set_progress(
             0.94,
-            "V15 T3 engineering workspace voorbereiden…",
-            "Project Explorer, 3D Viewer, properties, review en view/clipping tools worden gekoppeld.",
+            "V15 T4 engineering workspace voorbereiden…",
+            "Project Explorer, 3D Viewer, grouped properties, selection, snapping en measurement-review worden gekoppeld.",
         )
-        window = CwsViewerV15T3CockpitWindow(result)
+        window = CwsViewerV15T4CockpitWindow(result)
         loading.set_progress(0.99, "3D Viewer gereedmaken…")
         window.show()
         window.raise_()
@@ -70,7 +70,7 @@ def run_cws_viewer_cockpit_v15(
                 finally:
                     window.close()
 
-            QtCore.QTimer.singleShot(700, verify)
+            QtCore.QTimer.singleShot(750, verify)
         return int(app.exec())
     finally:
         if loading is not None:
