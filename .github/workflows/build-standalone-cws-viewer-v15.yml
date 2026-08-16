@@ -9,6 +9,7 @@ on:
       - 'cws_viewer/**'
       - 'cws_convertor/**'
       - 'tests/viewer_v15_**'
+      - 'tests/manufacturing_face_core_smoke.py'
       - 'CWS_Viewer_Standalone.py'
       - 'CWS_Viewer_V15_Standalone.py'
       - 'CWS_Viewer_V15_Standalone.spec'
@@ -65,6 +66,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V15 T6 coordination contract failed' }
           python tests/viewer_v15_export_center_smoke.py | Tee-Object "$env:EVIDENCE\source_t7_export_center_contract.txt"
           if ($LASTEXITCODE -ne 0) { throw 'V15 T7 export-center contract failed' }
+          python tests/manufacturing_face_core_smoke.py | Tee-Object "$env:EVIDENCE\source_t8_manufacturing_faces.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'V15 T8 ManufacturingFace contract failed' }
           python CWS_Viewer_V15_Standalone.py --v15-self-test | Tee-Object "$env:EVIDENCE\source_v15_selftest.json"
           if ($LASTEXITCODE -ne 0) { throw 'Source V15 contract self-test failed' }
           python CWS_Viewer_V15_Standalone.py --self-test --report "$env:EVIDENCE\source_native_selftest.json"
@@ -100,9 +103,9 @@ jobs:
           if ($v15Process.ExitCode -ne 0 -or -not (Test-Path $v15)) { throw "Packaged V15 contract gate failed: $($v15Process.ExitCode)" }
           $v15Payload = Get-Content $v15 -Raw | ConvertFrom-Json
           if ($v15Payload.status -ne 'passed' -or -not $v15Payload.v15_cockpit_imported) { throw 'Packaged V15 cockpit was not certified' }
-          if (-not $v15Payload.t3_navigation_imported -or -not $v15Payload.t4_selection_measurement_imported -or -not $v15Payload.t5_review_workspace_imported -or -not $v15Payload.t6_coordination_imported -or -not $v15Payload.t7_export_center_imported) { throw 'Packaged V15 T3/T4/T5/T6/T7 layers were not certified' }
+          if (-not $v15Payload.t3_navigation_imported -or -not $v15Payload.t4_selection_measurement_imported -or -not $v15Payload.t5_review_workspace_imported -or -not $v15Payload.t6_coordination_imported -or -not $v15Payload.t7_export_center_imported -or -not $v15Payload.t8_manufacturing_faces_imported) { throw 'Packaged V15 T3/T4/T5/T6/T7/T8 layers were not certified' }
           if (-not $v15Payload.frozen) { throw 'V15 contract gate did not run frozen' }
-          if ($v15Payload.production_machine_transfer_allowed) { throw 'Preview build must not enable production-machine transfer' }
+          if ($v15Payload.production_marking_released -or $v15Payload.production_machine_transfer_allowed) { throw 'Preview build must not enable marking/machine production release' }
 
           $native = Join-Path $env:EVIDENCE 'packaged_native_selftest.json'
           $nativeProcess = Start-Process -FilePath $exe -ArgumentList @('--self-test','--report',$native) -Wait -PassThru -WindowStyle Hidden
@@ -134,7 +137,7 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList @('--v15-self-test') -Wait -PassThru -RedirectStandardOutput $out -WindowStyle Hidden
           if ($p.ExitCode -ne 0) { throw 'Portable V15 self-test failed' }
           $payload = Get-Content $out -Raw | ConvertFrom-Json
-          if (-not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported) { throw 'Portable T6/T7 layers missing' }
+          if (-not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported -or -not $payload.t8_manufacturing_faces_imported) { throw 'Portable T6/T7/T8 layers missing' }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -161,8 +164,8 @@ jobs:
           $p = Start-Process -FilePath $exe -ArgumentList @('--v15-self-test') -Wait -PassThru -RedirectStandardOutput $out -WindowStyle Hidden
           if ($p.ExitCode -ne 0) { throw 'Installed V15 self-test failed' }
           $payload = Get-Content $out -Raw | ConvertFrom-Json
-          if (-not $payload.t5_review_workspace_imported -or -not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported) { throw 'Installed T5/T6/T7 workspace missing' }
-          if ($payload.production_machine_transfer_allowed) { throw 'Installed preview unexpectedly enables machine transfer' }
+          if (-not $payload.t5_review_workspace_imported -or -not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported -or -not $payload.t8_manufacturing_faces_imported) { throw 'Installed T5/T6/T7/T8 workspace missing' }
+          if ($payload.production_marking_released -or $payload.production_machine_transfer_allowed) { throw 'Installed preview unexpectedly enables production marking/machine transfer' }
           $uninstaller = Join-Path $target 'unins000.exe'
           if (Test-Path $uninstaller) {
             $un = Start-Process $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden
@@ -183,15 +186,18 @@ jobs:
             run_id=$env:GITHUB_RUN_ID
             commit=$env:GITHUB_SHA
             status='passed'
-            workspace_schema='cws-viewer-workspace-15.1'
+            workspace_schema='cws-viewer-workspace-15.2'
             v14_worker_transport_preserved=$true
             t3_navigation_certified=$true
             t4_selection_measurement_certified=$true
             t5_review_workspace_certified=$true
             t6_coordination_certified=$true
             t7_export_center_certified=$true
+            t8_manufacturing_faces_certified=$true
+            marking_feature_development=$true
+            production_marking_released=$false
             production_machine_transfer_allowed=$false
-            parity_status='preview_T7'
+            parity_status='preview_T8_faces'
             files=@($files | ForEach-Object {
               [ordered]@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()}
             })

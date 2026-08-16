@@ -9,6 +9,7 @@ on:
       - 'cws_viewer/**'
       - 'cws_convertor/**'
       - 'tests/viewer_v15_**'
+      - 'tests/manufacturing_face_core_smoke.py'
       - 'CWS_Viewer_Standalone.py'
       - 'CWS_Viewer_V15_Standalone.py'
       - 'CWS_Viewer_V15_Standalone.spec'
@@ -78,6 +79,7 @@ jobs:
           wait_for_workflow 'viewer-v15-t5-review.yml' 'T5 review workspace gate' 'T5_RUN_ID'
           wait_for_workflow 'viewer-v15-t6-coordination.yml' 'T6 coordination gate' 'T6_RUN_ID'
           wait_for_workflow 'viewer-v15-t7-export-center.yml' 'T7 export center gate' 'T7_RUN_ID'
+          wait_for_workflow 'viewer-v15-t8-manufacturing.yml' 'T8 manufacturing face gate' 'T8_RUN_ID'
           wait_for_workflow 'build-standalone-cws-viewer-v15.yml' 'Windows standalone build' 'RUN_ID'
 
       - name: Download all certified Windows artifacts
@@ -106,6 +108,8 @@ jobs:
           grep -q '"t5_review_workspace_certified": true' "$manifest"
           grep -q '"t6_coordination_certified": true' "$manifest"
           grep -q '"t7_export_center_certified": true' "$manifest"
+          grep -q '"t8_manufacturing_faces_certified": true' "$manifest"
+          grep -q '"production_marking_released": false' "$manifest"
           grep -q '"production_machine_transfer_allowed": false' "$manifest"
           expected="$(grep "$(basename "$installer")" "$sums" | awk '{print $1}' | head -n1)"
           actual="$(sha256sum "$installer" | awk '{print $1}')"
@@ -146,13 +150,16 @@ jobs:
           T5 review workspace run: ${T5_RUN_ID}
           T6 coordination run: ${T6_RUN_ID}
           T7 export center run: ${T7_RUN_ID}
+          T8 manufacturing face run: ${T8_RUN_ID}
           Installer SHA-256: ${INSTALLER_SHA256}
 
           T6 adds assembly drilldown, canonical revision compare, spatial clash/preflight evidence and viewer-only construction/assembly/production-review sequences. Approximate AABB candidates are never promoted to exact clash claims.
 
-          T7 adds a scope-first Export Center for explicit project, selection, part, assembly, phase, revision-delta, batch and supported nesting scopes. Missing scope metadata fails closed; it never silently falls back to exporting the complete project. Production artifacts are delegated to the existing canonical release engine with fresh release validation, manifests and checksums.
+          T7 adds a scope-first Export Center for explicit project, selection, part, assembly, phase, revision-delta, batch and supported nesting scopes. Missing scope metadata fails closed; it never silently falls back to exporting the complete project.
 
-          This is a development preview. Production-machine transfer remains blocked until the dedicated manufacturing and owner-validation gates are complete.
+          T8 starts the canonical manufacturing layer with ManufacturingFace records, right-handed face-local frames, conservative standard-profile semantic resolvers, independent face validation, and a read-only viewer overlay. DSTV v/h/o/u remains an adapter mapping and ambiguous mappings are blocked. Custom profile face roles are not guessed.
+
+          Production marking and production-machine transfer remain blocked until contact/marking/nesting/sequence adapters and owner golden-machine validation are complete.
 
           Download policy: installer, portable package and evidence are GitHub Release assets. Normal delivery does not depend on transient ChatGPT/sandbox file uploads.
           EOF
