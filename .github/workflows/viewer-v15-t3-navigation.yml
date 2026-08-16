@@ -1,0 +1,65 @@
+name: CWS Viewer V15 T3 navigation gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/trimble-parity-v15
+    paths:
+      - 'cws_viewer/core/v15_navigation.py'
+      - 'cws_viewer/ui_qt/vtk_real_project_widget_v15.py'
+      - 'cws_viewer/ui_qt/view_navigation_v15.py'
+      - 'cws_viewer/ui_qt/cockpit_t3_v15.py'
+      - 'cws_viewer/ui_qt/cockpit_progress_v15.py'
+      - 'CWS_Viewer_V15_Standalone.py'
+      - 'tests/viewer_v15_navigation_contract_smoke.py'
+      - '.github/workflows/viewer-v15-t3-navigation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  t3-contract:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install standalone viewer dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-standalone.lock.txt
+          python -m pip check
+
+      - name: Compile T3 modules
+        shell: pwsh
+        run: |
+          python -m compileall -q `
+            cws_viewer/core/v15_navigation.py `
+            cws_viewer/ui_qt/vtk_real_project_widget_v15.py `
+            cws_viewer/ui_qt/view_navigation_v15.py `
+            cws_viewer/ui_qt/cockpit_t3_v15.py `
+            cws_viewer/ui_qt/cockpit_progress_v15.py `
+            CWS_Viewer_V15_Standalone.py
+          if ($LASTEXITCODE -ne 0) { throw 'T3 compileall failed' }
+
+      - name: Run deterministic T3 navigation contract
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_navigation_contract_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'T3 navigation contract failed' }
+
+      - name: Run V15 self-test contract
+        shell: pwsh
+        run: |
+          python CWS_Viewer_V15_Standalone.py --v15-self-test
+          if ($LASTEXITCODE -ne 0) { throw 'V15 T3 self-test failed' }

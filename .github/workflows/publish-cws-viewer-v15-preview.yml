@@ -1,0 +1,145 @@
+name: Publish CWS Viewer V15 preview release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/trimble-parity-v15
+    paths:
+      - 'cws_viewer/**'
+      - 'cws_convertor/**'
+      - 'tests/viewer_v15_**'
+      - 'CWS_Viewer_Standalone.py'
+      - 'CWS_Viewer_V15_Standalone.py'
+      - 'CWS_Viewer_V15_Standalone.spec'
+      - 'installer/CWS_Viewer_V15.iss'
+      - 'requirements-viewer-standalone.lock.txt'
+      - 'pyinstaller_hooks/**'
+      - 'pyinstaller_runtime_hooks/**'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v6
+
+      - name: Wait for matching certified Windows build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_id=''
+          for attempt in $(seq 1 180); do
+            row="$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow 'Build standalone CWS Viewer V15 Windows x64' \
+              --commit "$SOURCE_SHA" \
+              --limit 1 \
+              --json databaseId,status,conclusion \
+              --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv' 2>/dev/null || true)"
+            if [ -n "$row" ]; then
+              IFS=$'\t' read -r run_id status conclusion <<< "$row"
+              echo "Windows run $run_id: $status ${conclusion:-}"
+              if [ "$status" = 'completed' ]; then
+                if [ "$conclusion" != 'success' ]; then
+                  echo "Matching Windows build failed: $conclusion" >&2
+                  exit 1
+                fi
+                echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
+                exit 0
+              fi
+            else
+              echo "Waiting for Windows build registration for $SOURCE_SHA"
+            fi
+            sleep 30
+          done
+          echo 'Timed out waiting for matching Windows build' >&2
+          exit 1
+
+      - name: Download all certified Windows artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release/artifacts
+          gh run download "$RUN_ID" --repo "${{ github.repository }}" --dir release/artifacts
+          find release/artifacts -maxdepth 3 -type f -printf '%p\n' | sort
+
+      - name: Verify installer manifest and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          installer="$(find release/artifacts -type f -name 'CWS_Viewer_Setup_*_x64.exe' -print -quit)"
+          manifest="$(find release/artifacts -type f -name 'WINDOWS_VIEWER_V15_RELEASE_MANIFEST.json' -print -quit)"
+          sums="$(find release/artifacts -type f -name 'SHA256SUMS.txt' -print -quit)"
+          portable="$(find release/artifacts -type f -name 'CWS_Viewer_Portable_*_x64.zip' -print -quit)"
+          test -n "$installer" && test -f "$installer"
+          test -n "$manifest" && test -f "$manifest"
+          test -n "$sums" && test -f "$sums"
+          test -n "$portable" && test -f "$portable"
+          grep -q '"status": "passed"' "$manifest"
+          expected="$(grep "$(basename "$installer")" "$sums" | awk '{print $1}' | head -n1)"
+          actual="$(sha256sum "$installer" | awk '{print $1}')"
+          test -n "$expected" && test "$actual" = "$expected"
+          echo "INSTALLER=$installer" >> "$GITHUB_ENV"
+          echo "PORTABLE=$portable" >> "$GITHUB_ENV"
+          echo "MANIFEST=$manifest" >> "$GITHUB_ENV"
+          echo "SUMS=$sums" >> "$GITHUB_ENV"
+          echo "INSTALLER_SHA256=$actual" >> "$GITHUB_ENV"
+
+      - name: Pack evidence for direct GitHub download
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence_dir="$(find release/artifacts -maxdepth 1 -type d -name '*_EVIDENCE' -print -quit)"
+          if [ -n "$evidence_dir" ] && [ -d "$evidence_dir" ]; then
+            (cd "$evidence_dir" && zip -q -r ../../CWS_Viewer_V15_EVIDENCE.zip .)
+            echo "EVIDENCE_ZIP=release/CWS_Viewer_V15_EVIDENCE.zip" >> "$GITHUB_ENV"
+          fi
+
+      - name: Publish immutable GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          short="${SOURCE_SHA:0:8}"
+          tag="cws-viewer-v15-preview-${short}"
+          title="CWS Viewer V15 preview ${short}"
+          notes=$(cat <<EOF
+          Automated standalone Windows x64 preview from a successful GitHub Actions build.
+
+          Source commit: ${SOURCE_SHA}
+          Windows build run: ${RUN_ID}
+          Installer SHA-256: ${INSTALLER_SHA256}
+
+          This is a development preview. Production-machine transfer remains blocked until the dedicated manufacturing and owner-validation gates are complete.
+
+          Download policy: installers and portable packages are published as GitHub Release assets so delivery does not depend on transient ChatGPT/sandbox file uploads.
+          EOF
+          )
+          assets=("$INSTALLER" "$PORTABLE" "$MANIFEST" "$SUMS")
+          if [ -n "${EVIDENCE_ZIP:-}" ] && [ -f "${EVIDENCE_ZIP}" ]; then
+            assets+=("$EVIDENCE_ZIP")
+          fi
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --repo "${{ github.repository }}" \
+              --target "$SOURCE_SHA" \
+              --title "$title" \
+              --notes "$notes" \
+              --prerelease
+          fi
+          gh release view "$tag" --repo "${{ github.repository }}"

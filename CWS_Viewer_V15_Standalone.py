@@ -2,7 +2,7 @@
 
 V15 deliberately preserves the hardened rc3/V14 worker and intake transport.
 Only interactive/hosted viewer execution is rebound to the V15 dockable CWS
-workspace.  This keeps crash isolation and canonical project intake unchanged.
+workspace. This keeps crash isolation and canonical project intake unchanged.
 """
 from __future__ import annotations
 
@@ -40,17 +40,29 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_v15 import workspace_contract
+    from cws_viewer.ui_qt.cockpit_t3_v15 import t3_workspace_contract
 
-    contract = workspace_contract()
+    contract = t3_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
+    required_t3 = (
+        "zoom_area",
+        "camera_history",
+        "view_from_face_normal",
+        "camera_positioning",
+        "section_plane_enable_disable",
+        "clipping_box",
+        "saved_view_contract",
+        "deterministic_view_state",
+    )
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.1"
-        and len(docks) == 3
+        and contract.get("version") == VERSION
+        and len(docks) == 4
         and bool(capabilities.get("dockable_panels"))
         and bool(capabilities.get("persistent_layout"))
         and bool(capabilities.get("v14_functionality_preserved"))
+        and all(bool(capabilities.get(name)) for name in required_t3)
     )
     return {
         "status": "passed" if passed else "failed",
@@ -59,7 +71,9 @@ def _run_v15_selftest() -> dict[str, object]:
         "frozen": bool(getattr(sys, "frozen", False)),
         "workspace": contract,
         "v15_cockpit_imported": True,
+        "t3_navigation_imported": True,
         "worker_transport_preserved": True,
+        "production_machine_transfer_allowed": False,
     }
 
 
