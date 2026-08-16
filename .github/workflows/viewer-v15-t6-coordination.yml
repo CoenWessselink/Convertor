@@ -69,11 +69,21 @@ jobs:
       - name: Run deterministic T6 coordination contract
         shell: pwsh
         run: |
-          python tests/viewer_v15_coordination_smoke.py
+          New-Item -ItemType Directory -Force validation\v15-t6-diagnostics | Out-Null
+          python tests/viewer_v15_coordination_smoke.py *>&1 | Tee-Object validation\v15-t6-diagnostics\t6-test.log
           if ($LASTEXITCODE -ne 0) { throw 'T6 coordination contract failed' }
 
       - name: Run V15 self-test contract
         shell: pwsh
         run: |
-          python CWS_Viewer_V15_Standalone.py --v15-self-test
+          python CWS_Viewer_V15_Standalone.py --v15-self-test *>&1 | Tee-Object validation\v15-t6-diagnostics\v15-selftest.log
           if ($LASTEXITCODE -ne 0) { throw 'V15 T6 self-test failed' }
+
+      - name: Upload T6 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_V15_T6_DIAGNOSTICS
+          path: validation/v15-t6-diagnostics/*.log
+          if-no-files-found: warn
+          retention-days: 7
