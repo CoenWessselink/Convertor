@@ -64,6 +64,21 @@ from .machine_capability_model import (
     MachineFeatureType,
 )
 from .machine_capability import MachineCapabilityEvaluator
+from .nesting_binding_model import (
+    NESTING_PLACEMENT_SCHEMA,
+    NESTED_FEATURE_SCHEMA,
+    NESTING_MARKING_SCHEMA,
+    NESTING_BINDING_ALGORITHM,
+    CommonCutZone,
+    NestedFeatureKind,
+    NestedFeatureStatus,
+    NestedManufacturingFeature,
+    NestingMarkingReport,
+    NestingPlacement,
+    StockClampZone,
+)
+from .nesting_binding import NestingMarkBinder
+from .nesting_validation import IndependentNestingMarkValidator, NestingValidationResult
 
 __all__ = [
     "MANUFACTURING_FACE_SCHEMA",
@@ -118,4 +133,18 @@ __all__ = [
     "MachineFeatureDecision",
     "MachineFeatureType",
     "MachineCapabilityEvaluator",
+    "NESTING_PLACEMENT_SCHEMA",
+    "NESTED_FEATURE_SCHEMA",
+    "NESTING_MARKING_SCHEMA",
+    "NESTING_BINDING_ALGORITHM",
+    "CommonCutZone",
+    "NestedFeatureKind",
+    "NestedFeatureStatus",
+    "NestedManufacturingFeature",
+    "NestingMarkingReport",
+    "NestingPlacement",
+    "StockClampZone",
+    "NestingMarkBinder",
+    "IndependentNestingMarkValidator",
+    "NestingValidationResult",
 ]
