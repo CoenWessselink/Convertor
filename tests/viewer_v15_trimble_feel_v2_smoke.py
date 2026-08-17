@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from pathlib import Path
 import sys
 import unittest
@@ -36,6 +35,7 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
             "grid_list_to_3d_selection",
             "3d_to_grid_list_selection",
             "assembly_part_level_toolbar",
+            "assembly_selection_expands_in_grid",
             "persistent_bottom_views_strip",
             "views_strip_search",
             "views_strip_groups",
@@ -62,7 +62,12 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
         for value in entities.values():
             by_type.setdefault(value.type_name, tuple())
             by_type[value.type_name] = (*by_type[value.type_name], value.entity_id)
-        document = P21Document(path=Path("synthetic.ifc"), entities=entities, by_type=by_type, schema="IFC2X3")
+        document = P21Document(
+            path=Path("synthetic.ifc"),
+            entities=entities,
+            by_type=by_type,
+            schema="IFC2X3",
+        )
         appearance = IfcAppearanceResolver(document).color_for_items(("100",))
         self.assertIsNotNone(appearance)
         assert appearance is not None
@@ -88,16 +93,22 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
             expected_up = expected_right.cross(view).normalized()
             self.assertLess((camera.up - expected_up).length(), 1e-8)
             self.assertGreater(camera.up.dot(WORLD_UP), 0.0)
-            self.assertEqual(controller.orbit_pivot, controller.display_bounds_for(("node:item:000018",), include_descendants=True).center)
+            self.assertEqual(
+                controller.orbit_pivot,
+                controller.display_bounds_for(
+                    ("node:item:000018",), include_descendants=True
+                ).center,
+            )
         finally:
             controller.shutdown()
 
-    def test_v2_runtime_sources_lock_cursor_multiselect_views_and_measurement_overlay(self) -> None:
+    def test_v2_runtime_sources_lock_multiselect_views_measurement_and_grid_sync(self) -> None:
         widget = (ROOT / "cws_viewer/ui_qt/vtk_real_project_widget_feel_v2.py").read_text(encoding="utf-8")
         renderer = (ROOT / "cws_viewer/backends/vtk_project_mesh_feel_v2.py").read_text(encoding="utf-8")
         cockpit = (ROOT / "cws_viewer/ui_qt/cockpit_trimble_feel_v2.py").read_text(encoding="utf-8")
         views = (ROOT / "cws_viewer/ui_qt/views_strip_feel_v2.py").read_text(encoding="utf-8")
         adapter = (ROOT / "cws_viewer/adapters/source_style_scene.py").read_text(encoding="utf-8")
+        interaction = (ROOT / "cws_viewer/core/project_interaction.py").read_text(encoding="utf-8")
 
         self.assertIn('return "toggle"', widget)
         self.assertIn("ControlModifier", widget)
@@ -109,7 +120,9 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
         self.assertIn('"B"', renderer)
         self.assertIn("_sync_selection_fill", renderer)
         self.assertIn("Merk / assembly", cockpit)
-        self.assertIn("grid.select_entities(selection.entity_ids)", cockpit)
+        self.assertIn("_grid_entities_for_selection", cockpit)
+        self.assertIn("grid.select_entities(self._grid_entities_for_selection(selection))", cockpit)
+        self.assertIn("selectable_node_for_level(node_id, level)", interaction)
         self.assertIn("CwsViewsStripV2", cockpit)
         self.assertIn("Nieuwe View", views)
         self.assertIn("View Group", views)
