@@ -78,6 +78,11 @@ class V14ViewerCoreController(ViewerCoreController):
         self._sync_orbit_pivot_after_state_restore()
         return report
 
+    def update_scene(self, patch):
+        handle = super().update_scene(patch)
+        self._sync_orbit_pivot_after_state_restore()
+        return handle
+
     @property
     def orbit_pivot(self) -> Vector3:
         if self._orbit_pivot is not None:
@@ -158,8 +163,34 @@ class V14ViewerCoreController(ViewerCoreController):
             self.focus_orbit_on_selection()
 
     def probe_at(self, x: int, y: int) -> PickResult | None:
+        """Read renderer geometry without changing semantic selection."""
         index = self.index
         return self._backend.pick_at(int(x), int(y), index)
+
+    def pick_at(self, x: int, y: int, *, mode: str = "replace") -> PickResult | None:
+        """Select only currently pickable geometry.
+
+        Hidden objects and ghost context are display aids, not selection targets.
+        This prevents a translucent ghost actor from stealing the click from the
+        active isolated scope even if a renderer-level picker can still hit it.
+        """
+        index = self.index
+        raw = self._backend.pick_at(int(x), int(y), index)
+        if raw is None or raw.node_id not in index.nodes_by_id:
+            return None
+        visible, ghosted = self.session.visible_and_ghosted(index)
+        visible_set = set(visible)
+        ghosted_set = set(ghosted)
+        if raw.node_id not in visible_set or raw.node_id in ghosted_set:
+            return None
+        selectable = index.selectable_node_for_level(
+            raw.node_id, self.session.selection_level
+        )
+        if selectable != raw.node_id:
+            node = index.node(selectable)
+            raw = replace(raw, node_id=selectable, entity_id=node.entity_id)
+        self.set_selection((selectable,), mode=mode)
+        return raw
 
     def pick_at_level(
         self,
@@ -173,7 +204,7 @@ class V14ViewerCoreController(ViewerCoreController):
         persistent = self.session.selection_level
         try:
             self.set_selection_level(SelectionLevel(level))
-            return super().pick_at(int(x), int(y), mode=mode)
+            return self.pick_at(int(x), int(y), mode=mode)
         finally:
             self.set_selection_level(persistent)
 
