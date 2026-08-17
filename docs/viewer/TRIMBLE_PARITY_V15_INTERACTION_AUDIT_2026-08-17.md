@@ -2,7 +2,7 @@
 
 Auditdatum: 2026-08-17  
 Branch: `feature/trimble-parity-v15`  
-Status: **T3 INTERACTION GATE HEROPEND — niet meer als volledig VERIFIED behandelen totdat Windows source + packaged GUI evidence groen zijn**
+Status: **SOURCE HARDENED / WINDOWS T3 GREEN — packaged physical GUI interaction evidence blijft verplicht**
 
 ## 1. Aanleiding
 
@@ -29,6 +29,7 @@ Gecontroleerd op 2026-08-17 tegen Connect for Windows documentatie:
 
 - Navigation and Camera Controls: Rotate, Pan, Walk Around, Look Around;
 - Rotate: muisknop vasthouden op een gekozen modelpunt en rond **dat gekozen punt** roteren;
+- Pan: eveneens een modelpunt kiezen en vanaf dat punt slepen;
 - Keyboard Shortcuts: Space = fit selectie; dubbelklik object = fit + objectcontext; Alt+dubbelklik surface = orthogonaal aan surface; Ctrl+U/I/O/P = Rotate/Pan/Walk/Look; Esc beëindigt operatie en wist selectie; F11 = full-screen; Backspace/Shift+Backspace = hide/hide others;
 - Making Selections: single, area en assembly selection; links→rechts = volledig binnen, rechts→links = crossing; Alt keert Object/Assembly-selectiemodus tijdelijk om.
 
@@ -40,7 +41,7 @@ Referenties:
 
 ## 3. Root cause in CWS vóór herstel
 
-De oude keten was:
+De oude orbitketen was:
 
 ```text
 mouse drag
@@ -58,6 +59,8 @@ pick_at
 
 Er bestond geen aparte orbitpivot en `set_selection()` wijzigde de orbitfocus niet. Alleen `fit_selection()` zette toevallig `camera.target` op de selectie-bounds. Hierdoor werkte orbit na een gewone klik alleen correct wanneer de gebruiker daarna expliciet Fit Selectie uitvoerde.
 
+De oude pan gebruikte daarnaast een vaste, cameradistance-afgeleide gevoeligheid uit muisdelta's. Daardoor was de bediening afhankelijk van modelschaal en niet van het werkelijk gekozen punt in perspectief.
+
 ## 4. Nieuw verplicht interactiecontract
 
 ### 4.1 Persistent selectie-orbitpivot
@@ -68,16 +71,7 @@ Bij een niet-lege selectie:
 orbit_pivot = center(combined world bounds of selected nodes)
 ```
 
-Dit geldt voor:
-
-- klik in viewport;
-- selectie vanuit projectboom;
-- selectie vanuit grid/property-context;
-- multi-selectie;
-- assembly-selectie;
-- area selection.
-
-De camera zelf beweegt **niet** op het moment van selecteren. Selectie mag dus geen onverwachte pan/zoom/view jump veroorzaken.
+Dit geldt voor klik in viewport, projectboom/gridselectie, multi-selectie, assemblyselectie en area selection. De camera beweegt **niet** door alleen te selecteren; uitsluitend de focus voor de volgende orbit verandert.
 
 ### 4.2 Exact modelpunt tijdens Rotate-drag
 
@@ -89,106 +83,107 @@ non-mutating surface probe
   -> transient orbit_pivot = picked world point
 ```
 
-Daarna roteert de drag rond exact dat punt. Een drag selecteert het object niet opnieuw; een klik zonder drag blijft een normale selectiehandeling.
+De V14 real-mesh backend probeert eerst een `vtkCellPicker` op de echte meshgroepen; alleen wanneer die geen geldige surface-hit geeft, blijft de oudere center-proxy fallback beschikbaar. Daarmee is de Rotate-focus op de real-project renderer daadwerkelijk surface-gebaseerd waar de meshbackend dit kan bewijzen.
 
-Dit volgt rechtstreeks het zichtbare Trimble Rotate-concept: rotate around the point picked in the model.
+### 4.3 Picked-depth Pan
 
-### 4.3 Object / Assembly selection
+Bij mouse-down in Pan mode wordt eveneens het zichtbare modelpunt geprobed. De panverschuiving per pixel wordt daarna bepaald vanuit:
 
-CWS heeft nu dezelfde zichtbare tweedeling als referentiegedrag:
+- perspectief: actuele FOV + diepte van het gekozen modelpunt;
+- orthografisch: de ingestelde verticale `ortho_scale`.
+
+Hierdoor beweegt een punt dat dichter bij de camera ligt minder wereldmillimeters per pixel dan een punt op grotere diepte, zoals een perspectiefcamera geometrisch vereist. De pan is niet langer gebaseerd op één willekeurige model-schaalfactor.
+
+### 4.4 Object / Assembly selection
 
 ```text
 persistent selection level = Object | Assembly
 Alt + click = temporary inverse level
 ```
 
-De tijdelijke Alt-keuze verandert de opgeslagen selectiemodus niet. Een assemblyklik wordt via de bestaande scenehiërarchie naar de dichtstbijzijnde assembly gepromoveerd. Als er geen passende assembly-ancestor bestaat, blijft het oorspronkelijke object selecteerbaar.
+De tijdelijke Alt-keuze verandert de opgeslagen selectiemodus niet. De V15 Aanzicht/Navigatie-dock toont expliciet `Object` / `Assembly` en de Alt-inversie. Selection level blijft onderdeel van viewer workspace/session state.
 
-De V15 Aanzicht/Navigatie-dock toont expliciet de keuze `Object` / `Assembly` en vermeldt de Alt-inversie. De gekozen modus blijft onderdeel van viewer workspace/session state.
+### 4.5 Rigid camera rotation om pivot
 
-### 4.4 Rigid camera rotation om pivot
+Orbit roteert zowel camera eye als focal target als één rigide cameraframe om de actieve pivot. Daardoor blijft een gekozen selectie/pick werkelijk het draaipunt, ook wanneer het oude `camera.target` ergens anders lag.
 
-Orbit draait niet alleen de eye-position om het pivotpunt. Zowel camera eye als camera focal target worden als rigide cameraframe om de pivot geroteerd. Daardoor kan het pivotpunt buiten het bestaande `camera.target` liggen zonder terug te vallen op een oud scene-centrum.
+### 4.6 Fit- en restore-regels
 
-### 4.5 Fit-regels
+- Fit All: scene fit + pivot naar nieuw camera target;
+- Fit Selection: selectie fit + pivot op selectiecentrum;
+- Selection zonder fit: geen camera-jump;
+- selectie wissen: laatste bruikbare focus blijft staan;
+- undo/redo, saved-view activation en workspace restore: pivot wordt opnieuw afgeleid van herstelde selectie, anders van actuele camera target.
 
-- Fit All: camera fit naar scene en orbitpivot terug naar het nieuwe camera target.
-- Fit Selection: fit naar selectie en orbitpivot blijft selectiecentrum.
-- Selection zonder fit: camera blijft exact staan, alleen toekomstige orbitfocus verandert.
-- Selection clear: laatste bruikbare orbitpivot blijft behouden; er is geen onverwachte sprong terug naar oorsprong.
+## 5. Keyboard/mouse parity hardening
 
-### 4.6 Restore-regels
-
-Na undo/redo, saved-view activation en workspace restore wordt transient orbitfocus opnieuw afgeleid:
-
-1. selectie aanwezig -> selectie-bounds centrum;
-2. geen selectie -> actuele camera target.
-
-Hierdoor kan opgeslagen state niet een oude onzichtbare pivot achterlaten.
-
-## 5. Keyboard/mouse parity hardening in deze batch
-
-| Gedrag | Bestaande basis vóór deze audit | Nieuwe status |
+| Gedrag | Bestaande basis vóór audit | Huidige status |
 |---|---|---|
-| Orbit rond gekozen modelpunt | fout: rond `camera.target` | geïmplementeerd, Windows/package evidence vereist |
-| Selectie bepaalt volgende orbitfocus | ontbrak | geïmplementeerd |
+| Orbit rond gekozen modelpunt | fout: rond `camera.target` | Windows source gate groen |
+| Selectie bepaalt orbitfocus | ontbrak | Windows source gate groen |
 | Tree/grid selectie bepaalt orbitfocus | selectie-sync bestond, focus ontbrak | centraal via controller-selection |
 | Multi-select orbitfocus | ontbrak | combined bounds center |
-| Object/Assembly selectiemodus | intern SelectionLevel bestond, niet compleet bedienbaar | expliciete V15 UI + tijdelijke Alt-inversie |
+| Pan vanaf gekozen modelpunt | schaal-/distanceheuristiek | picked-depth pan + Windows contracttest |
+| Object/Assembly selectiemodus | intern SelectionLevel bestond | expliciete UI + tijdelijke Alt-inversie |
 | Space = fit selectie | aanwezig | behouden |
 | Dubbelklik object = select + fit | aanwezig | behouden |
-| Alt+dubbelklik surface = orthogonaal | ontbrak in viewportinput | non-mutating surface probe + exact world-point |
-| Ctrl+U/I/O/P = Rotate/Pan/Walk/Look | reeds aanwezig als cockpit QAction-shortcuts | behouden + viewer-focus fallback gehard |
-| F11 = full-screen | reeds aanwezig in cockpit/detached shell | behouden + viewer-focus fallback gehard |
-| Esc = tool beëindigen | aanwezig | aangescherpt met selectie wissen |
-| Backspace = hide selection | reeds aanwezig als cockpit shortcut | behouden + viewer-focus fallback gehard |
-| Shift+Backspace = hide others | niet centraal afgedekt | viewer-focus gedrag toegevoegd |
-| L→R area = fully inside | aanwezig | behouden |
-| R→L area = crossing | aanwezig | behouden |
+| Alt+dubbelklik surface = orthogonaal | ontbrak in viewportinput | surface normal + exact picked point |
+| Ctrl+U/I/O/P | aanwezig als cockpit shortcuts | behouden + viewer-focus fallback |
+| F11 | aanwezig | behouden + viewer-focus fallback |
+| Esc | tool cancel aanwezig | aangevuld met selectie wissen |
+| Backspace | cockpit shortcut aanwezig | behouden + viewer-focus fallback |
+| Shift+Backspace | niet centraal afgedekt | hide-others fallback toegevoegd |
+| L→R area | aanwezig | fully-inside behouden |
+| R→L area | aanwezig | crossing behouden |
 | Right-click context | aanwezig | behouden |
 
-Belangrijk: de audit vervangt dus niet alles. Waar de CWS-basis al hetzelfde zichtbare gedrag had, blijft die code staan. Alleen aantoonbare afwijkingen worden gecorrigeerd.
+## 6. Windows source evidence
 
-## 6. Bewust nog niet als volledig gelijk verklaard
-
-Onderstaande punten moeten nog apart worden bewezen of verdiept voordat de gehele handling als parity-complete wordt gemarkeerd:
-
-1. **Pan point anchoring / snelheid** — huidige pan is cameradistance-geschaald; nog vergelijken met de aangeleverde executable op echte muisbewegingen.
-2. **Walk Around / Look Around sensitivity** — modus bestaat, maar snelheid/acceleratie/dead-zone moeten met echte Windows input worden vergeleken.
-3. **F11 full-screen packaged behavior** — implementatie bestond al; alleen packaged focus/state-restore bewijs ontbreekt nog.
-4. **Selection modifier conflict in Trimble Help** — de actuele pagina `Making Selections` noemt Shift=multi-add en Ctrl=remove, terwijl `Keyboard Shortcuts` Ctrl=add en Shift=add/remove vermeldt. CWS verandert dit niet op basis van conflicterende documentatie; de aangeleverde Windows-reference-app/owner-test wordt hiervoor de beslissende oracle.
-5. **Trackpad/touch** — niet claimen zolang CWS Windows desktop input daarvoor niet apart getest is.
-6. **Packaged physical GUI input gate** — source unit tests zijn onvoldoende voor mouse interaction; de uiteindelijke Windows packaged build moet real Qt/VTK interaction evidence leveren.
-
-## 7. Nieuwe regressiegate
-
-Minimaal automatisch bewijzen:
-
-- selectie zet orbitpivot op exacte selection bounds center;
-- selectie verandert de camera niet;
-- multi-select gebruikt combined bounds;
-- selectie wissen veroorzaakt geen pivot jump;
-- expliciet picked world point kan pivot worden zonder camera mutation;
-- orbit behoudt eye- en target-radius om de pivot;
-- tijdelijke Assembly-pick verandert persistent Object-mode niet;
-- tijdelijke Object-pick verandert persistent Assembly-mode niet;
-- Fit Selection centreert camera én pivot op selectie;
-- view-from-normal accepteert exact picked surface point;
-- view-from-normal zonder expliciete target gebruikt de actieve selectie/orbitfocus;
-- zoom-area behoudt selectie en bindt pivot aan fitted camera target;
-- workspace/view restore laat geen stale orbitfocus achter.
-
-Daarbovenop blijft Windows source compile/self-test verplicht. Daarna volgt packaged GUI interaction evidence.
-
-## 8. Statusregel
-
-Tot die packaged gate groen is:
+Run `32004795315`, commit `30ce1106258a89ffc113219693ee77f1d84a063b`:
 
 ```text
-viewer_interaction_trimble_parity = PARTIAL_HARDENED
-orbit_selection_focus = IMPLEMENTED_PENDING_PACKAGED_WINDOWS_EVIDENCE
-object_assembly_selection = IMPLEMENTED_PENDING_PACKAGED_WINDOWS_EVIDENCE
+Compile T3 modules                         PASS
+Deterministic T3 navigation contract       PASS
+V15 self-test contract                     PASS
+Windows runner                             windows-2022 / Python 3.12 x64
+```
+
+De packaged V15-self-test is vervolgens aangescherpt zodat toekomstige frozen/portable/installed builds ook de nieuwe interaction-capabilities expliciet moeten bevatten: picked-point orbit, selection orbit focus, picked-depth pan, Object/Assembly selection en Alt inversion.
+
+## 7. Bewust nog niet als volledig gelijk verklaard
+
+1. **Walk Around / Look Around feel** — de modi bestaan, maar exacte gevoeligheid/acceleratie/dead-zone is niet uit de aangeleverde binaries of openbare Help als numerieke formule bewezen. Niet op gevoel herschrijven.
+2. **Zoom feel / cursor anchoring** — wheel zoom werkt; exacte Trimble cursor/depth semantics zijn nog niet hard genoeg bewezen om een andere formule te claimen.
+3. **F11 packaged focus/state** — implementation aanwezig; packaged focus/state-restore moet in eindbuild worden bewezen.
+4. **Ctrl/Shift selectieconflict in Help** — actuele Trimble-pagina's spreken elkaar op detailniveau tegen. De aangeleverde Windows-reference-app/owner-test is hiervoor de beslissende oracle.
+5. **Trackpad/touch** — niet claimen zonder apart Windows inputbewijs.
+6. **Physical packaged GUI interaction** — headless GUI/screenshot en contracttests zijn niet hetzelfde als echte muisbediening op de frozen EXE. Dit blijft een expliciete releasegate.
+
+## 8. Nieuwe regressiegate
+
+Automatisch bewezen / verplicht:
+
+- selectie zet pivot op selection bounds center zonder camera te verplaatsen;
+- multi-select gebruikt combined bounds;
+- gekozen surface/world point kan orbitpivot worden zonder selectie-mutatie;
+- orbit behoudt eye- en target-radius om pivot;
+- perspective pan schaalt met picked depth;
+- orthographic pan is depth-independent;
+- tijdelijke Object/Assembly inversion bewaart persistent selection level;
+- Fit Selection centreert camera én pivot;
+- view-from-normal gebruikt picked point of actieve selectie-orbitfocus;
+- zoom-area behoudt selectie en bindt pivot aan fitted target;
+- workspace/saved-view restore laat geen stale orbitfocus achter.
+
+## 9. Statusregel
+
+```text
+viewer_interaction_source_gate = GREEN
+orbit_selection_focus = WINDOWS_SOURCE_VERIFIED
+picked_depth_pan = WINDOWS_SOURCE_VERIFIED
+object_assembly_selection = WINDOWS_SOURCE_VERIFIED
+packaged_physical_input_gate = REQUIRED_NOT_YET_GREEN
 trimble_proprietary_code_copied = false
 ```
 
-De eerdere generieke claim `3D orbit/pan/zoom/fit = VERIFIED_BASELINE` is voor interaction parity te breed gebleken en wordt met deze audit gecorrigeerd.
+De eerdere generieke claim `3D orbit/pan/zoom/fit = VERIFIED_BASELINE` was te breed. Vanaf deze audit geldt alleen een capability als VERIFIED wanneer de betreffende input-/camera-semantiek afzonderlijk is getest.
