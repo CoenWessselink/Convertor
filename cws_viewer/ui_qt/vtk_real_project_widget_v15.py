@@ -60,6 +60,17 @@ if qt_available():
             return None
 
         def _pick(self, pos: Any, modifiers: Any, *, emit: bool = True):
+            # Trimble-style tool behavior: a measurement click supplies a model
+            # point to the active tool but does not replace the user's semantic
+            # part/assembly selection.  CWS keeps that selected object as the
+            # stable orbit/context focus while the tool is active.
+            if getattr(self.controller, "_active_measurement_kind", None) is not None:
+                pick = self._probe_screen(pos)
+                if pick is not None and emit:
+                    self.node_picked.emit(pick.node_id)
+                    self.pick_result.emit(pick)
+                return pick
+
             temporary = None
             if modifiers & QtCore.Qt.KeyboardModifier.AltModifier:
                 temporary = self._temporary_alt_selection_level()
@@ -80,7 +91,19 @@ if qt_available():
 
         def _probe_screen(self, pos: Any):
             x, y = self._vtk_xy(pos)
-            return self.controller.probe_at(x, y)
+            probe = self.controller.probe_at(x, y)
+            if probe is None:
+                return None
+            try:
+                index = self.controller.index
+                if probe.node_id not in index.nodes_by_id:
+                    return None
+                visible, ghosted = self.controller.session.visible_and_ghosted(index)
+                if probe.node_id not in set(visible) or probe.node_id in set(ghosted):
+                    return None
+            except Exception:
+                return None
+            return probe
 
         def _bind_orbit_pivot_from_screen(self, pos: Any) -> bool:
             """Resolve an orbit gesture pivot with semantic selection precedence.
