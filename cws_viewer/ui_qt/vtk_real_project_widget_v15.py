@@ -83,12 +83,18 @@ if qt_available():
             return self.controller.probe_at(x, y)
 
         def _bind_orbit_pivot_from_screen(self, pos: Any) -> bool:
+            """Resolve an orbit gesture pivot with semantic selection precedence.
+
+            The exact hit point is retained as the Trimble-style fallback for an
+            unselected model.  Once a part/assembly is selected, however, its
+            displayed bounds centre remains the orbit pivot until the selection
+            changes or is cleared.
+            """
             try:
                 probe = self._probe_screen(pos)
-                if probe is None:
-                    return False
-                self._v15_view_navigation.set_orbit_pivot(probe.world_point)
-                return True
+                point = None if probe is None else probe.world_point
+                self._v15_view_navigation.begin_orbit(point)
+                return bool(self.controller.get_selection()) or probe is not None
             except Exception as exc:
                 self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
                 return False
@@ -241,8 +247,16 @@ if qt_available():
             super().mouseDoubleClickEvent(event)
 
         def wheelEvent(self, event: Any) -> None:
+            steps = float(event.angleDelta().y()) / 120.0
+            if abs(steps) <= 1e-12:
+                event.accept()
+                return
             self._v15_view_navigation.camera_checkpoint()
-            super().wheelEvent(event)
+            try:
+                self._v15_view_navigation.zoom_about_active_pivot(1.15 ** steps)
+            except Exception as exc:
+                self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+            event.accept()
 
         def keyPressEvent(self, event: Any) -> None:
             key = event.key()
