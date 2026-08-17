@@ -20,10 +20,13 @@ from cws_convertor.manufacturing.faces_model import (
 from cws_convertor.manufacturing.identification import IdentificationPlanner
 from cws_convertor.manufacturing.identification_model import HoleReferenceInput, IdentificationTextRequest
 from cws_convertor.manufacturing.machine_capability import (
+    CWS_MACHINE_HEAD_CLEARANCE,
+    CWS_MACHINE_HEAD_CLEARANCE_UNKNOWN,
     CWS_MACHINE_LIMIT_EXCEEDED,
     CWS_MACHINE_OPERATION_UNSUPPORTED,
     CWS_MACHINE_PART_DIMENSION,
     CWS_MACHINE_REACHABILITY_UNKNOWN,
+    CWS_MACHINE_RULESET_INCOMPATIBLE,
     CWS_MACHINE_TOOL_AMBIGUOUS,
     MachineCapabilityEvaluator,
 )
@@ -115,19 +118,25 @@ def _contact_report() -> ContactResolutionReport:
     )
 
 
-def _machine(*, tools=None, operations=None, max_length=1000.0) -> MachineProfile:
+def _machine(mark_ruleset: str, identification_ruleset: str, *, tools=None, operations=None, max_length=1000.0) -> MachineProfile:
     default_tools = [
         {
             "tool_id": "SCRIBE-1",
-            "operations": ["scribe"],
+            "operations": ["mark"],
+            "supported_mark_types": ["scribe"],
             "reachable_face_roles": ["plate_front"],
+            "compatible_ruleset_sha256s": [mark_ruleset],
+            "minimum_head_clearance_mm": 2.0,
             "min_segment_length_mm": 1.0,
             "max_segment_length_mm": 500.0,
         },
         {
             "tool_id": "HOLE-MARK-1",
-            "operations": ["mark_hole_reference"],
+            "operations": ["mark"],
+            "supported_mark_types": ["hole_reference"],
             "reachable_face_roles": ["plate_front"],
+            "compatible_ruleset_sha256s": [identification_ruleset],
+            "minimum_head_clearance_mm": 2.0,
             "min_cross_arm_mm": 1.0,
             "max_cross_arm_mm": 20.0,
             "min_hole_diameter_mm": 2.0,
@@ -135,8 +144,11 @@ def _machine(*, tools=None, operations=None, max_length=1000.0) -> MachineProfil
         },
         {
             "tool_id": "TEXT-1",
-            "operations": ["mark_text"],
+            "operations": ["mark"],
+            "supported_mark_types": ["identification_text"],
             "reachable_face_roles": ["plate_front"],
+            "compatible_ruleset_sha256s": [identification_ruleset],
+            "minimum_head_clearance_mm": 2.0,
             "supports_text": True,
             "min_text_height_mm": 2.0,
             "max_text_height_mm": 20.0,
@@ -148,7 +160,7 @@ def _machine(*, tools=None, operations=None, max_length=1000.0) -> MachineProfil
         machine_id="MACHINE-1",
         manufacturer="CWS fixture",
         machine_type="beam_line",
-        supported_operations=list(operations or ["scribe", "mark_hole_reference", "mark_text"]),
+        supported_operations=list(operations if operations is not None else ["mark"]),
         min_dimensions_mm={"length_mm": 1.0},
         max_dimensions_mm={"length_mm": float(max_length)},
         tools=list(default_tools if tools is None else tools),
@@ -188,6 +200,9 @@ class ViewerV15MachineCapabilityTests(unittest.TestCase):
             ),
         )
 
+    def _machine(self, **kwargs) -> MachineProfile:
+        return _machine(self.marks.ruleset_sha256, self.identification.ruleset_sha256, **kwargs)
+
     def _evaluate(self, machine: MachineProfile):
         return MachineCapabilityEvaluator(machine).evaluate(
             self.part,
@@ -197,70 +212,79 @@ class ViewerV15MachineCapabilityTests(unittest.TestCase):
         )
 
     def test_explicit_machine_profile_supports_all_marking_intents(self) -> None:
-        report = self._evaluate(_machine())
+        report = self._evaluate(self._machine())
         self.assertEqual(6, len(report.decisions))
         self.assertTrue(all(item.status is CapabilityStatus.SUPPORTED for item in report.decisions))
+        self.assertTrue(all(item.machine_operation == "mark" for item in report.decisions))
         self.assertTrue(report.marking_reachable)
         self.assertTrue(report.ready_for_neutral_job)
         self.assertFalse(report.machine_transfer_allowed)
-        types = {item.feature_type for item in report.decisions}
         self.assertEqual(
             {MachineFeatureType.SCRIBE, MachineFeatureType.HOLE_REFERENCE, MachineFeatureType.IDENTIFICATION_TEXT},
-            types,
+            {item.feature_type for item in report.decisions},
         )
 
     def test_missing_reachability_metadata_fails_closed(self) -> None:
-        tools = _machine().tools
-        tools[0] = {
-            "tool_id": "SCRIBE-UNKNOWN-REACH",
-            "operations": ["scribe"],
-            "min_segment_length_mm": 1.0,
-            "max_segment_length_mm": 500.0,
-        }
-        report = self._evaluate(_machine(tools=tools))
+        tools = self._machine().tools
+        tools[0] = {key: value for key, value in tools[0].items() if key != "reachable_face_roles"}
+        report = self._evaluate(self._machine(tools=tools))
         scribe = [item for item in report.decisions if item.feature_type is MachineFeatureType.SCRIBE]
         self.assertTrue(all(CWS_MACHINE_REACHABILITY_UNKNOWN in item.blocking_codes for item in scribe))
         self.assertFalse(report.marking_reachable)
 
     def test_machine_segment_limit_is_not_guessed(self) -> None:
-        tools = _machine().tools
-        tools[0] = {
-            **tools[0],
-            "max_segment_length_mm": 50.0,
-        }
-        report = self._evaluate(_machine(tools=tools))
+        tools = self._machine().tools
+        tools[0] = {**tools[0], "max_segment_length_mm": 50.0}
+        report = self._evaluate(self._machine(tools=tools))
         scribe = [item for item in report.decisions if item.feature_type is MachineFeatureType.SCRIBE]
         self.assertTrue(any(CWS_MACHINE_LIMIT_EXCEEDED in item.blocking_codes for item in scribe))
         self.assertFalse(report.ready_for_neutral_job)
 
-    def test_unsupported_operation_blocks_only_explicitly_requested_capability(self) -> None:
-        report = self._evaluate(_machine(operations=["scribe", "mark_hole_reference"]))
-        text = [item for item in report.decisions if item.feature_type is MachineFeatureType.IDENTIFICATION_TEXT][0]
-        self.assertIn(CWS_MACHINE_OPERATION_UNSUPPORTED, text.blocking_codes)
+    def test_generic_mark_operation_is_required(self) -> None:
+        report = self._evaluate(self._machine(operations=["saw", "drill"]))
+        self.assertTrue(all(CWS_MACHINE_OPERATION_UNSUPPORTED in item.blocking_codes for item in report.decisions))
         self.assertFalse(report.marking_reachable)
 
     def test_text_height_limit_is_machine_profile_evidence(self) -> None:
-        tools = _machine().tools
+        tools = self._machine().tools
         tools[2] = {**tools[2], "max_text_height_mm": 4.0}
-        report = self._evaluate(_machine(tools=tools))
+        report = self._evaluate(self._machine(tools=tools))
         text = [item for item in report.decisions if item.feature_type is MachineFeatureType.IDENTIFICATION_TEXT][0]
         self.assertIn(CWS_MACHINE_LIMIT_EXCEEDED, text.blocking_codes)
 
     def test_part_dimension_limit_blocks_capability_report(self) -> None:
-        report = self._evaluate(_machine(max_length=50.0))
+        report = self._evaluate(self._machine(max_length=50.0))
         self.assertIn(CWS_MACHINE_PART_DIMENSION, report.blocking_codes)
         self.assertFalse(report.marking_reachable)
 
     def test_ambiguous_tools_are_not_silently_chosen(self) -> None:
-        tools = _machine().tools
+        tools = self._machine().tools
         tools.append({**tools[0], "tool_id": "SCRIBE-2"})
-        report = self._evaluate(_machine(tools=tools))
+        report = self._evaluate(self._machine(tools=tools))
         scribe = [item for item in report.decisions if item.feature_type is MachineFeatureType.SCRIBE]
         self.assertTrue(all(CWS_MACHINE_TOOL_AMBIGUOUS in item.blocking_codes for item in scribe))
         self.assertTrue(all(not item.tool_id for item in scribe))
 
+    def test_head_clearance_is_explicit_machine_evidence(self) -> None:
+        tools = self._machine().tools
+        tools[0] = {**tools[0], "minimum_head_clearance_mm": 25.0}
+        report = self._evaluate(self._machine(tools=tools))
+        scribe = [item for item in report.decisions if item.feature_type is MachineFeatureType.SCRIBE]
+        self.assertTrue(any(CWS_MACHINE_HEAD_CLEARANCE in item.blocking_codes for item in scribe))
+        tools[0] = {key: value for key, value in tools[0].items() if key != "minimum_head_clearance_mm"}
+        unknown = self._evaluate(self._machine(tools=tools))
+        scribe_unknown = [item for item in unknown.decisions if item.feature_type is MachineFeatureType.SCRIBE]
+        self.assertTrue(any(CWS_MACHINE_HEAD_CLEARANCE_UNKNOWN in item.blocking_codes for item in scribe_unknown))
+
+    def test_ruleset_machine_compatibility_is_hashed_and_fail_closed(self) -> None:
+        tools = self._machine().tools
+        tools[0] = {**tools[0], "compatible_ruleset_sha256s": ["0" * 64]}
+        report = self._evaluate(self._machine(tools=tools))
+        scribe = [item for item in report.decisions if item.feature_type is MachineFeatureType.SCRIBE]
+        self.assertTrue(all(CWS_MACHINE_RULESET_INCOMPATIBLE in item.blocking_codes for item in scribe))
+
     def test_machine_capability_report_is_deterministic(self) -> None:
-        machine = _machine()
+        machine = self._machine()
         report1 = self._evaluate(machine)
         report2 = self._evaluate(machine)
         self.assertEqual(report1.report_sha256, report2.report_sha256)
