@@ -27,6 +27,17 @@ from .model import (
     ValidationIssue,
     Weld,
 )
+# U1 compatibility is installed before storage/service import so every project
+# entry route (direct model, .cwscproj storage and service) shares the same
+# 2.5/2.24 -> 2.25 migration contract.
+from .unified_schema import (
+    UNIFIED_PROJECT_SCHEMA_VERSION,
+    install_unified_project_schema,
+    m18_store_snapshot,
+)
+
+install_unified_project_schema()
+
 from .storage import ProjectPackage, ProjectPackageError, ProjectStore
 from .jobs import JobCancelled, JobContext, JobManager, JobRecord
 from .baseline import (
@@ -115,4 +126,6 @@ __all__ = [
     "inspect_part_source_geometry",
     "source_locator_for_part",
     "build_steel_model_snapshot",
+    "UNIFIED_PROJECT_SCHEMA_VERSION",
+    "m18_store_snapshot",
 ]
