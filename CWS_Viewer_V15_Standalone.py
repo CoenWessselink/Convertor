@@ -45,6 +45,7 @@ def _run_v15_selftest() -> dict[str, object]:
     capabilities = contract.get("capabilities", {})
     required_t3 = (
         "orbit_pan_zoom", "orbit_around_picked_point", "selection_orbit_focus", "picked_depth_pan",
+        "display_space_fit_with_explode",
         "object_assembly_selection_mode", "temporary_alt_selection_inversion",
         "selected_object_details_shortcut",
         "zoom_to_fit", "zoom_area", "camera_history", "view_from_face_normal",
