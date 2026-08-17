@@ -93,6 +93,14 @@ if qt_available():
                 self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
                 return False
 
+        def _bind_pan_anchor_from_screen(self, pos: Any) -> None:
+            try:
+                probe = self._probe_screen(pos)
+                self._v15_pan_anchor = None if probe is None else probe.world_point
+            except Exception as exc:
+                self._v15_pan_anchor = None
+                self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+
         def mousePressEvent(self, event: Any) -> None:
             if self._v15_zoom_area and event.button() == QtCore.Qt.MouseButton.LeftButton:
                 self.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
@@ -113,16 +121,17 @@ if qt_available():
                 }
             ):
                 self._v15_view_navigation.camera_checkpoint()
-            if not self._area_selection and event.button() == QtCore.Qt.MouseButton.LeftButton:
-                if self.navigation_mode == NavigationMode.ORBIT:
+            if not self._area_selection:
+                if (
+                    event.button() == QtCore.Qt.MouseButton.LeftButton
+                    and self.navigation_mode == NavigationMode.ORBIT
+                ):
                     self._bind_orbit_pivot_from_screen(event.position())
-                elif self.navigation_mode == NavigationMode.PAN:
-                    try:
-                        probe = self._probe_screen(event.position())
-                        self._v15_pan_anchor = None if probe is None else probe.world_point
-                    except Exception as exc:
-                        self._v15_pan_anchor = None
-                        self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+                elif event.button() == QtCore.Qt.MouseButton.MiddleButton or (
+                    event.button() == QtCore.Qt.MouseButton.LeftButton
+                    and self.navigation_mode == NavigationMode.PAN
+                ):
+                    self._bind_pan_anchor_from_screen(event.position())
             super().mousePressEvent(event)
 
         def mouseMoveEvent(self, event: Any) -> None:
@@ -137,13 +146,19 @@ if qt_available():
                 event.accept()
                 return
 
-            if (
+            pan_drag = (
                 self._press_pos is not None
                 and self._last_pos is not None
-                and self._pressed_button == QtCore.Qt.MouseButton.LeftButton
                 and not self._area_selection
-                and self.navigation_mode == NavigationMode.PAN
-            ):
+                and (
+                    self._pressed_button == QtCore.Qt.MouseButton.MiddleButton
+                    or (
+                        self._pressed_button == QtCore.Qt.MouseButton.LeftButton
+                        and self.navigation_mode == NavigationMode.PAN
+                    )
+                )
+            )
+            if pan_drag:
                 current = event.position()
                 if not self._dragging and self._distance(current, self._press_pos) >= self._drag_threshold_px:
                     self._dragging = True
@@ -197,7 +212,10 @@ if qt_available():
             try:
                 super().mouseReleaseEvent(event)
             finally:
-                if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                if event.button() in {
+                    QtCore.Qt.MouseButton.LeftButton,
+                    QtCore.Qt.MouseButton.MiddleButton,
+                }:
                     self._v15_pan_anchor = None
 
         def mouseDoubleClickEvent(self, event: Any) -> None:
