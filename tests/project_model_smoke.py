@@ -112,7 +112,6 @@ class ProjectModelTests(unittest.TestCase):
             project.validate()
             return ProjectModel.from_dict(project.to_dict())
 
-
     def test_streaming_canonical_json_matches_legacy_hash_contract(self) -> None:
         samples = [
             None,
@@ -153,24 +152,24 @@ class ProjectModelTests(unittest.TestCase):
         self.assertFalse(restored.production_gate()["allowed"])
         self.assertEqual(len(restored.production_gate()["source_failures"]), 1)
 
-    def test_known_schema_versions_migrate_explicitly_to_25(self) -> None:
-        for legacy_version in ("2.0", "2.3", "2.4"):
+    def test_known_schema_versions_migrate_explicitly_to_225(self) -> None:
+        for legacy_version in ("2.0", "2.3", "2.4", "2.5", "2.24"):
             with self.subTest(legacy_version=legacy_version):
                 raw = ProjectModel.new("Schema migration", created_by="test").to_dict()
                 raw["schema_version"] = legacy_version
                 raw["migration_history"] = []
                 restored = ProjectModel.from_dict(raw)
-                self.assertEqual(restored.schema_version, "2.5")
+                self.assertEqual(restored.schema_version, "2.25")
                 self.assertTrue(
                     any(
-                        item.get("from") == legacy_version and item.get("to") == "2.5"
+                        item.get("from") == legacy_version and item.get("to") == "2.25"
                         for item in restored.migration_history
                     )
                 )
 
     def test_future_schema_is_rejected_instead_of_assumed_compatible(self) -> None:
         raw = ProjectModel.new("Future schema", created_by="test").to_dict()
-        raw["schema_version"] = "2.9"
+        raw["schema_version"] = "2.26"
         with self.assertRaises(ProjectValidationError):
             ProjectModel.from_dict(raw)
 
