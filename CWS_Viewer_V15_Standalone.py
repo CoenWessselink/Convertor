@@ -1,8 +1,4 @@
-"""Standalone entry point for the CWS Viewer V15 parity development line.
-
-V15 preserves the hardened rc3/V14 worker and intake transport. Interactive
-viewer execution is rebound to the latest certified dockable CWS workspace.
-"""
+"""Standalone entry point for the CWS Viewer V15 preview.2 line."""
 from __future__ import annotations
 
 import json
@@ -21,53 +17,48 @@ _base.VERSION = VERSION
 
 def _install_interactive_v15_runner(args: list[str]) -> None:
     transport_only = {
-        "--version",
-        "--self-test",
-        "--quick-self-test",
-        "--worker-self-test",
-        "--multiprocessing-self-test",
-        "--v14-self-test",
-        "--v15-self-test",
+        "--version", "--self-test", "--quick-self-test", "--worker-self-test",
+        "--multiprocessing-self-test", "--v14-self-test", "--v15-self-test",
         "--geometry-worker-service",
     }
     if any(flag in args for flag in transport_only):
         return
     from cws_viewer.ui_qt import cockpit
     from cws_viewer.ui_qt.cockpit_progress_v15 import run_cws_viewer_cockpit_v15
-
     cockpit.run_cws_viewer_cockpit = run_cws_viewer_cockpit_v15
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_trimble_feel_v2 import trimble_feel_v2_workspace_contract
+    from cws_viewer.ui_qt.trimble_feel_v2_contract import preview2_workspace_contract
 
-    contract = trimble_feel_v2_workspace_contract()
+    contract = preview2_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
         "orbit_pan_zoom", "orbit_around_picked_point", "selection_orbit_focus",
         "selection_pivot_precedence", "active_pivot_zoom", "picked_depth_pan",
-        "display_space_fit_with_explode",
-        "object_assembly_selection_mode", "temporary_alt_selection_inversion",
-        "selected_object_details_shortcut", "viewer_undo_redo_shortcuts",
-        "zoom_to_fit", "zoom_area", "camera_history", "view_from_face_normal",
-        "orthogonal_surface_double_click", "camera_positioning", "perspective_orthographic",
-        "predefined_views", "keyboard_navigation", "trimble_camera_shortcuts",
-        "section_plane_enable_disable", "section_plane_flip_remove", "clipping_box",
-        "saved_view_contract", "deterministic_view_state",
+        "display_space_fit_with_explode", "object_assembly_selection_mode",
+        "temporary_alt_selection_inversion", "selected_object_details_shortcut",
+        "viewer_undo_redo_shortcuts", "zoom_to_fit", "zoom_area", "camera_history",
+        "view_from_face_normal", "orthogonal_surface_double_click", "camera_positioning",
+        "perspective_orthographic", "predefined_views", "keyboard_navigation",
+        "trimble_camera_shortcuts", "section_plane_enable_disable",
+        "section_plane_flip_remove", "clipping_box", "saved_view_contract",
+        "deterministic_view_state",
     )
     required_t4 = (
         "area_selection", "multi_selection", "hierarchy_aware_picking", "grouped_properties",
-        "property_search", "property_copy", "project_pick_measurement_proof", "exact_brep_snapping",
-        "snap_tolerance_profiles", "snap_feedback", "distance_measurement", "angle_measurement",
-        "radius_diameter_measurement", "measurement_export_review_state",
+        "property_search", "property_copy", "project_pick_measurement_proof",
+        "exact_brep_snapping", "snap_tolerance_profiles", "snap_feedback",
+        "distance_measurement", "angle_measurement", "radius_diameter_measurement",
+        "measurement_export_review_state",
     )
     required_t5 = (
         "saved_views_independent_from_issues", "saved_view_camera_visibility_sections_clipping",
-        "markup_text", "markup_arrow", "markup_cloud", "issues", "issue_status", "issue_priority",
-        "issue_assignee", "issue_due_date", "issue_comments", "issue_attachments",
-        "issue_optional_viewpoint_link", "review_checksum_store", "portable_cwsreview_export",
-        "stale_reference_detection",
+        "markup_text", "markup_arrow", "markup_cloud", "issues", "issue_status",
+        "issue_priority", "issue_assignee", "issue_due_date", "issue_comments",
+        "issue_attachments", "issue_optional_viewpoint_link", "review_checksum_store",
+        "portable_cwsreview_export", "stale_reference_detection",
     )
     required_t6 = (
         "assembly_drilldown", "assembly_main_secondary_hierarchy", "assembly_parent_child_navigation",
@@ -78,26 +69,26 @@ def _run_v15_selftest() -> dict[str, object]:
         "sequence_visibility_timeline", "coordination_audit_evidence",
     )
     required_t7 = (
-        "scope_first_export", "full_project_scope", "current_selection_scope", "explicit_entity_scope",
-        "part_position_scope", "assembly_mark_scope", "project_phase_scope", "revision_delta_scope",
-        "batch_scope", "nesting_run_scope", "nesting_bar_scope", "deterministic_scope_manifest",
-        "release_preflight", "production_export_engine_reuse", "job_lifecycle",
-        "job_cancel_before_write", "checksum_manifest",
+        "scope_first_export", "full_project_scope", "current_selection_scope",
+        "explicit_entity_scope", "part_position_scope", "assembly_mark_scope",
+        "project_phase_scope", "revision_delta_scope", "batch_scope", "nesting_run_scope",
+        "nesting_bar_scope", "deterministic_scope_manifest", "release_preflight",
+        "production_export_engine_reuse", "job_lifecycle", "job_cancel_before_write",
+        "checksum_manifest",
     )
     required_t8 = (
-        "canonical_manufacturing_faces", "right_handed_face_local_frames", "standard_i_face_resolver",
-        "standard_u_c_face_resolver", "standard_l_face_resolver", "standard_rhs_shs_face_resolver",
-        "round_surface_special_case", "custom_profile_no_guessing", "face_geometry_hash",
-        "independent_face_validator", "dstv_mapping_is_adapter", "ambiguous_dstv_mapping_blocks",
-        "manufacturing_face_viewer_overlay", "face_normal_overlay", "face_status_visualization",
+        "canonical_manufacturing_faces", "right_handed_face_local_frames",
+        "standard_i_face_resolver", "standard_u_c_face_resolver", "standard_l_face_resolver",
+        "standard_rhs_shs_face_resolver", "round_surface_special_case",
+        "custom_profile_no_guessing", "face_geometry_hash", "independent_face_validator",
+        "dstv_mapping_is_adapter", "ambiguous_dstv_mapping_blocks",
+        "manufacturing_face_viewer_overlay", "face_normal_overlay",
+        "face_status_visualization",
     )
     required_phase1 = (
-        "startup_geometry_cache_prefetch",
-        "lazy_review_coordination_export_manufacturing",
-        "fail_isolated_optional_panels",
-        "clean_viewer_first_layout",
-        "phase1_professional_shell",
-        "startup_metrics",
+        "startup_geometry_cache_prefetch", "lazy_review_coordination_export_manufacturing",
+        "fail_isolated_optional_panels", "clean_viewer_first_layout",
+        "phase1_professional_shell", "startup_metrics",
     )
     required_phase2 = (
         "interactive_markup_text", "interactive_markup_line", "interactive_markup_arrow",
@@ -177,6 +168,7 @@ def _run_v15_selftest() -> dict[str, object]:
         "frozen": bool(getattr(sys, "frozen", False)),
         "workspace": contract,
         "v15_cockpit_imported": True,
+        "t3_navigation_imported": True,
         "trimble_style_handling_contract_certified": passed,
         "selected_object_orbit_pivot_certified": passed,
         "active_pivot_zoom_certified": passed,
