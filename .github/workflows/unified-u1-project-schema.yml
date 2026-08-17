@@ -1,0 +1,75 @@
+name: CWS Unified U1 Project Model 2.25 gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/unified-v15-scribing-m18
+    paths:
+      - 'cws_convertor/product.py'
+      - 'cws_convertor/project/**'
+      - 'cws_viewer/version.py'
+      - 'tests/unified_project_schema_u1_smoke.py'
+      - 'tests/project_model_smoke.py'
+      - 'tests/project_storage_smoke.py'
+      - 'validation/unified/**'
+      - '.github/workflows/unified-u1-project-schema.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  u1-project-schema:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+
+      - name: Compile U1 project modules
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor\project cws_convertor\product.py cws_viewer\version.py tests\unified_project_schema_u1_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U1 compileall failed' }
+
+      - name: Preserve U0 baseline gate
+        shell: pwsh
+        run: |
+          python validation\unified\validate_u0_baseline.py
+          if ($LASTEXITCODE -ne 0) { throw 'U0 regression failed' }
+
+      - name: Run U1 unified schema contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\unified\runtime | Out-Null
+          python tests\unified_project_schema_u1_smoke.py 2>&1 | Tee-Object validation\unified\runtime\u1_project_schema.txt
+          if ($LASTEXITCODE -ne 0) { throw 'U1 schema migration failed' }
+
+      - name: Run Project Model regression
+        shell: pwsh
+        run: |
+          python tests\project_model_smoke.py 2>&1 | Tee-Object validation\unified\runtime\u1_project_model_regression.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Project Model regression failed' }
+
+      - name: Run project storage/save-reopen regression
+        shell: pwsh
+        run: |
+          python tests\project_storage_smoke.py 2>&1 | Tee-Object validation\unified\runtime\u1_project_storage_regression.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Project storage regression failed' }
+
+      - name: Upload U1 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Unified_U1_Project_Model_225_${{ github.run_id }}
+          path: validation/unified/runtime/*
+          if-no-files-found: warn
+          retention-days: 30
