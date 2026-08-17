@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+import cws_convertor.manufacturing as manufacturing
 from cws_convertor.project import Part, ProjectModel, ProjectStore
 from cws_convertor.manufacturing.authority import (
     AUTHORITY_MODULES,
@@ -25,6 +26,12 @@ from cws_convertor.manufacturing.m18_runtime_access import install_m18_runtime_a
 class UnifiedManufacturingScribingU2Tests(unittest.TestCase):
     def setUp(self) -> None:
         install_m18_runtime_access()
+
+    def test_public_manufacturing_package_exposes_authority_facade(self) -> None:
+        self.assertIs(manufacturing.authority_chain_status, authority_chain_status)
+        self.assertIs(manufacturing.load_authority_module, load_authority_module)
+        self.assertEqual(manufacturing.M18_ORIGIN_COMMIT, M18_ORIGIN_COMMIT)
+        self.assertEqual(manufacturing.M18_RUNTIME_SHA256, M18_RUNTIME_SHA256)
 
     def test_runtime_archive_is_checksum_bound(self) -> None:
         self.assertEqual(verify_m18_runtime_archive(), M18_RUNTIME_SHA256)
