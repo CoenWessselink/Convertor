@@ -44,10 +44,11 @@ def _run_v15_selftest() -> dict[str, object]:
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
-        "orbit_pan_zoom", "orbit_around_picked_point", "selection_orbit_focus", "picked_depth_pan",
+        "orbit_pan_zoom", "orbit_around_picked_point", "selection_orbit_focus",
+        "selection_pivot_precedence", "active_pivot_zoom", "picked_depth_pan",
         "display_space_fit_with_explode",
         "object_assembly_selection_mode", "temporary_alt_selection_inversion",
-        "selected_object_details_shortcut",
+        "selected_object_details_shortcut", "viewer_undo_redo_shortcuts",
         "zoom_to_fit", "zoom_area", "camera_history", "view_from_face_normal",
         "orthogonal_surface_double_click", "camera_positioning", "perspective_orthographic",
         "predefined_views", "keyboard_navigation", "trimble_camera_shortcuts",
@@ -124,6 +125,9 @@ def _run_v15_selftest() -> dict[str, object]:
         "workspace": contract,
         "v15_cockpit_imported": True,
         "t3_navigation_imported": True,
+        "trimble_style_handling_contract_certified": passed,
+        "selected_object_orbit_pivot_certified": passed,
+        "active_pivot_zoom_certified": passed,
         "t4_selection_measurement_imported": True,
         "t5_review_workspace_imported": True,
         "t6_coordination_imported": True,
