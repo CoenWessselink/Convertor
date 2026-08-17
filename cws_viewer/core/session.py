@@ -131,10 +131,35 @@ class ViewerSession:
             tuple(node_id for node_id in index.renderable_node_ids if node_id in ghosted),
         )
 
+    def render_selection(self, index: SceneIndex) -> tuple[str, ...]:
+        """Expand semantic/group selection to the geometry that must highlight.
+
+        The canonical selection remains an assembly/model/group node when that
+        is what the user selected. Renderers, however, need concrete geometry
+        IDs. Expanding only for display keeps hierarchy semantics intact while
+        making an Assembly selection visibly highlight all renderable children.
+        """
+        renderable = frozenset(index.renderable_node_ids)
+        result: list[str] = []
+        seen: set[str] = set()
+        for node_id in self.selection:
+            if node_id not in index.nodes_by_id:
+                continue
+            if node_id in renderable:
+                candidates = (node_id,)
+            else:
+                candidates = index.descendants(
+                    (node_id,), include_self=True, renderable_only=True
+                )
+            for candidate in candidates:
+                if candidate in renderable and candidate not in seen:
+                    seen.add(candidate)
+                    result.append(candidate)
+        return tuple(result)
+
     def render_state(self, index: SceneIndex) -> RenderState:
         visible, ghosted = self.visible_and_ghosted(index)
-        renderable = frozenset(index.renderable_node_ids)
-        selected = tuple(node_id for node_id in self.selection if node_id in renderable)
+        selected = self.render_selection(index)
         return RenderState(
             scene_hash=index.scene.scene_hash,
             visible_node_ids=visible,
