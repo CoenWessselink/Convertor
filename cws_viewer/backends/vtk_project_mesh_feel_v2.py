@@ -49,9 +49,6 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         if renderer is None or vtk is None:
             return
 
-        # Balanced studio lighting preserves imported colours instead of
-        # washing them into arbitrary CWS colours.  Every API call is guarded so
-        # older VTK packaging remains a safe fallback.
         try:
             kit = vtk.vtkLightKit()
             for name, value in (
@@ -73,9 +70,10 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         except Exception:
             self._light_kit = None
 
-        # Trimble-like readable contact depth: SSAO is a visual aid only.  It is
-        # enabled on the interactive GPU path and deliberately skipped in
-        # offscreen/software CI where it can be disproportionately expensive.
+        # Screen-space ambient occlusion supplies the contact-shadow depth that
+        # was visibly missing in the user screenshots. Radius is updated from
+        # the real scene diagonal in ``apply_state`` because project units are
+        # millimetres and a fixed 0.x world-unit radius would be invisible.
         if not self._offscreen:
             try:
                 if hasattr(vtk, "vtkSSAOPass") and hasattr(vtk, "vtkRenderStepsPass"):
@@ -83,7 +81,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                     ssao = vtk.vtkSSAOPass()
                     ssao.SetDelegatePass(basic)
                     for name, value in (
-                        ("SetRadius", 0.35),
+                        ("SetRadius", 25.0),
                         ("SetBias", 0.015),
                         ("SetKernelSize", 64),
                     ):
@@ -108,8 +106,6 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
 
     @staticmethod
     def _blend_selection(rgba: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
-        # Warm highlight is intentionally moderate: original/imported colour is
-        # still recognisable while selected objects clearly light up.
         target = (255, 205, 66)
         amount = 0.38
         return (
@@ -150,8 +146,22 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                 group.mapper.Modified()
         self._highlighted_nodes = selected
 
+    def _update_contact_shadow_scale(self) -> None:
+        ssao = self._ssao_pass
+        if ssao is None:
+            return
+        diagonal = self._scene_diagonal()
+        # Structural IFCs use mm. Around 0.5% of model diagonal gives visible
+        # local contact depth while avoiding a broad muddy halo on large halls.
+        radius = max(8.0, min(350.0, diagonal * 0.005))
+        try:
+            ssao.SetRadius(float(radius))
+        except Exception:
+            pass
+
     def apply_state(self, state: Any, index: Any) -> None:
         super().apply_state(state, index)
+        self._update_contact_shadow_scale()
         self._sync_selection_fill(state, index)
 
     # ------------------------------------------------------------------
