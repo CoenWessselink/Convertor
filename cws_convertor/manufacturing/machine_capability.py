@@ -1,4 +1,10 @@
-"""M5 fail-closed machine capability and reachability evaluator."""
+"""M5 fail-closed machine capability and reachability evaluator.
+
+The existing CWS capability vocabulary owns the generic machine operation
+``mark``. M5 deepens that operation with explicit mark types, canonical-face
+reachability, head clearance, tool limits and ruleset compatibility. It does
+not invent controller operations and it never enables machine transfer.
+"""
 from __future__ import annotations
 
 import math
@@ -27,6 +33,11 @@ CWS_MACHINE_TOOL_AMBIGUOUS = "CWS-MACHINE-008"
 CWS_MACHINE_SOURCE_BLOCKED = "CWS-MACHINE-009"
 CWS_MACHINE_PART_DIMENSION = "CWS-MACHINE-010"
 CWS_MACHINE_PROFILE_IDENTITY = "CWS-MACHINE-011"
+CWS_MACHINE_MARK_TYPE_UNSUPPORTED = "CWS-MACHINE-012"
+CWS_MACHINE_RULESET_UNKNOWN = "CWS-MACHINE-013"
+CWS_MACHINE_RULESET_INCOMPATIBLE = "CWS-MACHINE-014"
+CWS_MACHINE_HEAD_CLEARANCE_UNKNOWN = "CWS-MACHINE-015"
+CWS_MACHINE_HEAD_CLEARANCE = "CWS-MACHINE-016"
 
 
 def _norm(value: Any) -> str:
@@ -40,6 +51,16 @@ def _as_strings(value: Any) -> tuple[str, ...]:
         return (_norm(value),) if value.strip() else ()
     if isinstance(value, (list, tuple, set)):
         return tuple(_norm(item) for item in value if str(item or "").strip())
+    return ()
+
+
+def _raw_strings(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value.strip().lower(),) if value.strip() else ()
+    if isinstance(value, (list, tuple, set)):
+        return tuple(str(item).strip().lower() for item in value if str(item or "").strip())
     return ()
 
 
@@ -64,8 +85,7 @@ def _tool_operations(tool: dict[str, Any]) -> tuple[str, ...]:
 
 
 def _machine_profile_hash(profile: MachineProfile) -> str:
-    # Timestamps/status are deliberately part of the evidence snapshot: a
-    # changed machine profile is new evidence and must invalidate old reports.
+    # Any machine-profile edit is new evidence and invalidates old reports.
     return stable_sha256(profile.base_to_dict())
 
 
@@ -80,14 +100,50 @@ def _dimension_limit(mapping: dict[str, Any], *keys: str) -> float | None:
     return None
 
 
-class MachineCapabilityEvaluator:
-    """Prove feature reachability from explicit machine-profile facts only."""
+def _point_segment_distance(
+    point: tuple[float, float],
+    start: tuple[float, float],
+    end: tuple[float, float],
+) -> float:
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    denominator = dx * dx + dy * dy
+    if denominator <= 1e-24:
+        return math.dist(point, start)
+    t = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / denominator
+    t = max(0.0, min(1.0, t))
+    return math.dist(point, (start[0] + t * dx, start[1] + t * dy))
 
-    OPERATION_BY_TYPE = {
-        MachineFeatureType.SCRIBE: "scribe",
-        MachineFeatureType.HOLE_REFERENCE: "mark_hole_reference",
-        MachineFeatureType.IDENTIFICATION_TEXT: "mark_text",
-    }
+
+def _face_boundary_clearance(face: ManufacturingFace, probes: Iterable[tuple[float, float]]) -> float | None:
+    edges: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for loop in face.boundary_loops_2d:
+        points = list(loop)
+        if len(points) < 2:
+            continue
+        if points[0] != points[-1]:
+            points.append(points[0])
+        edges.extend((points[index], points[index + 1]) for index in range(len(points) - 1))
+    probe_list = list(probes)
+    if not edges or not probe_list:
+        return None
+    return min(_point_segment_distance(point, start, end) for point in probe_list for start, end in edges)
+
+
+def _source_probes(feature_type: MachineFeatureType, source: Any) -> tuple[tuple[float, float], ...]:
+    if feature_type == MachineFeatureType.SCRIBE:
+        return (source.segment.start, source.segment.midpoint, source.segment.end)
+    if feature_type == MachineFeatureType.HOLE_REFERENCE:
+        points: list[tuple[float, float]] = [source.input.center_2d]
+        for start, end in source.cross_segments():
+            points.extend((start, end))
+        return tuple(points)
+    return tuple(source.footprint_2d)
+
+
+class MachineCapabilityEvaluator:
+    """Prove mark feasibility from explicit machine-profile facts only."""
+
+    MACHINE_OPERATION = "mark"
 
     def __init__(self, profile: MachineProfile) -> None:
         self.profile = profile
@@ -125,10 +181,28 @@ class MachineCapabilityEvaluator:
         }
 
     @staticmethod
+    def _mark_type_supported(tool: dict[str, Any], feature_type: MachineFeatureType) -> bool | None:
+        types = _as_strings(tool.get("supported_mark_types"))
+        if not types:
+            return None
+        return _norm(feature_type.value) in set(types)
+
+    @staticmethod
+    def _ruleset_blockers(tool: dict[str, Any], source: Any) -> list[str]:
+        source_hash = str(getattr(source, "ruleset_sha256", "") or "").strip().lower()
+        compatible = _raw_strings(tool.get("compatible_ruleset_sha256s"))
+        if not source_hash or not compatible:
+            return [CWS_MACHINE_RULESET_UNKNOWN]
+        if source_hash not in compatible:
+            return [CWS_MACHINE_RULESET_INCOMPATIBLE]
+        return []
+
+    @staticmethod
     def _limits_for(
         feature_type: MachineFeatureType,
         source: Any,
         tool: dict[str, Any],
+        face: ManufacturingFace,
     ) -> tuple[dict[str, Any], dict[str, Any], list[str]]:
         measured: dict[str, Any] = {}
         limits: dict[str, Any] = {}
@@ -171,7 +245,7 @@ class MachineCapabilityEvaluator:
         else:
             measured["text_height_mm"] = float(source.request.text_height_mm)
             if tool.get("supports_text") is not True:
-                blockers.append(CWS_MACHINE_OPERATION_UNSUPPORTED)
+                blockers.append(CWS_MACHINE_MARK_TYPE_UNSUPPORTED)
             minimum = _finite(tool.get("min_text_height_mm"))
             maximum = _finite(tool.get("max_text_height_mm"))
             if minimum is None or maximum is None:
@@ -180,6 +254,17 @@ class MachineCapabilityEvaluator:
                 limits.update({"min_text_height_mm": minimum, "max_text_height_mm": maximum})
                 if measured["text_height_mm"] < minimum - 1e-9 or measured["text_height_mm"] > maximum + 1e-9:
                     blockers.append(CWS_MACHINE_LIMIT_EXCEEDED)
+
+        required_head = _finite(tool.get("minimum_head_clearance_mm"))
+        actual_head = _face_boundary_clearance(face, _source_probes(feature_type, source))
+        if required_head is None or actual_head is None:
+            blockers.append(CWS_MACHINE_HEAD_CLEARANCE_UNKNOWN)
+        else:
+            measured["minimum_boundary_clearance_mm"] = float(actual_head)
+            limits["minimum_head_clearance_mm"] = float(required_head)
+            if actual_head + 1e-9 < required_head:
+                blockers.append(CWS_MACHINE_HEAD_CLEARANCE)
+        blockers.extend(MachineCapabilityEvaluator._ruleset_blockers(tool, source))
         return measured, limits, blockers
 
     def _decision(
@@ -191,7 +276,7 @@ class MachineCapabilityEvaluator:
         face: ManufacturingFace | None,
         source_hash: str,
     ) -> MachineFeatureDecision:
-        requested = self.OPERATION_BY_TYPE[feature_type]
+        requested = feature_type.value
         blockers: list[str] = []
         warnings: list[str] = []
         tool_id = ""
@@ -202,39 +287,51 @@ class MachineCapabilityEvaluator:
 
         if not source_usable:
             blockers.append(CWS_MACHINE_SOURCE_BLOCKED)
-        if requested not in self.supported_operations:
+        if self.MACHINE_OPERATION not in self.supported_operations:
             blockers.append(CWS_MACHINE_OPERATION_UNSUPPORTED)
 
-        operation_tools = [tool for tool in self.tools if requested in set(_tool_operations(tool))]
-        if not operation_tools:
+        mark_tools = [tool for tool in self.tools if self.MACHINE_OPERATION in set(_tool_operations(tool))]
+        if not mark_tools:
             blockers.append(CWS_MACHINE_TOOL_MISSING)
         elif face is None:
             blockers.append(CWS_MACHINE_FACE_UNREACHABLE)
         else:
             viable: list[tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[str]]] = []
             unknown_reach = False
-            for tool in operation_tools:
+            unknown_mark_type = False
+            for tool in mark_tools:
+                mark_type_supported = self._mark_type_supported(tool, feature_type)
+                if mark_type_supported is None:
+                    unknown_mark_type = True
+                    continue
+                if not mark_type_supported:
+                    continue
                 reachable, reach_evidence = self._reachability(tool, face)
                 if reachable is None:
                     unknown_reach = True
                     continue
                 if not reachable:
                     continue
-                tool_measured, tool_limits, tool_blockers = self._limits_for(feature_type, source, tool)
+                tool_measured, tool_limits, tool_blockers = self._limits_for(feature_type, source, tool, face)
                 viable.append((tool, tool_measured, {**reach_evidence, **tool_limits}, tool_blockers))
 
             if not viable:
-                blockers.append(CWS_MACHINE_REACHABILITY_UNKNOWN if unknown_reach else CWS_MACHINE_FACE_UNREACHABLE)
+                if unknown_mark_type:
+                    blockers.append(CWS_MACHINE_MARK_TYPE_UNSUPPORTED)
+                elif unknown_reach:
+                    blockers.append(CWS_MACHINE_REACHABILITY_UNKNOWN)
+                else:
+                    blockers.append(CWS_MACHINE_MARK_TYPE_UNSUPPORTED)
             else:
                 fully_supported = [item for item in viable if not item[3]]
                 candidates = fully_supported or viable
                 if len(candidates) > 1:
                     blockers.append(CWS_MACHINE_TOOL_AMBIGUOUS)
-                    warnings.append("Meerdere machinegereedschappen voldoen; expliciete toolkeuze ontbreekt.")
+                    warnings.append("Meerdere markeergereedschappen voldoen; expliciete toolkeuze ontbreekt.")
                 else:
                     tool, measured, limits, tool_blockers = candidates[0]
                     tool_id = _tool_id(tool)
-                    machine_operation = requested
+                    machine_operation = self.MACHINE_OPERATION
                     if not tool_id:
                         blockers.append(CWS_MACHINE_TOOL_MISSING)
                     blockers.extend(tool_blockers)
@@ -246,10 +343,15 @@ class MachineCapabilityEvaluator:
             or getattr(source, "intent_id", "")
             or getattr(source, "request_id", "")
         )
+        face_id = str(
+            getattr(source, "face_id", "")
+            or getattr(getattr(source, "input", None), "face_id", "")
+            or getattr(getattr(source, "request", None), "face_id", "")
+        )
         return MachineFeatureDecision(
             feature_id=feature_id,
             feature_type=feature_type,
-            face_id=str(getattr(source, "face_id", "") or getattr(getattr(source, "input", None), "face_id", "") or getattr(getattr(source, "request", None), "face_id", "")),
+            face_id=face_id,
             canonical_face_role=role,
             requested_operation=requested,
             machine_operation=machine_operation,
@@ -354,5 +456,10 @@ __all__ = [
     "CWS_MACHINE_SOURCE_BLOCKED",
     "CWS_MACHINE_PART_DIMENSION",
     "CWS_MACHINE_PROFILE_IDENTITY",
+    "CWS_MACHINE_MARK_TYPE_UNSUPPORTED",
+    "CWS_MACHINE_RULESET_UNKNOWN",
+    "CWS_MACHINE_RULESET_INCOMPATIBLE",
+    "CWS_MACHINE_HEAD_CLEARANCE_UNKNOWN",
+    "CWS_MACHINE_HEAD_CLEARANCE",
     "MachineCapabilityEvaluator",
 ]
