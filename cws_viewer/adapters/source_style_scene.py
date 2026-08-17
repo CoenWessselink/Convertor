@@ -1,0 +1,94 @@
+"""Apply verified source presentation styles to the immutable viewer scene."""
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import Any
+
+from cws_viewer.adapters.project_model import CwsProjectSceneAdapter
+from cws_viewer.adapters.source_appearance import IfcAppearanceResolver
+from cws_viewer.contracts.enums import RenderMode
+from cws_viewer.contracts.scene import ProjectScene, StyleDefinition
+
+
+class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
+    """Decorate the normal canonical scene with source-owned display colours.
+
+    Geometry, IDs, hierarchy and manufacturing hashes still come from the base
+    CWS adapter.  Only ``SceneNode.style_id`` and the corresponding display-only
+    style definitions are enriched from presentation data in the verified IFC.
+    """
+
+    @staticmethod
+    def _style_id(color: Any) -> str:
+        rgba = tuple(
+            int(round(max(0.0, min(1.0, float(value))) * 255.0))
+            for value in (color.red, color.green, color.blue, color.alpha)
+        )
+        return "style-source-ifc-" + "".join(f"{value:02x}" for value in rgba)
+
+    def build_scene(self, project: Any, options: Any = None, **kwargs: Any) -> ProjectScene:
+        geometry_catalog = kwargs.get("geometry_catalog")
+        scene = super().build_scene(project, options, **kwargs)
+        report = self.last_report
+        if geometry_catalog is None:
+            return scene
+
+        documents = dict(getattr(geometry_catalog, "_documents", {}) or {})
+        resolvers: dict[str, IfcAppearanceResolver] = {}
+        styles = {style.style_id: style for style in scene.styles}
+        nodes = []
+        changed = 0
+
+        for node in scene.nodes:
+            record = geometry_catalog.record_for_entity(str(node.entity_id))
+            if record is None or str(record.source_format).upper() != "IFC":
+                nodes.append(node)
+                continue
+            document = documents.get(str(record.source_file_id))
+            if document is None:
+                nodes.append(node)
+                continue
+            resolver = resolvers.get(str(record.source_file_id))
+            if resolver is None:
+                resolver = IfcAppearanceResolver(document)
+                resolvers[str(record.source_file_id)] = resolver
+            appearance = resolver.color_for_items(record.source_item_ids)
+            if appearance is None:
+                nodes.append(node)
+                continue
+
+            style_id = self._style_id(appearance.color)
+            if style_id not in styles:
+                styles[style_id] = StyleDefinition(
+                    style_id=style_id,
+                    color=appearance.color,
+                    mode=RenderMode.SHADED_EDGES,
+                    line_width=0.65,
+                    tags=(
+                        "source-presentation",
+                        "ifc-original-colour",
+                        appearance.provenance,
+                        appearance.source_style_id,
+                    ),
+                )
+            nodes.append(replace(node, style_id=style_id))
+            changed += 1
+
+        if not changed:
+            return scene
+
+        enriched = ProjectScene.create(
+            project_id=scene.project_id,
+            revision_id=scene.revision_id,
+            models=scene.models,
+            nodes=tuple(nodes),
+            geometry=scene.geometry,
+            styles=tuple(styles.values()),
+        )
+        # Preserve the base adapter's build report: appearance enrichment does
+        # not alter geometry counts or validation classifications.
+        self.last_report = report
+        return enriched
+
+
+__all__ = ["SourceAppearanceProjectSceneAdapter"]
