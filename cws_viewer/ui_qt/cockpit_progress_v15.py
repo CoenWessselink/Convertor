@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from cws_viewer.adapters.project_scene_loader import ProjectSceneLoader
+from cws_viewer.core.color_palette_feel_v2 import install_feel_v2_palette
 from cws_viewer.ui_qt.cockpit_trimble_feel_v2 import CwsViewerV15TrimbleFeelV2CockpitWindow
 from cws_viewer.ui_qt.design_system import DEFAULT_THEME, theme_qss
 from cws_viewer.ui_qt.loading_dialog import create_loading_dialog
@@ -26,6 +27,7 @@ def run_cws_viewer_cockpit_v15(
     app.setApplicationName("CWS Viewer")
     app.setOrganizationName("CWS")
     app.setStyleSheet(theme_qss(DEFAULT_THEME))
+    install_feel_v2_palette()
 
     path = Path(project_path).expanduser().resolve()
     loading = create_loading_dialog(version=PREVIEW2_VERSION, source_path=path)
