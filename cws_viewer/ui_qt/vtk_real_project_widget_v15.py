@@ -1,18 +1,18 @@
-"""V15 T3 interaction host with zoom-area and explicit camera checkpoints."""
+"""V15 T3 interaction host with Trimble-style point orbit and camera checkpoints."""
 from __future__ import annotations
 
 from typing import Any
 
 from cws_viewer.core.v15_navigation import V15ViewNavigationService
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
-from cws_viewer.ui_qt.vtk_real_project_widget import VtkRealProjectWidget
+from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode, VtkRealProjectWidget
 
 
 if qt_available():
     QtCore, _QtGui, _QtWidgets = require_qt()
 
     class VtkRealProjectWidgetV15(VtkRealProjectWidget):
-        """Keep the V14 renderer/input contract and add V15 T3 view actions."""
+        """Keep the V14 renderer/input contract and add V15 parity interactions."""
 
         zoom_area_completed = QtCore.Signal(object)
 
@@ -49,6 +49,19 @@ if qt_available():
             self._v15_zoom_area = False
             super().set_area_selection(enabled)
 
+        def _bind_orbit_pivot_from_screen(self, pos: Any) -> bool:
+            """Bind a rotate drag to the exact visible model point under the cursor."""
+            try:
+                x, y = self._vtk_xy(pos)
+                probe = self.controller.probe_at(x, y)
+                if probe is None:
+                    return False
+                self._v15_view_navigation.set_orbit_pivot(probe.world_point)
+                return True
+            except Exception as exc:
+                self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+                return False
+
         def mousePressEvent(self, event: Any) -> None:
             if self._v15_zoom_area and event.button() == QtCore.Qt.MouseButton.LeftButton:
                 self.setFocus(QtCore.Qt.FocusReason.MouseFocusReason)
@@ -69,6 +82,15 @@ if qt_available():
                 }
             ):
                 self._v15_view_navigation.camera_checkpoint()
+            if (
+                not self._area_selection
+                and event.button() == QtCore.Qt.MouseButton.LeftButton
+                and self.navigation_mode == NavigationMode.ORBIT
+            ):
+                # Trimble Connect's documented Rotate workflow revolves around
+                # the model point picked at mouse-down.  Probe only: selection is
+                # still decided on mouse-up when the gesture was a click.
+                self._bind_orbit_pivot_from_screen(event.position())
             super().mousePressEvent(event)
 
         def mouseMoveEvent(self, event: Any) -> None:
@@ -120,17 +142,81 @@ if qt_available():
                 return
             super().mouseReleaseEvent(event)
 
+        def mouseDoubleClickEvent(self, event: Any) -> None:
+            if (
+                event.button() == QtCore.Qt.MouseButton.LeftButton
+                and event.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier
+            ):
+                try:
+                    pick = self._pick(event.position(), event.modifiers())
+                    if pick is not None and pick.normal is not None:
+                        self._v15_view_navigation.view_from_normal(
+                            pick.normal,
+                            target=pick.world_point,
+                            fit=False,
+                        )
+                        self.interaction_message.emit(
+                            "Orthogonaal aan geselecteerd vlak"
+                        )
+                    event.accept()
+                    return
+                except Exception as exc:
+                    self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+                    event.accept()
+                    return
+            super().mouseDoubleClickEvent(event)
+
         def wheelEvent(self, event: Any) -> None:
             self._v15_view_navigation.camera_checkpoint()
             super().wheelEvent(event)
 
         def keyPressEvent(self, event: Any) -> None:
-            if event.key() == QtCore.Qt.Key.Key_Escape and self._v15_zoom_area:
-                self.set_zoom_area(False)
-                self.tool_cancelled.emit()
+            key = event.key()
+            modifiers = event.modifiers()
+
+            if key == QtCore.Qt.Key.Key_Escape:
+                if self._v15_zoom_area:
+                    self.set_zoom_area(False)
+                    self.tool_cancelled.emit()
+                else:
+                    # ESC ends the active operation and restores single-object
+                    # picking.  It also clears selection as in Connect for Windows.
+                    super().keyPressEvent(event)
+                    if self.controller.get_selection():
+                        self.controller.set_selection((), mode="replace")
+                    self.interaction_message.emit("Selectie gewist")
                 event.accept()
                 return
-            if event.key() in {
+
+            if modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
+                mode = {
+                    QtCore.Qt.Key.Key_U: NavigationMode.ORBIT,
+                    QtCore.Qt.Key.Key_I: NavigationMode.PAN,
+                    QtCore.Qt.Key.Key_O: NavigationMode.WALK,
+                    QtCore.Qt.Key.Key_P: NavigationMode.LOOK,
+                }.get(key)
+                if mode is not None:
+                    self.set_navigation_mode(mode)
+                    event.accept()
+                    return
+
+            if key == QtCore.Qt.Key.Key_Backspace:
+                selected = self.controller.get_selection()
+                if selected:
+                    if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
+                        self.controller.isolate(selected, ghost_context=False)
+                        self.interaction_message.emit(
+                            f"Andere objecten verborgen · {len(selected):,} geselecteerd"
+                        )
+                    else:
+                        self.controller.hide(selected)
+                        self.interaction_message.emit(
+                            f"{len(selected):,} geselecteerd(e) object(en) verborgen"
+                        )
+                    event.accept()
+                    return
+
+            if key in {
                 QtCore.Qt.Key.Key_W,
                 QtCore.Qt.Key.Key_A,
                 QtCore.Qt.Key.Key_S,
