@@ -7,6 +7,7 @@ forking rendering truth.
 from __future__ import annotations
 
 from dataclasses import replace
+import math
 from typing import Any
 
 from cws_viewer.contracts.enums import ProjectionType, StandardView
@@ -26,6 +27,8 @@ def navigation_contract() -> dict[str, Any]:
             "orbit_pan_zoom": True,
             "orbit_around_picked_point": True,
             "selection_orbit_focus": True,
+            "selection_pivot_precedence": True,
+            "active_pivot_zoom": True,
             "picked_depth_pan": True,
             "display_space_fit_with_explode": True,
             "object_assembly_selection_mode": True,
@@ -126,6 +129,71 @@ class V15ViewNavigationService:
                 code=ViewerErrorCode.RENDERER_CAPABILITY_MISSING,
             )
         return focus()
+
+    def begin_orbit(self, picked_point: Vector3 | None = None) -> Vector3:
+        """Resolve the pivot at the start of one orbit gesture.
+
+        CWS intentionally gives an existing semantic selection precedence over
+        the raw surface point below the mouse.  This makes selecting a part or
+        assembly a stable interaction contract: every subsequent orbit gesture
+        revolves around the displayed bounds centre of that selection.  When
+        nothing is selected we retain the familiar engineering-viewer behaviour
+        of rotating around the exact point picked on mouse-down.
+        """
+        selection = tuple(self.controller.get_selection())
+        if selection:
+            selected = self.focus_orbit_on_selection()
+            if selected is not None:
+                return selected
+        if picked_point is not None:
+            return self.set_orbit_pivot(picked_point)
+        return getattr(self.controller, "orbit_pivot", self.controller.get_camera().target)
+
+    def zoom_about_active_pivot(self, factor: float) -> CameraState:
+        """Zoom without letting an active selected-object pivot drift on screen.
+
+        Perspective zoom scales both eye and camera target about the active
+        pivot.  Orthographic zoom scales the target offset about that same pivot
+        while keeping the eye-to-target vector rigid.  In both projections the
+        selected/picked pivot therefore remains the visual anchor.
+        """
+        zoom_factor = float(factor)
+        if not math.isfinite(zoom_factor) or zoom_factor <= 0.0:
+            raise ValueError("Zoomfactor moet een positief eindig getal zijn")
+        camera = self.controller.get_camera()
+        pivot = getattr(self.controller, "orbit_pivot", camera.target)
+        scale = 1.0 / zoom_factor
+
+        if camera.projection == ProjectionType.ORTHOGRAPHIC:
+            target_offset = camera.target - pivot
+            eye_from_target = camera.position - camera.target
+            new_target = pivot + target_offset * scale
+            updated = replace(
+                camera,
+                target=new_target,
+                position=new_target + eye_from_target,
+                ortho_scale=max(float(camera.ortho_scale) * scale, 1e-6),
+            )
+        else:
+            eye_offset = camera.position - pivot
+            target_offset = camera.target - pivot
+            eye_radius = eye_offset.length()
+            if eye_radius <= 1e-12:
+                return camera
+            minimum_radius = max(float(camera.near_plane) * 2.0, 1e-6)
+            requested_radius = eye_radius * scale
+            new_radius = max(requested_radius, minimum_radius)
+            effective_scale = new_radius / eye_radius
+            updated = replace(
+                camera,
+                position=pivot + eye_offset * effective_scale,
+                target=pivot + target_offset * effective_scale,
+                far_plane=max(float(camera.far_plane), new_radius * 8.0, 10_000.0),
+            )
+
+        self.controller.set_camera(updated)
+        self.set_orbit_pivot(pivot)
+        return updated
 
     def fit_all(self) -> None:
         self.camera_checkpoint()
