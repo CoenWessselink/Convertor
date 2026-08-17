@@ -1,0 +1,53 @@
+name: CWS Unified U0 baseline gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/unified-v15-scribing-m18
+    paths:
+      - 'docs/unified/U0_BASELINE_AUDIT.md'
+      - 'docs/unified/U0_BASELINE_AUDIT.json'
+      - 'validation/unified/validate_u0_baseline.py'
+      - 'cws_convertor/product.py'
+      - 'CWS_Viewer_V15_Standalone.py'
+      - 'cws_convertor/manufacturing/**'
+      - '.github/workflows/viewer-v15-t8-manufacturing.yml'
+      - '.github/workflows/build-windows-integrated-v9.yml'
+      - '.github/workflows/unified-u0-baseline.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  u0-baseline:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+
+      - name: Compile U0 validator
+        run: python -m compileall -q validation/unified/validate_u0_baseline.py
+
+      - name: Validate frozen U0 identities and safety boundary
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\unified\results | Out-Null
+          python validation\unified\validate_u0_baseline.py 2>&1 | Tee-Object validation\unified\results\u0-baseline.json
+          if ($LASTEXITCODE -ne 0) { throw 'U0 baseline contract failed' }
+
+      - name: Upload U0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Unified_U0_Baseline_${{ github.run_id }}
+          path: validation/unified/results/u0-baseline.json
+          if-no-files-found: error
+          retention-days: 30
