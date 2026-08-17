@@ -160,12 +160,14 @@ def _machine(mark_ruleset: str, identification_ruleset: str, *, tools=None, oper
         machine_id="MACHINE-1",
         manufacturer="CWS fixture",
         machine_type="beam_line",
+        controller="neutral-test-controller",
+        supported_formats=["neutral_job"],
         supported_operations=list(operations if operations is not None else ["mark"]),
         min_dimensions_mm={"length_mm": 1.0},
         max_dimensions_mm={"length_mm": float(max_length)},
         tools=list(default_tools if tools is None else tools),
-        profile_source="test-fixture",
-        profile_sha256="a" * 64,
+        postprocessor_version="unreleased-test-only",
+        enabled=True,
     )
 
 
