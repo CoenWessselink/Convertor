@@ -1,17 +1,16 @@
 """Executable U0 baseline contract for the Viewer V15 + Convertor + M18 merge line.
 
 This validator intentionally uses only the Python standard library. It proves
-that the GitHub side of the frozen U0 baseline still matches the identities
-recorded in docs/unified/U0_BASELINE_AUDIT.json. Physical M18 delivery hashes
-were verified when the audit was created; CI validates that those immutable
-fingerprints remain recorded and that all safety flags remain false.
+that the frozen U0 source identities remain recorded even after later unified
+phases advance the live branch. Physical M18 delivery hashes were verified when
+the audit was created; CI validates those immutable fingerprints and the hard
+machine-transfer safety boundary.
 """
 from __future__ import annotations
 
 import ast
 import json
 from pathlib import Path
-import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT = ROOT / "docs" / "unified" / "U0_BASELINE_AUDIT.json"
@@ -39,7 +38,7 @@ def constants(path: Path) -> dict[str, object]:
 
 def main() -> int:
     report: dict[str, object] = {
-        "format": "CWS_UNIFIED_U0_RUNTIME_VALIDATION_V1",
+        "format": "CWS_UNIFIED_U0_RUNTIME_VALIDATION_V2",
         "checks": [],
         "status": "passed",
     }
@@ -59,15 +58,26 @@ def main() -> int:
     check("audit_format", audit.get("format") == "CWS_UNIFIED_U0_BASELINE_AUDIT_V1")
     check("audit_phase", audit.get("phase") == "U0")
     check("convertor_version", product.get("APP_VERSION") == "0.9.0-alpha-dev", product.get("APP_VERSION"))
-    check("github_project_schema", product.get("PROJECT_SCHEMA_VERSION") == "2.5", product.get("PROJECT_SCHEMA_VERSION"))
+
+    github_source = audit.get("github_source", {})
+    check(
+        "frozen_github_project_schema",
+        isinstance(github_source, dict) and github_source.get("project_schema_version") == "2.5",
+        github_source.get("project_schema_version") if isinstance(github_source, dict) else None,
+    )
+    schema = audit.get("schema_reconciliation", {})
+    check(
+        "live_project_schema_matches_u1_target",
+        isinstance(schema, dict)
+        and product.get("PROJECT_SCHEMA_VERSION") == schema.get("planned_unified_target") == "2.25",
+        product.get("PROJECT_SCHEMA_VERSION"),
+    )
     check("viewer_version", viewer.get("VERSION") == "1.4.0-v15-preview.2", viewer.get("VERSION"))
     check(
         "viewer_handling_contract",
         viewer.get("HANDLING_CONTRACT_VERSION") == "1.2-trimble-feel-v2",
         viewer.get("HANDLING_CONTRACT_VERSION"),
     )
-
-    github_source = audit.get("github_source", {})
     check(
         "frozen_source_commit",
         isinstance(github_source, dict)
@@ -117,8 +127,6 @@ def main() -> int:
         "integrated_v9_workflow_present",
         (ROOT / ".github" / "workflows" / "build-windows-integrated-v9.yml").is_file(),
     )
-
-    schema = audit.get("schema_reconciliation", {})
     check(
         "u1_target_recorded",
         isinstance(schema, dict) and schema.get("planned_unified_target") == "2.25",
