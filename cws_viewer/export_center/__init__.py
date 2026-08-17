@@ -1,4 +1,4 @@
-"""CWS Viewer V15 T7 Export Center."""
+"""CWS Viewer V15 scope-first Export Center."""
 from .models import (
     V15_T7_SCHEMA,
     V15_T7_VERSION,
@@ -12,6 +12,18 @@ from .models import (
     export_center_contract,
 )
 from .service import V15ExportCenterService
+from .manufacturing_models import (
+    M8_PACKAGE_SCHEMA,
+    M8_PREFLIGHT_SCHEMA,
+    ManufacturingPackageArtifact,
+    ManufacturingPackageManifest,
+    ManufacturingPackagePreflight,
+)
+from .manufacturing_service import (
+    ManufacturingEvidenceCatalog,
+    V15ManufacturingExportService,
+    manufacturing_export_contract,
+)
 
 __all__ = [
     "V15_T7_SCHEMA",
@@ -25,4 +37,12 @@ __all__ = [
     "ExportJob",
     "V15ExportCenterService",
     "export_center_contract",
+    "M8_PACKAGE_SCHEMA",
+    "M8_PREFLIGHT_SCHEMA",
+    "ManufacturingPackageArtifact",
+    "ManufacturingPackageManifest",
+    "ManufacturingPackagePreflight",
+    "ManufacturingEvidenceCatalog",
+    "V15ManufacturingExportService",
+    "manufacturing_export_contract",
 ]
