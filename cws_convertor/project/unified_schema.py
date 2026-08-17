@@ -344,10 +344,18 @@ def project_to_dict(project: _model.ProjectModel) -> dict[str, Any]:
     for key, default in M18_PROJECT_STORE_DEFAULTS.items():
         data[key] = deepcopy(stores.get(key, default))
 
-    # Do not hash/serialize the compatibility copy twice.
+    # Do not hash/serialize the compatibility copy twice. Native 2.25 projects
+    # also omit the purely internal bridge marker, so a save/open cycle cannot
+    # create metadata that was absent from the saved canonical snapshot.
     if isinstance(unified, dict):
         unified = deepcopy(unified)
         unified.pop("m18_project_stores", None)
+        if (
+            unified.get("source_schema") == UNIFIED_PROJECT_SCHEMA_VERSION
+            and unified.get("bridge_schema") == UNIFIED_PROJECT_SCHEMA_VERSION
+            and set(unified) <= {"source_schema", "bridge_schema"}
+        ):
+            unified = {}
         if unified:
             settings[EXTENSION_KEY] = unified
         else:
