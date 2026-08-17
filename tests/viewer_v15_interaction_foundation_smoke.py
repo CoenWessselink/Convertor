@@ -61,6 +61,36 @@ class ViewerV15InteractionFoundationTests(unittest.TestCase):
         self.assertEqual(expected, state.selected_node_ids)
         self.assertIn(hit, state.selected_node_ids)
 
+    def test_ghost_context_geometry_cannot_steal_selection(self) -> None:
+        focus = "node:item:000003"
+        ghost = "node:item:000025"
+        self.controller.isolate((focus,), ghost_context=True)
+        visible, ghosted = self.controller.session.visible_and_ghosted(self.controller.index)
+        self.assertIn(focus, visible)
+        self.assertIn(ghost, visible)
+        self.assertIn(ghost, ghosted)
+        self.assertNotIn(focus, ghosted)
+
+        self.backend.pick_node_id = ghost
+        pick = self.controller.pick_at(100, 100)
+        self.assertIsNone(pick)
+        self.assertEqual((), self.controller.get_selection())
+
+        self.backend.pick_node_id = focus
+        pick = self.controller.pick_at(100, 100)
+        self.assertIsNotNone(pick)
+        self.assertEqual((focus,), self.controller.get_selection())
+
+    def test_hidden_geometry_cannot_be_selected_even_if_renderer_returns_hit(self) -> None:
+        hidden = "node:item:000006"
+        self.controller.hide((hidden,))
+        self.backend.pick_node_id = hidden
+
+        pick = self.controller.pick_at(50, 50)
+
+        self.assertIsNone(pick)
+        self.assertEqual((), self.controller.get_selection())
+
     def test_real_explode_operation_moves_selected_orbit_focus_to_display_position(self) -> None:
         node_id = "node:item:000012"
         canonical = self.controller.index.world_bounds_by_node[node_id]
