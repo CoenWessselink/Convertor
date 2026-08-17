@@ -1,6 +1,6 @@
 """Backend-neutral tree/grid/3D interaction bridge for Viewer V3.
 
-The bridge contains no Qt/VTK objects.  It translates stable project entity IDs
+The bridge contains no Qt/VTK objects. It translates stable project entity IDs
 and scene node IDs, forwards tree/grid selections to :class:`ViewerCoreController`,
 and mirrors renderer selection events back to UI observers.
 """
@@ -42,22 +42,14 @@ class ProjectInteractionModel:
         self.project = project
         self.search_index = ViewerSearchIndex(controller.index.scene, project)
         self.property_provider = ProjectPropertyProvider(project)
-        self.grid_model = ProjectGridModel(
-            project,
-            scene=controller.index.scene,
-            revision_report=revision_report,
-        )
+        self.grid_model = ProjectGridModel(project, scene=controller.index.scene, revision_report=revision_report)
         self.colorizer = ProjectColorizer(project, controller.index)
-        self.accuracy_provider = ViewerAccuracyProvider(
-            controller.index, project, mesh_repository
-        )
+        self.accuracy_provider = ViewerAccuracyProvider(controller.index, project, mesh_repository)
         self._listeners: list[Callable[[InteractionSelection], None]] = []
         self._node_by_entity = {node.entity_id: node.node_id for node in controller.index.scene.nodes}
         self._origin = "viewer"
         self._selection = InteractionSelection()
-        self._subscription: Subscription = controller.subscribe(
-            SelectionChanged, self._on_selection_changed
-        )
+        self._subscription: Subscription = controller.subscribe(SelectionChanged, self._on_selection_changed)
 
     @property
     def selection(self) -> InteractionSelection:
@@ -65,13 +57,11 @@ class ProjectInteractionModel:
 
     def subscribe(self, listener: Callable[[InteractionSelection], None]) -> Callable[[], None]:
         self._listeners.append(listener)
-
         def unsubscribe() -> None:
             try:
                 self._listeners.remove(listener)
             except ValueError:
                 pass
-
         return unsubscribe
 
     def _on_selection_changed(self, event: SelectionChanged) -> None:
@@ -79,9 +69,7 @@ class ProjectInteractionModel:
         node_ids = () if selection is None else tuple(selection.node_ids)
         entity_ids = () if selection is None else tuple(selection.entity_ids)
         primary_node = None if selection is None else selection.primary_node_id
-        primary_entity = None
-        if primary_node is not None:
-            primary_entity = self.controller.index.node(primary_node).entity_id
+        primary_entity = None if primary_node is None else self.controller.index.node(primary_node).entity_id
         current = InteractionSelection(
             node_ids=node_ids,
             entity_ids=entity_ids,
@@ -96,7 +84,6 @@ class ProjectInteractionModel:
         self._origin = "viewer"
 
     def refresh_grid_scope(self) -> None:
-        """Refresh all/visible/selected grid scopes from stable viewer IDs."""
         index = self.controller.index
         visible_node_ids, _ghosted = self.controller.session.visible_and_ghosted(index)
         visible_entity_ids = tuple(index.node(node_id).entity_id for node_id in visible_node_ids)
@@ -111,23 +98,28 @@ class ProjectInteractionModel:
             raise KeyError(entity_id)
         return hit
 
-    def select_nodes(
-        self, node_ids: Iterable[str], *, origin: str = "tree", mode: str = "replace"
-    ) -> None:
+    def select_nodes(self, node_ids: Iterable[str], *, origin: str = "tree", mode: str = "replace") -> None:
         self._origin = str(origin or "tree")
         self.controller.set_selection(tuple(node_ids), mode=mode)
 
-    def select_entities(
-        self, entity_ids: Iterable[str], *, origin: str = "grid", mode: str = "replace"
-    ) -> None:
+    def select_entities(self, entity_ids: Iterable[str], *, origin: str = "grid", mode: str = "replace") -> None:
         nodes = tuple(self.node_for_entity(entity_id) for entity_id in entity_ids)
-        self.select_nodes(nodes, origin=origin, mode=mode)
+        level = self.controller.session.selection_level
+        promoted = tuple(
+            dict.fromkeys(
+                self.controller.index.selectable_node_for_level(node_id, level)
+                for node_id in nodes
+            )
+        )
+        self.select_nodes(promoted, origin=origin, mode=mode)
 
     def search(self, query: str, *, limit: int = 200) -> tuple[SearchHit, ...]:
         return self.search_index.search(query, limit=limit)
 
     def select_search_hit(self, hit: SearchHit, *, mode: str = "replace") -> None:
-        self.select_nodes((hit.node_id,), origin="search", mode=mode)
+        level = self.controller.session.selection_level
+        node_id = self.controller.index.selectable_node_for_level(hit.node_id, level)
+        self.select_nodes((node_id,), origin="search", mode=mode)
 
     def properties_for_primary(self) -> tuple[PropertyRecord, ...]:
         if self._selection.primary_entity_id is None:
@@ -136,7 +128,6 @@ class ProjectInteractionModel:
             return self.property_provider.records(self._selection.primary_entity_id)
         except KeyError:
             return ()
-
 
     def apply_color_scheme(self, scheme: ColorScheme) -> tuple[ColorLegendItem, ...]:
         requested = ColorScheme(scheme)
