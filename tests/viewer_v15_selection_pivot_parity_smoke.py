@@ -60,6 +60,29 @@ class ViewerV15SelectionPivotParityTests(unittest.TestCase):
         self.assertEqual(bounds.center, resolved)
         self.assertEqual(bounds.center, self.controller.orbit_pivot)
 
+    def test_empty_selection_releases_previous_part_as_hidden_pivot(self) -> None:
+        node_id = "node:item:000015"
+        self.controller.set_selection((node_id,))
+        selected_pivot = self.controller.orbit_pivot
+        camera_target = self.controller.get_camera().target
+        self.assertNotEqual(camera_target, selected_pivot)
+
+        self.controller.set_selection((), mode="replace")
+
+        self.assertEqual((), self.controller.get_selection())
+        self.assertEqual(camera_target, self.controller.orbit_pivot)
+        self.assertNotEqual(selected_pivot, self.controller.orbit_pivot)
+
+    def test_toggle_off_last_selected_object_releases_pivot(self) -> None:
+        node_id = "node:item:000014"
+        self.controller.set_selection((node_id,))
+        camera_target = self.controller.get_camera().target
+
+        self.controller.set_selection((node_id,), mode="toggle")
+
+        self.assertEqual((), self.controller.get_selection())
+        self.assertEqual(camera_target, self.controller.orbit_pivot)
+
     def test_unselected_model_uses_exact_point_picked_on_orbit_mouse_down(self) -> None:
         self.controller.set_selection((), mode="replace")
         picked = Vector3(417.25, -138.5, 92.0)
