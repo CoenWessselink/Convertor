@@ -89,16 +89,19 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertEqual(before, self.controller.get_camera())
         self.assertEqual(bounds.center, self.controller.orbit_pivot)
 
-    def test_multi_selection_uses_combined_bounds_center_and_clear_retains_focus(self) -> None:
+    def test_multi_selection_uses_combined_bounds_center_and_clear_releases_focus(self) -> None:
         nodes = ("node:item:000010", "node:item:000021")
+        camera_target = self.controller.get_camera().target
         bounds = self.controller.index.bounds_for(nodes, include_descendants=True)
         self.assertIsNotNone(bounds)
         assert bounds is not None
         self.controller.set_selection(nodes)
         pivot = self.controller.orbit_pivot
         self.assertEqual(bounds.center, pivot)
+        self.assertNotEqual(camera_target, pivot)
         self.controller.set_selection(())
-        self.assertEqual(pivot, self.controller.orbit_pivot)
+        self.assertEqual((), self.controller.get_selection())
+        self.assertEqual(camera_target, self.controller.orbit_pivot)
 
     def test_exploded_selection_uses_displayed_not_canonical_position_for_pivot(self) -> None:
         node_id = "node:item:000012"
