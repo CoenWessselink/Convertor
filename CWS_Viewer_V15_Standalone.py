@@ -39,9 +39,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_phase1_v15 import phase1_workspace_contract
+    from cws_viewer.ui_qt.cockpit_phase2_v15 import phase2_workspace_contract
 
-    contract = phase1_workspace_contract()
+    contract = phase2_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -99,8 +99,39 @@ def _run_v15_selftest() -> dict[str, object]:
         "phase1_professional_shell",
         "startup_metrics",
     )
+    required_phase2 = (
+        "interactive_markup_text",
+        "interactive_markup_line",
+        "interactive_markup_arrow",
+        "interactive_markup_cloud",
+        "interactive_markup_freehand",
+        "markup_live_preview",
+        "markup_world_space_overlay",
+        "markup_preserves_semantic_selection",
+        "markup_hidden_ghost_probe_rejection",
+        "saved_view_review_snapshot",
+        "saved_view_markup_visibility",
+        "saved_view_measurement_visibility",
+        "view_groups",
+        "view_group_reorder",
+        "view_slideshow",
+        "view_groups_local_persistent",
+        "picked_surface_section_plane",
+        "section_plane_offset_control",
+        "variable_clip_box_fraction",
+        "reset_model_display_state",
+        "phase1_startup_preserved",
+        "phase2_actual_vtk_input_host",
+        "phase2_review_panel_remains_lazy",
+    )
     export_safety = dict(contract.get("export_center", {}).get("safety", {}))
     manufacturing_safety = dict(contract.get("manufacturing", {}).get("safety", {}))
+    phase2_review_safety = dict(
+        contract.get("phase2", {}).get("review", {}).get("safety", {})
+    )
+    phase2_navigation_safety = dict(
+        contract.get("phase2", {}).get("navigation", {}).get("safety", {})
+    )
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.2"
         and contract.get("version") == VERSION
@@ -115,6 +146,7 @@ def _run_v15_selftest() -> dict[str, object]:
         and all(bool(capabilities.get(name)) for name in required_t7)
         and all(bool(capabilities.get(name)) for name in required_t8)
         and all(bool(capabilities.get(name)) for name in required_phase1)
+        and all(bool(capabilities.get(name)) for name in required_phase2)
         and not bool(capabilities.get("ai_derived_dimensions", True))
         and not bool(capabilities.get("silent_reference_remap", True))
         and not bool(capabilities.get("review_mutates_canonical_geometry", True))
@@ -126,6 +158,11 @@ def _run_v15_selftest() -> dict[str, object]:
         and not bool(manufacturing_safety.get("machine_transfer_allowed", True))
         and not bool(manufacturing_safety.get("dstv_label_is_canonical_face_identity", True))
         and not bool(manufacturing_safety.get("unconfirmed_dstv_mapping_allowed", True))
+        and not bool(phase2_review_safety.get("review_mutates_canonical_geometry", True))
+        and not bool(phase2_review_safety.get("markup_is_manufacturing_geometry", True))
+        and not bool(phase2_review_safety.get("viewer_can_release_machine_output", True))
+        and not bool(phase2_navigation_safety.get("clipping_mutates_canonical_geometry", True))
+        and not bool(phase2_navigation_safety.get("section_plane_is_manufacturing_cut", True))
     )
     return {
         "status": "passed" if passed else "failed",
@@ -144,6 +181,11 @@ def _run_v15_selftest() -> dict[str, object]:
         "phase1_viewer_first_layout_certified": passed,
         "phase1_lazy_optional_panels_certified": passed,
         "phase1_cache_prefetch_certified": passed,
+        "phase2_interactive_markups_certified": passed,
+        "phase2_saved_view_review_snapshot_certified": passed,
+        "phase2_view_groups_slideshow_certified": passed,
+        "phase2_clipping_workflow_certified": passed,
+        "phase2_reset_model_certified": passed,
         "t4_selection_measurement_imported": True,
         "t5_review_workspace_imported": True,
         "t6_coordination_imported": True,
