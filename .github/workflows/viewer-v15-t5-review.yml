@@ -1,4 +1,4 @@
-name: CWS Viewer V15 T5 review workspace gate
+name: CWS Viewer V15 T5 / Phase 2 review workspace gate
 
 on:
   workflow_dispatch:
@@ -36,16 +36,21 @@ jobs:
           python -m pip install -r requirements-viewer-standalone.lock.txt
           python -m pip check
 
-      - name: Compile T5 modules
+      - name: Compile T5 and Phase 2 modules
         shell: pwsh
         run: |
           python -m compileall -q `
             cws_viewer/review `
             cws_viewer/ui_qt/review_v15.py `
+            cws_viewer/ui_qt/review_phase2.py `
+            cws_viewer/ui_qt/markup_overlay_phase2.py `
+            cws_viewer/ui_qt/vtk_real_project_widget_phase2.py `
+            cws_viewer/ui_qt/view_navigation_phase2.py `
+            cws_viewer/ui_qt/cockpit_phase2_v15.py `
             cws_viewer/ui_qt/cockpit_t5_v15.py `
             cws_viewer/ui_qt/cockpit_progress_v15.py `
             CWS_Viewer_V15_Standalone.py
-          if ($LASTEXITCODE -ne 0) { throw 'T5 compileall failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'T5/Phase 2 compileall failed' }
 
       - name: Run T3 navigation no-regression
         shell: pwsh
@@ -65,8 +70,14 @@ jobs:
           python tests/viewer_v15_review_workspace_smoke.py
           if ($LASTEXITCODE -ne 0) { throw 'T5 review workspace contract failed' }
 
+      - name: Run Phase 2 interactive parity contract
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_phase2_parity_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'Phase 2 markup/view-group/clipping parity contract failed' }
+
       - name: Run V15 self-test contract
         shell: pwsh
         run: |
           python CWS_Viewer_V15_Standalone.py --v15-self-test
-          if ($LASTEXITCODE -ne 0) { throw 'V15 T5 self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'V15 Phase 2 self-test failed' }
