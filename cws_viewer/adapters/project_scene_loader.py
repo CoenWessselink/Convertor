@@ -1,6 +1,7 @@
 """End-to-end real CWS project → display scene loading service."""
 from __future__ import annotations
 from dataclasses import dataclass
+import os
 from pathlib import Path
 import time
 from typing import Callable, Iterable, Sequence
@@ -71,7 +72,28 @@ class ProjectSceneLoader:
         if geometry_ids is not None:
             allowed=set(str(x) for x in geometry_ids);requests=tuple(r for r in requests if r.geometry_id in allowed)
         elif not load_all:requests=()
-        cache=MeshCache(self.cache_root);repository=MeshRepository();providers=tuple(self.provider_factory()) if self.provider_factory is not None else (IsolatedIfcMeshProvider(),StepMeshProvider());coordinator=GeometryLoadCoordinator(providers,proxy_provider=ProxyMeshProvider(),cache=cache,repository=repository,settings=self.settings,max_workers=1)
+
+        # Phase 1 warm-start optimisation.  Keep enough cache entries resident
+        # for the current project and checksum-verify/decompress independent
+        # entries in parallel.  Native IFC/STEP tessellation itself remains in
+        # the proven serial crash-isolated path below.
+        cache=MeshCache(self.cache_root,max_memory_items=max(128,min(len(requests),2048)))
+        repository=MeshRepository()
+        providers=tuple(self.provider_factory()) if self.provider_factory is not None else (IsolatedIfcMeshProvider(),StepMeshProvider())
+        t=time.perf_counter();prefetch_keys=[]
+        for request in requests:
+            provider=next((candidate for candidate in providers if candidate.supports(request)),None)
+            if provider is not None:
+                prefetch_keys.append(request.cache_key(self.settings,provider.provider_version))
+        prefetch_hits=cache.prefetch(
+            prefetch_keys,
+            max_workers=max(1,min(4,int(os.cpu_count() or 1))),
+        ) if prefetch_keys else 0
+        timings.append(('prefetch_geometry_cache',time.perf_counter()-t))
+        if progress and requests:
+            progress(0.0,f'Cache voorbereid · {prefetch_hits}/{len(requests)} geometrieën')
+
+        coordinator=GeometryLoadCoordinator(providers,proxy_provider=ProxyMeshProvider(),cache=cache,repository=repository,settings=self.settings,max_workers=1)
         t=time.perf_counter()
         try:geometry_report=coordinator.load_many(requests,token=token,progress=progress,allow_proxy=allow_proxy)
         finally:coordinator.close()
