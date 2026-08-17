@@ -20,6 +20,10 @@ from cws_viewer.ui_qt.cockpit_phase1_v15 import (
     PHASE1_LAYOUT_VERSION,
     phase1_workspace_contract,
 )
+from cws_viewer.ui_qt.cockpit_phase2_v15 import (
+    PHASE2_BUILD,
+    phase2_workspace_contract,
+)
 from cws_viewer.ui_qt.cockpit_v15 import (
     V15_DOCK_SPECS,
     V15_VERSION,
@@ -78,6 +82,28 @@ class ViewerV15WorkspaceContractTests(unittest.TestCase):
             "phase1_professional_shell",
             "startup_metrics",
             "canonical_manufacturing_faces",
+        ):
+            self.assertTrue(caps[name], name)
+
+    def test_phase2_contract_is_built_on_phase1_without_reopening_heavy_panels(self) -> None:
+        contract = phase2_workspace_contract()
+        caps = contract["capabilities"]
+        self.assertEqual("cws-viewer-workspace-15.2", contract["schema"])
+        self.assertEqual(V15_VERSION, contract["version"])
+        self.assertEqual(PHASE2_BUILD, contract["phase2"]["build"])
+        self.assertEqual(PHASE1_BUILD, contract["phase2"]["parent_build"])
+        self.assertTrue(contract["phase2"]["runtime"]["review_panel_lazy"])
+        for name in (
+            "phase1_startup_preserved",
+            "phase2_actual_vtk_input_host",
+            "phase2_review_panel_remains_lazy",
+            "interactive_markup_line",
+            "interactive_markup_freehand",
+            "saved_view_review_snapshot",
+            "view_groups",
+            "view_slideshow",
+            "section_plane_offset_control",
+            "reset_model_display_state",
         ):
             self.assertTrue(caps[name], name)
 
