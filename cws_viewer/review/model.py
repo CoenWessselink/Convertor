@@ -17,6 +17,7 @@ from typing import Any, Iterable, Mapping
 
 class MarkupKind(StrEnum):
     TEXT = "text"
+    LINE = "line"
     ARROW = "arrow"
     CLOUD = "cloud"
     FREEHAND = "freehand"
