@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import ast
 import tempfile
 import sys
 import unittest
@@ -22,7 +23,32 @@ from cws_convertor.project.unified_schema import (
     M18_PROJECT_STORE_DEFAULTS,
     UNIFIED_PROJECT_SCHEMA_VERSION,
 )
-from cws_viewer.version import VALIDATED_PROJECT_SCHEMA_VERSIONS
+
+
+def _viewer_validated_project_schemas() -> frozenset[str]:
+    """Read the Viewer compatibility contract without importing native Viewer deps."""
+
+    source = ROOT / "cws_viewer" / "version.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if not any(
+            isinstance(target, ast.Name)
+            and target.id == "VALIDATED_PROJECT_SCHEMA_VERSIONS"
+            for target in node.targets
+        ):
+            continue
+        value = node.value
+        if (
+            isinstance(value, ast.Call)
+            and isinstance(value.func, ast.Name)
+            and value.func.id == "frozenset"
+            and len(value.args) == 1
+        ):
+            literal = ast.literal_eval(value.args[0])
+            return frozenset(str(item) for item in literal)
+    raise AssertionError("Viewer VALIDATED_PROJECT_SCHEMA_VERSIONS ontbreekt")
 
 
 def _base_project() -> ProjectModel:
@@ -204,8 +230,9 @@ class UnifiedProjectSchemaU1Tests(unittest.TestCase):
             ProjectModel.from_dict(raw)
 
     def test_viewer_declares_224_and_225_compatibility(self) -> None:
-        self.assertIn("2.24", VALIDATED_PROJECT_SCHEMA_VERSIONS)
-        self.assertIn("2.25", VALIDATED_PROJECT_SCHEMA_VERSIONS)
+        versions = _viewer_validated_project_schemas()
+        self.assertIn("2.24", versions)
+        self.assertIn("2.25", versions)
 
     def test_serialized_225_safety_defaults_remain_closed(self) -> None:
         data = _base_project().to_dict()
