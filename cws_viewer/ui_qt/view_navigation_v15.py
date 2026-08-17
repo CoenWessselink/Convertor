@@ -1,9 +1,9 @@
-"""V15 T3 camera, view and clipping panel."""
+"""V15 T3 camera, view, selection and clipping panel."""
 from __future__ import annotations
 
 from typing import Any
 
-from cws_viewer.contracts.enums import ProjectionType, StandardView
+from cws_viewer.contracts.enums import ProjectionType, SelectionLevel, StandardView
 from cws_viewer.math3d import Vector3
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
@@ -33,8 +33,25 @@ if qt_available():
             root.setContentsMargins(7, 7, 7, 7)
             root.setSpacing(7)
 
-            camera_group = QtWidgets.QGroupBox("Camera en navigatie")
+            camera_group = QtWidgets.QGroupBox("Camera, selectie en navigatie")
             camera_layout = QtWidgets.QVBoxLayout(camera_group)
+
+            selection_row = QtWidgets.QHBoxLayout()
+            selection_row.addWidget(QtWidgets.QLabel("Selectiemodus"))
+            self.selection_level = QtWidgets.QComboBox()
+            self.selection_level.addItem("Object", SelectionLevel.PART.value)
+            self.selection_level.addItem("Assembly", SelectionLevel.ASSEMBLY.value)
+            self.selection_level.setToolTip(
+                "Object selecteert onderdelen; Assembly promoveert een klik naar de bovenliggende assembly. "
+                "Houd Alt ingedrukt om Object/Assembly tijdelijk om te keren."
+            )
+            selection_row.addWidget(self.selection_level)
+            selection_hint = QtWidgets.QLabel("Alt = tijdelijk omkeren")
+            selection_hint.setObjectName("cwsMuted")
+            selection_row.addWidget(selection_hint)
+            selection_row.addStretch(1)
+            camera_layout.addLayout(selection_row)
+
             history = QtWidgets.QHBoxLayout()
             self.back = QtWidgets.QPushButton("← Vorige camera")
             self.forward = QtWidgets.QPushButton("Volgende camera →")
@@ -123,6 +140,7 @@ if qt_available():
             self.state.setObjectName("cwsMuted")
             root.addWidget(self.state)
 
+            self.selection_level.currentIndexChanged.connect(self._selection_level_changed)
             self.back.clicked.connect(lambda: self._run("Vorige camera", self.service.camera_back))
             self.forward.clicked.connect(lambda: self._run("Volgende camera", self.service.camera_forward))
             self.fit.clicked.connect(lambda: self._run("Fit alles", self.service.fit_all))
@@ -155,6 +173,20 @@ if qt_available():
             self._last_pick = pick
             normal = getattr(pick, "normal", None)
             self.from_face.setEnabled(normal is not None and normal.length() > 1e-12)
+            self.refresh()
+
+        def _selection_level_changed(self, _index: int) -> None:
+            if self._building:
+                return
+            value = self.selection_level.currentData()
+            if value:
+                level = SelectionLevel(str(value))
+                self.controller.set_selection_level(level)
+                self.status_changed.emit(
+                    "Selectiemodus: Assembly · Alt selecteert tijdelijk Object"
+                    if level == SelectionLevel.ASSEMBLY
+                    else "Selectiemodus: Object · Alt selecteert tijdelijk Assembly"
+                )
 
         def _run_view(self, view: StandardView) -> None:
             self._run(f"Aanzicht: {view.value}", self.service.set_standard_view, view)
@@ -175,7 +207,13 @@ if qt_available():
                     "Klik eerst een vlak of geometriepunt met een geldige normaal.",
                 )
                 return
-            self._run("Camera loodrecht op gekozen vlak", self.service.view_from_normal, normal)
+            point = getattr(self._last_pick, "world_point", None)
+            self._run(
+                "Camera loodrecht op gekozen vlak",
+                self.service.view_from_normal,
+                normal,
+                target=point,
+            )
 
         def _save_named_view(self) -> None:
             name, ok = QtWidgets.QInputDialog.getText(self, "View opslaan", "Naam van de view:")
@@ -237,6 +275,11 @@ if qt_available():
                 }
                 for key, value in values.items():
                     self._camera_fields[key].setValue(float(value))
+                selection_index = self.selection_level.findData(
+                    self.controller.session.selection_level.value
+                )
+                if selection_index >= 0:
+                    self.selection_level.setCurrentIndex(selection_index)
                 projection_index = self.projection.findData(camera.projection.value)
                 self.projection.setCurrentIndex(max(0, projection_index))
                 self.back.setEnabled(self.service.can_camera_back)
@@ -270,6 +313,7 @@ if qt_available():
                     "Clipping: actief" if self.controller.session.clipping_box is not None else "Clipping: uit"
                 )
                 self.state.setText(
+                    f"Selectie {self.controller.session.selection_level.value} · "
                     f"Camera ({camera.projection.value}) · sections {len(self.controller.session.section_planes)} · "
                     f"saved views {len(self.controller.list_viewpoints())} · view-state is display/review-only"
                 )
