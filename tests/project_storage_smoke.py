@@ -267,7 +267,7 @@ class ProjectStorageTests(unittest.TestCase):
                     data = source.read(info.filename)
                     if info.filename == "manifest.json":
                         manifest = json.loads(data.decode("utf-8"))
-                        manifest["project_schema_version"] = "2.9"
+                        manifest["project_schema_version"] = "2.26"
                         data = json.dumps(manifest, sort_keys=True).encode("utf-8")
                     target.writestr(info, data)
             with self.assertRaises(ProjectPackageError):
@@ -322,7 +322,7 @@ class ProjectStorageTests(unittest.TestCase):
             package = ProjectStore().open(legacy)
             self.assertTrue(package.migration_performed)
             self.assertTrue(package.read_only)
-            self.assertEqual(package.project.schema_version, "2.5")
+            self.assertEqual(package.project.schema_version, "2.25")
             self.assertEqual(package.project.project_name, "Legacy project")
 
             migrated = folder / "migrated.cwscproj"
@@ -330,7 +330,7 @@ class ProjectStorageTests(unittest.TestCase):
             self.assertTrue(migrated.is_file())
             self.assertFalse(result.migration_performed)
             self.assertFalse(result.read_only)
-            self.assertEqual(result.project.schema_version, "2.5")
+            self.assertEqual(result.project.schema_version, "2.25")
             self.assertEqual(original_hash, hashlib.sha256(legacy.read_bytes()).hexdigest())
 
     def test_session_save_reuses_just_written_verified_snapshot(self) -> None:
