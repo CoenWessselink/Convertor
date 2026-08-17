@@ -243,12 +243,14 @@ class NeutralOperation:
             ("target_face_id", self.target_face_id),
             ("source_feature_id", self.source_feature_id),
             ("source_evidence_sha256", self.source_evidence_sha256),
-            ("capability_proof_sha256", self.capability_proof_sha256),
         ):
             if not str(value).strip():
                 raise ValueError(f"NeutralOperation mist {label}")
-        if self.status == NeutralOperationStatus.READY and not self.tool_id.strip():
-            raise ValueError("READY NeutralOperation vereist tool_id")
+        if self.status == NeutralOperationStatus.READY:
+            if not self.tool_id.strip():
+                raise ValueError("READY NeutralOperation vereist tool_id")
+            if not self.capability_proof_sha256.strip():
+                raise ValueError("READY NeutralOperation vereist capability proof")
         if self.estimated_duration_s is not None and (
             not math.isfinite(float(self.estimated_duration_s)) or float(self.estimated_duration_s) < 0.0
         ):
@@ -260,7 +262,12 @@ class NeutralOperation:
 
     @property
     def ready(self) -> bool:
-        return self.status == NeutralOperationStatus.READY and not self.blocking_codes
+        return (
+            self.status == NeutralOperationStatus.READY
+            and bool(self.tool_id.strip())
+            and bool(self.capability_proof_sha256.strip())
+            and not self.blocking_codes
+        )
 
     def identity_payload(self) -> dict[str, Any]:
         return {
