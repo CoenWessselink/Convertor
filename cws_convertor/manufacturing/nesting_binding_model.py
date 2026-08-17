@@ -229,10 +229,11 @@ class NestedManufacturingFeature:
             ("production_instance_id", self.production_instance_id),
             ("stock_id", self.stock_id),
             ("face_id", self.face_id),
-            ("machine_decision_sha256", self.machine_decision_sha256),
         ):
             if not str(value).strip():
                 raise ValueError(f"NestedManufacturingFeature mist {label}")
+        if self.status == NestedFeatureStatus.BOUND and not self.machine_decision_sha256.strip():
+            raise ValueError("Gebonden NestedManufacturingFeature vereist machine decision bewijs")
         expected = stable_sha256(self.identity_payload())
         if self.feature_sha256 and self.feature_sha256 != expected:
             raise ValueError("NestedManufacturingFeature feature_sha256 klopt niet")
@@ -240,7 +241,11 @@ class NestedManufacturingFeature:
 
     @property
     def production_usable(self) -> bool:
-        return self.status == NestedFeatureStatus.BOUND and not self.blocking_codes
+        return (
+            self.status == NestedFeatureStatus.BOUND
+            and bool(self.machine_decision_sha256.strip())
+            and not self.blocking_codes
+        )
 
     def identity_payload(self) -> dict[str, Any]:
         return {
