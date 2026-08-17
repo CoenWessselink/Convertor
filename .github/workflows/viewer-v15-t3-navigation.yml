@@ -7,6 +7,7 @@ on:
       - feature/trimble-parity-v15
     paths:
       - 'cws_viewer/**'
+      - 'docs/viewer/TRIMBLE_*V15*.md'
       - 'CWS_Viewer_V15_Standalone.py'
       - 'tests/viewer_v15_**'
       - '.github/workflows/viewer-v15-t3-navigation.yml'
