@@ -62,6 +62,7 @@ STORE_BY_PHASE = {
 
 _ALLOWED_MODULES = {name for names in AUTHORITY_MODULES.values() for name in names}
 _ARCHIVE_VERIFIED = False
+_COMPATIBILITY_ALIASES_INSTALLED = False
 
 
 def runtime_archive_path() -> Path:
@@ -83,6 +84,23 @@ def verify_m18_runtime_archive() -> str:
     return digest
 
 
+def _install_internal_compatibility_aliases() -> None:
+    """Keep one frozen M18 internal absolute import inside the isolated runtime.
+
+    Frozen M18 ``adapter_certification`` contains a lazy absolute import of
+    ``cws_convertor.manufacturing.certification_ops``.  Point that exact legacy
+    name at the checksum-verified M18 module rather than creating/copying a
+    second current implementation.  This alias exists only for M18's own
+    certification call path; the normal public U2 API remains this facade.
+    """
+    global _COMPATIBILITY_ALIASES_INSTALLED
+    if _COMPATIBILITY_ALIASES_INSTALLED:
+        return
+    module = importlib.import_module("cws_m18_authority.certification_ops")
+    sys.modules.setdefault("cws_convertor.manufacturing.certification_ops", module)
+    _COMPATIBILITY_ALIASES_INSTALLED = True
+
+
 def _activate_runtime() -> None:
     install_m18_runtime_access()
     archive = runtime_archive_path()
@@ -94,6 +112,7 @@ def _activate_runtime() -> None:
     root = importlib.import_module("cws_m18_authority")
     if getattr(root, "M18_ORIGIN_COMMIT", "") != M18_ORIGIN_COMMIT:
         raise RuntimeError("M18 authority runtime heeft onverwachte source-commit identiteit")
+    _install_internal_compatibility_aliases()
 
 
 def load_authority_module(name: str):
