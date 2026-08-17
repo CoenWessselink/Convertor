@@ -15,7 +15,7 @@ import CWS_Viewer_Standalone as _base
 
 PRODUCT = _base.PRODUCT
 VERSION = "1.4.0-v15-preview.1"
-HANDLING_CONTRACT_VERSION = "1.0"
+HANDLING_CONTRACT_VERSION = "1.1-quality-fix"
 _base.VERSION = VERSION
 
 
@@ -39,9 +39,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_phase2_v15 import phase2_workspace_contract
+    from cws_viewer.ui_qt.cockpit_feel_fix_v15 import viewer_feel_workspace_contract
 
-    contract = phase2_workspace_contract()
+    contract = viewer_feel_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -124,6 +124,23 @@ def _run_v15_selftest() -> dict[str, object]:
         "phase2_actual_vtk_input_host",
         "phase2_review_panel_remains_lazy",
     )
+    required_feel = (
+        "zoom_to_cursor_surface_point",
+        "zoom_to_cursor_reference_depth_fallback",
+        "wheel_notch_incremental_zoom",
+        "zoom_does_not_replace_semantic_orbit_pivot",
+        "coalesced_navigation_input",
+        "selection_cursor_arrow",
+        "pan_cursor_hand",
+        "tessellation_edges_suppressed",
+        "hard_edge_normals",
+        "selection_feature_edge_outline",
+        "interactive_fxaa",
+        "interactive_msaa_8x",
+        "quality_light_background",
+        "phase2_review_preserved",
+        "phase1_fast_start_preserved",
+    )
     export_safety = dict(contract.get("export_center", {}).get("safety", {}))
     manufacturing_safety = dict(contract.get("manufacturing", {}).get("safety", {}))
     phase2_review_safety = dict(
@@ -147,6 +164,7 @@ def _run_v15_selftest() -> dict[str, object]:
         and all(bool(capabilities.get(name)) for name in required_t8)
         and all(bool(capabilities.get(name)) for name in required_phase1)
         and all(bool(capabilities.get(name)) for name in required_phase2)
+        and all(bool(capabilities.get(name)) for name in required_feel)
         and not bool(capabilities.get("ai_derived_dimensions", True))
         and not bool(capabilities.get("silent_reference_remap", True))
         and not bool(capabilities.get("review_mutates_canonical_geometry", True))
@@ -177,6 +195,10 @@ def _run_v15_selftest() -> dict[str, object]:
         "trimble_style_handling_contract_certified": passed,
         "selected_object_orbit_pivot_certified": passed,
         "active_pivot_zoom_certified": passed,
+        "cursor_zoom_certified": passed,
+        "tessellation_edge_suppression_certified": passed,
+        "smooth_navigation_input_certified": passed,
+        "quality_rendering_certified": passed,
         "phase1_startup_certified": passed,
         "phase1_viewer_first_layout_certified": passed,
         "phase1_lazy_optional_panels_certified": passed,
