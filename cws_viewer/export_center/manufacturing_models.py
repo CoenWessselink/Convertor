@@ -1,7 +1,7 @@
 """M8 scope-first manufacturing evidence package contracts."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from cws_convertor.production_export.utils import stable_hash
@@ -27,7 +27,7 @@ class ManufacturingPackagePreflight:
     def __post_init__(self) -> None:
         for name in ("selected_part_ids", "selected_instance_ids", "neutral_job_ids", "evidence_sha256s"):
             object.__setattr__(self, name, tuple(sorted(dict.fromkeys(getattr(self, name)))))
-        object.__setattr__(self, "blocking_codes", tuple(dict.fromkeys(self.blocking_codes)))
+        object.__setattr__(self, "blocking_codes", tuple(sorted(dict.fromkeys(self.blocking_codes))))
         object.__setattr__(self, "messages", tuple(self.messages))
         if not self.project_id.strip() or not self.project_state_hash.strip() or not self.scope_manifest_sha256.strip():
             raise ValueError("M8 preflight mist project/scope-identiteit")
@@ -59,8 +59,10 @@ class ManufacturingPackagePreflight:
 
     @classmethod
     def create(cls, **kwargs: Any) -> "ManufacturingPackagePreflight":
+        # Hash the normalized immutable instance. This prevents caller set/dict
+        # iteration order from influencing the evidence identity.
         result = cls(manifest_sha256="", **kwargs)
-        return cls(**kwargs, manifest_sha256=result.calculate_hash())
+        return replace(result, manifest_sha256=result.calculate_hash())
 
     def to_dict(self) -> dict[str, Any]:
         result = self.payload_dict()
@@ -117,7 +119,7 @@ class ManufacturingPackageManifest:
         for name in ("selected_part_ids", "selected_instance_ids", "neutral_job_ids"):
             object.__setattr__(self, name, tuple(sorted(dict.fromkeys(getattr(self, name)))))
         object.__setattr__(self, "artifacts", tuple(sorted(self.artifacts, key=lambda item: item.relative_path)))
-        object.__setattr__(self, "blocking_codes", tuple(dict.fromkeys(self.blocking_codes)))
+        object.__setattr__(self, "blocking_codes", tuple(sorted(dict.fromkeys(self.blocking_codes))))
         for label, value in (
             ("package_id", self.package_id),
             ("project_id", self.project_id),
@@ -162,7 +164,7 @@ class ManufacturingPackageManifest:
     @classmethod
     def create(cls, **kwargs: Any) -> "ManufacturingPackageManifest":
         result = cls(manifest_sha256="", **kwargs)
-        return cls(**kwargs, manifest_sha256=result.calculate_hash())
+        return replace(result, manifest_sha256=result.calculate_hash())
 
     def to_dict(self) -> dict[str, Any]:
         result = self.payload_dict()
