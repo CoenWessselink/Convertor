@@ -214,7 +214,11 @@ def _capture_m18_extensions(raw: dict[str, Any], *, source_schema: str) -> None:
         settings = {}
         raw["settings"] = settings
     unified = _extension(settings)
-    unified["source_schema"] = str(source_schema or "")
+    # Source provenance is immutable once a legacy/M18 snapshot has crossed the
+    # 2.25 bridge. Re-opening an already migrated 2.25 package must not rewrite
+    # its original 2.5/2.24 origin to 2.25, otherwise its semantic package hash
+    # would drift without a user or manufacturing change.
+    unified.setdefault("source_schema", str(source_schema or ""))
     unified["bridge_schema"] = UNIFIED_PROJECT_SCHEMA_VERSION
     stores = unified.get("m18_project_stores")
     if not isinstance(stores, dict):
