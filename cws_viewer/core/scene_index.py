@@ -133,6 +133,19 @@ class SceneIndex:
     def root_node_ids(self) -> tuple[str, ...]:
         return self.children_by_parent.get(None, ())
 
+    @property
+    def children_by_node(self) -> Mapping[str | None, tuple[str, ...]]:
+        """Backward-compatible hierarchy alias for cockpit/startup callers.
+
+        ``children_by_parent`` is the canonical SceneIndex API.  Some mature
+        desktop cockpit paths still use the older ``children_by_node`` name
+        while building the Project Explorer after geometry loading.  Returning
+        the exact same immutable mapping keeps those callers safe without
+        duplicating hierarchy state or changing scene semantics.
+        """
+
+        return self.children_by_parent
+
     def node(self, node_id: str) -> SceneNode:
         try:
             return self.nodes_by_id[node_id]
