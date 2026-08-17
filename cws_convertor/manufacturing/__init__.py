@@ -41,6 +41,20 @@ from .marking_model import (
     MarkingRuleSet,
 )
 from .marking import ContactScribingEngine, MarkSetValidator
+from .identification_model import (
+    IDENTIFICATION_SCHEMA,
+    IDENTIFICATION_SET_SCHEMA,
+    IDENTIFICATION_ALGORITHM,
+    HoleReferenceInput,
+    HoleReferenceMark,
+    IdentificationRuleSet,
+    IdentificationSet,
+    IdentificationStatus,
+    IdentificationTextIntent,
+    IdentificationTextRequest,
+    ReadabilityPolicy,
+)
+from .identification import IdentificationPlanner
 
 __all__ = [
     "MANUFACTURING_FACE_SCHEMA",
@@ -76,4 +90,16 @@ __all__ = [
     "MarkingRuleSet",
     "ContactScribingEngine",
     "MarkSetValidator",
+    "IDENTIFICATION_SCHEMA",
+    "IDENTIFICATION_SET_SCHEMA",
+    "IDENTIFICATION_ALGORITHM",
+    "HoleReferenceInput",
+    "HoleReferenceMark",
+    "IdentificationRuleSet",
+    "IdentificationSet",
+    "IdentificationStatus",
+    "IdentificationTextIntent",
+    "IdentificationTextRequest",
+    "ReadabilityPolicy",
+    "IdentificationPlanner",
 ]
