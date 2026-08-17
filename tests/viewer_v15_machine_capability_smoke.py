@@ -104,6 +104,8 @@ def _contact_report() -> ContactResolutionReport:
         projected_boundary_main_2d=(local,),
         projected_boundary_secondary_2d=(local,),
         area_mm2=3600.0,
+        gap_mm=0.0,
+        penetration_mm3=0.0,
         proof_status="verified",
     )
     return ContactResolutionReport.create(
