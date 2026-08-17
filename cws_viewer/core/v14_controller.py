@@ -161,6 +161,13 @@ class V14ViewerCoreController(ViewerCoreController):
         super().set_selection(ids, mode=mode)
         if self.session.selection:
             self.focus_orbit_on_selection()
+        else:
+            # An empty selection must end the semantic object-focus contract.
+            # Keeping the last selected part as a hidden zoom/orbit anchor made
+            # navigation feel 'sticky' after Esc, toggle-off or an empty area
+            # selection.  Fall back to the current camera target until the next
+            # no-selection orbit mouse-down supplies an exact picked point.
+            self.reset_orbit_pivot()
 
     def probe_at(self, x: int, y: int) -> PickResult | None:
         """Read renderer geometry without changing semantic selection."""
