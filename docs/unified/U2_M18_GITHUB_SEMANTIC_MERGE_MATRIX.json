@@ -8,7 +8,8 @@
     "version": "0.8.30-beta-dev",
     "commit": "b04b1c203583295e8c5ed018d75de68b2319c839",
     "tag": "scribing-m18-deployment-assurance-0.8.30-beta-dev",
-    "runtime_sha256": "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
+    "runtime_sha256": "30bcbb5bdd0aa6bac825a31dcbd5eb69586f051dc66c01e3485d4e8a56d7a745",
+    "runtime_hash_authority": "Windows GitHub Actions checkout bytes"
   },
   "decisions": [
     {"phase":"M1","authority":"github-v15","canonical":"cws_convertor.manufacturing.faces","m18_role":"compatibility-only","duplicate_project_truth":false},
