@@ -2,6 +2,7 @@
 
 Auditdatum: 2026-08-17  
 Branch: `feature/trimble-parity-v15`  
+Windows source evidence commit: `b865e2b2fef2d8f15387a2abccdd5ffe6679117c`  
 Status: **SOURCE HARDENED / WINDOWS T3 GREEN — packaged physical GUI interaction evidence blijft verplicht**
 
 ## 1. Aanleiding
@@ -10,7 +11,7 @@ De bestaande T0/T3 documentatie markeerde orbit/pan/zoom als bewezen baseline. B
 
 > na selectie van een onderdeel bleef orbit rond het oude `camera.target` / scene-fitpunt draaien in plaats van rond het gekozen onderdeel.
 
-Dit is geen cosmetische afwijking. Het bepaalt of de 3D-viewer als engineeringviewer natuurlijk bestuurbaar is.
+Dit is geen cosmetische afwijking. Het bepaalt of de 3D-viewer als engineeringviewer natuurlijk bestuurbaar is. Daarom is niet alleen orbit gepatcht; de volledige selectie/camera/displaybasis is opnieuw langs de aangeleverde Trimble-referentie en de openbare Connect for Windows workflow gelegd.
 
 ## 2. Bronnen voor deze audit
 
@@ -27,21 +28,34 @@ De aangeleverde package is uitsluitend een zichtbare gedrags-/workflowreferentie
 
 Gecontroleerd op 2026-08-17 tegen Connect for Windows documentatie:
 
-- Navigation and Camera Controls: Rotate, Pan, Walk Around, Look Around;
-- Rotate: muisknop vasthouden op een gekozen modelpunt en rond **dat gekozen punt** roteren;
-- Pan: eveneens een modelpunt kiezen en vanaf dat punt slepen;
-- Keyboard Shortcuts: Space = fit selectie; dubbelklik object = fit + objectcontext; Alt+dubbelklik surface = orthogonaal aan surface; Ctrl+U/I/O/P = Rotate/Pan/Walk/Look; Esc beëindigt operatie en wist selectie; F11 = full-screen; Backspace/Shift+Backspace = hide/hide others;
-- Making Selections: single, area en assembly selection; links→rechts = volledig binnen, rechts→links = crossing; Alt keert Object/Assembly-selectiemodus tijdelijk om.
+- Rotate, Pan, Walk Around en Look Around zijn afzonderlijke cameramodi;
+- Rotate start op een gekozen modelpunt en draait rond die gekozen modelcontext;
+- Pan start eveneens vanaf een gekozen modelpunt;
+- Space = fit selectie;
+- dubbelklik object = geselecteerd object in beeld brengen;
+- Alt+dubbelklik surface = camera loodrecht op dat vlak;
+- Ctrl+U/I/O/P = Rotate/Pan/Walk/Look;
+- Esc beëindigt de actieve operatie en wist selectie;
+- F11 = full-screen;
+- Backspace / Shift+Backspace = hide selection / hide others;
+- Enter opent details van het geselecteerde object;
+- single, area en assembly selection bestaan naast elkaar;
+- links→rechts area = volledig binnen; rechts→links = crossing;
+- Alt keert Object/Assembly-selectiemodus tijdelijk om;
+- ghosted context is visuele context en hoort niet als normaal selectiedoel te functioneren.
 
 Referenties:
 
 - https://help.trimble.com/doc/trimble-connect/trimble-connect/connect-for-windows/working-in-3d/navigation-and-camera-controls
 - https://help.trimble.com/doc/trimble-connect/trimble-connect/connect-for-windows/working-in-3d/keyboard-shortcuts
 - https://help.trimble.com/doc/trimble-connect/trimble-connect/connect-for-windows/working-in-3d/making-selections
+- https://help.trimble.com/doc/trimble-connect/trimble-connect/connect-for-windows/working-in-3d/hide-models-and-objects
 
-## 3. Root cause in CWS vóór herstel
+## 3. Root causes in CWS vóór herstel
 
-De oude orbitketen was:
+### 3.1 Orbit gebruikte een stale camera target
+
+De oude keten was:
 
 ```text
 mouse drag
@@ -57,23 +71,37 @@ pick_at
   -> set_selection(...)
 ```
 
-Er bestond geen aparte orbitpivot en `set_selection()` wijzigde de orbitfocus niet. Alleen `fit_selection()` zette toevallig `camera.target` op de selectie-bounds. Hierdoor werkte orbit na een gewone klik alleen correct wanneer de gebruiker daarna expliciet Fit Selectie uitvoerde.
+Er bestond geen aparte orbitpivot. Alleen `fit_selection()` zette toevallig `camera.target` op de selectie-bounds. Een gewone klik op een onderdeel veranderde dus niet waar de volgende orbit omheen draaide.
 
-De oude pan gebruikte daarnaast een vaste, cameradistance-afgeleide gevoeligheid uit muisdelta's. Daardoor was de bediening afhankelijk van modelschaal en niet van het werkelijk gekozen punt in perspectief.
+### 3.2 Pan was niet aan het gekozen modelpunt gebonden
 
-## 4. Nieuw verplicht interactiecontract
+De oude pan gebruikte een cameradistance-/modelschaalheuristiek. Een identieke muisbeweging voelde daardoor anders bij verschillende modeldieptes.
 
-### 4.1 Persistent selectie-orbitpivot
+### 3.3 Assembly-selectie en renderhighlight waren niet één contract
+
+Een assembly-knooppunt kan semantisch geselecteerd zijn zonder eigen geometrie. De oude renderstate markeerde dan alleen renderbare selectie-IDs, waardoor een assemblyselectie intern bestond maar visueel niet noodzakelijk blauw oplichtte.
+
+### 3.4 Explode en camerabounds gebruikten verschillende werkelijkheden
+
+De renderer verplaatste exploded objecten met viewer-only offsets, terwijl selection focus / Fit Selection / Fit All / Zoom Area nog van canonical pre-explode bounds konden uitgaan. Daardoor kon een zichtbaar verplaatst onderdeel nog om zijn oude positie draaien.
+
+### 3.5 Ghost/hidden geometry kon op controller-niveau nog als renderer-hit terugkomen
+
+Een rendererpicker kan technisch een actor raken die als ghost-context wordt getekend. Zonder controllerfilter kon die context een normale selectie stelen.
+
+## 4. Nieuw centraal interactiecontract
+
+### 4.1 Selectie bepaalt orbitfocus zonder camera-jump
 
 Bij een niet-lege selectie:
 
 ```text
-orbit_pivot = center(combined world bounds of selected nodes)
+orbit_pivot = center(displayed bounds of selected hierarchy)
 ```
 
-Dit geldt voor klik in viewport, projectboom/gridselectie, multi-selectie, assemblyselectie en area selection. De camera beweegt **niet** door alleen te selecteren; uitsluitend de focus voor de volgende orbit verandert.
+Dit geldt centraal voor viewport, projectboom/grid, multi-selectie, assemblyselectie en area selection. Alleen de toekomstige orbitfocus verandert; de camera wordt door een gewone selectie niet gepand, gezoomd of gefit.
 
-### 4.2 Exact modelpunt tijdens Rotate-drag
+### 4.2 Rotate-drag gebruikt exact picked surface point
 
 Bij mouse-down in Rotate mode:
 
@@ -83,107 +111,171 @@ non-mutating surface probe
   -> transient orbit_pivot = picked world point
 ```
 
-De V14 real-mesh backend probeert eerst een `vtkCellPicker` op de echte meshgroepen; alleen wanneer die geen geldige surface-hit geeft, blijft de oudere center-proxy fallback beschikbaar. Daarmee is de Rotate-focus op de real-project renderer daadwerkelijk surface-gebaseerd waar de meshbackend dit kan bewijzen.
+De real-mesh backend probeert eerst `vtkCellPicker` op de echte meshactoren. Alleen wanneer geen geldige surface-hit bestaat, blijft de oudere fallback beschikbaar. De drag zelf muteert de selectie niet.
 
-### 4.3 Picked-depth Pan
+### 4.3 Orbit roteert het volledige cameraframe om de pivot
 
-Bij mouse-down in Pan mode wordt eveneens het zichtbare modelpunt geprobed. De panverschuiving per pixel wordt daarna bepaald vanuit:
+Zowel eye-position als focal target worden rigide om het actieve pivotpunt geroteerd. Een geselecteerd/picked punt blijft daardoor de werkelijke rotatiecontext, ook als het oude camera target elders lag.
 
-- perspectief: actuele FOV + diepte van het gekozen modelpunt;
-- orthografisch: de ingestelde verticale `ortho_scale`.
+### 4.4 Picked-depth Pan
 
-Hierdoor beweegt een punt dat dichter bij de camera ligt minder wereldmillimeters per pixel dan een punt op grotere diepte, zoals een perspectiefcamera geometrisch vereist. De pan is niet langer gebaseerd op één willekeurige model-schaalfactor.
+Bij Pan wordt het gekozen modelpunt vastgelegd. Wereldverplaatsing per pixel wordt bepaald uit:
 
-### 4.4 Object / Assembly selection
+- perspectief: camera-FOV + diepte van het gekozen modelpunt;
+- orthografisch: actuele `ortho_scale`.
+
+Zowel Pan-mode met LMB als de bestaande middle-mouse pan lopen door dezelfde berekening.
+
+### 4.5 Object / Assembly selection is expliciet en hiërarchisch
 
 ```text
 persistent selection level = Object | Assembly
-Alt + click = temporary inverse level
+Alt + click = one-shot inverse level
 ```
 
-De tijdelijke Alt-keuze verandert de opgeslagen selectiemodus niet. De V15 Aanzicht/Navigatie-dock toont expliciet `Object` / `Assembly` en de Alt-inversie. Selection level blijft onderdeel van viewer workspace/session state.
+De Alt-inversie wordt nu berekend zonder `session.selection_level` ook maar tijdelijk te muteren. De persistente UI-modus kan dus niet knipperen, opgeslagen worden of plugin-events veroorzaken door een one-shot Alt-click.
 
-### 4.5 Rigid camera rotation om pivot
+Een assemblyselectie blijft semantisch één assembly-ID, maar de renderselection wordt voor highlight uitsluitend naar de renderbare descendants uitgebreid. Daardoor blijven selectie-identiteit, properties, orbit-bounds en blauwe highlight onderling consistent.
 
-Orbit roteert zowel camera eye als focal target als één rigide cameraframe om de actieve pivot. Daardoor blijft een gekozen selectie/pick werkelijk het draaipunt, ook wanneer het oude `camera.target` ergens anders lag.
+### 4.6 Hidden en ghost context zijn geen normale selectiedoelen
 
-### 4.6 Fit- en restore-regels
+`pick_at()` valideert een renderer-hit nu tegen de actuele visible/ghosted state vóór de semantische selectie wordt gewijzigd. Hidden en ghosted context kunnen de actieve isolatiescope niet meer stelen.
 
-- Fit All: scene fit + pivot naar nieuw camera target;
-- Fit Selection: selectie fit + pivot op selectiecentrum;
-- Selection zonder fit: geen camera-jump;
-- selectie wissen: laatste bruikbare focus blijft staan;
-- undo/redo, saved-view activation en workspace restore: pivot wordt opnieuw afgeleid van herstelde selectie, anders van actuele camera target.
+De non-mutating `probe_at()` blijft bewust apart voor cameragebruik; selectie en navigatie gebruiken dus niet dezelfde muterende pickroute.
+
+### 4.7 Fit en orbit volgen displayed geometry, ook bij Explode
+
+Canonical scene bounds blijven immutable. Viewer-only explode offsets worden uitsluitend bij `display_bounds_for()` toegepast.
+
+Daarop zijn nu gebaseerd:
+
+- selection orbit focus;
+- Fit Selection;
+- Fit All;
+- Zoom Area;
+- assembly/group bounds;
+- selectie-focus na `explode()`;
+- selectie-focus na `reset_explode()`.
+
+De camera volgt dus de positie die de gebruiker werkelijk op het scherm ziet zonder canonical geometry te vervormen.
+
+### 4.8 State restore en live scene updates mogen geen stale pivot achterlaten
+
+Na:
+
+- undo/redo;
+- saved-view activation;
+- workspace restore;
+- live scene/revision patch;
+- explode/reset-explode;
+
+wordt de transient orbitfocus opnieuw afgeleid van de huidige selectie/displaybounds, of van het actuele camera target wanneer geen selectie bestaat.
 
 ## 5. Keyboard/mouse parity hardening
 
-| Gedrag | Bestaande basis vóór audit | Huidige status |
+| Gedrag | Voor audit | Huidige bronstatus |
 |---|---|---|
-| Orbit rond gekozen modelpunt | fout: rond `camera.target` | Windows source gate groen |
-| Selectie bepaalt orbitfocus | ontbrak | Windows source gate groen |
-| Tree/grid selectie bepaalt orbitfocus | selectie-sync bestond, focus ontbrak | centraal via controller-selection |
-| Multi-select orbitfocus | ontbrak | combined bounds center |
-| Pan vanaf gekozen modelpunt | schaal-/distanceheuristiek | picked-depth pan + Windows contracttest |
-| Object/Assembly selectiemodus | intern SelectionLevel bestond | expliciete UI + tijdelijke Alt-inversie |
+| Orbit rond geselecteerd/picked onderdeel | fout/stale target | Windows source verified |
+| Pan vanaf gekozen modelpunt | schaalheuristiek | picked-depth, Windows source verified |
+| Tree/grid/viewport selectie → zelfde orbitfocus | onvolledig | centraal controllercontract |
+| Multi-select orbitfocus | onvolledig | combined displayed bounds |
+| Assemblyselectie highlight | semantisch maar mogelijk onzichtbaar | descendants highlight |
+| Object/Assembly mode | intern SelectionLevel | expliciete UI + one-shot Alt inversion |
+| Exploded object focus/fit | canonical oude positie mogelijk | displayed bounds |
+| Ghost/hidden selection | renderer-afhankelijk | centraal geblokkeerd |
 | Space = fit selectie | aanwezig | behouden |
-| Dubbelklik object = select + fit | aanwezig | behouden |
-| Alt+dubbelklik surface = orthogonaal | ontbrak in viewportinput | surface normal + exact picked point |
-| Ctrl+U/I/O/P | aanwezig als cockpit shortcuts | behouden + viewer-focus fallback |
+| Dubbelklik object = select + fit | aanwezig | behouden, gebruikt displayed bounds |
+| Alt+dubbelklik surface | ontbrak in viewportinput | exact picked point + normal |
+| Enter = selectie-details | ontbrak als zichtbare parity shortcut | Properties/Provenance dock focus |
+| Ctrl+U/I/O/P | aanwezig | behouden + viewer-focus fallback |
 | F11 | aanwezig | behouden + viewer-focus fallback |
-| Esc | tool cancel aanwezig | aangevuld met selectie wissen |
-| Backspace | cockpit shortcut aanwezig | behouden + viewer-focus fallback |
-| Shift+Backspace | niet centraal afgedekt | hide-others fallback toegevoegd |
-| L→R area | aanwezig | fully-inside behouden |
+| Esc | tool cancel aanwezig | tool cancel + selectie wissen |
+| Backspace | aanwezig | behouden + viewer-focus fallback |
+| Shift+Backspace | niet centraal afgedekt | hide-others/isolate fallback |
+| L→R area | aanwezig | volledig-binnen behouden |
 | R→L area | aanwezig | crossing behouden |
 | Right-click context | aanwezig | behouden |
 
-## 6. Windows source evidence
+## 6. Windows evidence — huidige interaction foundation
 
-Run `32004795315`, commit `30ce1106258a89ffc113219693ee77f1d84a063b`:
+Laatste volledige T3 source gate op de geharde basis:
+
+- Git commit: `b865e2b2fef2d8f15387a2abccdd5ffe6679117c`
+- GitHub Actions run: `32006882656`
+- Runner: `windows-2022`
+- Python: 3.12 x64
+
+Resultaat:
 
 ```text
-Compile T3 modules                         PASS
+Compile T3 interaction modules            PASS
 Deterministic T3 navigation contract       PASS
-V15 self-test contract                     PASS
-Windows runner                             windows-2022 / Python 3.12 x64
+Interaction foundation regressions         PASS
+V15 standalone self-test contract          PASS
+Overall T3 job                             PASS
 ```
 
-De packaged V15-self-test is vervolgens aangescherpt zodat toekomstige frozen/portable/installed builds ook de nieuwe interaction-capabilities expliciet moeten bevatten: picked-point orbit, selection orbit focus, picked-depth pan, Object/Assembly selection en Alt inversion.
+De interaction-foundation regressies bewijzen onder andere:
 
-## 7. Bewust nog niet als volledig gelijk verklaard
-
-1. **Walk Around / Look Around feel** — de modi bestaan, maar exacte gevoeligheid/acceleratie/dead-zone is niet uit de aangeleverde binaries of openbare Help als numerieke formule bewezen. Niet op gevoel herschrijven.
-2. **Zoom feel / cursor anchoring** — wheel zoom werkt; exacte Trimble cursor/depth semantics zijn nog niet hard genoeg bewezen om een andere formule te claimen.
-3. **F11 packaged focus/state** — implementation aanwezig; packaged focus/state-restore moet in eindbuild worden bewezen.
-4. **Ctrl/Shift selectieconflict in Help** — actuele Trimble-pagina's spreken elkaar op detailniveau tegen. De aangeleverde Windows-reference-app/owner-test is hiervoor de beslissende oracle.
-5. **Trackpad/touch** — niet claimen zonder apart Windows inputbewijs.
-6. **Physical packaged GUI interaction** — headless GUI/screenshot en contracttests zijn niet hetzelfde als echte muisbediening op de frozen EXE. Dit blijft een expliciete releasegate.
-
-## 8. Nieuwe regressiegate
-
-Automatisch bewezen / verplicht:
-
-- selectie zet pivot op selection bounds center zonder camera te verplaatsen;
-- multi-select gebruikt combined bounds;
-- gekozen surface/world point kan orbitpivot worden zonder selectie-mutatie;
-- orbit behoudt eye- en target-radius om pivot;
+- assemblyselectie highlight alle renderbare descendants;
+- tijdelijke Assembly/Object pick bewaart de persistente selectiemodus;
+- ghost context kan selectie niet stelen;
+- hidden geometry kan niet worden geselecteerd;
+- echte `explode()` verplaatst selection orbit focus naar displayed position;
+- reset-explode herstelt die focus;
+- Fit All respecteert actuele isolatiescope;
+- selected semantic group blijft één selectie terwijl renderselection alleen geometrie bevat;
 - perspective pan schaalt met picked depth;
 - orthographic pan is depth-independent;
-- tijdelijke Object/Assembly inversion bewaart persistent selection level;
-- Fit Selection centreert camera én pivot;
-- view-from-normal gebruikt picked point of actieve selectie-orbitfocus;
-- zoom-area behoudt selectie en bindt pivot aan fitted target;
-- workspace/saved-view restore laat geen stale orbitfocus achter.
+- workspace/saved-view restore laat geen stale orbitpivot achter.
+
+De standalone V15-self-test vereist bovendien expliciet de geharde T3-capabilities, waaronder picked-point orbit, selection focus, picked-depth pan, display-space fit met explode, Object/Assembly mode, Alt inversion en geselecteerd-object-details.
+
+## 7. Bewust nog niet als volledig Trimble-gelijk verklaard
+
+De onderstaande onderdelen worden niet op gevoel gekopieerd zolang de aangeleverde reference-app / owner test of een expliciet openbaar contract niet voldoende bewijs geeft:
+
+1. **Walk Around / Look Around feel** — exacte gevoeligheid, acceleratie en dead-zone zijn niet als numerieke formule bewezen.
+2. **Wheel zoom feel / cursor anchoring** — scroll zoom werkt, maar exacte cursor-/depth-zoomsemantiek is nog niet bewezen.
+3. **Ctrl/Shift multi-selection conflict** — actuele Trimble Help-pagina's spreken elkaar op detailniveau tegen; de aangeleverde Windows-reference-app wordt hiervoor de beslissende oracle.
+4. **Trackpad/touch** — niet claimen zonder apart Windows inputbewijs.
+5. **Physical packaged GUI input** — headless Qt/VTK smoke en contracttests zijn geen echte fysieke muis-/toetsenbordtest op de frozen/installed EXE.
+
+## 8. Releasegate voor de viewerhandling
+
+Broncode is pas de eerste helft. Voor een definitieve `VERIFIED` handlingstatus moet exact dezelfde commit ook als Windows packaged build aantonen:
+
+```text
+PyInstaller/frozen V15 self-test
+portable GUI start
+installed GUI start
+real QVTK renderer active
+real model loaded
+physical/scripted mouse rotate on selected part
+physical/scripted picked-depth pan
+Object/Assembly + Alt inversion
+Space / double-click / Alt-double-click
+hide / isolate / show-all
+explode + fit/orbit on displayed position
+section/clipping state
+camera state save/reopen
+```
+
+Daarna pas mag de algemene viewerhandling weer als parity-verified worden aangemerkt.
 
 ## 9. Statusregel
 
 ```text
 viewer_interaction_source_gate = GREEN
+source_commit = b865e2b2fef2d8f15387a2abccdd5ffe6679117c
+source_windows_run = 32006882656
 orbit_selection_focus = WINDOWS_SOURCE_VERIFIED
 picked_depth_pan = WINDOWS_SOURCE_VERIFIED
-object_assembly_selection = WINDOWS_SOURCE_VERIFIED
+hierarchy_selection_visualization = WINDOWS_SOURCE_VERIFIED
+display_space_explode_fit = WINDOWS_SOURCE_VERIFIED
+ghost_hidden_pick_exclusion = WINDOWS_SOURCE_VERIFIED
 packaged_physical_input_gate = REQUIRED_NOT_YET_GREEN
 trimble_proprietary_code_copied = false
 ```
 
-De eerdere generieke claim `3D orbit/pan/zoom/fit = VERIFIED_BASELINE` was te breed. Vanaf deze audit geldt alleen een capability als VERIFIED wanneer de betreffende input-/camera-semantiek afzonderlijk is getest.
+De eerdere generieke claim `3D orbit/pan/zoom/fit = VERIFIED_BASELINE` was te breed. Vanaf deze audit geldt alleen een interaction capability als VERIFIED wanneer de betreffende camera-/selectionsemantiek afzonderlijk is getest.
