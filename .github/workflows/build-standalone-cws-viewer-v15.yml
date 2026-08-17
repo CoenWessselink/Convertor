@@ -28,7 +28,7 @@ jobs:
       contents: read
 
     env:
-      VIEWER_VERSION: 1.4.0-v15-preview.1
+      VIEWER_VERSION: 1.4.0-v15-preview.2
       EVIDENCE: ${{ github.workspace }}\validation\standalone-viewer-v15
 
     steps:
@@ -65,6 +65,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V15 selected-object orbit/zoom parity failed' }
           python tests/viewer_v15_trimble_input_contract_smoke.py | Tee-Object "$env:EVIDENCE\source_t3_trimble_input_contract.txt"
           if ($LASTEXITCODE -ne 0) { throw 'V15 Trimble-style desktop handling contract failed' }
+          python tests/viewer_v15_feel_fix_smoke.py | Tee-Object "$env:EVIDENCE\source_quality_fix_contract.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'V15 Quality Fix contract failed' }
+          python tests/viewer_v15_trimble_feel_v2_smoke.py | Tee-Object "$env:EVIDENCE\source_trimble_feel_v2_contract.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'V15 preview.2 Trimble-feel contract failed' }
           python tests/viewer_v15_selection_measurement_smoke.py | Tee-Object "$env:EVIDENCE\source_t4_selection_measurement_contract.txt"
           if ($LASTEXITCODE -ne 0) { throw 'V15 T4 selection/measurement contract failed' }
           python tests/viewer_v15_review_workspace_smoke.py | Tee-Object "$env:EVIDENCE\source_t5_review_contract.txt"
@@ -112,6 +116,8 @@ jobs:
           if ($v15Payload.status -ne 'passed' -or -not $v15Payload.v15_cockpit_imported) { throw 'Packaged V15 cockpit was not certified' }
           if (-not $v15Payload.t3_navigation_imported -or -not $v15Payload.t4_selection_measurement_imported -or -not $v15Payload.t5_review_workspace_imported -or -not $v15Payload.t6_coordination_imported -or -not $v15Payload.t7_export_center_imported -or -not $v15Payload.t8_manufacturing_faces_imported) { throw 'Packaged V15 T3/T4/T5/T6/T7/T8 layers were not certified' }
           if (-not $v15Payload.trimble_style_handling_contract_certified -or -not $v15Payload.selected_object_orbit_pivot_certified -or -not $v15Payload.active_pivot_zoom_certified) { throw 'Packaged V15 selected-object handling was not certified' }
+          if (-not $v15Payload.upright_orbit_certified -or -not $v15Payload.source_ifc_colours_certified -or -not $v15Payload.contact_shading_certified -or -not $v15Payload.selected_fill_highlight_certified) { throw 'Packaged V15 preview.2 rendering/navigation was not certified' }
+          if (-not $v15Payload.ctrl_multiselect_certified -or -not $v15Payload.bidirectional_list_selection_certified -or -not $v15Payload.assembly_part_level_certified -or -not $v15Payload.views_strip_certified -or -not $v15Payload.measurement_foreground_certified) { throw 'Packaged V15 preview.2 UI workflow was not certified' }
           if (-not $v15Payload.workspace.capabilities.selection_pivot_precedence -or -not $v15Payload.workspace.capabilities.active_pivot_zoom -or -not $v15Payload.workspace.capabilities.viewer_undo_redo_shortcuts) { throw 'Packaged V15 handling capabilities are incomplete' }
           if (-not $v15Payload.frozen) { throw 'V15 contract gate did not run frozen' }
           if ($v15Payload.production_marking_released -or $v15Payload.production_machine_transfer_allowed) { throw 'Preview build must not enable marking/machine production release' }
@@ -147,7 +153,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw 'Portable V15 self-test failed' }
           $payload = Get-Content $out -Raw | ConvertFrom-Json
           if (-not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported -or -not $payload.t8_manufacturing_faces_imported) { throw 'Portable T6/T7/T8 layers missing' }
-          if (-not $payload.trimble_style_handling_contract_certified -or -not $payload.selected_object_orbit_pivot_certified -or -not $payload.active_pivot_zoom_certified) { throw 'Portable selected-object handling is not certified' }
+          if (-not $payload.upright_orbit_certified -or -not $payload.views_strip_certified -or -not $payload.measurement_foreground_certified) { throw 'Portable preview.2 interaction/rendering is not certified' }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -158,13 +164,13 @@ jobs:
         run: |
           & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' installer\CWS_Viewer_V15.iss
           if ($LASTEXITCODE -ne 0) { throw 'V15 installer build failed' }
-          $setup = Get-ChildItem release_windows_v15 -Filter 'CWS_Viewer_Setup_1.4.0-v15-preview.1_x64.exe' | Select-Object -First 1
-          if ($null -eq $setup) { throw 'V15 installer missing' }
+          $setup = Get-ChildItem release_windows_v15 -Filter 'CWS_Viewer_Setup_1.4.0-v15-preview.2_x64.exe' | Select-Object -First 1
+          if ($null -eq $setup) { throw 'V15 preview.2 installer missing' }
 
       - name: Installed V15 gate without external Python
         shell: pwsh
         run: |
-          $setup = Get-ChildItem release_windows_v15 -Filter 'CWS_Viewer_Setup_1.4.0-v15-preview.1_x64.exe' | Select-Object -First 1
+          $setup = Get-ChildItem release_windows_v15 -Filter 'CWS_Viewer_Setup_1.4.0-v15-preview.2_x64.exe' | Select-Object -First 1
           $target = Join-Path $env:RUNNER_TEMP 'CWSViewerV15Installed'
           $install = Start-Process $setup.FullName -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',("/DIR=$target")) -Wait -PassThru -WindowStyle Hidden
           if ($install.ExitCode -ne 0) { throw "Installer failed: $($install.ExitCode)" }
@@ -176,6 +182,7 @@ jobs:
           $payload = Get-Content $out -Raw | ConvertFrom-Json
           if (-not $payload.t5_review_workspace_imported -or -not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported -or -not $payload.t8_manufacturing_faces_imported) { throw 'Installed T5/T6/T7/T8 workspace missing' }
           if (-not $payload.trimble_style_handling_contract_certified -or -not $payload.selected_object_orbit_pivot_certified -or -not $payload.active_pivot_zoom_certified) { throw 'Installed selected-object handling is not certified' }
+          if (-not $payload.upright_orbit_certified -or -not $payload.source_ifc_colours_certified -or -not $payload.contact_shading_certified -or -not $payload.selected_fill_highlight_certified -or -not $payload.views_strip_certified -or -not $payload.measurement_foreground_certified) { throw 'Installed preview.2 feature set is incomplete' }
           if ($payload.production_marking_released -or $payload.production_machine_transfer_allowed) { throw 'Installed preview unexpectedly enables production marking/machine transfer' }
           $uninstaller = Join-Path $target 'unins000.exe'
           if (Test-Path $uninstaller) {
@@ -199,10 +206,18 @@ jobs:
             status='passed'
             workspace_schema='cws-viewer-workspace-15.2'
             v14_worker_transport_preserved=$true
-            t3_navigation_certified=$true
             trimble_style_handling_contract_certified=$true
             selected_object_orbit_pivot_certified=$true
             active_pivot_zoom_certified=$true
+            upright_orbit_certified=$true
+            source_ifc_colours_certified=$true
+            contact_shading_certified=$true
+            selected_fill_highlight_certified=$true
+            ctrl_multiselect_certified=$true
+            bidirectional_list_selection_certified=$true
+            assembly_part_level_certified=$true
+            views_strip_certified=$true
+            measurement_foreground_certified=$true
             t4_selection_measurement_certified=$true
             t5_review_workspace_certified=$true
             t6_coordination_certified=$true
@@ -211,7 +226,7 @@ jobs:
             marking_feature_development=$true
             production_marking_released=$false
             production_machine_transfer_allowed=$false
-            parity_status='preview_T8_faces_handling_hardened'
+            parity_status='preview2_local_viewer_trimble_feel_v2'
             files=@($files | ForEach-Object {
               [ordered]@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()}
             })
@@ -222,9 +237,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.4.0-v15-preview.1_INSTALLER_x64
+          name: CWS_Viewer_1.4.0-v15-preview.2_INSTALLER_x64
           path: |
-            release_windows_v15/CWS_Viewer_Setup_1.4.0-v15-preview.1_x64.exe
+            release_windows_v15/CWS_Viewer_Setup_1.4.0-v15-preview.2_x64.exe
             release_windows_v15/SHA256SUMS.txt
             release_windows_v15/WINDOWS_VIEWER_V15_RELEASE_MANIFEST.json
           if-no-files-found: warn
@@ -234,8 +249,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.4.0-v15-preview.1_PORTABLE_x64
-          path: release_windows_v15/CWS_Viewer_Portable_1.4.0-v15-preview.1_x64.zip
+          name: CWS_Viewer_1.4.0-v15-preview.2_PORTABLE_x64
+          path: release_windows_v15/CWS_Viewer_Portable_1.4.0-v15-preview.2_x64.zip
           if-no-files-found: warn
           retention-days: 30
 
@@ -243,7 +258,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Viewer_1.4.0-v15-preview.1_EVIDENCE
+          name: CWS_Viewer_1.4.0-v15-preview.2_EVIDENCE
           path: |
             validation/standalone-viewer-v15/*.json
             validation/standalone-viewer-v15/*.png
