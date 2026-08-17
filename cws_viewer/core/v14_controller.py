@@ -14,7 +14,7 @@ from cws_viewer.contracts.enums import ProjectionType, RenderMode, SelectionLeve
 from cws_viewer.contracts.state import PickResult, ViewerDisplayPreferences
 from cws_viewer.core.controller import ViewerCoreController
 from cws_viewer.errors import ViewerError, ViewerErrorCode
-from cws_viewer.math3d import Vector3
+from cws_viewer.math3d import BoundingBox, Vector3
 
 
 class V14ViewerCoreController(ViewerCoreController):
@@ -95,10 +95,59 @@ class V14ViewerCoreController(ViewerCoreController):
         self._orbit_pivot = self.get_camera().target
         return self._orbit_pivot
 
+    @staticmethod
+    def _translated_bounds(bounds: BoundingBox, offset: Vector3) -> BoundingBox:
+        return BoundingBox(bounds.minimum + offset, bounds.maximum + offset)
+
+    def display_bounds_for(
+        self,
+        node_ids: Iterable[str],
+        *,
+        include_descendants: bool = True,
+        visible_only: bool = False,
+    ) -> BoundingBox | None:
+        """Return bounds at the positions the user actually sees.
+
+        ``SceneIndex`` stores immutable canonical world bounds. Explode is
+        viewer-only state and is therefore applied here instead of mutating the
+        scene. Camera fit/focus must nevertheless follow exploded objects on
+        screen rather than their pre-explode canonical positions.
+        """
+        index = self.index
+        requested = tuple(dict.fromkeys(str(value) for value in node_ids))
+        if not requested:
+            return None
+        if include_descendants:
+            ids = index.descendants(
+                requested, include_self=True, renderable_only=True
+            )
+        else:
+            ids = tuple(
+                node_id
+                for node_id in requested
+                if node_id in index.nodes_by_id
+                and index.node(node_id).geometry_id is not None
+            )
+        if visible_only:
+            visible, _ghosted = self.session.visible_and_ghosted(index)
+            visible_set = set(visible)
+            ids = tuple(node_id for node_id in ids if node_id in visible_set)
+        if not ids:
+            return None
+
+        combined: BoundingBox | None = None
+        for node_id in ids:
+            bounds = index.world_bounds_by_node[node_id]
+            offset = self.session.explode_offsets.get(node_id)
+            if offset is not None and offset.length() > 1e-12:
+                bounds = self._translated_bounds(bounds, offset)
+            combined = bounds if combined is None else combined.union(bounds)
+        return combined
+
     def focus_orbit_on_selection(self) -> Vector3 | None:
         if not self.session.selection:
             return None
-        bounds = self.index.bounds_for(self.session.selection, include_descendants=True)
+        bounds = self.display_bounds_for(self.session.selection, include_descendants=True)
         if bounds is None:
             return None
         return self.set_orbit_pivot(bounds.center)
@@ -129,13 +178,18 @@ class V14ViewerCoreController(ViewerCoreController):
             self.set_selection_level(persistent)
 
     def fit_all(self) -> None:
-        super().fit_all()
+        visible, _ghosted = self.session.visible_and_ghosted(self.index)
+        bounds = self.display_bounds_for(
+            visible, include_descendants=False, visible_only=False
+        )
+        self._fit_bounds(bounds)
         self.reset_orbit_pivot()
 
     def fit_selection(self) -> None:
         if not self.session.selection:
             return
-        super().fit_selection()
+        bounds = self.display_bounds_for(self.session.selection, include_descendants=True)
+        self._fit_bounds(bounds)
         self.focus_orbit_on_selection()
 
     def clear_scene(self) -> None:
