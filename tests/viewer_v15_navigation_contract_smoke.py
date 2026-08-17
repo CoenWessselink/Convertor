@@ -120,8 +120,6 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertAlmostEqual(eye_radius, (after.position - pivot).length(), places=7)
         self.assertAlmostEqual(target_radius, (after.target - pivot).length(), places=7)
         self.assertNotEqual(before.position, after.position)
-        # With a selection pivot that differs from the old camera target, the
-        # focal target itself rotates rigidly instead of remaining a stale scene center.
         if target_radius > 1e-9:
             self.assertNotEqual(before.target, after.target)
 
@@ -163,6 +161,16 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertAlmostEqual(1.0, direction.z, places=9)
         self.assertAlmostEqual(0.0, camera.up.dot(direction), places=9)
 
+    def test_view_from_face_normal_without_target_uses_selected_orbit_focus(self) -> None:
+        node_id = "node:item:000014"
+        self.controller.set_selection((node_id,))
+        expected = self.controller.orbit_pivot
+        camera = self.service.view_from_normal(Vector3(0.0, 1.0, 0.0))
+        self.assertEqual(expected, camera.target)
+        self.assertEqual(expected, self.controller.orbit_pivot)
+        direction = (camera.position - camera.target).normalized()
+        self.assertAlmostEqual(1.0, direction.y, places=9)
+
     def test_view_from_face_normal_can_target_exact_picked_surface_point(self) -> None:
         picked = Vector3(125.0, 250.0, 375.0)
         camera = self.service.view_from_normal(
@@ -188,6 +196,20 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertAlmostEqual(bounds.center.z, target.z, places=6)
         self.assertEqual(target, self.controller.orbit_pivot)
 
+    def test_workspace_restore_rebinds_orbit_focus_to_restored_selection(self) -> None:
+        restored_node = "node:item:000006"
+        other_node = "node:item:000026"
+        self.controller.set_selection((restored_node,))
+        expected = self.controller.orbit_pivot
+        state = self.controller.export_workspace_state()
+
+        self.controller.set_selection((other_node,))
+        self.controller.set_orbit_pivot(Vector3(9000.0, -8000.0, 7000.0))
+        self.controller.restore_workspace_state(state)
+
+        self.assertEqual((restored_node,), self.controller.get_selection())
+        self.assertEqual(expected, self.controller.orbit_pivot)
+
     def test_section_and_clipping_state_roundtrip_through_workspace_contract(self) -> None:
         plane_id = self.service.add_section(Vector3(0.0, 0.0, 1.0))
         self.service.set_section_enabled(plane_id, False)
@@ -206,6 +228,20 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertFalse(restored.enabled)
         self.assertTrue(restored.flipped)
         self.assertEqual(box, self.controller.session.clipping_box)
+
+    def test_saved_view_activation_rebinds_orbit_focus_to_saved_selection(self) -> None:
+        saved_node = "node:item:000009"
+        other_node = "node:item:000029"
+        self.controller.set_selection((saved_node,))
+        expected = self.controller.orbit_pivot
+        viewpoint = self.service.save_named_view("Selectie-focus")
+
+        self.controller.set_selection((other_node,))
+        self.controller.set_orbit_pivot(Vector3(-1000.0, 2000.0, 3000.0))
+        self.controller.activate_viewpoint(viewpoint)
+
+        self.assertEqual((saved_node,), self.controller.get_selection())
+        self.assertEqual(expected, self.controller.orbit_pivot)
 
     def test_saved_view_captures_camera_sections_and_clipping(self) -> None:
         self.service.set_standard_view(StandardView.RIGHT)
