@@ -46,6 +46,7 @@ def _run_v15_selftest() -> dict[str, object]:
     required_t3 = (
         "orbit_pan_zoom", "orbit_around_picked_point", "selection_orbit_focus", "picked_depth_pan",
         "object_assembly_selection_mode", "temporary_alt_selection_inversion",
+        "selected_object_details_shortcut",
         "zoom_to_fit", "zoom_area", "camera_history", "view_from_face_normal",
         "orthogonal_surface_double_click", "camera_positioning", "perspective_orthographic",
         "predefined_views", "keyboard_navigation", "trimble_camera_shortcuts",
