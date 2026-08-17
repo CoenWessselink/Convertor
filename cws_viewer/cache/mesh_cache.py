@@ -1,9 +1,11 @@
 """Content-addressed, checksum-verified display mesh cache."""
 from __future__ import annotations
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import hashlib, json, os, tempfile, threading
 from pathlib import Path
+from typing import Iterable
 import numpy as np
 from cws_viewer.contracts.geometry import GeometryRequest, MeshData, TessellationSettings
 
@@ -60,6 +62,42 @@ class MeshCache:
                 self._remember(key,mesh); self.stats.disk_hits+=1; return mesh
             except Exception:
                 self.stats.corrupt_entries+=1; path.unlink(missing_ok=True); checksum.unlink(missing_ok=True); self.stats.misses+=1; return None
+    def prefetch(self,keys:Iterable[str],*,max_workers:int=4)->int:
+        """Warm valid disk entries into this cache in parallel.
+
+        Phase 1 keeps the existing checksum verification unchanged.  The speed
+        gain comes from verifying/decompressing independent mesh-cache entries
+        concurrently before the serial crash-isolated native provider loop is
+        entered.  Cached meshes are then memory hits for ``load_one``.
+        """
+        values=tuple(dict.fromkeys(str(key).lower() for key in keys))
+        if not values:return 0
+        with self._lock:
+            pending=tuple(key for key in values if key not in self._memory)
+            already=len(values)-len(pending)
+        if not pending:return already
+
+        def read_one(key:str)->tuple[str,MeshData|None]:
+            # Independent cache instances avoid serialising file IO on this
+            # cache object's lock while preserving the exact same validation.
+            reader=MeshCache(self.root,max_memory_items=0)
+            return key,reader.get(key)
+
+        workers=max(1,min(int(max_workers),len(pending)))
+        loaded:list[tuple[str,MeshData|None]]=[]
+        if workers==1:
+            loaded=[read_one(key) for key in pending]
+        else:
+            with ThreadPoolExecutor(max_workers=workers,thread_name_prefix='CWS-MeshCache') as pool:
+                futures={pool.submit(read_one,key):key for key in pending}
+                for future in as_completed(futures):
+                    loaded.append(future.result())
+        hits=already
+        with self._lock:
+            for key,mesh in loaded:
+                if mesh is None:continue
+                self._remember(key,mesh);hits+=1
+        return hits
     def put(self,key:str,mesh:MeshData,*,provider_version:str,settings:TessellationSettings)->Path:
         with self._lock:
             path=self._path_for(key); path.parent.mkdir(parents=True,exist_ok=True)
