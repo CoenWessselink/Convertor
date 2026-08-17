@@ -1,0 +1,66 @@
+name: CWS Viewer V15 T9 M5 machine capability gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/trimble-parity-v15
+    paths:
+      - 'cws_convertor/manufacturing/machine_capability.py'
+      - 'cws_convertor/manufacturing/machine_capability_model.py'
+      - 'cws_convertor/manufacturing/__init__.py'
+      - 'tests/viewer_v15_machine_capability_smoke.py'
+      - '.github/workflows/viewer-v15-t9-machine-capability.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  m5-machine-capability-contract:
+    runs-on: windows-2022
+    timeout-minutes: 70
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install standalone viewer dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-standalone.lock.txt
+          python -m pip check
+
+      - name: Compile M5 modules
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor/manufacturing/machine_capability_model.py cws_convertor/manufacturing/machine_capability.py tests/viewer_v15_machine_capability_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M5 compileall failed' }
+
+      - name: Run M4 no-regression
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_identification_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M4 identification regression failed' }
+
+      - name: Run deterministic M5 machine capability contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\viewer-v15-t9-m5 | Out-Null
+          python tests/viewer_v15_machine_capability_smoke.py 2>&1 | Tee-Object validation\viewer-v15-t9-m5\m5_machine_capability.txt
+          if ($LASTEXITCODE -ne 0) { throw 'M5 machine capability contract failed' }
+
+      - name: Upload M5 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Viewer_V15_M5_machine_capability_diagnostics
+          path: validation/viewer-v15-t9-m5/*
+          if-no-files-found: warn
+          retention-days: 14
