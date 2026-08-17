@@ -29,7 +29,7 @@ Gecontroleerd op 2026-08-17 tegen Connect for Windows documentatie:
 
 - Navigation and Camera Controls: Rotate, Pan, Walk Around, Look Around;
 - Rotate: muisknop vasthouden op een gekozen modelpunt en rond **dat gekozen punt** roteren;
-- Keyboard Shortcuts: Space = fit selectie; dubbelklik object = fit + objectcontext; Alt+dubbelklik surface = orthogonaal aan surface; Ctrl+U/I/O/P = Rotate/Pan/Walk/Look; Esc beëindigt operatie en wist selectie; Backspace/Shift+Backspace = hide/hide others;
+- Keyboard Shortcuts: Space = fit selectie; dubbelklik object = fit + objectcontext; Alt+dubbelklik surface = orthogonaal aan surface; Ctrl+U/I/O/P = Rotate/Pan/Walk/Look; Esc beëindigt operatie en wist selectie; F11 = full-screen; Backspace/Shift+Backspace = hide/hide others;
 - Making Selections: single, area en assembly selection; links→rechts = volledig binnen, rechts→links = crossing; selection mode is gekoppeld aan Objects-context.
 
 Referenties:
@@ -117,25 +117,25 @@ Hierdoor kan opgeslagen state niet een oude onzichtbare pivot achterlaten.
 
 Geïmplementeerd / aangescherpt:
 
-| Gedrag | Vóór audit | Nieuwe status |
+| Gedrag | Bestaande basis vóór deze audit | Nieuwe status |
 |---|---|---|
-| Orbit rond gekozen modelpunt | fout | geïmplementeerd, Windows gate vereist |
+| Orbit rond gekozen modelpunt | fout: rond `camera.target` | geïmplementeerd, Windows/package evidence vereist |
 | Selectie bepaalt volgende orbitfocus | ontbrak | geïmplementeerd |
-| Tree/grid selectie bepaalt orbitfocus | ontbrak impliciet | centraal via controller-selection |
+| Tree/grid selectie bepaalt orbitfocus | selectie-sync bestond, focus ontbrak | centraal via controller-selection |
 | Multi-select orbitfocus | ontbrak | combined bounds center |
 | Space = fit selectie | aanwezig | behouden |
 | Dubbelklik object = select + fit | aanwezig | behouden |
-| Alt+dubbelklik surface = orthogonaal | ontbrak | geïmplementeerd via echte pick-normal/world-point |
-| Ctrl+U = Rotate | ontbrak | geïmplementeerd |
-| Ctrl+I = Pan | ontbrak | geïmplementeerd |
-| Ctrl+O = Walk | ontbrak | geïmplementeerd |
-| Ctrl+P = Look | ontbrak | geïmplementeerd |
-| Esc = tool beëindigen + selectie wissen | gedeeltelijk | aangescherpt |
-| Backspace = hide selection | ontbrak op widget | geïmplementeerd |
-| Shift+Backspace = hide others | ontbrak op widget | geïmplementeerd |
+| Alt+dubbelklik surface = orthogonaal | ontbrak in viewportinput | geïmplementeerd via echte pick-normal/world-point |
+| Ctrl+U/I/O/P = Rotate/Pan/Walk/Look | reeds aanwezig als cockpit QAction-shortcuts | behouden + viewer-focus fallback gehard |
+| F11 = full-screen | reeds aanwezig in cockpit/detached shell | behouden + viewer-focus fallback gehard |
+| Esc = tool beëindigen | aanwezig | aangescherpt met selectie wissen |
+| Backspace = hide selection | reeds aanwezig als cockpit shortcut | behouden + viewer-focus fallback gehard |
+| Shift+Backspace = hide others | niet centraal afgedekt | viewer-focus gedrag toegevoegd |
 | L→R area = fully inside | aanwezig | behouden |
 | R→L area = crossing | aanwezig | behouden |
 | Right-click context | aanwezig | behouden |
+
+Belangrijk: de audit vervangt dus niet alles. Waar de CWS-basis al hetzelfde zichtbare gedrag had, blijft die code staan. Alleen aantoonbare afwijkingen worden gecorrigeerd.
 
 ## 6. Bewust nog niet als volledig gelijk verklaard
 
@@ -143,7 +143,7 @@ Onderstaande punten moeten nog apart worden bewezen of verdiept voordat de gehel
 
 1. **Pan point anchoring / snelheid** — huidige pan is cameradistance-geschaald; nog vergelijken met de aangeleverde executable op echte muisbewegingen.
 2. **Walk Around / Look Around sensitivity** — modus bestaat, maar snelheid/acceleratie/dead-zone moeten met echte Windows input worden vergeleken.
-3. **F11 full-screen** — nog shell-level paritytest.
+3. **F11 full-screen packaged behavior** — implementatie bestond al; alleen packaged focus/state-restore bewijs ontbreekt nog.
 4. **Alt inversion Object ↔ Assembly Selection** — selection-level contract bestaat, maar de exacte temporary Alt-inversion moet nog als één centrale interaction rule worden getest.
 5. **Selection modifier conflict in Trimble Help** — verschillende Help-pagina's beschrijven Shift/Ctrl op detailniveau niet volledig hetzelfde. Geen CWS-semantiek wijzigen op basis van een onzekere interpretatie; lokale reference-app owner test gebruiken als oracle.
 6. **Trackpad/touch** — niet claimen zolang CWS Windows desktop input daarvoor niet apart getest is.
@@ -161,6 +161,7 @@ Minimaal automatisch bewijzen:
 - orbit behoudt eye- en target-radius om de pivot;
 - Fit Selection centreert camera én pivot op selectie;
 - view-from-normal accepteert exact picked surface point;
+- view-from-normal zonder expliciete target gebruikt de actieve selectie/orbitfocus;
 - zoom-area behoudt selectie en bindt pivot aan fitted camera target;
 - workspace/view restore laat geen stale orbitfocus achter.
 
@@ -172,7 +173,7 @@ Tot die packaged gate groen is:
 
 ```text
 viewer_interaction_trimble_parity = PARTIAL_HARDENED
-orbit_selection_focus = IMPLEMENTED_PENDING_WINDOWS_EVIDENCE
+orbit_selection_focus = IMPLEMENTED_PENDING_PACKAGED_WINDOWS_EVIDENCE
 trimble_proprietary_code_copied = false
 ```
 
