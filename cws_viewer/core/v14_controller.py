@@ -10,7 +10,7 @@ from dataclasses import replace
 import math
 from typing import Iterable
 
-from cws_viewer.contracts.enums import RenderMode, SelectionLevel, SelectionOperation
+from cws_viewer.contracts.enums import ProjectionType, RenderMode, SelectionLevel, SelectionOperation
 from cws_viewer.contracts.state import PickResult, ViewerDisplayPreferences
 from cws_viewer.core.controller import ViewerCoreController
 from cws_viewer.errors import ViewerError, ViewerErrorCode
@@ -18,15 +18,7 @@ from cws_viewer.math3d import Vector3
 
 
 class V14ViewerCoreController(ViewerCoreController):
-    """ViewerCoreController plus professional desktop camera/selection behavior.
-
-    Orbit has its own world-space pivot.  Keeping that pivot separate from the
-    camera focal target is deliberate: selecting a part must not make the view
-    jump, yet the next orbit gesture must revolve around the selected part.
-    During an orbit drag the UI may replace the selection pivot with the exact
-    picked world point, matching the point-based rotate behavior used by the
-    Trimble Connect reference workflow.
-    """
+    """ViewerCoreController plus professional desktop camera/selection behavior."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -49,7 +41,6 @@ class V14ViewerCoreController(ViewerCoreController):
         super().set_display_preferences(preferences)
 
     def _sync_orbit_pivot_after_state_restore(self) -> None:
-        """Rebind transient orbit focus after undo/view/workspace state changes."""
         if self._index is None:
             self._orbit_pivot = None
             return
@@ -89,13 +80,11 @@ class V14ViewerCoreController(ViewerCoreController):
 
     @property
     def orbit_pivot(self) -> Vector3:
-        """Return the active world-space point around which orbit rotates."""
         if self._orbit_pivot is not None:
             return self._orbit_pivot
         return self.get_camera().target
 
     def set_orbit_pivot(self, point: Vector3) -> Vector3:
-        """Set orbit focus without changing camera position, target or zoom."""
         pivot = Vector3(float(point.x), float(point.y), float(point.z))
         if not all(math.isfinite(value) for value in (pivot.x, pivot.y, pivot.z)):
             raise ValueError("Orbitpivot moet eindige wereldcoordinaten bevatten")
@@ -103,12 +92,10 @@ class V14ViewerCoreController(ViewerCoreController):
         return pivot
 
     def reset_orbit_pivot(self) -> Vector3:
-        """Fall back to the current camera target as orbit focus."""
         self._orbit_pivot = self.get_camera().target
         return self._orbit_pivot
 
     def focus_orbit_on_selection(self) -> Vector3 | None:
-        """Use the combined selected-object bounds center as persistent pivot."""
         if not self.session.selection:
             return None
         bounds = self.index.bounds_for(self.session.selection, include_descendants=True)
@@ -117,15 +104,11 @@ class V14ViewerCoreController(ViewerCoreController):
         return self.set_orbit_pivot(bounds.center)
 
     def set_selection(self, ids: Iterable[str], *, mode: str = "replace") -> None:
-        """Preserve base selection semantics and bind orbit to non-empty selection."""
         super().set_selection(ids, mode=mode)
         if self.session.selection:
             self.focus_orbit_on_selection()
-        # Clearing a selection deliberately keeps the last useful pivot.  This
-        # avoids a surprising camera-focus jump back to the project origin.
 
     def probe_at(self, x: int, y: int) -> PickResult | None:
-        """Read the exact renderer pick without changing selection or emitting events."""
         index = self.index
         return self._backend.pick_at(int(x), int(y), index)
 
@@ -137,12 +120,7 @@ class V14ViewerCoreController(ViewerCoreController):
         level: SelectionLevel,
         mode: str = "replace",
     ) -> PickResult | None:
-        """Pick once at a temporary hierarchy level, preserving the user's mode.
-
-        Trimble-style Object/Assembly Alt inversion is transient: holding Alt
-        changes what that click resolves to but must not silently change the
-        persistent selection mode shown in the UI.
-        """
+        """Pick once at a temporary hierarchy level, preserving the user's mode."""
         persistent = self.session.selection_level
         try:
             self.set_selection_level(SelectionLevel(level))
@@ -192,8 +170,55 @@ class V14ViewerCoreController(ViewerCoreController):
             )
         )
 
+    def pan_pixels(
+        self,
+        delta_x_px: float,
+        delta_y_px: float,
+        *,
+        anchor: Vector3 | None = None,
+    ) -> Vector3:
+        """Pan in screen pixels at the depth of the point picked on mouse-down.
+
+        In perspective projection, apparent movement per pixel depends on depth.
+        Using the picked model point makes the object under the cursor track the
+        drag naturally instead of applying one arbitrary speed to every model
+        scale. Orthographic movement uses the exact configured vertical extent.
+        """
+        camera = self.get_camera()
+        view = (camera.target - camera.position).normalized()
+        right = view.cross(camera.up).normalized()
+        up = right.cross(view).normalized()
+
+        if camera.projection == ProjectionType.ORTHOGRAPHIC:
+            vertical_extent = max(float(camera.ortho_scale), 1e-9)
+        else:
+            default_depth = max((camera.target - camera.position).length(), 1.0)
+            depth = default_depth
+            if anchor is not None:
+                candidate = (anchor - camera.position).dot(view)
+                if math.isfinite(candidate) and candidate > camera.near_plane * 2.0:
+                    depth = candidate
+            vertical_extent = max(
+                2.0 * depth * math.tan(math.radians(camera.field_of_view_deg) * 0.5),
+                1e-9,
+            )
+
+        world_per_pixel = vertical_extent / max(float(self._height), 1.0)
+        shift = (
+            right * (-float(delta_x_px) * world_per_pixel)
+            + up * (float(delta_y_px) * world_per_pixel)
+        )
+        if shift.length() > 1e-12:
+            self.set_camera(
+                replace(
+                    camera,
+                    position=camera.position + shift,
+                    target=camera.target + shift,
+                )
+            )
+        return shift
+
     def look(self, azimuth_deg: float, elevation_deg: float = 0.0) -> None:
-        """Rotate camera direction around its fixed eye position."""
         camera = self.get_camera()
         direction = camera.target - camera.position
         distance = max(direction.length(), 1e-9)
@@ -221,7 +246,6 @@ class V14ViewerCoreController(ViewerCoreController):
         yaw_deg: float = 0.0,
         pitch_deg: float = 0.0,
     ) -> None:
-        """Translate the camera in view coordinates, optionally looking around."""
         if yaw_deg or pitch_deg:
             self.look(yaw_deg, pitch_deg)
         camera = self.get_camera()
@@ -253,7 +277,6 @@ class V14ViewerCoreController(ViewerCoreController):
         mode: str = "replace",
         crossing: bool = True,
     ) -> tuple[str, ...]:
-        """Select project nodes inside/crossing a screen rectangle."""
         index = self.index
         selector = getattr(self._backend, "nodes_in_screen_rect", None)
         if not callable(selector):
