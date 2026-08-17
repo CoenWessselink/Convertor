@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from cws_viewer.contracts.enums import SelectionLevel
 from cws_viewer.core.v15_navigation import V15ViewNavigationService
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode, VtkRealProjectWidget
@@ -49,6 +50,34 @@ if qt_available():
             self._v15_zoom_area = False
             super().set_area_selection(enabled)
 
+        def _temporary_alt_selection_level(self) -> SelectionLevel | None:
+            """Invert Object/Assembly for one click without changing persistent mode."""
+            level = self.controller.session.selection_level
+            if level == SelectionLevel.PART:
+                return SelectionLevel.ASSEMBLY
+            if level == SelectionLevel.ASSEMBLY:
+                return SelectionLevel.PART
+            return None
+
+        def _pick(self, pos: Any, modifiers: Any, *, emit: bool = True):
+            temporary = None
+            if modifiers & QtCore.Qt.KeyboardModifier.AltModifier:
+                temporary = self._temporary_alt_selection_level()
+            if temporary is None:
+                return super()._pick(pos, modifiers, emit=emit)
+
+            x, y = self._vtk_xy(pos)
+            pick = self.controller.pick_at_level(
+                x,
+                y,
+                level=temporary,
+                mode=self._selection_mode(modifiers),
+            )
+            if pick is not None and emit:
+                self.node_picked.emit(pick.node_id)
+                self.pick_result.emit(pick)
+            return pick
+
         def _bind_orbit_pivot_from_screen(self, pos: Any) -> bool:
             """Bind a rotate drag to the exact visible model point under the cursor."""
             try:
@@ -87,9 +116,8 @@ if qt_available():
                 and event.button() == QtCore.Qt.MouseButton.LeftButton
                 and self.navigation_mode == NavigationMode.ORBIT
             ):
-                # Trimble Connect's documented Rotate workflow revolves around
-                # the model point picked at mouse-down.  Probe only: selection is
-                # still decided on mouse-up when the gesture was a click.
+                # Rotate binds to the exact point under mouse-down. Probe only:
+                # selection is still decided on release when the gesture was a click.
                 self._bind_orbit_pivot_from_screen(event.position())
             super().mousePressEvent(event)
 
@@ -148,7 +176,10 @@ if qt_available():
                 and event.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier
             ):
                 try:
-                    pick = self._pick(event.position(), event.modifiers())
+                    # Orthogonal surface view is a camera operation, not an
+                    # Object/Assembly selection inversion. Use a non-mutating probe.
+                    x, y = self._vtk_xy(event.position())
+                    pick = self.controller.probe_at(x, y)
                     if pick is not None and pick.normal is not None:
                         self._v15_view_navigation.view_from_normal(
                             pick.normal,
@@ -156,7 +187,7 @@ if qt_available():
                             fit=False,
                         )
                         self.interaction_message.emit(
-                            "Orthogonaal aan geselecteerd vlak"
+                            "Orthogonaal aan gekozen vlak"
                         )
                     event.accept()
                     return
@@ -190,8 +221,6 @@ if qt_available():
                     self.set_zoom_area(False)
                     self.tool_cancelled.emit()
                 else:
-                    # ESC ends the active operation and restores single-object
-                    # picking.  It also clears selection as in Connect for Windows.
                     super().keyPressEvent(event)
                     if self.controller.get_selection():
                         self.controller.set_selection((), mode="replace")
