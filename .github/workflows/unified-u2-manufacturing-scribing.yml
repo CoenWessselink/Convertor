@@ -35,11 +35,13 @@ jobs:
           architecture: x64
           cache: pip
 
-      - name: Install U2 authority dependencies
+      - name: Install U2 canonical + authority dependencies
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-standalone.lock.txt
           python -m pip install cryptography
+          python -m pip check
 
       - name: Compile unified manufacturing and authority facade
         shell: pwsh
