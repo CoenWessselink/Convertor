@@ -177,6 +177,18 @@ class V14ViewerCoreController(ViewerCoreController):
         finally:
             self.set_selection_level(persistent)
 
+    def explode(self, ids: Iterable[str], distance_mm: float = 250.0) -> tuple[str, ...]:
+        affected = super().explode(ids, distance_mm=distance_mm)
+        if affected and self.session.selection:
+            self.focus_orbit_on_selection()
+        return affected
+
+    def reset_explode(self, ids: Iterable[str] | None = None) -> tuple[str, ...]:
+        affected = super().reset_explode(ids)
+        if affected and self.session.selection:
+            self.focus_orbit_on_selection()
+        return affected
+
     def fit_all(self) -> None:
         visible, _ghosted = self.session.visible_and_ghosted(self.index)
         bounds = self.display_bounds_for(
