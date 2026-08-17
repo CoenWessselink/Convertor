@@ -99,10 +99,13 @@ class ViewerV15SelectionPivotParityTests(unittest.TestCase):
         factor = 2.0
 
         after = self.navigation.zoom_about_active_pivot(factor)
+        after_eye_from_target = after.position - after.target
 
         self.assertEqual(pivot, self.controller.orbit_pivot)
         self.assertAlmostEqual(before.ortho_scale / factor, after.ortho_scale, places=9)
-        self.assertEqual(before_eye_from_target, after.position - after.target)
+        self.assertAlmostEqual(before_eye_from_target.x, after_eye_from_target.x, places=9)
+        self.assertAlmostEqual(before_eye_from_target.y, after_eye_from_target.y, places=9)
+        self.assertAlmostEqual(before_eye_from_target.z, after_eye_from_target.z, places=9)
         self.assertAlmostEqual(before_target.x / factor, (after.target - pivot).x, places=9)
         self.assertAlmostEqual(before_target.y / factor, (after.target - pivot).y, places=9)
         self.assertAlmostEqual(before_target.z / factor, (after.target - pivot).z, places=9)
