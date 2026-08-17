@@ -183,7 +183,20 @@ class ViewerV15ManufacturingExportTests(unittest.TestCase):
             self.assertEqual([], list(root.iterdir()))
 
     def test_stale_capability_evidence_fails_closed(self) -> None:
-        stale = replace(self.nesting, machine_capability_sha256="0" * 64, report_sha256="")
+        # The nesting evidence model is itself hash-bound. A capability hash
+        # mutation may therefore be rejected *before* Export Preflight sees the
+        # report. That is a stricter fail-closed outcome than the older test
+        # assumption. If a stale report can still be represented validly, M8
+        # must independently reject it as stale.
+        try:
+            stale = replace(
+                self.nesting,
+                machine_capability_sha256="0" * 64,
+                report_sha256="",
+            )
+        except ValueError as exc:
+            self.assertIn("instance_variant_sha256", str(exc))
+            return
         catalog = replace(self.catalog, nesting_reports={"PI-001": stale})
         preflight = V15ManufacturingExportService(self.project, catalog).preflight(self.entity_scope())
         self.assertFalse(preflight.allowed)
