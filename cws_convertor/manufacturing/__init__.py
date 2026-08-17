@@ -55,6 +55,15 @@ from .identification_model import (
     ReadabilityPolicy,
 )
 from .identification import IdentificationPlanner
+from .machine_capability_model import (
+    MACHINE_CAPABILITY_SCHEMA,
+    MACHINE_CAPABILITY_ALGORITHM,
+    CapabilityStatus,
+    MachineCapabilityReport,
+    MachineFeatureDecision,
+    MachineFeatureType,
+)
+from .machine_capability import MachineCapabilityEvaluator
 
 __all__ = [
     "MANUFACTURING_FACE_SCHEMA",
@@ -102,4 +111,11 @@ __all__ = [
     "IdentificationTextRequest",
     "ReadabilityPolicy",
     "IdentificationPlanner",
+    "MACHINE_CAPABILITY_SCHEMA",
+    "MACHINE_CAPABILITY_ALGORITHM",
+    "CapabilityStatus",
+    "MachineCapabilityReport",
+    "MachineFeatureDecision",
+    "MachineFeatureType",
+    "MachineCapabilityEvaluator",
 ]
