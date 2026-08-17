@@ -107,6 +107,22 @@ class ViewerV15SelectionPivotParityTests(unittest.TestCase):
         self.assertAlmostEqual(before_target.y / factor, (after.target - pivot).y, places=9)
         self.assertAlmostEqual(before_target.z / factor, (after.target - pivot).z, places=9)
 
+    def test_runtime_widget_is_wired_to_selection_precedence_not_raw_hit_override(self) -> None:
+        source = (ROOT / "cws_viewer" / "ui_qt" / "vtk_real_project_widget_v15.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("self._v15_view_navigation.begin_orbit(point)", source)
+        self.assertNotIn("set_orbit_pivot(probe.world_point)", source)
+        self.assertIn("zoom_about_active_pivot", source)
+
+    def test_measurement_tool_pick_does_not_route_through_normal_selection_pick(self) -> None:
+        source = (ROOT / "cws_viewer" / "ui_qt" / "vtk_real_project_widget_v15.py").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('getattr(self.controller, "_active_measurement_kind", None)', source)
+        self.assertIn("pick = self._probe_screen(pos)", source)
+        self.assertIn("probe.node_id in set(ghosted)", source)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
