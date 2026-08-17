@@ -177,20 +177,22 @@ class V15ViewNavigationService:
         *,
         target: Vector3 | None = None,
         up_hint: Vector3 | None = None,
-        fit: bool = True,
+        fit: bool = False,
     ) -> CameraState:
         """Place the camera orthogonal to a surface normal.
 
-        ``target`` may be the exact picked surface point.  This is required for
-        the desktop Alt+double-click workflow: the camera is aligned to the face
-        that was actually picked rather than to a stale project center.
+        ``target`` may be the exact picked surface point.  When omitted, the
+        active orbit focus is used (normally the selected object's bounds
+        center), never an unrelated stale scene target.  Orientation does not
+        implicitly perform Fit All; fitting is an explicit separate action.
         """
         if normal.length() <= 1e-12:
             raise ValueError("Vlaknormaal mag geen nulvector zijn")
         self.camera_checkpoint()
         current = self.controller.get_camera()
         n = normal.normalized()
-        anchor = current.target if target is None else target
+        default_anchor = getattr(self.controller, "orbit_pivot", current.target)
+        anchor = default_anchor if target is None else target
         distance = max((current.position - current.target).length(), 1.0)
         updated = replace(
             current,
