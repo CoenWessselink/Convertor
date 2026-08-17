@@ -14,11 +14,6 @@ on:
       - completed
     branches:
       - feature/trimble-parity-v15
-  push:
-    branches:
-      - feature/trimble-parity-v15
-    paths:
-      - '.github/workflows/publish-cws-viewer-v15-preview.yml'
 
 permissions:
   contents: write
@@ -68,7 +63,7 @@ jobs:
           echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
           echo "Certified source: $source_sha from Windows build $run_id"
 
-      - name: Verify independent T6 and T8 gates for source SHA
+      - name: Verify independent T3 T6 and T8 gates for source SHA
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -96,6 +91,7 @@ jobs:
             echo "No successful matching $label for $SOURCE_SHA" >&2
             return 1
           }
+          wait_gate 'viewer-v15-t3-navigation.yml' 'T3 handling/navigation gate' 'T3_RUN_ID'
           wait_gate 'viewer-v15-t6-coordination.yml' 'T6 coordination gate' 'T6_RUN_ID'
           wait_gate 'viewer-v15-t8-manufacturing.yml' 'T8 manufacturing geometry gate' 'T8_RUN_ID'
 
@@ -109,7 +105,7 @@ jobs:
           gh run download "$RUN_ID" --repo '${{ github.repository }}' --dir release/artifacts
           find release/artifacts -maxdepth 3 -type f -printf '%p\n' | sort
 
-      - name: Verify release manifest, gates and checksums
+      - name: Verify release manifest gates and checksums
         shell: bash
         run: |
           set -euo pipefail
@@ -131,6 +127,9 @@ jobs:
           assert payload['commit'] == source_sha, (payload.get('commit'), source_sha)
           for key in (
               't3_navigation_certified',
+              'trimble_style_handling_contract_certified',
+              'selected_object_orbit_pivot_certified',
+              'active_pivot_zoom_certified',
               't4_selection_measurement_certified',
               't5_review_workspace_certified',
               't6_coordination_certified',
@@ -176,15 +175,16 @@ jobs:
 
           Source commit: ${SOURCE_SHA}
           Windows build run: ${RUN_ID}
+          T3 handling/navigation run: ${T3_RUN_ID}
           T6 coordination run: ${T6_RUN_ID}
           T8 manufacturing geometry run: ${T8_RUN_ID}
           Installer SHA-256: ${INSTALLER_SHA256}
 
-          The Windows release manifest certifies T3 navigation, T4 selection/measurement, T5 review workspace, T6 coordination, T7 Export Center and T8 ManufacturingFace layers for this exact source commit. The build also passed source, frozen packaged, portable, hosted-GUI, installer, installed-without-external-Python and uninstall gates.
+          Handling certification includes the selected-part/assembly orbit contract: the displayed selection centre remains the active orbit and zoom pivot; without a selection, Rotate uses the exact picked model point. Measurement/tool picks do not replace the semantic selection. The visible desktop workflow is implemented in CWS code and CWS branding.
 
-          T7 is fail-closed: missing phase, selection, revision or nesting scope metadata never falls back silently to a whole-project export.
+          The Windows release manifest also certifies T4 selection/measurement, T5 review workspace, T6 coordination, T7 Export Center and T8 ManufacturingFace layers for this exact source commit. The build passed source, frozen packaged, portable, hosted-GUI, installer, installed-without-external-Python and uninstall gates.
 
-          T8 keeps approximate clash evidence separate from exact geometry and preserves conservative ManufacturingFace/contact semantics. Production marking and production-machine transfer remain blocked until their later release gates are explicitly certified.
+          Production marking and production-machine transfer remain blocked until their later release gates are explicitly certified.
 
           Download policy: installer, portable package, manifest, checksums and evidence are GitHub Release assets; normal delivery does not depend on transient ChatGPT/sandbox uploads.
           EOF
