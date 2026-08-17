@@ -2,7 +2,7 @@
 
 Auditdatum: 2026-08-17  
 Scope: desktop 3D input, selectie, camera, visibility en tool-capture  
-Status: **HANDLING CONTRACT REBUILT + WINDOWS GATED**
+Status: **HANDLING CONTRACT REBUILT + EXACT-SHA WINDOWS/RELEASE GATED**
 
 ## 1. Bronnen en grens
 
@@ -81,13 +81,16 @@ Normale part/assembly-picking en tool-picking zijn nu expliciet gescheiden. Tijd
 
 ## 8. Regression gates
 
-De T3 Windows gate bevat nu drie lagen:
+De T3 Windows gate bevat nu vier expliciete lagen:
 
 - deterministic navigation contract;
 - interaction foundation regressions;
-- selected-object orbit/zoom parity + complete desktop input contract.
+- selected-object orbit/zoom parity;
+- complete desktop input contract.
 
 Belangrijke vaste regressies omvatten selectiecentrum, assemblycentrum, multiselect, exploded display position, picked-point fallback, perspective/orthographic pivot-zoom, saved-view restore, workspace restore, depth-aware pan, hidden/ghost hit rejection, tool pick isolation en shortcut wiring.
+
+De standalone Windows-build herhaalt deze handlingtests vóór PyInstaller en vereist daarna dezelfde handlingcertificaten opnieuw in de **frozen EXE**, portable ZIP en daadwerkelijk geïnstalleerde applicatie. Het release-manifest mag de handlingvelden uitsluitend op `true` zetten nadat al deze stappen groen zijn.
 
 ## 9. Wat bewust niet wordt gekopieerd
 
@@ -95,12 +98,26 @@ Niet overgenomen worden Trimble broncode, DLL-implementaties, iconen, merkassets
 
 ## 10. Acceptance voor deze handlingbasis
 
-Deze basis is pas releasewaardig wanneer de exacte eindcommit:
+Deze basis is pas releasewaardig wanneer **dezelfde exacte source commit**:
 
 1. T3 handling gate groen heeft op Windows x64;
 2. T4/T5/T6/T7/T8 regressies groen houdt;
 3. standalone PyInstaller build groen heeft;
-4. packaged GUI/portable/install/uninstall tests groen heeft;
-5. als GitHub Release artifact met commit- en SHA-256-binding wordt gepubliceerd.
+4. frozen packaged self-test de handlingcertificaten bevestigt;
+5. packaged GUI, portable, installer, installed-without-external-Python en uninstall groen zijn;
+6. SHA-256 release-manifest is opgebouwd;
+7. de publish-workflow daarnaast een onafhankelijke **exact-SHA T3 handling gate**, T6 gate en T8 gate vindt;
+8. pas daarna als immutable GitHub prerelease wordt gepubliceerd.
 
 Een ChatGPT/sandbox-upload is geen officiële release-route.
+
+## 11. Release-proof velden
+
+Een geldige V15 release moet in de frozen self-test en/of het release-manifest expliciet aantonen:
+
+- `trimble_style_handling_contract_certified = true`;
+- `selected_object_orbit_pivot_certified = true`;
+- `active_pivot_zoom_certified = true`;
+- `t3_navigation_certified = true`;
+- `production_marking_released = false` zolang de latere productievalidatie niet is afgerond;
+- `production_machine_transfer_allowed = false` zolang geen gevalideerde machine/postprocessorroute is vrijgegeven.
