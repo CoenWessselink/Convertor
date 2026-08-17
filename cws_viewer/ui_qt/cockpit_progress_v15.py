@@ -1,10 +1,10 @@
-"""Visible scene-loading runner for the V15 Phase 1 engineering cockpit."""
+"""Visible scene-loading runner for the V15 Phase 2 engineering cockpit."""
 from __future__ import annotations
 
 from pathlib import Path
 
 from cws_viewer.adapters.project_scene_loader import ProjectSceneLoader
-from cws_viewer.ui_qt.cockpit_phase1_v15 import CwsViewerV15Phase1CockpitWindow
+from cws_viewer.ui_qt.cockpit_phase2_v15 import CwsViewerV15Phase2CockpitWindow
 from cws_viewer.ui_qt.cockpit_t8_v15 import V15_T8_VERSION
 from cws_viewer.ui_qt.design_system import DEFAULT_THEME, theme_qss
 from cws_viewer.ui_qt.loading_dialog import create_loading_dialog
@@ -19,7 +19,7 @@ def run_cws_viewer_cockpit_v15(
     ci_smoke: bool = False,
     screenshot_path: str | Path | None = None,
 ) -> int:
-    """Open a project with Phase 1 cache-prefetch and viewer-first startup."""
+    """Open Phase 2 while preserving Phase 1 cache-prefetch/viewer-first startup."""
     QtCore, _QtGui, QtWidgets = require_qt()
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("CWS Viewer")
@@ -31,7 +31,7 @@ def run_cws_viewer_cockpit_v15(
     loading.set_progress(
         0.04,
         "Projectstructuur openen…",
-        "CWS controleert eerst de bestaande geometriecache en bouwt daarna alleen ontbrekende displaygeometrie op.",
+        "CWS controleert de bestaande geometriecache en bouwt alleen ontbrekende displaygeometrie op.",
     )
 
     def geometry_progress(fraction: float, message: str) -> None:
@@ -53,13 +53,13 @@ def run_cws_viewer_cockpit_v15(
         loading.set_progress(
             0.92,
             "3D Viewer openen…",
-            f"Geometrie gereed · cache {hits}/{requested}. Project Explorer en eigenschappen worden eerst getoond; zware engineeringpanelen laden pas wanneer u ze opent.",
+            f"Geometrie gereed · cache {hits}/{requested}. Phase 2 review- en coordinationpanelen blijven on-demand zodat de viewer eerst bestuurbaar is.",
         )
-        window = CwsViewerV15Phase1CockpitWindow(result)
+        window = CwsViewerV15Phase2CockpitWindow(result)
         loading.set_progress(
             0.985,
             "Model zichtbaar maken…",
-            "Phase 1 werkruimte gereed: model eerst, optionele review/coördinatie/export/manufacturing-modules on-demand.",
+            "Phase 2 gereed: interactieve markups en clipping zitten in de viewer; zware review/coördinatie/export/manufacturingpanelen blijven lazy.",
         )
         window.show()
         window.raise_()
