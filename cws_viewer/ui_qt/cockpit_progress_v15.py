@@ -1,10 +1,11 @@
-"""Visible scene-loading runner for the V15 dockable engineering cockpit."""
+"""Visible scene-loading runner for the V15 Phase 1 engineering cockpit."""
 from __future__ import annotations
 
 from pathlib import Path
 
 from cws_viewer.adapters.project_scene_loader import ProjectSceneLoader
-from cws_viewer.ui_qt.cockpit_t8_v15 import CwsViewerV15T8CockpitWindow, V15_T8_VERSION
+from cws_viewer.ui_qt.cockpit_phase1_v15 import CwsViewerV15Phase1CockpitWindow
+from cws_viewer.ui_qt.cockpit_t8_v15 import V15_T8_VERSION
 from cws_viewer.ui_qt.design_system import DEFAULT_THEME, theme_qss
 from cws_viewer.ui_qt.loading_dialog import create_loading_dialog
 from cws_viewer.ui_qt.qt_compat import require_qt
@@ -18,7 +19,7 @@ def run_cws_viewer_cockpit_v15(
     ci_smoke: bool = False,
     screenshot_path: str | Path | None = None,
 ) -> int:
-    """Open a project in the V15 T8 workspace while keeping progress visible."""
+    """Open a project with Phase 1 cache-prefetch and viewer-first startup."""
     QtCore, _QtGui, QtWidgets = require_qt()
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("CWS Viewer")
@@ -30,16 +31,16 @@ def run_cws_viewer_cockpit_v15(
     loading.set_progress(
         0.04,
         "Projectstructuur openen…",
-        "CWS bouwt de canonical projectscene en houdt bron- en productiegeometrie ongewijzigd.",
+        "CWS controleert eerst de bestaande geometriecache en bouwt daarna alleen ontbrekende displaygeometrie op.",
     )
 
     def geometry_progress(fraction: float, message: str) -> None:
-        value = 0.08 + 0.84 * max(0.0, min(1.0, float(fraction)))
+        value = 0.08 + 0.82 * max(0.0, min(1.0, float(fraction)))
         loading.restore_determinate()
         loading.set_progress(
             value,
             message or "3D-geometrie laden…",
-            "IFC/STEP-displaygeometrie wordt crash-geïsoleerd opgebouwd; review, coördinatie, export en manufacturing-evidence blijven aparte fail-closed lagen.",
+            "Gecachte geometrie wordt parallel voorbereid; ontbrekende IFC/STEP-geometrie blijft crash-geïsoleerd en fail-closed.",
         )
 
     try:
@@ -47,13 +48,19 @@ def run_cws_viewer_cockpit_v15(
             cache_root=cache_root,
             source_search_roots=source_search_roots,
         ).load(path, progress=geometry_progress)
+        hits = int(getattr(result.geometry_report, "cache_hit_count", 0) or 0)
+        requested = int(getattr(result.geometry_report, "requested_count", 0) or 0)
         loading.set_progress(
-            0.94,
-            "V15 T8 engineering workspace voorbereiden…",
-            "Project Explorer, review, assembly drilldown, compare, clash/preflight, sequence, Export Center en canonical Manufacturing Faces worden gekoppeld.",
+            0.92,
+            "3D Viewer openen…",
+            f"Geometrie gereed · cache {hits}/{requested}. Project Explorer en eigenschappen worden eerst getoond; zware engineeringpanelen laden pas wanneer u ze opent.",
         )
-        window = CwsViewerV15T8CockpitWindow(result)
-        loading.set_progress(0.99, "3D Viewer gereedmaken…")
+        window = CwsViewerV15Phase1CockpitWindow(result)
+        loading.set_progress(
+            0.985,
+            "Model zichtbaar maken…",
+            "Phase 1 werkruimte gereed: model eerst, optionele review/coördinatie/export/manufacturing-modules on-demand.",
+        )
         window.show()
         window.raise_()
         window.activateWindow()
