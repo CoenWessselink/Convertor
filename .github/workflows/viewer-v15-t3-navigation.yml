@@ -44,14 +44,20 @@ jobs:
             cws_viewer/core/session.py `
             cws_viewer/core/v14_controller.py `
             cws_viewer/core/v15_navigation.py `
+            cws_viewer/core/viewer_feel_navigation.py `
+            cws_viewer/backends/vtk_project_mesh_feel.py `
             cws_viewer/ui_qt/vtk_real_project_widget_v15.py `
+            cws_viewer/ui_qt/vtk_real_project_widget_phase2.py `
+            cws_viewer/ui_qt/vtk_real_project_widget_feel.py `
             cws_viewer/ui_qt/view_navigation_v15.py `
             cws_viewer/ui_qt/cockpit_t3_v15.py `
+            cws_viewer/ui_qt/cockpit_feel_fix_v15.py `
             cws_viewer/ui_qt/cockpit_progress_v15.py `
             tests/viewer_v15_navigation_contract_smoke.py `
             tests/viewer_v15_interaction_foundation_smoke.py `
             tests/viewer_v15_selection_pivot_parity_smoke.py `
             tests/viewer_v15_trimble_input_contract_smoke.py `
+            tests/viewer_v15_feel_fix_smoke.py `
             CWS_Viewer_V15_Standalone.py
           if ($LASTEXITCODE -ne 0) { throw 'T3 interaction compileall failed' }
 
@@ -78,6 +84,12 @@ jobs:
         run: |
           python tests/viewer_v15_trimble_input_contract_smoke.py
           if ($LASTEXITCODE -ne 0) { throw 'Trimble-style desktop input contract failed' }
+
+      - name: Run rendering and cursor-zoom repair contract
+        shell: pwsh
+        run: |
+          python tests/viewer_v15_feel_fix_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'Rendering/cursor zoom repair contract failed' }
 
       - name: Run V15 self-test contract
         shell: pwsh
