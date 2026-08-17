@@ -44,14 +44,18 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
 
     def test_contract_claims_only_t3_view_capabilities(self) -> None:
         contract = navigation_contract()
-        self.assertEqual("cws-viewer-navigation-15.2", V15_T3_SCHEMA)
-        self.assertEqual("1.4.0-v15-preview.1", V15_T3_VERSION)
+        self.assertEqual("cws-viewer-navigation-15.3", V15_T3_SCHEMA)
+        self.assertEqual("1.4.0-v15-preview.2", V15_T3_VERSION)
         self.assertEqual(V15_T3_SCHEMA, contract["schema"])
         for name in (
+            "orbit_around_picked_point",
+            "selection_orbit_focus",
             "zoom_area",
             "camera_history",
             "view_from_face_normal",
+            "orthogonal_surface_double_click",
             "camera_positioning",
+            "trimble_camera_shortcuts",
             "section_plane_enable_disable",
             "clipping_box",
             "saved_view_contract",
@@ -69,6 +73,66 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
             [item["key"] for item in contract["docks"]],
         )
         self.assertTrue(contract["capabilities"]["v14_functionality_preserved"])
+
+    def test_selection_sets_orbit_pivot_without_moving_camera(self) -> None:
+        node_id = "node:item:000017"
+        before = self.controller.get_camera()
+        bounds = self.controller.index.bounds_for((node_id,), include_descendants=True)
+        self.assertIsNotNone(bounds)
+        assert bounds is not None
+
+        self.controller.set_selection((node_id,))
+
+        self.assertEqual(before, self.controller.get_camera())
+        self.assertEqual(bounds.center, self.controller.orbit_pivot)
+
+    def test_multi_selection_uses_combined_bounds_center_and_clear_retains_focus(self) -> None:
+        nodes = ("node:item:000010", "node:item:000021")
+        bounds = self.controller.index.bounds_for(nodes, include_descendants=True)
+        self.assertIsNotNone(bounds)
+        assert bounds is not None
+        self.controller.set_selection(nodes)
+        pivot = self.controller.orbit_pivot
+        self.assertEqual(bounds.center, pivot)
+
+        self.controller.set_selection(())
+        self.assertEqual(pivot, self.controller.orbit_pivot)
+
+    def test_explicit_picked_pivot_does_not_reframe_until_orbit(self) -> None:
+        before = self.controller.get_camera()
+        picked = Vector3(417.25, -138.5, 92.0)
+        self.service.set_orbit_pivot(picked)
+        self.assertEqual(before, self.controller.get_camera())
+        self.assertEqual(picked, self.controller.orbit_pivot)
+
+    def test_orbit_rigidly_rotates_camera_around_selected_part(self) -> None:
+        node_id = "node:item:000019"
+        self.controller.set_selection((node_id,))
+        pivot = self.controller.orbit_pivot
+        before = self.controller.get_camera()
+        eye_radius = (before.position - pivot).length()
+        target_radius = (before.target - pivot).length()
+
+        self.controller.orbit(31.0, -9.0)
+        after = self.controller.get_camera()
+
+        self.assertEqual(pivot, self.controller.orbit_pivot)
+        self.assertAlmostEqual(eye_radius, (after.position - pivot).length(), places=7)
+        self.assertAlmostEqual(target_radius, (after.target - pivot).length(), places=7)
+        self.assertNotEqual(before.position, after.position)
+        # With a selection pivot that differs from the old camera target, the
+        # focal target itself rotates rigidly instead of remaining a stale scene center.
+        if target_radius > 1e-9:
+            self.assertNotEqual(before.target, after.target)
+
+    def test_fit_selection_centers_camera_and_keeps_same_selection_pivot(self) -> None:
+        node_id = "node:item:000013"
+        self.controller.set_selection((node_id,))
+        expected = self.controller.orbit_pivot
+        self.controller.fit_selection()
+        camera = self.controller.get_camera()
+        self.assertEqual(expected, camera.target)
+        self.assertEqual(expected, self.controller.orbit_pivot)
 
     def test_camera_history_is_gesture_checkpointed_and_reversible(self) -> None:
         before = self.controller.get_camera()
@@ -99,6 +163,16 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertAlmostEqual(1.0, direction.z, places=9)
         self.assertAlmostEqual(0.0, camera.up.dot(direction), places=9)
 
+    def test_view_from_face_normal_can_target_exact_picked_surface_point(self) -> None:
+        picked = Vector3(125.0, 250.0, 375.0)
+        camera = self.service.view_from_normal(
+            Vector3(1.0, 0.0, 0.0), target=picked, fit=False
+        )
+        self.assertEqual(picked, camera.target)
+        self.assertEqual(picked, self.controller.orbit_pivot)
+        direction = (camera.position - camera.target).normalized()
+        self.assertAlmostEqual(1.0, direction.x, places=9)
+
     def test_zoom_area_fits_bounds_without_changing_selection(self) -> None:
         self.controller.set_selection(("node:item:000001",))
         selected_before = self.controller.get_selection()
@@ -112,6 +186,7 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertAlmostEqual(bounds.center.x, target.x, places=6)
         self.assertAlmostEqual(bounds.center.y, target.y, places=6)
         self.assertAlmostEqual(bounds.center.z, target.z, places=6)
+        self.assertEqual(target, self.controller.orbit_pivot)
 
     def test_section_and_clipping_state_roundtrip_through_workspace_contract(self) -> None:
         plane_id = self.service.add_section(Vector3(0.0, 0.0, 1.0))
