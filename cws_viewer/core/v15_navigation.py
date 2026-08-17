@@ -26,6 +26,8 @@ def navigation_contract() -> dict[str, Any]:
             "orbit_pan_zoom": True,
             "orbit_around_picked_point": True,
             "selection_orbit_focus": True,
+            "object_assembly_selection_mode": True,
+            "temporary_alt_selection_inversion": True,
             "zoom_to_fit": True,
             "zoom_area": True,
             "camera_history": True,
