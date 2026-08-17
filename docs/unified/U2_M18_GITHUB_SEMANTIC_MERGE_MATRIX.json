@@ -1,0 +1,43 @@
+{
+  "format": "CWS_UNIFIED_U2_SEMANTIC_MERGE_MATRIX_V1",
+  "phase": "U2",
+  "source_branch": "feature/unified-v15-scribing-m18",
+  "source_commit_before_u2": "441a05231ebabdeef82199826d0b086876d259b4",
+  "project_model": "2.25",
+  "m18_origin": {
+    "version": "0.8.30-beta-dev",
+    "commit": "b04b1c203583295e8c5ed018d75de68b2319c839",
+    "tag": "scribing-m18-deployment-assurance-0.8.30-beta-dev",
+    "runtime_sha256": "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
+  },
+  "decisions": [
+    {"phase":"M1","authority":"github-v15","canonical":"cws_convertor.manufacturing.faces","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M2","authority":"github-v15","canonical":"cws_convertor.manufacturing.contact","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M3","authority":"github-v15","canonical":"cws_convertor.manufacturing.marking","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M4","authority":"github-v15","canonical":"cws_convertor.manufacturing.identification","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M5","authority":"github-v15","canonical":"cws_convertor.manufacturing.machine_capability","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M6","authority":"github-v15","canonical":"cws_convertor.manufacturing.nesting_binding","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M7","authority":"github-v15","canonical":"cws_convertor.manufacturing.neutral_job","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M8","authority":"github-v15","canonical":"cws_viewer.export_center.manufacturing_service","m18_role":"compatibility-only","duplicate_project_truth":false},
+    {"phase":"M9","authority":"m18-frozen","module":"dstv_marking_adapter"},
+    {"phase":"M10","authority":"m18-frozen","module":"reporting"},
+    {"phase":"M11","authority":"m18-frozen","module":"release_gate"},
+    {"phase":"M12","authority":"m18-frozen","module":"simulation_service+adapter_rehearsal"},
+    {"phase":"M13","authority":"m18-frozen","module":"adapter_certification"},
+    {"phase":"M14","authority":"m18-frozen","module":"adapter_sdk+certification_ops"},
+    {"phase":"M15","authority":"m18-frozen","module":"certification_lab"},
+    {"phase":"M16","authority":"m18-frozen","module":"fleet_governance"},
+    {"phase":"M17","authority":"m18-frozen","module":"controlled_deployment"},
+    {"phase":"M18","authority":"m18-frozen","module":"deployment_assurance"}
+  ],
+  "invariants": {
+    "viewer_v15_is_visual_basis": true,
+    "canonical_project_model_is_single_truth": true,
+    "current_m1_m8_are_not_overwritten": true,
+    "m18_authority_stores_share_project_model_2_25": true,
+    "machine_observed_by_cws": false,
+    "deployment_transport_authorized": false,
+    "direct_machine_transfer": false,
+    "machine_transfer_allowed": false
+  }
+}

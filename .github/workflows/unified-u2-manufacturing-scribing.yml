@@ -1,0 +1,96 @@
+name: CWS Unified U2 Manufacturing Scribing M1-M18 gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/unified-v15-scribing-m18
+    paths:
+      - 'cws_convertor/manufacturing/**'
+      - 'cws_convertor/project/**'
+      - 'tests/unified_manufacturing_scribing_u2_smoke.py'
+      - 'tests/manufacturing_**'
+      - 'tests/viewer_v15_**'
+      - 'docs/unified/U2_**'
+      - 'validation/unified/U2_**'
+      - '.github/workflows/unified-u2-manufacturing-scribing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  u2-manufacturing-scribing:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install U2 authority dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cryptography
+
+      - name: Compile unified manufacturing and authority facade
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor/manufacturing cws_convertor/project tests/unified_manufacturing_scribing_u2_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U2 compileall failed' }
+
+      - name: Preserve U0 baseline
+        shell: pwsh
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        shell: pwsh
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Run current canonical M1-M8 regressions
+        shell: pwsh
+        run: |
+          python tests/manufacturing_face_core_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M1 face core failed' }
+          python tests/manufacturing_contact_core_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M2 contact core failed' }
+          python tests/viewer_v15_marking_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M3 marking failed' }
+          python tests/viewer_v15_identification_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M4 identification failed' }
+          python tests/viewer_v15_machine_capability_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M5 machine capability failed' }
+          python tests/viewer_v15_nesting_binding_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M6 nesting binding failed' }
+          python tests/viewer_v15_neutral_job_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M7 neutral job failed' }
+          python tests/viewer_v15_manufacturing_export_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'M8 manufacturing export failed' }
+
+      - name: Run unified M9-M18 authority integration contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\unified-u2 | Out-Null
+          python tests/unified_manufacturing_scribing_u2_smoke.py 2>&1 | Tee-Object validation\unified-u2\u2_authority.txt
+          if ($LASTEXITCODE -ne 0) { throw 'U2 M9-M18 authority integration failed' }
+
+      - name: Project storage no-regression
+        shell: pwsh
+        run: python tests/project_storage_smoke.py
+
+      - name: Upload U2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Unified_U2_Manufacturing_Scribing_${{ github.run_id }}
+          path: validation/unified-u2/*
+          if-no-files-found: warn
+          retention-days: 30
