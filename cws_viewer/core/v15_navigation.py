@@ -27,6 +27,7 @@ def navigation_contract() -> dict[str, Any]:
             "orbit_around_picked_point": True,
             "selection_orbit_focus": True,
             "picked_depth_pan": True,
+            "display_space_fit_with_explode": True,
             "object_assembly_selection_mode": True,
             "temporary_alt_selection_inversion": True,
             "zoom_to_fit": True,
@@ -238,7 +239,12 @@ class V15ViewNavigationService:
         )
         if not raw:
             return ()
-        bounds = index.bounds_for(raw, include_descendants=True)
+        display_bounds = getattr(self.controller, "display_bounds_for", None)
+        bounds = (
+            display_bounds(raw, include_descendants=True)
+            if callable(display_bounds)
+            else index.bounds_for(raw, include_descendants=True)
+        )
         if bounds is None:
             return ()
         self.camera_checkpoint()
