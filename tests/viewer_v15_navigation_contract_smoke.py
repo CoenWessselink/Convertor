@@ -9,7 +9,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_viewer.backends.memory import MemoryRenderBackend
-from cws_viewer.contracts.enums import ProjectionType, StandardView
+from cws_viewer.contracts.enums import ProjectionType, SelectionLevel, StandardView
 from cws_viewer.core.v14_controller import V14ViewerCoreController
 from cws_viewer.core.v15_navigation import (
     V15_T3_SCHEMA,
@@ -80,9 +80,7 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         bounds = self.controller.index.bounds_for((node_id,), include_descendants=True)
         self.assertIsNotNone(bounds)
         assert bounds is not None
-
         self.controller.set_selection((node_id,))
-
         self.assertEqual(before, self.controller.get_camera())
         self.assertEqual(bounds.center, self.controller.orbit_pivot)
 
@@ -94,9 +92,38 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.controller.set_selection(nodes)
         pivot = self.controller.orbit_pivot
         self.assertEqual(bounds.center, pivot)
-
         self.controller.set_selection(())
         self.assertEqual(pivot, self.controller.orbit_pivot)
+
+    def test_temporary_assembly_pick_preserves_persistent_part_mode_and_focus(self) -> None:
+        self.backend.pick_node_id = "node:item:000005"
+        self.controller.set_selection_level(SelectionLevel.PART)
+        pick = self.controller.pick_at_level(
+            10, 20, level=SelectionLevel.ASSEMBLY, mode="replace"
+        )
+        self.assertIsNotNone(pick)
+        assert pick is not None
+        self.assertEqual("node:assembly:0000", pick.node_id)
+        self.assertEqual(SelectionLevel.PART, self.controller.session.selection_level)
+        self.assertEqual(("node:assembly:0000",), self.controller.get_selection())
+        bounds = self.controller.index.bounds_for(
+            ("node:assembly:0000",), include_descendants=True
+        )
+        self.assertIsNotNone(bounds)
+        assert bounds is not None
+        self.assertEqual(bounds.center, self.controller.orbit_pivot)
+
+    def test_temporary_part_pick_preserves_persistent_assembly_mode(self) -> None:
+        self.backend.pick_node_id = "node:item:000015"
+        self.controller.set_selection_level(SelectionLevel.ASSEMBLY)
+        pick = self.controller.pick_at_level(
+            10, 20, level=SelectionLevel.PART, mode="replace"
+        )
+        self.assertIsNotNone(pick)
+        assert pick is not None
+        self.assertEqual("node:item:000015", pick.node_id)
+        self.assertEqual(SelectionLevel.ASSEMBLY, self.controller.session.selection_level)
+        self.assertEqual(("node:item:000015",), self.controller.get_selection())
 
     def test_explicit_picked_pivot_does_not_reframe_until_orbit(self) -> None:
         before = self.controller.get_camera()
@@ -112,10 +139,8 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         before = self.controller.get_camera()
         eye_radius = (before.position - pivot).length()
         target_radius = (before.target - pivot).length()
-
         self.controller.orbit(31.0, -9.0)
         after = self.controller.get_camera()
-
         self.assertEqual(pivot, self.controller.orbit_pivot)
         self.assertAlmostEqual(eye_radius, (after.position - pivot).length(), places=7)
         self.assertAlmostEqual(target_radius, (after.target - pivot).length(), places=7)
@@ -202,11 +227,9 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.controller.set_selection((restored_node,))
         expected = self.controller.orbit_pivot
         state = self.controller.export_workspace_state()
-
         self.controller.set_selection((other_node,))
         self.controller.set_orbit_pivot(Vector3(9000.0, -8000.0, 7000.0))
         self.controller.restore_workspace_state(state)
-
         self.assertEqual((restored_node,), self.controller.get_selection())
         self.assertEqual(expected, self.controller.orbit_pivot)
 
@@ -235,11 +258,9 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.controller.set_selection((saved_node,))
         expected = self.controller.orbit_pivot
         viewpoint = self.service.save_named_view("Selectie-focus")
-
         self.controller.set_selection((other_node,))
         self.controller.set_orbit_pivot(Vector3(-1000.0, 2000.0, 3000.0))
         self.controller.activate_viewpoint(viewpoint)
-
         self.assertEqual((saved_node,), self.controller.get_selection())
         self.assertEqual(expected, self.controller.orbit_pivot)
 
