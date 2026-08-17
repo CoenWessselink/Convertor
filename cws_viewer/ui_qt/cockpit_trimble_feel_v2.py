@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from cws_viewer.contracts.enums import SelectionLevel
+from cws_viewer.contracts.enums import NodeKind, SelectionLevel
 from cws_viewer.core.viewer_feel_navigation_v2 import viewer_feel_navigation_v2_contract
 from cws_viewer.review.feel_v2_service import FeelV2ReviewWorkspaceService
 from cws_viewer.ui_qt import cockpit_feel_fix_v15 as _feel_cockpit
@@ -34,6 +34,7 @@ def trimble_feel_v2_workspace_contract() -> dict[str, Any]:
             "grid_list_to_3d_selection": True,
             "3d_to_grid_list_selection": True,
             "assembly_part_level_toolbar": True,
+            "assembly_selection_expands_in_grid": True,
             "persistent_bottom_views_strip": True,
             "views_strip_search": True,
             "views_strip_groups": True,
@@ -65,6 +66,7 @@ def trimble_feel_v2_workspace_contract() -> dict[str, Any]:
             "shift_click": "add",
             "levels": ["assembly/merk", "part/onderdeel"],
             "tree_grid_3d_bidirectional": True,
+            "assembly_grid_feedback": "show all renderable descendants",
         },
         "graphics": {
             "source_ifc_colours": True,
@@ -173,13 +175,22 @@ QComboBox#cwsSelectionLevelQuick {
             controller.set_selection_level(level)
             current = controller.get_selection()
             if current:
-                promoted = tuple(
-                    dict.fromkeys(
-                        controller.index.selectable_node_for_level(node_id, level)
-                        for node_id in current
+                if level == SelectionLevel.PART and any(
+                    controller.index.node(node_id).kind == NodeKind.ASSEMBLY
+                    for node_id in current
+                ):
+                    # A coarse assembly selection cannot be deterministically
+                    # demoted to one particular part. Clear it rather than
+                    # silently choosing an arbitrary child.
+                    controller.set_selection((), mode="replace")
+                else:
+                    promoted = tuple(
+                        dict.fromkeys(
+                            controller.index.selectable_node_for_level(node_id, level)
+                            for node_id in current
+                        )
                     )
-                )
-                controller.set_selection(promoted, mode="replace")
+                    controller.set_selection(promoted, mode="replace")
             panel = getattr(self, "_selection_panel", None)
             if panel is not None:
                 panel.refresh()
@@ -237,8 +248,6 @@ QComboBox#cwsSelectionLevelQuick {
             dock.setObjectName("cwsV15Dock_views_strip")
             dock.setAllowedAreas(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea)
             dock.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
-            # A lightweight strip should look like part of the viewer rather than
-            # another engineering tool window.
             title_bar = QtWidgets.QWidget(dock)
             title_bar.setFixedHeight(1)
             dock.setTitleBarWidget(title_bar)
@@ -268,6 +277,17 @@ QComboBox#cwsSelectionLevelQuick {
             if not entity_ids:
                 self.viewer.controller.set_selection((), mode="replace")
 
+        def _grid_entities_for_selection(self, selection: Any) -> tuple[str, ...]:
+            if self.viewer.controller.session.selection_level != SelectionLevel.ASSEMBLY:
+                return tuple(selection.entity_ids)
+            index = self.viewer.controller.index
+            descendants = index.descendants(
+                selection.node_ids,
+                include_self=False,
+                renderable_only=True,
+            )
+            return tuple(dict.fromkeys(index.node(node_id).entity_id for node_id in descendants))
+
         def _selection_changed(self, selection: Any) -> None:
             super()._selection_changed(selection)
             combo = getattr(self, "_quick_selection_level", None)
@@ -282,7 +302,7 @@ QComboBox#cwsSelectionLevelQuick {
                 if selection_model is not None:
                     selection_model.blockSignals(True)
                     try:
-                        grid.select_entities(selection.entity_ids)
+                        grid.select_entities(self._grid_entities_for_selection(selection))
                     finally:
                         selection_model.blockSignals(False)
 
