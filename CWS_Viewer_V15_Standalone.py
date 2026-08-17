@@ -39,9 +39,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_t8_v15 import t8_workspace_contract
+    from cws_viewer.ui_qt.cockpit_phase1_v15 import phase1_workspace_contract
 
-    contract = t8_workspace_contract()
+    contract = phase1_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -91,6 +91,14 @@ def _run_v15_selftest() -> dict[str, object]:
         "independent_face_validator", "dstv_mapping_is_adapter", "ambiguous_dstv_mapping_blocks",
         "manufacturing_face_viewer_overlay", "face_normal_overlay", "face_status_visualization",
     )
+    required_phase1 = (
+        "startup_geometry_cache_prefetch",
+        "lazy_review_coordination_export_manufacturing",
+        "fail_isolated_optional_panels",
+        "clean_viewer_first_layout",
+        "phase1_professional_shell",
+        "startup_metrics",
+    )
     export_safety = dict(contract.get("export_center", {}).get("safety", {}))
     manufacturing_safety = dict(contract.get("manufacturing", {}).get("safety", {}))
     passed = (
@@ -106,6 +114,7 @@ def _run_v15_selftest() -> dict[str, object]:
         and all(bool(capabilities.get(name)) for name in required_t6)
         and all(bool(capabilities.get(name)) for name in required_t7)
         and all(bool(capabilities.get(name)) for name in required_t8)
+        and all(bool(capabilities.get(name)) for name in required_phase1)
         and not bool(capabilities.get("ai_derived_dimensions", True))
         and not bool(capabilities.get("silent_reference_remap", True))
         and not bool(capabilities.get("review_mutates_canonical_geometry", True))
@@ -131,6 +140,10 @@ def _run_v15_selftest() -> dict[str, object]:
         "trimble_style_handling_contract_certified": passed,
         "selected_object_orbit_pivot_certified": passed,
         "active_pivot_zoom_certified": passed,
+        "phase1_startup_certified": passed,
+        "phase1_viewer_first_layout_certified": passed,
+        "phase1_lazy_optional_panels_certified": passed,
+        "phase1_cache_prefetch_certified": passed,
         "t4_selection_measurement_imported": True,
         "t5_review_workspace_imported": True,
         "t6_coordination_imported": True,
