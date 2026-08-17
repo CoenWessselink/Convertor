@@ -93,6 +93,17 @@ from .neutral_job_model import (
     ProcessOperationIntent,
 )
 from .neutral_job import NeutralJobBuilder, OperationDagValidator
+from .authority import (
+    AUTHORITY_MODULES,
+    CANONICAL_M1_M8,
+    M18_ORIGIN_COMMIT,
+    M18_ORIGIN_TAG,
+    M18_ORIGIN_VERSION,
+    M18_RUNTIME_SHA256,
+    authority_chain_status,
+    load_authority_module,
+    verify_m18_runtime_archive,
+)
 
 __all__ = [
     "MANUFACTURING_FACE_SCHEMA",
@@ -174,4 +185,13 @@ __all__ = [
     "ProcessOperationIntent",
     "NeutralJobBuilder",
     "OperationDagValidator",
+    "AUTHORITY_MODULES",
+    "CANONICAL_M1_M8",
+    "M18_ORIGIN_COMMIT",
+    "M18_ORIGIN_TAG",
+    "M18_ORIGIN_VERSION",
+    "M18_RUNTIME_SHA256",
+    "authority_chain_status",
+    "load_authority_module",
+    "verify_m18_runtime_archive",
 ]
