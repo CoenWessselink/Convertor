@@ -1,0 +1,72 @@
+{
+  "format": "CWS_UNIFIED_U0_BASELINE_AUDIT_V1",
+  "phase": "U0",
+  "status": "passed_for_u1",
+  "repository": "CoenWessselink/Convertor",
+  "integration_branch": "feature/unified-v15-scribing-m18",
+  "github_source": {
+    "branch": "feature/trimble-parity-v15",
+    "commit": "6fd8fac7194196aa2fda7e89559000fb5012c926",
+    "viewer_version": "1.4.0-v15-preview.2",
+    "viewer_handling_contract": "1.2-trimble-feel-v2",
+    "convertor_version": "0.9.0-alpha-dev",
+    "project_schema_version": "2.5",
+    "viewer_windows_build_latest_observed": "success",
+    "viewer_t8_manufacturing_latest_observed": "success",
+    "integrated_v9_windows_runs_on_source_branch": 0
+  },
+  "m18_source": {
+    "delivery_name": "CWS_Convertor_Scribing_M18_DELIVERY_0.8.30-beta-dev.zip",
+    "delivery_sha256": "886dc6aa0a2586d0196e708bebfe3fb6be293de7adde0087fb4bbfe4d8b66737",
+    "product_version": "0.8.30-beta-dev",
+    "project_schema_version": "2.24",
+    "source_commit": "b04b1c203583295e8c5ed018d75de68b2319c839",
+    "tag": "scribing-m18-deployment-assurance-0.8.30-beta-dev",
+    "contract_version": "1.0",
+    "recorded_positive_checks": 486,
+    "source_commit_present_in_current_github_history": false,
+    "verified_artifacts": {
+      "git_bundle_sha256": "f2ab5e29eaee93cb69677ce99b5e76a137adb1a4125e5aea6790af49e70af7c1",
+      "source_zip_sha256": "6ab1fc4819245763e38c8b5c9fb4a1654648ba168f78f54c540c89b89dd503be",
+      "sample_project_sha256": "5d13e86fc6d40996b29af5d4a68fd77c09b66b19c1817d3016d9b35529635afa",
+      "xlsx_sha256": "bc15903f2851c8f17f1c154bc83653a226cb4ecfe963cb57dce61c0d6d543347",
+      "pdf_sha256": "a148f1a798101525ee551790d765a195d95d205e5b642c52967238a48b2b99bc"
+    }
+  },
+  "architecture": {
+    "visual_interaction_basis": "Viewer V15",
+    "technical_truth": "Canonical Project Model",
+    "m18_role": "frozen manufacturing/scribing authority donor",
+    "duplicate_truth_allowed": false,
+    "blind_file_copy_merge_allowed": false
+  },
+  "safety": {
+    "machine_observed_by_cws": false,
+    "deployment_transport_authorized": false,
+    "direct_machine_transfer": false,
+    "machine_transfer_allowed": false
+  },
+  "schema_reconciliation": {
+    "github_source": "2.5",
+    "m18_source": "2.24",
+    "planned_unified_target": "2.25",
+    "target_requires_u1_field_and_migration_audit": true,
+    "required_paths": [
+      "2.5->2.25",
+      "2.24->2.25"
+    ]
+  },
+  "ux_flow": [
+    "Inlezen",
+    "Viewer (Project)",
+    "Bewerken",
+    "Converteren",
+    "Controleren",
+    "PDF / Tekening",
+    "Tekeningen",
+    "Scribing",
+    "Hoeveelheden / Excel",
+    "Exporteren"
+  ],
+  "next_phase": "U1 - Canonical Project Model & contract reconciliation"
+}
