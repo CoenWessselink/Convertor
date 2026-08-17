@@ -174,6 +174,17 @@ if qt_available():
             key = event.key()
             modifiers = event.modifiers()
 
+            if key == QtCore.Qt.Key.Key_F11:
+                window = self.window()
+                if window.isFullScreen():
+                    window.showNormal()
+                    self.interaction_message.emit("Volledig scherm uit")
+                else:
+                    window.showFullScreen()
+                    self.interaction_message.emit("Volledig scherm aan")
+                event.accept()
+                return
+
             if key == QtCore.Qt.Key.Key_Escape:
                 if self._v15_zoom_area:
                     self.set_zoom_area(False)
