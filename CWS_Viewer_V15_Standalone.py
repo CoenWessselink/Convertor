@@ -15,6 +15,7 @@ import CWS_Viewer_Standalone as _base
 
 PRODUCT = _base.PRODUCT
 VERSION = "1.4.0-v15-preview.1"
+HANDLING_CONTRACT_VERSION = "1.0"
 _base.VERSION = VERSION
 
 
@@ -121,6 +122,8 @@ def _run_v15_selftest() -> dict[str, object]:
         "status": "passed" if passed else "failed",
         "product": PRODUCT,
         "version": VERSION,
+        "handling_contract_version": HANDLING_CONTRACT_VERSION,
+        "handling_reference_scope": "visible_user_workflows_only",
         "frozen": bool(getattr(sys, "frozen", False)),
         "workspace": contract,
         "v15_cockpit_imported": True,
