@@ -71,6 +71,7 @@ if qt_available():
             self._install_t3_view_menu()
             self._install_t3_selection_shortcuts()
             self._restore_v15_state()
+            self._set_navigation(_v14.NavigationMode.ORBIT)
             self.statusBar().showMessage(
                 "T3 actief · selectiegebonden orbit · picked-depth pan · view-from-face · section/clipping",
                 6500,
@@ -150,6 +151,17 @@ if qt_available():
         def _camera_menu_action(self, function: Any) -> None:
             function()
             self._t3_view_panel.refresh()
+
+        def _set_navigation(self, mode: Any) -> None:
+            super()._set_navigation(mode)
+            if mode == _v14.NavigationMode.ORBIT:
+                self._tool_status.setText(
+                    "Roteren · selectie = draaipunt op onderdeel/assembly · zonder selectie = exact punt onder muis"
+                )
+            elif mode == _v14.NavigationMode.PAN:
+                self._tool_status.setText(
+                    "Pan · beweging volgt de diepte van het punt waar de sleepbeweging start"
+                )
 
         def _reset_v15_layout(self) -> None:
             super()._reset_v15_layout()
