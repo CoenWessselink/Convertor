@@ -14,8 +14,8 @@ multiprocessing.freeze_support()
 import CWS_Viewer_Standalone as _base
 
 PRODUCT = _base.PRODUCT
-VERSION = "1.4.0-v15-preview.1"
-HANDLING_CONTRACT_VERSION = "1.1-quality-fix"
+VERSION = "1.4.0-v15-preview.2"
+HANDLING_CONTRACT_VERSION = "1.2-trimble-feel-v2"
 _base.VERSION = VERSION
 
 
@@ -39,9 +39,9 @@ def _install_interactive_v15_runner(args: list[str]) -> None:
 
 
 def _run_v15_selftest() -> dict[str, object]:
-    from cws_viewer.ui_qt.cockpit_feel_fix_v15 import viewer_feel_workspace_contract
+    from cws_viewer.ui_qt.cockpit_trimble_feel_v2 import trimble_feel_v2_workspace_contract
 
-    contract = viewer_feel_workspace_contract()
+    contract = trimble_feel_v2_workspace_contract()
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
@@ -100,59 +100,44 @@ def _run_v15_selftest() -> dict[str, object]:
         "startup_metrics",
     )
     required_phase2 = (
-        "interactive_markup_text",
-        "interactive_markup_line",
-        "interactive_markup_arrow",
-        "interactive_markup_cloud",
-        "interactive_markup_freehand",
-        "markup_live_preview",
-        "markup_world_space_overlay",
-        "markup_preserves_semantic_selection",
-        "markup_hidden_ghost_probe_rejection",
-        "saved_view_review_snapshot",
-        "saved_view_markup_visibility",
-        "saved_view_measurement_visibility",
-        "view_groups",
-        "view_group_reorder",
-        "view_slideshow",
-        "view_groups_local_persistent",
-        "picked_surface_section_plane",
-        "section_plane_offset_control",
-        "variable_clip_box_fraction",
-        "reset_model_display_state",
-        "phase1_startup_preserved",
-        "phase2_actual_vtk_input_host",
-        "phase2_review_panel_remains_lazy",
+        "interactive_markup_text", "interactive_markup_line", "interactive_markup_arrow",
+        "interactive_markup_cloud", "interactive_markup_freehand", "markup_live_preview",
+        "markup_world_space_overlay", "markup_preserves_semantic_selection",
+        "markup_hidden_ghost_probe_rejection", "saved_view_review_snapshot",
+        "saved_view_markup_visibility", "saved_view_measurement_visibility", "view_groups",
+        "view_group_reorder", "view_slideshow", "view_groups_local_persistent",
+        "picked_surface_section_plane", "section_plane_offset_control",
+        "variable_clip_box_fraction", "reset_model_display_state", "phase1_startup_preserved",
+        "phase2_actual_vtk_input_host", "phase2_review_panel_remains_lazy",
     )
     required_feel = (
-        "zoom_to_cursor_surface_point",
-        "zoom_to_cursor_reference_depth_fallback",
-        "wheel_notch_incremental_zoom",
-        "zoom_does_not_replace_semantic_orbit_pivot",
-        "coalesced_navigation_input",
-        "selection_cursor_arrow",
-        "pan_cursor_hand",
-        "tessellation_edges_suppressed",
-        "hard_edge_normals",
-        "selection_feature_edge_outline",
-        "interactive_fxaa",
-        "interactive_msaa_8x",
-        "quality_light_background",
-        "phase2_review_preserved",
-        "phase1_fast_start_preserved",
+        "zoom_to_cursor_surface_point", "zoom_to_cursor_reference_depth_fallback",
+        "wheel_notch_incremental_zoom", "zoom_does_not_replace_semantic_orbit_pivot",
+        "coalesced_navigation_input", "selection_cursor_arrow", "pan_cursor_hand",
+        "tessellation_edges_suppressed", "hard_edge_normals", "selection_feature_edge_outline",
+        "interactive_fxaa", "interactive_msaa_8x", "quality_light_background",
+        "phase2_review_preserved", "phase1_fast_start_preserved",
+    )
+    required_feel_v2 = (
+        "world_up_horizontal_orbit", "orbit_roll_suppressed", "orbit_pole_flip_clamped",
+        "selected_object_pivot_preserved", "cursor_anchored_wheel_zoom_preserved",
+        "ifc_source_presentation_colours", "original_colour_means_imported_colour",
+        "ssao_contact_shading_interactive", "balanced_studio_lighting",
+        "selected_object_fill_highlight", "ctrl_click_multi_selection",
+        "grid_list_to_3d_selection", "3d_to_grid_list_selection",
+        "assembly_part_level_toolbar", "persistent_bottom_views_strip", "views_strip_search",
+        "views_strip_groups", "views_strip_slideshow", "views_strip_update_rename_delete",
+        "measurement_foreground_labels", "measurement_from_to_markers",
+        "measurement_live_hover_preview", "measurement_overlay_camera_tracking",
     )
     export_safety = dict(contract.get("export_center", {}).get("safety", {}))
     manufacturing_safety = dict(contract.get("manufacturing", {}).get("safety", {}))
-    phase2_review_safety = dict(
-        contract.get("phase2", {}).get("review", {}).get("safety", {})
-    )
-    phase2_navigation_safety = dict(
-        contract.get("phase2", {}).get("navigation", {}).get("safety", {})
-    )
+    phase2_review_safety = dict(contract.get("phase2", {}).get("review", {}).get("safety", {}))
+    phase2_navigation_safety = dict(contract.get("phase2", {}).get("navigation", {}).get("safety", {}))
     passed = (
         contract.get("schema") == "cws-viewer-workspace-15.2"
         and contract.get("version") == VERSION
-        and len(docks) == 9
+        and len(docks) == 10
         and bool(capabilities.get("dockable_panels"))
         and bool(capabilities.get("persistent_layout"))
         and bool(capabilities.get("v14_functionality_preserved"))
@@ -165,6 +150,7 @@ def _run_v15_selftest() -> dict[str, object]:
         and all(bool(capabilities.get(name)) for name in required_phase1)
         and all(bool(capabilities.get(name)) for name in required_phase2)
         and all(bool(capabilities.get(name)) for name in required_feel)
+        and all(bool(capabilities.get(name)) for name in required_feel_v2)
         and not bool(capabilities.get("ai_derived_dimensions", True))
         and not bool(capabilities.get("silent_reference_remap", True))
         and not bool(capabilities.get("review_mutates_canonical_geometry", True))
@@ -191,18 +177,23 @@ def _run_v15_selftest() -> dict[str, object]:
         "frozen": bool(getattr(sys, "frozen", False)),
         "workspace": contract,
         "v15_cockpit_imported": True,
-        "t3_navigation_imported": True,
         "trimble_style_handling_contract_certified": passed,
         "selected_object_orbit_pivot_certified": passed,
         "active_pivot_zoom_certified": passed,
         "cursor_zoom_certified": passed,
+        "upright_orbit_certified": passed,
+        "source_ifc_colours_certified": passed,
+        "contact_shading_certified": passed,
+        "selected_fill_highlight_certified": passed,
+        "ctrl_multiselect_certified": passed,
+        "bidirectional_list_selection_certified": passed,
+        "assembly_part_level_certified": passed,
+        "views_strip_certified": passed,
+        "measurement_foreground_certified": passed,
         "tessellation_edge_suppression_certified": passed,
         "smooth_navigation_input_certified": passed,
         "quality_rendering_certified": passed,
         "phase1_startup_certified": passed,
-        "phase1_viewer_first_layout_certified": passed,
-        "phase1_lazy_optional_panels_certified": passed,
-        "phase1_cache_prefetch_certified": passed,
         "phase2_interactive_markups_certified": passed,
         "phase2_saved_view_review_snapshot_certified": passed,
         "phase2_view_groups_slideshow_certified": passed,
