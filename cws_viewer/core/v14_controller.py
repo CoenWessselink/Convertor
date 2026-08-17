@@ -50,6 +50,16 @@ class V14ViewerCoreController(ViewerCoreController):
                 )
         super().set_display_preferences(preferences)
 
+    def _sync_orbit_pivot_after_state_restore(self) -> None:
+        """Rebind transient orbit focus after undo/view/workspace state changes."""
+        if self._index is None:
+            self._orbit_pivot = None
+            return
+        if self.session.selection:
+            self.focus_orbit_on_selection()
+        else:
+            self.reset_orbit_pivot()
+
     # Friendly aliases used by the V14 cockpit and standard desktop shortcuts.
     # The stable core keeps its explicit undo_viewer/redo_viewer names.
     def undo(self) -> bool:
@@ -57,6 +67,29 @@ class V14ViewerCoreController(ViewerCoreController):
 
     def redo(self) -> bool:
         return self.redo_viewer()
+
+    def undo_viewer(self) -> bool:
+        changed = super().undo_viewer()
+        if changed:
+            self._sync_orbit_pivot_after_state_restore()
+        return changed
+
+    def redo_viewer(self) -> bool:
+        changed = super().redo_viewer()
+        if changed:
+            self._sync_orbit_pivot_after_state_restore()
+        return changed
+
+    def activate_viewpoint(self, viewpoint, *, allow_scene_mismatch: bool = False) -> None:
+        super().activate_viewpoint(viewpoint, allow_scene_mismatch=allow_scene_mismatch)
+        self._sync_orbit_pivot_after_state_restore()
+
+    def restore_workspace_state(self, state, *, allow_scene_mismatch: bool = False):
+        report = super().restore_workspace_state(
+            state, allow_scene_mismatch=allow_scene_mismatch
+        )
+        self._sync_orbit_pivot_after_state_restore()
+        return report
 
     @property
     def orbit_pivot(self) -> Vector3:
