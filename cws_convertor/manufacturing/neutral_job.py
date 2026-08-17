@@ -145,11 +145,7 @@ class NeutralJobBuilder:
                     source_feature_id=feature.source_feature_id,
                     source_evidence_sha256=feature.feature_sha256,
                     tool_id="" if decision is None else decision.tool_id,
-                    capability_proof_sha256=(
-                        feature.machine_decision_sha256
-                        if decision is None
-                        else decision.decision_sha256
-                    ) or stable_sha256({"missing_mark_proof": feature.source_feature_id}),
+                    capability_proof_sha256="" if decision is None else decision.decision_sha256,
                     geometry_stock_mm=feature.geometry_stock_mm,
                     predecessor_ids=tuple(predecessors_by_source_feature.get(feature.source_feature_id, ())),
                     status=status,
