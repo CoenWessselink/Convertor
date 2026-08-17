@@ -10,7 +10,7 @@ from dataclasses import replace
 import math
 from typing import Iterable
 
-from cws_viewer.contracts.enums import RenderMode, SelectionOperation
+from cws_viewer.contracts.enums import RenderMode, SelectionLevel, SelectionOperation
 from cws_viewer.contracts.state import PickResult, ViewerDisplayPreferences
 from cws_viewer.core.controller import ViewerCoreController
 from cws_viewer.errors import ViewerError, ViewerErrorCode
@@ -34,8 +34,6 @@ class V14ViewerCoreController(ViewerCoreController):
 
     @staticmethod
     def _validate_display_preferences(preferences: ViewerDisplayPreferences) -> None:
-        # True hidden-line is implemented by the real VTK mesh backend in V14.
-        # Keep it blocked on synthetic/non-mesh backends so display remains honest.
         if preferences.render_mode == RenderMode.HIDDEN_LINE:
             return
 
@@ -60,8 +58,6 @@ class V14ViewerCoreController(ViewerCoreController):
         else:
             self.reset_orbit_pivot()
 
-    # Friendly aliases used by the V14 cockpit and standard desktop shortcuts.
-    # The stable core keeps its explicit undo_viewer/redo_viewer names.
     def undo(self) -> bool:
         return self.undo_viewer()
 
@@ -112,12 +108,7 @@ class V14ViewerCoreController(ViewerCoreController):
         return self._orbit_pivot
 
     def focus_orbit_on_selection(self) -> Vector3 | None:
-        """Use the combined selected-object bounds center as persistent pivot.
-
-        This method intentionally does not fit, pan or otherwise mutate the
-        camera.  A selection therefore remains visually stable while subsequent
-        orbit gestures revolve around that part/assembly/selection.
-        """
+        """Use the combined selected-object bounds center as persistent pivot."""
         if not self.session.selection:
             return None
         bounds = self.index.bounds_for(self.session.selection, include_descendants=True)
@@ -138,6 +129,27 @@ class V14ViewerCoreController(ViewerCoreController):
         index = self.index
         return self._backend.pick_at(int(x), int(y), index)
 
+    def pick_at_level(
+        self,
+        x: int,
+        y: int,
+        *,
+        level: SelectionLevel,
+        mode: str = "replace",
+    ) -> PickResult | None:
+        """Pick once at a temporary hierarchy level, preserving the user's mode.
+
+        Trimble-style Object/Assembly Alt inversion is transient: holding Alt
+        changes what that click resolves to but must not silently change the
+        persistent selection mode shown in the UI.
+        """
+        persistent = self.session.selection_level
+        try:
+            self.set_selection_level(SelectionLevel(level))
+            return super().pick_at(int(x), int(y), mode=mode)
+        finally:
+            self.set_selection_level(persistent)
+
     def fit_all(self) -> None:
         super().fit_all()
         self.reset_orbit_pivot()
@@ -153,12 +165,7 @@ class V14ViewerCoreController(ViewerCoreController):
         self._orbit_pivot = None
 
     def orbit(self, azimuth_deg: float, elevation_deg: float = 0.0) -> None:
-        """Rigidly rotate the camera around the active picked/selection pivot.
-
-        Position *and* focal target rotate around the pivot.  This is the key
-        difference from the old implementation, which implicitly used only the
-        camera target and therefore kept orbiting around a stale scene center.
-        """
+        """Rigidly rotate the camera around the active picked/selection pivot."""
         camera = self.get_camera()
         pivot = self.orbit_pivot
         yaw = math.radians(float(azimuth_deg))
