@@ -36,6 +36,7 @@ def t3_workspace_contract() -> dict[str, Any]:
     capabilities = dict(contract.get("capabilities", {}))
     capabilities.update(navigation_contract()["capabilities"])
     capabilities["selected_object_details_shortcut"] = True
+    capabilities["viewer_undo_redo_shortcuts"] = True
     contract["capabilities"] = capabilities
     contract["navigation"] = navigation_contract()
     return contract
@@ -123,10 +124,9 @@ if qt_available():
             menu.addAction("Aanzicht / clipping panel", lambda: self._view_dock.show())
 
         def _install_t3_selection_shortcuts(self) -> None:
-            # Trimble Connect for Windows uses Enter to open the selected
-            # object's details. CWS maps that visible workflow to the existing
-            # canonical Properties/Provenance dock instead of inventing a second
-            # details window.
+            # Visible Trimble desktop handling is reproduced as a CWS input
+            # contract. The actions use CWS controller state and CWS docks; no
+            # proprietary UI/source assets are required.
             self._details_return_shortcut = QtGui.QShortcut(
                 QtGui.QKeySequence("Return"), self
             )
@@ -135,6 +135,23 @@ if qt_available():
                 QtGui.QKeySequence("Enter"), self
             )
             self._details_enter_shortcut.activated.connect(self._focus_selected_details)
+            self._undo_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Z"), self)
+            self._undo_shortcut.activated.connect(lambda: self._viewer_undo_redo(False))
+            self._redo_shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Y"), self)
+            self._redo_shortcut.activated.connect(lambda: self._viewer_undo_redo(True))
+
+        def _viewer_undo_redo(self, redo: bool) -> None:
+            controller = self.viewer.controller
+            changed = controller.redo() if redo else controller.undo()
+            action = "Opnieuw" if redo else "Ongedaan maken"
+            if changed:
+                self.statusBar().showMessage(f"{action} uitgevoerd", 3000)
+                try:
+                    self._t3_view_panel.refresh()
+                except Exception:
+                    pass
+            else:
+                self.statusBar().showMessage(f"{action}: geen eerdere vieweractie", 2500)
 
         def _focus_selected_details(self) -> None:
             if not self.viewer.controller.get_selection():
