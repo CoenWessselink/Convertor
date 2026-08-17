@@ -21,6 +21,7 @@ if qt_available():
             super().__init__(*args, **kwargs)
             self._v15_view_navigation = V15ViewNavigationService(self.controller)
             self._v15_zoom_area = False
+            self._v15_pan_anchor: Any | None = None
 
         @property
         def view_navigation(self) -> V15ViewNavigationService:
@@ -51,7 +52,6 @@ if qt_available():
             super().set_area_selection(enabled)
 
         def _temporary_alt_selection_level(self) -> SelectionLevel | None:
-            """Invert Object/Assembly for one click without changing persistent mode."""
             level = self.controller.session.selection_level
             if level == SelectionLevel.PART:
                 return SelectionLevel.ASSEMBLY
@@ -78,11 +78,13 @@ if qt_available():
                 self.pick_result.emit(pick)
             return pick
 
+        def _probe_screen(self, pos: Any):
+            x, y = self._vtk_xy(pos)
+            return self.controller.probe_at(x, y)
+
         def _bind_orbit_pivot_from_screen(self, pos: Any) -> bool:
-            """Bind a rotate drag to the exact visible model point under the cursor."""
             try:
-                x, y = self._vtk_xy(pos)
-                probe = self.controller.probe_at(x, y)
+                probe = self._probe_screen(pos)
                 if probe is None:
                     return False
                 self._v15_view_navigation.set_orbit_pivot(probe.world_point)
@@ -111,14 +113,16 @@ if qt_available():
                 }
             ):
                 self._v15_view_navigation.camera_checkpoint()
-            if (
-                not self._area_selection
-                and event.button() == QtCore.Qt.MouseButton.LeftButton
-                and self.navigation_mode == NavigationMode.ORBIT
-            ):
-                # Rotate binds to the exact point under mouse-down. Probe only:
-                # selection is still decided on release when the gesture was a click.
-                self._bind_orbit_pivot_from_screen(event.position())
+            if not self._area_selection and event.button() == QtCore.Qt.MouseButton.LeftButton:
+                if self.navigation_mode == NavigationMode.ORBIT:
+                    self._bind_orbit_pivot_from_screen(event.position())
+                elif self.navigation_mode == NavigationMode.PAN:
+                    try:
+                        probe = self._probe_screen(event.position())
+                        self._v15_pan_anchor = None if probe is None else probe.world_point
+                    except Exception as exc:
+                        self._v15_pan_anchor = None
+                        self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
             super().mousePressEvent(event)
 
         def mouseMoveEvent(self, event: Any) -> None:
@@ -132,6 +136,28 @@ if qt_available():
                     )
                 event.accept()
                 return
+
+            if (
+                self._press_pos is not None
+                and self._last_pos is not None
+                and self._pressed_button == QtCore.Qt.MouseButton.LeftButton
+                and not self._area_selection
+                and self.navigation_mode == NavigationMode.PAN
+            ):
+                current = event.position()
+                if not self._dragging and self._distance(current, self._press_pos) >= self._drag_threshold_px:
+                    self._dragging = True
+                if self._dragging:
+                    dx = float(current.x() - self._last_pos.x())
+                    dy = float(current.y() - self._last_pos.y())
+                    try:
+                        self.controller.pan_pixels(dx, dy, anchor=self._v15_pan_anchor)
+                    except Exception as exc:
+                        self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+                    self._last_pos = current
+                event.accept()
+                return
+
             super().mouseMoveEvent(event)
 
         def mouseReleaseEvent(self, event: Any) -> None:
@@ -168,7 +194,11 @@ if qt_available():
                     self.set_zoom_area(False)
                 event.accept()
                 return
-            super().mouseReleaseEvent(event)
+            try:
+                super().mouseReleaseEvent(event)
+            finally:
+                if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                    self._v15_pan_anchor = None
 
         def mouseDoubleClickEvent(self, event: Any) -> None:
             if (
@@ -176,19 +206,14 @@ if qt_available():
                 and event.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier
             ):
                 try:
-                    # Orthogonal surface view is a camera operation, not an
-                    # Object/Assembly selection inversion. Use a non-mutating probe.
-                    x, y = self._vtk_xy(event.position())
-                    pick = self.controller.probe_at(x, y)
+                    pick = self._probe_screen(event.position())
                     if pick is not None and pick.normal is not None:
                         self._v15_view_navigation.view_from_normal(
                             pick.normal,
                             target=pick.world_point,
                             fit=False,
                         )
-                        self.interaction_message.emit(
-                            "Orthogonaal aan gekozen vlak"
-                        )
+                        self.interaction_message.emit("Orthogonaal aan gekozen vlak")
                     event.accept()
                     return
                 except Exception as exc:
