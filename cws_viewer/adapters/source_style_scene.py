@@ -39,6 +39,7 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
 
         documents = dict(getattr(geometry_catalog, "_documents", {}) or {})
         resolvers: dict[str, IfcAppearanceResolver] = {}
+        appearance_cache: dict[tuple[str, tuple[str, ...]], Any] = {}
         styles = {style.style_id: style for style in scene.styles}
         styles.setdefault(
             self._IFC_NEUTRAL_STYLE_ID,
@@ -58,16 +59,20 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
             if record is None or str(record.source_format).upper() != "IFC":
                 nodes.append(node)
                 continue
-            document = documents.get(str(record.source_file_id))
+            source_id = str(record.source_file_id)
+            document = documents.get(source_id)
             if document is None:
                 nodes.append(replace(node, style_id=self._IFC_NEUTRAL_STYLE_ID))
                 changed += 1
                 continue
-            resolver = resolvers.get(str(record.source_file_id))
+            resolver = resolvers.get(source_id)
             if resolver is None:
                 resolver = IfcAppearanceResolver(document)
-                resolvers[str(record.source_file_id)] = resolver
-            appearance = resolver.color_for_items(record.source_item_ids)
+                resolvers[source_id] = resolver
+            key = (source_id, tuple(record.source_item_ids))
+            if key not in appearance_cache:
+                appearance_cache[key] = resolver.color_for_items(record.source_item_ids)
+            appearance = appearance_cache[key]
             if appearance is None:
                 nodes.append(replace(node, style_id=self._IFC_NEUTRAL_STYLE_ID))
                 changed += 1
