@@ -1,5 +1,5 @@
 #define MyAppName "CWS Viewer"
-#define MyAppVersion "1.4.0-v15-preview.1"
+#define MyAppVersion "1.4.0-v15-preview.2"
 #define MyAppPublisher "CWS"
 #define MyAppExeName "CWS_Viewer.exe"
 
