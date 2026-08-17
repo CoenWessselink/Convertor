@@ -44,8 +44,13 @@ def _run_v15_selftest() -> dict[str, object]:
     docks = contract.get("docks", [])
     capabilities = contract.get("capabilities", {})
     required_t3 = (
-        "zoom_area", "camera_history", "view_from_face_normal", "camera_positioning",
-        "section_plane_enable_disable", "clipping_box", "saved_view_contract", "deterministic_view_state",
+        "orbit_pan_zoom", "orbit_around_picked_point", "selection_orbit_focus", "picked_depth_pan",
+        "object_assembly_selection_mode", "temporary_alt_selection_inversion",
+        "zoom_to_fit", "zoom_area", "camera_history", "view_from_face_normal",
+        "orthogonal_surface_double_click", "camera_positioning", "perspective_orthographic",
+        "predefined_views", "keyboard_navigation", "trimble_camera_shortcuts",
+        "section_plane_enable_disable", "section_plane_flip_remove", "clipping_box",
+        "saved_view_contract", "deterministic_view_state",
     )
     required_t4 = (
         "area_selection", "multi_selection", "hierarchy_aware_picking", "grouped_properties",
