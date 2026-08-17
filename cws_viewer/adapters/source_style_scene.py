@@ -8,15 +8,19 @@ from cws_viewer.adapters.project_model import CwsProjectSceneAdapter
 from cws_viewer.adapters.source_appearance import IfcAppearanceResolver
 from cws_viewer.contracts.enums import RenderMode
 from cws_viewer.contracts.scene import ProjectScene, StyleDefinition
+from cws_viewer.math3d import Rgba
 
 
 class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
     """Decorate the normal canonical scene with source-owned display colours.
 
     Geometry, IDs, hierarchy and manufacturing hashes still come from the base
-    CWS adapter.  Only ``SceneNode.style_id`` and the corresponding display-only
-    style definitions are enriched from presentation data in the verified IFC.
+    CWS adapter. Only ``SceneNode.style_id`` and display styles are enriched.
+    IFC objects without an explicit presentation colour receive a neutral IFC
+    fallback instead of an arbitrary CWS category colour.
     """
+
+    _IFC_NEUTRAL_STYLE_ID = "style-source-ifc-neutral"
 
     @staticmethod
     def _style_id(color: Any) -> str:
@@ -36,6 +40,16 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
         documents = dict(getattr(geometry_catalog, "_documents", {}) or {})
         resolvers: dict[str, IfcAppearanceResolver] = {}
         styles = {style.style_id: style for style in scene.styles}
+        styles.setdefault(
+            self._IFC_NEUTRAL_STYLE_ID,
+            StyleDefinition(
+                style_id=self._IFC_NEUTRAL_STYLE_ID,
+                color=Rgba(0.58, 0.59, 0.60, 1.0),
+                mode=RenderMode.SHADED_EDGES,
+                line_width=0.65,
+                tags=("source-presentation", "ifc-no-explicit-colour", "neutral-fallback"),
+            ),
+        )
         nodes = []
         changed = 0
 
@@ -46,7 +60,8 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
                 continue
             document = documents.get(str(record.source_file_id))
             if document is None:
-                nodes.append(node)
+                nodes.append(replace(node, style_id=self._IFC_NEUTRAL_STYLE_ID))
+                changed += 1
                 continue
             resolver = resolvers.get(str(record.source_file_id))
             if resolver is None:
@@ -54,7 +69,8 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
                 resolvers[str(record.source_file_id)] = resolver
             appearance = resolver.color_for_items(record.source_item_ids)
             if appearance is None:
-                nodes.append(node)
+                nodes.append(replace(node, style_id=self._IFC_NEUTRAL_STYLE_ID))
+                changed += 1
                 continue
 
             style_id = self._style_id(appearance.color)
@@ -85,8 +101,6 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
             geometry=scene.geometry,
             styles=tuple(styles.values()),
         )
-        # Preserve the base adapter's build report: appearance enrichment does
-        # not alter geometry counts or validation classifications.
         self.last_report = report
         return enriched
 
