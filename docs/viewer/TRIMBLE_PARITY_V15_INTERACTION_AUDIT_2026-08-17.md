@@ -30,7 +30,7 @@ Gecontroleerd op 2026-08-17 tegen Connect for Windows documentatie:
 - Navigation and Camera Controls: Rotate, Pan, Walk Around, Look Around;
 - Rotate: muisknop vasthouden op een gekozen modelpunt en rond **dat gekozen punt** roteren;
 - Keyboard Shortcuts: Space = fit selectie; dubbelklik object = fit + objectcontext; Alt+dubbelklik surface = orthogonaal aan surface; Ctrl+U/I/O/P = Rotate/Pan/Walk/Look; Esc beëindigt operatie en wist selectie; F11 = full-screen; Backspace/Shift+Backspace = hide/hide others;
-- Making Selections: single, area en assembly selection; links→rechts = volledig binnen, rechts→links = crossing; selection mode is gekoppeld aan Objects-context.
+- Making Selections: single, area en assembly selection; links→rechts = volledig binnen, rechts→links = crossing; Alt keert Object/Assembly-selectiemodus tijdelijk om.
 
 Referenties:
 
@@ -74,7 +74,7 @@ Dit geldt voor:
 - selectie vanuit projectboom;
 - selectie vanuit grid/property-context;
 - multi-selectie;
-- assembly-selectie zodra die selection level actief is;
+- assembly-selectie;
 - area selection.
 
 De camera zelf beweegt **niet** op het moment van selecteren. Selectie mag dus geen onverwachte pan/zoom/view jump veroorzaken.
@@ -93,18 +93,31 @@ Daarna roteert de drag rond exact dat punt. Een drag selecteert het object niet 
 
 Dit volgt rechtstreeks het zichtbare Trimble Rotate-concept: rotate around the point picked in the model.
 
-### 4.3 Rigid camera rotation om pivot
+### 4.3 Object / Assembly selection
+
+CWS heeft nu dezelfde zichtbare tweedeling als referentiegedrag:
+
+```text
+persistent selection level = Object | Assembly
+Alt + click = temporary inverse level
+```
+
+De tijdelijke Alt-keuze verandert de opgeslagen selectiemodus niet. Een assemblyklik wordt via de bestaande scenehiërarchie naar de dichtstbijzijnde assembly gepromoveerd. Als er geen passende assembly-ancestor bestaat, blijft het oorspronkelijke object selecteerbaar.
+
+De V15 Aanzicht/Navigatie-dock toont expliciet de keuze `Object` / `Assembly` en vermeldt de Alt-inversie. De gekozen modus blijft onderdeel van viewer workspace/session state.
+
+### 4.4 Rigid camera rotation om pivot
 
 Orbit draait niet alleen de eye-position om het pivotpunt. Zowel camera eye als camera focal target worden als rigide cameraframe om de pivot geroteerd. Daardoor kan het pivotpunt buiten het bestaande `camera.target` liggen zonder terug te vallen op een oud scene-centrum.
 
-### 4.4 Fit-regels
+### 4.5 Fit-regels
 
 - Fit All: camera fit naar scene en orbitpivot terug naar het nieuwe camera target.
 - Fit Selection: fit naar selectie en orbitpivot blijft selectiecentrum.
 - Selection zonder fit: camera blijft exact staan, alleen toekomstige orbitfocus verandert.
 - Selection clear: laatste bruikbare orbitpivot blijft behouden; er is geen onverwachte sprong terug naar oorsprong.
 
-### 4.5 Restore-regels
+### 4.6 Restore-regels
 
 Na undo/redo, saved-view activation en workspace restore wordt transient orbitfocus opnieuw afgeleid:
 
@@ -115,17 +128,16 @@ Hierdoor kan opgeslagen state niet een oude onzichtbare pivot achterlaten.
 
 ## 5. Keyboard/mouse parity hardening in deze batch
 
-Geïmplementeerd / aangescherpt:
-
 | Gedrag | Bestaande basis vóór deze audit | Nieuwe status |
 |---|---|---|
 | Orbit rond gekozen modelpunt | fout: rond `camera.target` | geïmplementeerd, Windows/package evidence vereist |
 | Selectie bepaalt volgende orbitfocus | ontbrak | geïmplementeerd |
 | Tree/grid selectie bepaalt orbitfocus | selectie-sync bestond, focus ontbrak | centraal via controller-selection |
 | Multi-select orbitfocus | ontbrak | combined bounds center |
+| Object/Assembly selectiemodus | intern SelectionLevel bestond, niet compleet bedienbaar | expliciete V15 UI + tijdelijke Alt-inversie |
 | Space = fit selectie | aanwezig | behouden |
 | Dubbelklik object = select + fit | aanwezig | behouden |
-| Alt+dubbelklik surface = orthogonaal | ontbrak in viewportinput | geïmplementeerd via echte pick-normal/world-point |
+| Alt+dubbelklik surface = orthogonaal | ontbrak in viewportinput | non-mutating surface probe + exact world-point |
 | Ctrl+U/I/O/P = Rotate/Pan/Walk/Look | reeds aanwezig als cockpit QAction-shortcuts | behouden + viewer-focus fallback gehard |
 | F11 = full-screen | reeds aanwezig in cockpit/detached shell | behouden + viewer-focus fallback gehard |
 | Esc = tool beëindigen | aanwezig | aangescherpt met selectie wissen |
@@ -144,10 +156,9 @@ Onderstaande punten moeten nog apart worden bewezen of verdiept voordat de gehel
 1. **Pan point anchoring / snelheid** — huidige pan is cameradistance-geschaald; nog vergelijken met de aangeleverde executable op echte muisbewegingen.
 2. **Walk Around / Look Around sensitivity** — modus bestaat, maar snelheid/acceleratie/dead-zone moeten met echte Windows input worden vergeleken.
 3. **F11 full-screen packaged behavior** — implementatie bestond al; alleen packaged focus/state-restore bewijs ontbreekt nog.
-4. **Alt inversion Object ↔ Assembly Selection** — selection-level contract bestaat, maar de exacte temporary Alt-inversion moet nog als één centrale interaction rule worden getest.
-5. **Selection modifier conflict in Trimble Help** — verschillende Help-pagina's beschrijven Shift/Ctrl op detailniveau niet volledig hetzelfde. Geen CWS-semantiek wijzigen op basis van een onzekere interpretatie; lokale reference-app owner test gebruiken als oracle.
-6. **Trackpad/touch** — niet claimen zolang CWS Windows desktop input daarvoor niet apart getest is.
-7. **Packaged physical GUI input gate** — source unit tests zijn onvoldoende voor mouse interaction; de uiteindelijke Windows packaged build moet real Qt/VTK interaction evidence leveren.
+4. **Selection modifier conflict in Trimble Help** — de actuele pagina `Making Selections` noemt Shift=multi-add en Ctrl=remove, terwijl `Keyboard Shortcuts` Ctrl=add en Shift=add/remove vermeldt. CWS verandert dit niet op basis van conflicterende documentatie; de aangeleverde Windows-reference-app/owner-test wordt hiervoor de beslissende oracle.
+5. **Trackpad/touch** — niet claimen zolang CWS Windows desktop input daarvoor niet apart getest is.
+6. **Packaged physical GUI input gate** — source unit tests zijn onvoldoende voor mouse interaction; de uiteindelijke Windows packaged build moet real Qt/VTK interaction evidence leveren.
 
 ## 7. Nieuwe regressiegate
 
@@ -159,6 +170,8 @@ Minimaal automatisch bewijzen:
 - selectie wissen veroorzaakt geen pivot jump;
 - expliciet picked world point kan pivot worden zonder camera mutation;
 - orbit behoudt eye- en target-radius om de pivot;
+- tijdelijke Assembly-pick verandert persistent Object-mode niet;
+- tijdelijke Object-pick verandert persistent Assembly-mode niet;
 - Fit Selection centreert camera én pivot op selectie;
 - view-from-normal accepteert exact picked surface point;
 - view-from-normal zonder expliciete target gebruikt de actieve selectie/orbitfocus;
@@ -174,6 +187,7 @@ Tot die packaged gate groen is:
 ```text
 viewer_interaction_trimble_parity = PARTIAL_HARDENED
 orbit_selection_focus = IMPLEMENTED_PENDING_PACKAGED_WINDOWS_EVIDENCE
+object_assembly_selection = IMPLEMENTED_PENDING_PACKAGED_WINDOWS_EVIDENCE
 trimble_proprietary_code_copied = false
 ```
 
