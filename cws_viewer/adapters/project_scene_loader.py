@@ -7,7 +7,8 @@ import time
 from typing import Callable, Iterable, Sequence
 
 from cws_convertor.project.storage import ProjectStore
-from cws_viewer.adapters.project_model import CwsProjectSceneAdapter,SceneBuildOptions,SceneBuildReport
+from cws_viewer.adapters.project_model import SceneBuildOptions,SceneBuildReport
+from cws_viewer.adapters.source_style_scene import SourceAppearanceProjectSceneAdapter
 from cws_viewer.adapters.source_geometry import ProjectSourceResolver,ProjectGeometryCatalog,GeometryCatalogReport
 from cws_viewer.cache import MeshCache
 from cws_viewer.contracts.geometry import GeometryProvider,GeometryRequest,ProgressCallback,TessellationSettings
@@ -99,7 +100,7 @@ class ProjectSceneLoader:
         finally:coordinator.close()
         timings.append(('load_geometry',time.perf_counter()-t))
         if token:token.check()
-        t=time.perf_counter();adapter=CwsProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository);timings.append(('build_scene',time.perf_counter()-t))
+        t=time.perf_counter();adapter=SourceAppearanceProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository);timings.append(('build_scene',time.perf_counter()-t))
         assert adapter.last_report is not None
         return ProjectSceneLoadResult(path,project,scene,repository,catalog,catalog.report,geometry_report,adapter.last_report,time.perf_counter()-start,tuple(timings))
 
