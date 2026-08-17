@@ -50,6 +50,8 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         for name in (
             "orbit_around_picked_point",
             "selection_orbit_focus",
+            "object_assembly_selection_mode",
+            "temporary_alt_selection_inversion",
             "zoom_area",
             "camera_history",
             "view_from_face_normal",
@@ -147,6 +149,31 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertNotEqual(before.position, after.position)
         if target_radius > 1e-9:
             self.assertNotEqual(before.target, after.target)
+
+    def test_pan_pixels_scales_with_picked_perspective_depth(self) -> None:
+        before = self.controller.get_camera()
+        view = (before.target - before.position).normalized()
+        default_depth = max((before.target - before.position).length(), 1.0)
+        near_anchor = before.position + view * (default_depth * 0.5)
+        far_anchor = before.position + view * default_depth
+
+        near_shift = self.controller.pan_pixels(80.0, -30.0, anchor=near_anchor)
+        self.controller.set_camera(before)
+        far_shift = self.controller.pan_pixels(80.0, -30.0, anchor=far_anchor)
+
+        self.assertGreater(near_shift.length(), 0.0)
+        self.assertAlmostEqual(2.0, far_shift.length() / near_shift.length(), places=6)
+
+    def test_pan_pixels_orthographic_is_depth_independent(self) -> None:
+        self.controller.set_projection(ProjectionType.ORTHOGRAPHIC)
+        before = self.controller.get_camera()
+        view = (before.target - before.position).normalized()
+        near_anchor = before.position + view * 100.0
+        far_anchor = before.position + view * 100000.0
+        near_shift = self.controller.pan_pixels(60.0, 25.0, anchor=near_anchor)
+        self.controller.set_camera(before)
+        far_shift = self.controller.pan_pixels(60.0, 25.0, anchor=far_anchor)
+        self.assertAlmostEqual(near_shift.length(), far_shift.length(), places=9)
 
     def test_fit_selection_centers_camera_and_keeps_same_selection_pivot(self) -> None:
         node_id = "node:item:000013"
