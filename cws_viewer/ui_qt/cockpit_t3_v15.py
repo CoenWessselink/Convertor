@@ -35,6 +35,7 @@ def t3_workspace_contract() -> dict[str, Any]:
     ]
     capabilities = dict(contract.get("capabilities", {}))
     capabilities.update(navigation_contract()["capabilities"])
+    capabilities["selected_object_details_shortcut"] = True
     contract["capabilities"] = capabilities
     contract["navigation"] = navigation_contract()
     return contract
@@ -68,9 +69,10 @@ if qt_available():
 
             self._install_t3_view_dock()
             self._install_t3_view_menu()
+            self._install_t3_selection_shortcuts()
             self._restore_v15_state()
             self.statusBar().showMessage(
-                "T3 actief · zoomgebied · camera-historie · view-from-face · section/clipping state",
+                "T3 actief · selectiegebonden orbit · picked-depth pan · view-from-face · section/clipping",
                 6500,
             )
 
@@ -118,6 +120,32 @@ if qt_available():
             menu.addAction(zoom)
             menu.addSeparator()
             menu.addAction("Aanzicht / clipping panel", lambda: self._view_dock.show())
+
+        def _install_t3_selection_shortcuts(self) -> None:
+            # Trimble Connect for Windows uses Enter to open the selected
+            # object's details. CWS maps that visible workflow to the existing
+            # canonical Properties/Provenance dock instead of inventing a second
+            # details window.
+            self._details_return_shortcut = QtGui.QShortcut(
+                QtGui.QKeySequence("Return"), self
+            )
+            self._details_return_shortcut.activated.connect(self._focus_selected_details)
+            self._details_enter_shortcut = QtGui.QShortcut(
+                QtGui.QKeySequence("Enter"), self
+            )
+            self._details_enter_shortcut.activated.connect(self._focus_selected_details)
+
+        def _focus_selected_details(self) -> None:
+            if not self.viewer.controller.get_selection():
+                self.statusBar().showMessage("Selecteer eerst een object om details te openen", 3500)
+                return
+            try:
+                self._properties_dock.show()
+                self._properties_dock.raise_()
+            except Exception:
+                pass
+            self._properties.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+            self.statusBar().showMessage("Eigenschappen van selectie actief", 3500)
 
         def _camera_menu_action(self, function: Any) -> None:
             function()
