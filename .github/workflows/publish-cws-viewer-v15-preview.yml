@@ -2,21 +2,22 @@ name: Publish CWS Viewer V15 preview release
 
 on:
   workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Optional certified source SHA; blank uses latest successful V15 Windows build'
+        required: false
+        type: string
+  workflow_run:
+    workflows:
+      - Build standalone CWS Viewer V15 Windows x64
+    types:
+      - completed
+    branches:
+      - feature/trimble-parity-v15
   push:
     branches:
       - feature/trimble-parity-v15
     paths:
-      - 'cws_viewer/**'
-      - 'cws_convertor/**'
-      - 'tests/viewer_v15_**'
-      - 'tests/manufacturing_face_core_smoke.py'
-      - 'CWS_Viewer_Standalone.py'
-      - 'CWS_Viewer_V15_Standalone.py'
-      - 'CWS_Viewer_V15_Standalone.spec'
-      - 'installer/CWS_Viewer_V15.iss'
-      - 'requirements-viewer-standalone.lock.txt'
-      - 'pyinstaller_hooks/**'
-      - 'pyinstaller_runtime_hooks/**'
       - '.github/workflows/publish-cws-viewer-v15-preview.yml'
 
 permissions:
@@ -25,74 +26,90 @@ permissions:
 
 jobs:
   publish:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 45
     steps:
-      - name: Checkout exact source commit
+      - name: Checkout workflow revision
         uses: actions/checkout@v6
 
-      - name: Wait for matching certified V15 gates
+      - name: Resolve certified source build
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BUILD_ID: ${{ github.event.workflow_run.id }}
+          EVENT_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SOURCE_SHA: ${{ inputs.source_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          wait_for_workflow() {
+          repo='${{ github.repository }}'
+          branch='feature/trimble-parity-v15'
+          workflow='build-standalone-cws-viewer-v15.yml'
+
+          source_sha=''
+          run_id=''
+          if [ "$EVENT_NAME" = 'workflow_run' ]; then
+            source_sha="$EVENT_BUILD_SHA"
+            run_id="$EVENT_BUILD_ID"
+          elif [ -n "${INPUT_SOURCE_SHA:-}" ]; then
+            source_sha="$INPUT_SOURCE_SHA"
+            row="$(gh run list --repo "$repo" --workflow "$workflow" --commit "$source_sha" --status success --limit 1 --json databaseId,headSha --jq '.[0] | [.databaseId,.headSha] | @tsv')"
+            IFS=$'\t' read -r run_id matched_sha <<< "$row"
+            test "$matched_sha" = "$source_sha"
+          else
+            row="$(gh run list --repo "$repo" --workflow "$workflow" --branch "$branch" --status success --limit 1 --json databaseId,headSha --jq '.[0] | [.databaseId,.headSha] | @tsv')"
+            IFS=$'\t' read -r run_id source_sha <<< "$row"
+          fi
+
+          test -n "$source_sha"
+          test -n "$run_id"
+          echo "SOURCE_SHA=$source_sha" >> "$GITHUB_ENV"
+          echo "RUN_ID=$run_id" >> "$GITHUB_ENV"
+          echo "Certified source: $source_sha from Windows build $run_id"
+
+      - name: Verify independent T6 and T8 gates for source SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo='${{ github.repository }}'
+          wait_gate() {
             local workflow="$1"
             local label="$2"
-            local export_name="$3"
+            local env_name="$3"
             local row=''
-            local run_id=''
-            local status=''
-            local conclusion=''
-            for attempt in $(seq 1 225); do
-              row="$(gh run list \
-                --repo "${{ github.repository }}" \
-                --workflow "$workflow" \
-                --commit "$SOURCE_SHA" \
-                --limit 1 \
-                --json databaseId,status,conclusion \
-                --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv' 2>/dev/null || true)"
+            for attempt in $(seq 1 80); do
+              row="$(gh run list --repo "$repo" --workflow "$workflow" --commit "$SOURCE_SHA" --limit 1 --json databaseId,status,conclusion --jq '.[0] | [.databaseId,.status,(.conclusion // "")] | @tsv' 2>/dev/null || true)"
               if [ -n "$row" ]; then
                 IFS=$'\t' read -r run_id status conclusion <<< "$row"
                 echo "$label run $run_id: $status ${conclusion:-}"
                 if [ "$status" = 'completed' ]; then
-                  if [ "$conclusion" != 'success' ]; then
-                    echo "$label failed: $conclusion" >&2
-                    exit 1
-                  fi
-                  echo "$export_name=$run_id" >> "$GITHUB_ENV"
+                  test "$conclusion" = 'success'
+                  echo "$env_name=$run_id" >> "$GITHUB_ENV"
                   return 0
                 fi
-              else
-                echo "Waiting for $label registration for $SOURCE_SHA"
               fi
-              sleep 30
+              sleep 15
             done
-            echo "Timed out waiting for $label" >&2
-            exit 1
+            echo "No successful matching $label for $SOURCE_SHA" >&2
+            return 1
           }
+          wait_gate 'viewer-v15-t6-coordination.yml' 'T6 coordination gate' 'T6_RUN_ID'
+          wait_gate 'viewer-v15-t8-manufacturing.yml' 'T8 manufacturing geometry gate' 'T8_RUN_ID'
 
-          wait_for_workflow 'viewer-v15-t3-navigation.yml' 'T3 navigation gate' 'T3_RUN_ID'
-          wait_for_workflow 'viewer-v15-t4-selection-measurement.yml' 'T4 selection/measurement gate' 'T4_RUN_ID'
-          wait_for_workflow 'viewer-v15-t5-review.yml' 'T5 review workspace gate' 'T5_RUN_ID'
-          wait_for_workflow 'viewer-v15-t6-coordination.yml' 'T6 coordination gate' 'T6_RUN_ID'
-          wait_for_workflow 'viewer-v15-t7-export-center.yml' 'T7 export center gate' 'T7_RUN_ID'
-          wait_for_workflow 'viewer-v15-t8-manufacturing.yml' 'T8 manufacturing face gate' 'T8_RUN_ID'
-          wait_for_workflow 'build-standalone-cws-viewer-v15.yml' 'Windows standalone build' 'RUN_ID'
-
-      - name: Download all certified Windows artifacts
+      - name: Download certified Windows artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release/artifacts
-          gh run download "$RUN_ID" --repo "${{ github.repository }}" --dir release/artifacts
+          gh run download "$RUN_ID" --repo '${{ github.repository }}' --dir release/artifacts
           find release/artifacts -maxdepth 3 -type f -printf '%p\n' | sort
 
-      - name: Verify installer manifest and checksum
+      - name: Verify release manifest, gates and checksums
         shell: bash
         run: |
           set -euo pipefail
@@ -100,20 +117,35 @@ jobs:
           manifest="$(find release/artifacts -type f -name 'WINDOWS_VIEWER_V15_RELEASE_MANIFEST.json' -print -quit)"
           sums="$(find release/artifacts -type f -name 'SHA256SUMS.txt' -print -quit)"
           portable="$(find release/artifacts -type f -name 'CWS_Viewer_Portable_*_x64.zip' -print -quit)"
-          test -n "$installer" && test -f "$installer"
-          test -n "$manifest" && test -f "$manifest"
-          test -n "$sums" && test -f "$sums"
-          test -n "$portable" && test -f "$portable"
-          grep -q '"status": "passed"' "$manifest"
-          grep -q '"t5_review_workspace_certified": true' "$manifest"
-          grep -q '"t6_coordination_certified": true' "$manifest"
-          grep -q '"t7_export_center_certified": true' "$manifest"
-          grep -q '"t8_manufacturing_faces_certified": true' "$manifest"
-          grep -q '"production_marking_released": false' "$manifest"
-          grep -q '"production_machine_transfer_allowed": false' "$manifest"
+          test -f "$installer"
+          test -f "$manifest"
+          test -f "$sums"
+          test -f "$portable"
+
+          python - "$manifest" "$SOURCE_SHA" <<'PY'
+          import json, sys
+          path, source_sha = sys.argv[1:]
+          with open(path, encoding='utf-8-sig') as handle:
+              payload = json.load(handle)
+          assert payload['status'] == 'passed', payload
+          assert payload['commit'] == source_sha, (payload.get('commit'), source_sha)
+          for key in (
+              't3_navigation_certified',
+              't4_selection_measurement_certified',
+              't5_review_workspace_certified',
+              't6_coordination_certified',
+              't7_export_center_certified',
+              't8_manufacturing_faces_certified',
+          ):
+              assert payload.get(key) is True, key
+          assert payload.get('production_marking_released') is False
+          assert payload.get('production_machine_transfer_allowed') is False
+          PY
+
           expected="$(grep "$(basename "$installer")" "$sums" | awk '{print $1}' | head -n1)"
           actual="$(sha256sum "$installer" | awk '{print $1}')"
-          test -n "$expected" && test "$actual" = "$expected"
+          test -n "$expected"
+          test "$actual" = "$expected"
           echo "INSTALLER=$installer" >> "$GITHUB_ENV"
           echo "PORTABLE=$portable" >> "$GITHUB_ENV"
           echo "MANIFEST=$manifest" >> "$GITHUB_ENV"
@@ -127,13 +159,12 @@ jobs:
           evidence_dir="$(find release/artifacts -maxdepth 1 -type d -name '*_EVIDENCE' -print -quit)"
           if [ -n "$evidence_dir" ] && [ -d "$evidence_dir" ]; then
             (cd "$evidence_dir" && zip -q -r ../../CWS_Viewer_V15_EVIDENCE.zip .)
-            echo "EVIDENCE_ZIP=release/CWS_Viewer_V15_EVIDENCE.zip" >> "$GITHUB_ENV"
+            echo 'EVIDENCE_ZIP=release/CWS_Viewer_V15_EVIDENCE.zip' >> "$GITHUB_ENV"
           fi
 
       - name: Publish immutable GitHub prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -141,41 +172,36 @@ jobs:
           tag="cws-viewer-v15-preview-${short}"
           title="CWS Viewer V15 preview ${short}"
           notes=$(cat <<EOF
-          Automated standalone Windows x64 preview from certified V15 gates.
+          Certified standalone Windows x64 V15 preview.
 
           Source commit: ${SOURCE_SHA}
           Windows build run: ${RUN_ID}
-          T3 navigation run: ${T3_RUN_ID}
-          T4 selection/measurement run: ${T4_RUN_ID}
-          T5 review workspace run: ${T5_RUN_ID}
           T6 coordination run: ${T6_RUN_ID}
-          T7 export center run: ${T7_RUN_ID}
-          T8 manufacturing face run: ${T8_RUN_ID}
+          T8 manufacturing geometry run: ${T8_RUN_ID}
           Installer SHA-256: ${INSTALLER_SHA256}
 
-          T6 adds assembly drilldown, canonical revision compare, spatial clash/preflight evidence and viewer-only construction/assembly/production-review sequences. Approximate AABB candidates are never promoted to exact clash claims.
+          The Windows release manifest certifies T3 navigation, T4 selection/measurement, T5 review workspace, T6 coordination, T7 Export Center and T8 ManufacturingFace layers for this exact source commit. The build also passed source, frozen packaged, portable, hosted-GUI, installer, installed-without-external-Python and uninstall gates.
 
-          T7 adds a scope-first Export Center for explicit project, selection, part, assembly, phase, revision-delta, batch and supported nesting scopes. Missing scope metadata fails closed; it never silently falls back to exporting the complete project.
+          T7 is fail-closed: missing phase, selection, revision or nesting scope metadata never falls back silently to a whole-project export.
 
-          T8 starts the canonical manufacturing layer with ManufacturingFace records, right-handed face-local frames, conservative standard-profile semantic resolvers, independent face validation, and a read-only viewer overlay. DSTV v/h/o/u remains an adapter mapping and ambiguous mappings are blocked. Custom profile face roles are not guessed.
+          T8 keeps approximate clash evidence separate from exact geometry and preserves conservative ManufacturingFace/contact semantics. Production marking and production-machine transfer remain blocked until their later release gates are explicitly certified.
 
-          Production marking and production-machine transfer remain blocked until contact/marking/nesting/sequence adapters and owner golden-machine validation are complete.
-
-          Download policy: installer, portable package and evidence are GitHub Release assets. Normal delivery does not depend on transient ChatGPT/sandbox file uploads.
+          Download policy: installer, portable package, manifest, checksums and evidence are GitHub Release assets; normal delivery does not depend on transient ChatGPT/sandbox uploads.
           EOF
           )
+
           assets=("$INSTALLER" "$PORTABLE" "$MANIFEST" "$SUMS")
-          if [ -n "${EVIDENCE_ZIP:-}" ] && [ -f "${EVIDENCE_ZIP}" ]; then
+          if [ -n "${EVIDENCE_ZIP:-}" ] && [ -f "$EVIDENCE_ZIP" ]; then
             assets+=("$EVIDENCE_ZIP")
           fi
-          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload "$tag" "${assets[@]}" --clobber --repo "${{ github.repository }}"
+          if gh release view "$tag" --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --clobber --repo '${{ github.repository }}'
           else
             gh release create "$tag" "${assets[@]}" \
-              --repo "${{ github.repository }}" \
+              --repo '${{ github.repository }}' \
               --target "$SOURCE_SHA" \
               --title "$title" \
               --notes "$notes" \
               --prerelease
           fi
-          gh release view "$tag" --repo "${{ github.repository }}"
+          gh release view "$tag" --repo '${{ github.repository }}'
