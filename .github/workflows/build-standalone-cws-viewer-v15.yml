@@ -10,6 +10,7 @@ on:
       - 'cws_convertor/**'
       - 'tests/viewer_v15_**'
       - 'tests/manufacturing_face_core_smoke.py'
+      - 'docs/viewer/TRIMBLE_*V15*.md'
       - 'CWS_Viewer_Standalone.py'
       - 'CWS_Viewer_V15_Standalone.py'
       - 'CWS_Viewer_V15_Standalone.spec'
@@ -58,6 +59,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'V15 workspace contract smoke failed' }
           python tests/viewer_v15_navigation_contract_smoke.py | Tee-Object "$env:EVIDENCE\source_t3_navigation_contract.txt"
           if ($LASTEXITCODE -ne 0) { throw 'V15 T3 navigation contract failed' }
+          python tests/viewer_v15_interaction_foundation_smoke.py | Tee-Object "$env:EVIDENCE\source_t3_interaction_foundation.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'V15 T3 interaction foundation failed' }
+          python tests/viewer_v15_selection_pivot_parity_smoke.py | Tee-Object "$env:EVIDENCE\source_t3_selection_pivot_parity.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'V15 selected-object orbit/zoom parity failed' }
+          python tests/viewer_v15_trimble_input_contract_smoke.py | Tee-Object "$env:EVIDENCE\source_t3_trimble_input_contract.txt"
+          if ($LASTEXITCODE -ne 0) { throw 'V15 Trimble-style desktop handling contract failed' }
           python tests/viewer_v15_selection_measurement_smoke.py | Tee-Object "$env:EVIDENCE\source_t4_selection_measurement_contract.txt"
           if ($LASTEXITCODE -ne 0) { throw 'V15 T4 selection/measurement contract failed' }
           python tests/viewer_v15_review_workspace_smoke.py | Tee-Object "$env:EVIDENCE\source_t5_review_contract.txt"
@@ -104,6 +111,8 @@ jobs:
           $v15Payload = Get-Content $v15 -Raw | ConvertFrom-Json
           if ($v15Payload.status -ne 'passed' -or -not $v15Payload.v15_cockpit_imported) { throw 'Packaged V15 cockpit was not certified' }
           if (-not $v15Payload.t3_navigation_imported -or -not $v15Payload.t4_selection_measurement_imported -or -not $v15Payload.t5_review_workspace_imported -or -not $v15Payload.t6_coordination_imported -or -not $v15Payload.t7_export_center_imported -or -not $v15Payload.t8_manufacturing_faces_imported) { throw 'Packaged V15 T3/T4/T5/T6/T7/T8 layers were not certified' }
+          if (-not $v15Payload.trimble_style_handling_contract_certified -or -not $v15Payload.selected_object_orbit_pivot_certified -or -not $v15Payload.active_pivot_zoom_certified) { throw 'Packaged V15 selected-object handling was not certified' }
+          if (-not $v15Payload.workspace.capabilities.selection_pivot_precedence -or -not $v15Payload.workspace.capabilities.active_pivot_zoom -or -not $v15Payload.workspace.capabilities.viewer_undo_redo_shortcuts) { throw 'Packaged V15 handling capabilities are incomplete' }
           if (-not $v15Payload.frozen) { throw 'V15 contract gate did not run frozen' }
           if ($v15Payload.production_marking_released -or $v15Payload.production_machine_transfer_allowed) { throw 'Preview build must not enable marking/machine production release' }
 
@@ -138,6 +147,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw 'Portable V15 self-test failed' }
           $payload = Get-Content $out -Raw | ConvertFrom-Json
           if (-not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported -or -not $payload.t8_manufacturing_faces_imported) { throw 'Portable T6/T7/T8 layers missing' }
+          if (-not $payload.trimble_style_handling_contract_certified -or -not $payload.selected_object_orbit_pivot_certified -or -not $payload.active_pivot_zoom_certified) { throw 'Portable selected-object handling is not certified' }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -165,6 +175,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw 'Installed V15 self-test failed' }
           $payload = Get-Content $out -Raw | ConvertFrom-Json
           if (-not $payload.t5_review_workspace_imported -or -not $payload.t6_coordination_imported -or -not $payload.t7_export_center_imported -or -not $payload.t8_manufacturing_faces_imported) { throw 'Installed T5/T6/T7/T8 workspace missing' }
+          if (-not $payload.trimble_style_handling_contract_certified -or -not $payload.selected_object_orbit_pivot_certified -or -not $payload.active_pivot_zoom_certified) { throw 'Installed selected-object handling is not certified' }
           if ($payload.production_marking_released -or $payload.production_machine_transfer_allowed) { throw 'Installed preview unexpectedly enables production marking/machine transfer' }
           $uninstaller = Join-Path $target 'unins000.exe'
           if (Test-Path $uninstaller) {
@@ -189,6 +200,9 @@ jobs:
             workspace_schema='cws-viewer-workspace-15.2'
             v14_worker_transport_preserved=$true
             t3_navigation_certified=$true
+            trimble_style_handling_contract_certified=$true
+            selected_object_orbit_pivot_certified=$true
+            active_pivot_zoom_certified=$true
             t4_selection_measurement_certified=$true
             t5_review_workspace_certified=$true
             t6_coordination_certified=$true
@@ -197,7 +211,7 @@ jobs:
             marking_feature_development=$true
             production_marking_released=$false
             production_machine_transfer_allowed=$false
-            parity_status='preview_T8_faces'
+            parity_status='preview_T8_faces_handling_hardened'
             files=@($files | ForEach-Object {
               [ordered]@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()}
             })
