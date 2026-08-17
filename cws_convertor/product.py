@@ -14,9 +14,9 @@ APP_SHORT_NAME = APP_NAME
 LEGACY_APP_NAME = "CWS Convertor"
 APP_SLUG = "CWS_Convertor"
 APP_ID = "nl.cws.convertor"
-# Integration snapshot for Codex: semantic import, Part Workbench rebuild and
-# per-part format roundtrips are merged. Complete feature coverage and validated
-# external golden models remain later release gates.
+# Unified Viewer V15 + Convertor + Scribing integration line.  Project Model
+# 2.25 is the first schema that can losslessly ingest both the GitHub 2.5 line
+# and the frozen Scribing M18 2.24 authority line.
 APP_VERSION = "0.9.0-alpha-dev"
 APP_VERSION_NUMERIC = "0.9.0.0"
 APP_PUBLISHER = "CWS"
@@ -32,7 +32,7 @@ DEFAULT_PROJECT_FOLDER = "CWS Convertor Projects"
 
 PROJECT_FILE_EXTENSION = ".cwscproj"
 PROJECT_PACKAGE_FORMAT = "CWS_CWSC_PROJECT_V1"
-PROJECT_SCHEMA_VERSION = "2.5"
+PROJECT_SCHEMA_VERSION = "2.25"
 PROJECT_STORAGE_VERSION = 1
 CANONICAL_PART_SCHEMA_VERSION = "1.1"
 
