@@ -133,7 +133,9 @@ class MachineCapabilityReport:
 
     @property
     def marking_reachable(self) -> bool:
-        return bool(self.decisions) and not self.blocking_codes and all(item.supported for item in self.decisions)
+        # Zero explicit marking intents is a valid no-op. It must not invent a
+        # feature just to satisfy the capability gate.
+        return not self.blocking_codes and all(item.supported for item in self.decisions)
 
     @property
     def ready_for_neutral_job(self) -> bool:
