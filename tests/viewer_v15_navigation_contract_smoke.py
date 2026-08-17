@@ -42,7 +42,7 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.controller.shutdown()
 
-    def test_contract_claims_only_t3_view_capabilities(self) -> None:
+    def test_contract_claims_hardened_interaction_capabilities(self) -> None:
         contract = navigation_contract()
         self.assertEqual("cws-viewer-navigation-15.3", V15_T3_SCHEMA)
         self.assertEqual("1.4.0-v15-preview.2", V15_T3_VERSION)
@@ -50,6 +50,8 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         for name in (
             "orbit_around_picked_point",
             "selection_orbit_focus",
+            "picked_depth_pan",
+            "display_space_fit_with_explode",
             "object_assembly_selection_mode",
             "temporary_alt_selection_inversion",
             "zoom_area",
@@ -75,6 +77,7 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
             [item["key"] for item in contract["docks"]],
         )
         self.assertTrue(contract["capabilities"]["v14_functionality_preserved"])
+        self.assertTrue(contract["capabilities"]["selected_object_details_shortcut"])
 
     def test_selection_sets_orbit_pivot_without_moving_camera(self) -> None:
         node_id = "node:item:000017"
@@ -97,6 +100,46 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.controller.set_selection(())
         self.assertEqual(pivot, self.controller.orbit_pivot)
 
+    def test_exploded_selection_uses_displayed_not_canonical_position_for_pivot(self) -> None:
+        node_id = "node:item:000012"
+        canonical = self.controller.index.world_bounds_by_node[node_id]
+        offset = Vector3(1750.0, -420.0, 315.0)
+        self.controller.session.explode_offsets[node_id] = offset
+
+        self.controller.set_selection((node_id,))
+
+        expected = canonical.center + offset
+        self.assertEqual(expected, self.controller.orbit_pivot)
+        self.assertNotEqual(canonical.center, self.controller.orbit_pivot)
+
+    def test_fit_selection_targets_displayed_exploded_position(self) -> None:
+        node_id = "node:item:000013"
+        canonical = self.controller.index.world_bounds_by_node[node_id]
+        offset = Vector3(-2300.0, 640.0, 180.0)
+        self.controller.session.explode_offsets[node_id] = offset
+        self.controller.set_selection((node_id,))
+
+        self.controller.fit_selection()
+
+        expected = canonical.center + offset
+        self.assertEqual(expected, self.controller.get_camera().target)
+        self.assertEqual(expected, self.controller.orbit_pivot)
+
+    def test_fit_all_contains_displayed_exploded_geometry(self) -> None:
+        node_id = "node:item:000029"
+        self.controller.session.explode_offsets[node_id] = Vector3(5000.0, 1200.0, -350.0)
+        visible, _ghosted = self.controller.session.visible_and_ghosted(self.controller.index)
+        expected_bounds = self.controller.display_bounds_for(
+            visible, include_descendants=False
+        )
+        self.assertIsNotNone(expected_bounds)
+        assert expected_bounds is not None
+
+        self.controller.fit_all()
+
+        self.assertEqual(expected_bounds.center, self.controller.get_camera().target)
+        self.assertEqual(expected_bounds.center, self.controller.orbit_pivot)
+
     def test_temporary_assembly_pick_preserves_persistent_part_mode_and_focus(self) -> None:
         self.backend.pick_node_id = "node:item:000005"
         self.controller.set_selection_level(SelectionLevel.PART)
@@ -108,7 +151,7 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         self.assertEqual("node:assembly:0000", pick.node_id)
         self.assertEqual(SelectionLevel.PART, self.controller.session.selection_level)
         self.assertEqual(("node:assembly:0000",), self.controller.get_selection())
-        bounds = self.controller.index.bounds_for(
+        bounds = self.controller.display_bounds_for(
             ("node:assembly:0000",), include_descendants=True
         )
         self.assertIsNotNone(bounds)
@@ -233,13 +276,14 @@ class ViewerV15NavigationContractTests(unittest.TestCase):
         direction = (camera.position - camera.target).normalized()
         self.assertAlmostEqual(1.0, direction.x, places=9)
 
-    def test_zoom_area_fits_bounds_without_changing_selection(self) -> None:
+    def test_zoom_area_fits_displayed_bounds_without_changing_selection(self) -> None:
         self.controller.set_selection(("node:item:000001",))
         selected_before = self.controller.get_selection()
+        self.controller.session.explode_offsets["node:item:000010"] = Vector3(1200.0, 0.0, 0.0)
         nodes = self.service.zoom_area_screen_rect(10, 10, 800, 600)
         self.assertEqual(("node:item:000010", "node:item:000011"), nodes)
         self.assertEqual(selected_before, self.controller.get_selection())
-        bounds = self.controller.index.bounds_for(nodes, include_descendants=True)
+        bounds = self.controller.display_bounds_for(nodes, include_descendants=True)
         self.assertIsNotNone(bounds)
         assert bounds is not None
         target = self.controller.get_camera().target
