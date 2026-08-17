@@ -14,8 +14,8 @@ from cws_viewer.contracts.state import CameraState, ClippingBox, SectionPlane, V
 from cws_viewer.errors import ViewerError, ViewerErrorCode
 from cws_viewer.math3d import BoundingBox, Vector3
 
-V15_T3_SCHEMA = "cws-viewer-navigation-15.2"
-V15_T3_VERSION = "1.4.0-v15-preview.1"
+V15_T3_SCHEMA = "cws-viewer-navigation-15.3"
+V15_T3_VERSION = "1.4.0-v15-preview.2"
 
 
 def navigation_contract() -> dict[str, Any]:
@@ -24,14 +24,18 @@ def navigation_contract() -> dict[str, Any]:
         "version": V15_T3_VERSION,
         "capabilities": {
             "orbit_pan_zoom": True,
+            "orbit_around_picked_point": True,
+            "selection_orbit_focus": True,
             "zoom_to_fit": True,
             "zoom_area": True,
             "camera_history": True,
             "view_from_face_normal": True,
+            "orthogonal_surface_double_click": True,
             "camera_positioning": True,
             "perspective_orthographic": True,
             "predefined_views": True,
             "keyboard_navigation": True,
+            "trimble_camera_shortcuts": True,
             "section_plane_enable_disable": True,
             "section_plane_flip_remove": True,
             "clipping_box": True,
@@ -100,6 +104,25 @@ class V15ViewNavigationService:
         self.controller.set_camera(target)
         return True
 
+    def set_orbit_pivot(self, point: Vector3) -> Vector3:
+        """Bind orbit to a world-space model point without reframing the view."""
+        setter = getattr(self.controller, "set_orbit_pivot", None)
+        if not callable(setter):
+            raise ViewerError(
+                "Deze viewercontroller ondersteunt geen expliciete orbitpivot",
+                code=ViewerErrorCode.RENDERER_CAPABILITY_MISSING,
+            )
+        return setter(point)
+
+    def focus_orbit_on_selection(self) -> Vector3 | None:
+        focus = getattr(self.controller, "focus_orbit_on_selection", None)
+        if not callable(focus):
+            raise ViewerError(
+                "Deze viewercontroller ondersteunt geen selectiegebonden orbitpivot",
+                code=ViewerErrorCode.RENDERER_CAPABILITY_MISSING,
+            )
+        return focus()
+
     def fit_all(self) -> None:
         self.camera_checkpoint()
         self.controller.fit_all()
@@ -152,21 +175,31 @@ class V15ViewNavigationService:
         self,
         normal: Vector3,
         *,
+        target: Vector3 | None = None,
         up_hint: Vector3 | None = None,
         fit: bool = True,
     ) -> CameraState:
+        """Place the camera orthogonal to a surface normal.
+
+        ``target`` may be the exact picked surface point.  This is required for
+        the desktop Alt+double-click workflow: the camera is aligned to the face
+        that was actually picked rather than to a stale project center.
+        """
         if normal.length() <= 1e-12:
             raise ValueError("Vlaknormaal mag geen nulvector zijn")
         self.camera_checkpoint()
         current = self.controller.get_camera()
         n = normal.normalized()
+        anchor = current.target if target is None else target
         distance = max((current.position - current.target).length(), 1.0)
         updated = replace(
             current,
-            position=current.target + n * distance,
+            target=anchor,
+            position=anchor + n * distance,
             up=self._stable_up(n, up_hint),
         )
         self.controller.set_camera(updated)
+        self.set_orbit_pivot(anchor)
         if fit:
             self.controller.fit_all()
             updated = self.controller.get_camera()
@@ -211,6 +244,9 @@ class V15ViewNavigationService:
                 code=ViewerErrorCode.RENDERER_CAPABILITY_MISSING,
             )
         fit_bounds(bounds)
+        reset_pivot = getattr(self.controller, "reset_orbit_pivot", None)
+        if callable(reset_pivot):
+            reset_pivot()
         return raw
 
     def _scene_bounds(self) -> BoundingBox:
