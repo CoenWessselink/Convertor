@@ -20,33 +20,150 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Extract historical M18 runtime from Git history
+      - name: Scan Git object history for frozen M18 authority
         shell: bash
         run: |
           set -euo pipefail
-          COMMIT="5c6e82fb5cde20310f79a025cb65a88307fa0602"
-          PATH_IN_COMMIT="cws_convertor/manufacturing/m18_authority_runtime.zip"
-          git cat-file -e "${COMMIT}^{commit}"
-          git cat-file -e "${COMMIT}:${PATH_IN_COMMIT}"
-          git show "${COMMIT}:${PATH_IN_COMMIT}" > historical_m18_authority_runtime.zip
-          test -s historical_m18_authority_runtime.zip
-          sha256sum historical_m18_authority_runtime.zip | tee historical_m18_authority_runtime.sha256
           python - <<'PY'
-          from pathlib import Path
+          from __future__ import annotations
           import hashlib
-          p = Path('historical_m18_authority_runtime.zip')
-          data = p.read_bytes()
-          print('bytes=', len(data))
-          print('sha256=', hashlib.sha256(data).hexdigest())
-          assert len(data) == 233402
+          import io
+          import json
+          from pathlib import Path
+          import subprocess
+          import zipfile
+
+          TARGET = "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
+          TARGET_SIZE = 233402
+          report = {
+              "target_sha256": TARGET,
+              "target_size": TARGET_SIZE,
+              "exact_blob_matches": [],
+              "interesting_paths": [],
+              "zip_findings": [],
+          }
+          found_dir = Path("m18_found")
+          found_dir.mkdir(exist_ok=True)
+
+          path_rows = subprocess.check_output(
+              ["git", "rev-list", "--objects", "--all"], text=True, errors="replace"
+          ).splitlines()
+          paths_by_oid: dict[str, list[str]] = {}
+          for row in path_rows:
+              oid, *rest = row.split(" ", 1)
+              if rest:
+                  paths_by_oid.setdefault(oid, []).append(rest[0])
+
+          object_rows = subprocess.check_output(
+              ["git", "cat-file", "--batch-all-objects", "--batch-check=%(objectname) %(objecttype) %(objectsize)"],
+              text=True,
+          ).splitlines()
+
+          def blob_bytes(oid: str) -> bytes:
+              return subprocess.check_output(["git", "cat-file", "blob", oid])
+
+          def save_exact(data: bytes, label: str) -> None:
+              safe = "".join(c if c.isalnum() or c in "._-" else "_" for c in label)[-160:]
+              target = found_dir / f"{safe or 'm18_runtime'}.zip"
+              target.write_bytes(data)
+
+          def inspect_zip(data: bytes, label: str, depth: int = 0) -> None:
+              if depth > 2:
+                  return
+              try:
+                  with zipfile.ZipFile(io.BytesIO(data)) as zf:
+                      bad = zf.testzip()
+                      names = zf.namelist()
+                      interesting = [n for n in names if "m18" in n.lower() or "cws_m18_authority" in n.lower()]
+                      if interesting:
+                          report["zip_findings"].append({
+                              "label": label,
+                              "depth": depth,
+                              "entries": interesting[:100],
+                              "entry_count": len(names),
+                              "crc_error": bad,
+                          })
+                      for info in zf.infolist():
+                          name_l = info.filename.lower()
+                          if info.is_dir() or info.file_size > 100_000_000:
+                              continue
+                          should_read = (
+                              info.file_size == TARGET_SIZE
+                              or "m18" in name_l
+                              or "authority" in name_l
+                              or name_l.endswith((".zip", ".tsep"))
+                          )
+                          if not should_read:
+                              continue
+                          child = zf.read(info)
+                          child_sha = hashlib.sha256(child).hexdigest()
+                          if child_sha == TARGET:
+                              match_label = f"{label}!{info.filename}"
+                              report["exact_blob_matches"].append({
+                                  "source": match_label,
+                                  "size": len(child),
+                                  "sha256": child_sha,
+                              })
+                              save_exact(child, match_label)
+                          if child.startswith(b"PK") and depth < 2:
+                              inspect_zip(child, f"{label}!{info.filename}", depth + 1)
+              except (zipfile.BadZipFile, RuntimeError, OSError, ValueError):
+                  return
+
+          for row in object_rows:
+              oid, obj_type, size_s = row.split()
+              if obj_type != "blob":
+                  continue
+              size = int(size_s)
+              paths = paths_by_oid.get(oid, [])
+              interesting_path = any(
+                  "m18" in p.lower() or "scribing" in p.lower() or "authority_runtime" in p.lower()
+                  for p in paths
+              )
+              if interesting_path:
+                  report["interesting_paths"].append({"oid": oid, "size": size, "paths": paths[:20]})
+
+              need_blob = size == TARGET_SIZE or interesting_path or any(
+                  p.lower().endswith((".zip", ".tsep")) for p in paths
+              )
+              if not need_blob or size > 100_000_000:
+                  continue
+
+              data = blob_bytes(oid)
+              digest = hashlib.sha256(data).hexdigest()
+              if digest == TARGET:
+                  report["exact_blob_matches"].append({
+                      "source": f"git-blob:{oid}",
+                      "paths": paths,
+                      "size": len(data),
+                      "sha256": digest,
+                  })
+                  save_exact(data, f"git_blob_{oid}")
+              if data.startswith(b"PK"):
+                  label = paths[0] if paths else f"git-blob:{oid}"
+                  inspect_zip(data, label)
+
+          Path("m18_history_scan.json").write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+          Path("m18_history_scan.txt").write_text(
+              "\n".join([
+                  f"target={TARGET}",
+                  f"exact_matches={len(report['exact_blob_matches'])}",
+                  f"interesting_paths={len(report['interesting_paths'])}",
+                  f"zip_findings={len(report['zip_findings'])}",
+                  *[json.dumps(x, sort_keys=True) for x in report["exact_blob_matches"]],
+              ]) + "\n",
+              encoding="utf-8",
+          )
+          print(Path("m18_history_scan.txt").read_text(encoding="utf-8"))
           PY
 
-      - name: Upload historical runtime
+      - name: Upload M18 history scan
         uses: actions/upload-artifact@v4
         with:
-          name: u4-m18-historical-runtime
+          name: u4-m18-history-scan
           path: |
-            historical_m18_authority_runtime.zip
-            historical_m18_authority_runtime.sha256
+            m18_history_scan.json
+            m18_history_scan.txt
+            m18_found/
           if-no-files-found: error
           retention-days: 1
