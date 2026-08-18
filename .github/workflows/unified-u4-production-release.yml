@@ -1,9 +1,10 @@
-name: CWS Unified U4 Production Workflow + Windows EXE
+name: CWS Part-First Foundation + Windows EXE
 
 on:
   workflow_dispatch:
   push:
     branches:
+      - agent/part-first-foundation-build-01
       - feature/unified-u4-production-workflow-v2
       - feature/unified-v15-scribing-m18
     paths:
@@ -13,6 +14,7 @@ on:
       - 'cws_convertor/manufacturing/**'
       - 'cws_viewer/**'
       - 'tests/unified_*'
+      - 'tools/capture_foundation_ui.py'
       - 'CWS_Convertor.spec'
       - 'CWS_Convertor_App.py'
       - 'installer/**'
@@ -21,6 +23,7 @@ on:
       - '.github/workflows/unified-u4-production-release.yml'
   pull_request:
     branches:
+      - feature/unified-u4-production-workflow-v2
       - feature/unified-u3-central-ui
       - feature/unified-v15-scribing-m18
 
@@ -28,7 +31,7 @@ permissions:
   contents: read
 
 jobs:
-  u4-production-and-exe:
+  foundation-production-and-exe:
     runs-on: windows-2022
     timeout-minutes: 150
     env:
@@ -41,6 +44,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Record source and frozen M18 runtime identity
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\unified-u4 | Out-Null
+          git rev-parse HEAD | Out-File validation\unified-u4\foundation_commit.txt -Encoding ascii
+          $runtime = 'cws_convertor\manufacturing\m18_authority_runtime.zip'
+          if (!(Test-Path $runtime)) { throw 'Frozen M18 runtime missing from source tree' }
+          $item = Get-Item $runtime
+          $hash = Get-FileHash $runtime -Algorithm SHA256
+          [ordered]@{
+            path = $runtime
+            bytes = $item.Length
+            sha256 = $hash.Hash.ToLower()
+          } | ConvertTo-Json | Out-File validation\unified-u4\m18_runtime_identity.json -Encoding utf8
+          Get-Content validation\unified-u4\m18_runtime_identity.json
 
       - name: Set up Python 3.12 x64
         uses: actions/setup-python@v6
@@ -56,13 +75,13 @@ jobs:
           python -m pip install -r requirements-build.lock.txt
           python -m pip install cryptography
           python -m pip check
-          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('U4 native dependencies OK')"
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('Foundation native dependencies OK')"
 
-      - name: Compile unified U4 source
+      - name: Compile unified foundation source
         shell: pwsh
         run: |
           python -m compileall -q cws_convertor/integration cws_convertor/ui_qt cws_convertor/production_export tests/unified_production_workflow_u4_smoke.py tests/unified_production_workflow_u4_gui_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'U4 compileall failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Foundation compileall failed' }
 
       - name: Preserve U0 baseline
         run: python validation/unified/validate_u0_baseline.py
@@ -82,7 +101,6 @@ jobs:
       - name: Prove U4 production workflow contract
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force validation\unified-u4 | Out-Null
           python tests/unified_production_workflow_u4_smoke.py 2>&1 | Tee-Object validation\unified-u4\u4_workflow.txt
           if ($LASTEXITCODE -ne 0) { throw 'U4 production workflow smoke failed' }
 
@@ -101,13 +119,13 @@ jobs:
       - name: Build PyInstaller Windows application
         run: pyinstaller --noconfirm --clean CWS_Convertor.spec
 
-      - name: Verify U4 packaged application content
+      - name: Verify packaged application content
         shell: pwsh
         run: |
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
-          $payload = Get-ChildItem dist\CWS_Convertor -Recurse -Filter 'm18_authority_runtime.b64.001' | Select-Object -First 1
-          if ($null -eq $payload) { throw 'M18 runtime payload missing from packaged executable' }
+          $runtime = Get-ChildItem dist\CWS_Convertor -Recurse -Filter 'm18_authority_runtime.zip' | Select-Object -First 1
+          if ($null -eq $runtime) { throw 'M18 runtime archive missing from packaged executable' }
           Get-FileHash dist\CWS_Convertor\CWS_Convertor.exe -Algorithm SHA256 | ConvertTo-Json | Out-File validation\unified-u4\u4_gui_exe_hash.json
 
       - name: Packaged quick self-test
@@ -116,53 +134,53 @@ jobs:
       - name: Packaged GUI smoke
         run: dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report validation\unified-u4\u4_packaged_gui_smoke.json
 
-      - name: Build portable U4 ZIP
+      - name: Build portable foundation ZIP
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release | Out-Null
-          Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_U4_Portable_0.9.0-alpha-dev_x64.zip -CompressionLevel Optimal
+          Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_Foundation_Portable_0.9.0-alpha-dev_x64.zip -CompressionLevel Optimal
 
-      - name: Build U4 installer EXE
+      - name: Build foundation installer EXE
         shell: pwsh
         run: |
           $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
           if (!(Test-Path $iscc)) { throw 'Inno Setup 6 not found' }
           & $iscc installer\CWS_Convertor.iss
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup build failed' }
-          Copy-Item dist_installer\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe release\CWS_Convertor_U4_Setup_0.9.0-alpha-dev_x64.exe
+          Copy-Item dist_installer\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe release\CWS_Convertor_Foundation_Setup_0.9.0-alpha-dev_x64.exe
 
       - name: Silent install and packaged runtime proof
         shell: pwsh
         run: |
-          $installDir = "$env:RUNNER_TEMP\CWS-U4-Installed"
-          $installer = (Resolve-Path release\CWS_Convertor_U4_Setup_0.9.0-alpha-dev_x64.exe)
+          $installDir = "$env:RUNNER_TEMP\CWS-Foundation-Installed"
+          $installer = (Resolve-Path release\CWS_Convertor_Foundation_Setup_0.9.0-alpha-dev_x64.exe)
           $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',"/DIR=$installDir") -Wait -PassThru -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) { throw 'U4 installer failed' }
-          if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw 'Installed U4 GUI executable missing' }
+          if ($process.ExitCode -ne 0) { throw 'Foundation installer failed' }
+          if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw 'Installed GUI executable missing' }
           & "$installDir\CWS_Convertor.exe" --quick-self-test --report validation\unified-u4\u4_installed_selftest.json
-          if ($LASTEXITCODE -ne 0) { throw 'Installed U4 self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'Installed foundation self-test failed' }
 
       - name: Generate release SHA-256 manifest
         shell: pwsh
         run: |
-          Get-FileHash release\CWS_Convertor_U4_Setup_0.9.0-alpha-dev_x64.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii
-          Get-FileHash release\CWS_Convertor_U4_Portable_0.9.0-alpha-dev_x64.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii -Append
+          Get-FileHash release\CWS_Convertor_Foundation_Setup_0.9.0-alpha-dev_x64.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii
+          Get-FileHash release\CWS_Convertor_Foundation_Portable_0.9.0-alpha-dev_x64.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii -Append
           Copy-Item validation\unified-u4\*.json release\ -ErrorAction SilentlyContinue
           Copy-Item validation\unified-u4\*.txt release\ -ErrorAction SilentlyContinue
 
-      - name: Upload U4 Windows release
+      - name: Upload foundation Windows release
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Convertor_U4_0.9.0-alpha-dev_Windows_x64
+          name: CWS_Convertor_Foundation_0.9.0-alpha-dev_Windows_x64
           path: release/*
           if-no-files-found: error
           retention-days: 30
 
-      - name: Upload U4 validation evidence
+      - name: Upload validation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Unified_U4_Validation_${{ github.run_id }}
+          name: CWS_Foundation_Validation_${{ github.run_id }}
           path: validation/unified-u4/*
           if-no-files-found: warn
           retention-days: 30
