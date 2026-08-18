@@ -1,0 +1,198 @@
+name: CWS U4 Restore U3 Authority + Tested Windows EXE
+
+on:
+  push:
+    branches:
+      - feature/u4-restore-u3-authority
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+  CWS_HEADLESS_GUI_SMOKE: "1"
+  CWS_REQUIRE_VIEWER_GUI: "1"
+  CWS_REQUIRE_IFCOPENSHELL: "1"
+
+jobs:
+  build-test:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repaired U4
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          architecture: x64
+          cache: pip
+
+      - name: Install locked build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip check
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('native imports OK')"
+
+      - name: Compile source
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py
+          if ($LASTEXITCODE -ne 0) { throw 'compile failed' }
+
+      - name: U0 baseline
+        shell: pwsh
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: U1 Project Model 2.25
+        shell: pwsh
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: U2 Manufacturing Scribing M1-M18
+        shell: pwsh
+        run: |
+          python tests/unified_manufacturing_scribing_u2_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U2 failed' }
+
+      - name: U3 central Viewer application context
+        shell: pwsh
+        run: |
+          $tests = Get-ChildItem tests -File | Where-Object { $_.Name -match '(?i)u3.*\.py$' }
+          if (-not $tests) { throw 'No U3 tests found' }
+          foreach ($test in $tests) {
+            Write-Host "Running U3 test $($test.Name)"
+            python $test.FullName
+            if ($LASTEXITCODE -ne 0) { throw "U3 failed: $($test.Name)" }
+          }
+
+      - name: U4 production workflow
+        shell: pwsh
+        run: |
+          $tests = Get-ChildItem tests -File | Where-Object { $_.Name -match '(?i)u4.*\.py$' }
+          if (-not $tests) { throw 'No U4 tests found' }
+          foreach ($test in $tests) {
+            Write-Host "Running U4 test $($test.Name)"
+            python $test.FullName
+            if ($LASTEXITCODE -ne 0) { throw "U4 failed: $($test.Name)" }
+          }
+
+      - name: Source launcher self-test
+        shell: pwsh
+        run: |
+          python CWS_Convertor_App.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'source self-test failed' }
+
+      - name: Build CWS Convertor EXE
+        shell: pwsh
+        run: |
+          python -m PyInstaller --clean --noconfirm CWS_Convertor.spec
+          if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
+
+      - name: Verify EXE files
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $cli = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
+          if (-not $app) { throw 'CWS_Convertor.exe missing' }
+          if (-not $cli) { throw 'CWS_Convertor_CLI.exe missing' }
+          Write-Host "APP=$($app.FullName) SIZE=$($app.Length)"
+          Write-Host "CLI=$($cli.FullName) SIZE=$($cli.Length)"
+
+      - name: Packaged EXE self-test
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          & $app.FullName --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'packaged EXE self-test failed' }
+
+      - name: Create portable Windows package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          Compress-Archive -Path (Join-Path $app.Directory.FullName '*') -DestinationPath 'release/CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip' -Force
+
+      - name: Build Setup EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe unavailable' }
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $appDir = $app.Directory.FullName
+          $iss = Join-Path $env:RUNNER_TEMP 'CWS_Convertor_U4.iss'
+          @"
+          [Setup]
+          AppId={{72C1888D-0646-4DAF-A8E6-C5A20C3B1860}}
+          AppName=CWS Convertor
+          AppVersion=0.9.0-alpha-dev
+          AppPublisher=CWS
+          DefaultDirName={autopf}\CWS Convertor
+          DefaultGroupName=CWS Convertor
+          OutputDir=$PWD\release
+          OutputBaseFilename=CWS_Convertor_Setup_0.9.0-alpha-dev_x64
+          Compression=lzma2/max
+          SolidCompression=yes
+          ArchitecturesAllowed=x64compatible
+          ArchitecturesInstallIn64BitMode=x64compatible
+          Uninstallable=yes
+          PrivilegesRequired=lowest
+
+          [Files]
+          Source: "$appDir\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{group}\CWS Convertor"; Filename: "{app}\CWS_Convertor.exe"
+          "@ | Set-Content -Encoding utf8NoBOM $iss
+          & $iscc $iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_Setup_*_x64.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'Setup EXE missing' }
+          Write-Host "SETUP=$($setup.FullName) SIZE=$($setup.Length)"
+
+      - name: Silent install and installed EXE self-test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_Setup_*_x64.exe' | Select-Object -First 1
+          $installDir = Join-Path $env:RUNNER_TEMP 'CWS_Convertor_Installed'
+          & $setup.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installDir"
+          if ($LASTEXITCODE -ne 0) { throw 'silent install failed' }
+          $installed = Get-ChildItem $installDir -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          if (-not $installed) { throw 'installed EXE missing' }
+          & $installed.FullName --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'installed EXE self-test failed' }
+          Write-Host 'INSTALLED EXE SELF-TEST PASSED'
+
+      - name: Generate SHA256SUMS
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $cli = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
+          $portable = Get-Item 'release/CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip'
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_Setup_*_x64.exe' | Select-Object -First 1
+          $lines = foreach ($file in @($app,$cli,$portable,$setup)) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content -Encoding ascii release/SHA256SUMS.txt
+          Get-Content release/SHA256SUMS.txt
+
+      - name: Upload tested Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_U4_TESTED_Windows_x64
+          path: |
+            dist/**/CWS_Convertor.exe
+            dist/**/CWS_Convertor_CLI.exe
+            release/CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip
+            release/CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
