@@ -28,7 +28,7 @@ class ReadinessAssessment:
 class ReadinessGate:
     """Deterministic, format-specific production gate.
 
-    The gate never upgrades confidence and never infers missing geometry.  It
+    The gate never upgrades confidence and never infers missing geometry. It
     only evaluates evidence already present in the canonical project model.
     """
 
@@ -59,8 +59,17 @@ class ReadinessGate:
         if not part_id:
             assessment.general_messages.append(self._message("CWS-EXP-001", "Interne onderdeel-ID ontbreekt", field="part_id"))
 
+        # Project Model 2.25 stores the canonical entity classification in
+        # ``category`` and its review state separately in ``classification_status``.
+        # Older adapters used ``classification``. Accept both without inferring
+        # or upgrading either value.
         classification = str(get_value(
-            part, "classification", "classification_category", "part_classification", default="unknown"
+            part,
+            "classification",
+            "classification_category",
+            "part_classification",
+            "category",
+            default="unknown",
         ) or "unknown").lower()
         if classification in {"unknown", "unclassified", ""}:
             assessment.general_messages.append(self._message(
@@ -85,7 +94,8 @@ class ReadinessGate:
         confidence = finite_number(get_value(
             part, "classification_confidence", "confidence", "recognition_confidence", default=None
         ))
-        confirmed = bool(get_value(
+        classification_status = str(get_value(part, "classification_status", default="") or "").lower()
+        confirmed = classification_status == "confirmed" or bool(get_value(
             part, "classification_confirmed", "human_confirmed", "reviewed", "approved", default=False
         ))
         if confidence is not None and confidence < self.minimum_confidence and not confirmed:
