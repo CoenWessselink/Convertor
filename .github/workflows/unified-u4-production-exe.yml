@@ -1,0 +1,141 @@
+name: CWS Unified U4 Production Workflow + Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+  pull_request:
+    branches:
+      - feature/unified-u3-central-ui
+
+permissions:
+  contents: read
+
+jobs:
+  u4-production-exe:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: offscreen
+      CWS_HEADLESS_GUI_SMOKE: '1'
+      CWS_REQUIRE_VIEWER_GUI: '1'
+      CWS_REQUIRE_IFCOPENSHELL: '1'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install locked build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip check
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('U4 native imports OK')"
+
+      - name: Compile U4 source
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor CWS_Convertor_App.py tests/unified_production_workflow_u4_smoke.py tests/unified_u4_gui_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U4 compile failed' }
+
+      - name: Preserve U0 baseline
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Preserve U2 Manufacturing Scribing M1-M18
+        run: python tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Preserve U3 central application context
+        shell: pwsh
+        run: |
+          python tests/unified_ui_context_u3_smoke.py
+          python tests/unified_ui_shell_u3_gui_smoke.py
+
+      - name: Prove U4 production workflow
+        shell: pwsh
+        run: |
+          python tests/unified_production_workflow_u4_smoke.py
+          python tests/unified_u4_gui_smoke.py
+
+      - name: Create packaged smoke project
+        run: python CWS_Convertor_App.py --create-smoke-project build\u4-smoke.cwscproj --report build\create-project.json
+
+      - name: Source launcher self-test and GUI smoke
+        shell: pwsh
+        run: |
+          python CWS_Convertor_App.py --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-source-selftest.json
+          python CWS_Convertor_App.py --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-source-gui-smoke.json
+
+      - name: Build CWS Convertor EXE
+        run: pyinstaller --noconfirm --clean CWS_Convertor.spec
+
+      - name: Verify EXE files
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
+          Get-Item dist\CWS_Convertor\CWS_Convertor.exe | Select-Object Name,Length,LastWriteTime | ConvertTo-Json | Out-File build\u4-exe.json
+
+      - name: Packaged EXE self-test and GUI smoke
+        shell: pwsh
+        run: |
+          dist\CWS_Convertor\CWS_Convertor.exe --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-packaged-selftest.json
+          dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-packaged-gui-smoke.json
+
+      - name: Create portable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_U4_Windows_x64_Portable.zip -CompressionLevel Optimal
+          Copy-Item dist\CWS_Convertor\CWS_Convertor.exe release\CWS_Convertor_U4.exe
+
+      - name: Build Setup EXE
+        shell: pwsh
+        run: |
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $iscc)) { throw 'Inno Setup not found' }
+          & $iscc installer\CWS_Convertor.iss
+          if ($LASTEXITCODE -ne 0) { throw 'ISCC failed' }
+          $setup = Get-ChildItem dist_installer\*.exe | Select-Object -First 1
+          if (!$setup) { throw 'Setup EXE missing' }
+          Copy-Item $setup.FullName release\CWS_Convertor_U4_Setup_Windows_x64.exe
+
+      - name: Smoke install Setup EXE
+        shell: pwsh
+        run: |
+          $installDir = "$env:RUNNER_TEMP\CWS-U4-Installed"
+          $installer = (Resolve-Path release\CWS_Convertor_U4_Setup_Windows_x64.exe)
+          $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',"/DIR=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw 'U4 setup install failed' }
+          if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw 'Installed U4 EXE missing' }
+          & "$installDir\CWS_Convertor.exe" --quick-self-test --project build\u4-smoke.cwscproj --report build\u4-installed-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installed U4 EXE self-test failed' }
+
+      - name: Generate release checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release\* | ForEach-Object {
+            $h = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($h.Hash.ToLower())  $($_.Name)"
+          } | Out-File release\SHA256SUMS.txt -Encoding ascii
+          Copy-Item build\u4-*.json release\ -ErrorAction SilentlyContinue
+
+      - name: Upload U4 Windows EXE release
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_U4_Windows_x64
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
