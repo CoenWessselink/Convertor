@@ -20,7 +20,7 @@ jobs:
       CWS_HEADLESS_GUI_SMOKE: '1'
       CWS_REQUIRE_VIEWER_GUI: '1'
       CWS_REQUIRE_IFCOPENSHELL: '1'
-      M18_SOURCE_REF: feature/unified-v15-scribing-m18
+      M18_BLOB_SHA: 0acef19f119bbe19540e19f8e82fb9ac5c97f638
       M18_RUNTIME_SHA256: 62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1
 
     steps:
@@ -38,18 +38,17 @@ jobs:
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
           }
-          $sourcePath = 'cws_convertor/manufacturing/m18_authority_runtime.zip'
-          $encodedRef = [Uri]::EscapeDataString($env:M18_SOURCE_REF)
-          $uri = "https://api.github.com/repos/${{ github.repository }}/contents/$sourcePath?ref=$encodedRef"
+          $uri = "https://api.github.com/repos/${{ github.repository }}/git/blobs/$env:M18_BLOB_SHA"
           $payload = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
           if ($payload.encoding -ne 'base64') { throw "Unexpected M18 encoding: $($payload.encoding)" }
           $runtime = [Convert]::FromBase64String(([string]$payload.content -replace '\s',''))
-          [IO.File]::WriteAllBytes((Join-Path $PWD $sourcePath), $runtime)
-          $actual = (Get-FileHash -Algorithm SHA256 $sourcePath).Hash.ToLowerInvariant()
+          $target = 'cws_convertor/manufacturing/m18_authority_runtime.zip'
+          [IO.File]::WriteAllBytes((Join-Path $PWD $target), $runtime)
+          $actual = (Get-FileHash -Algorithm SHA256 $target).Hash.ToLowerInvariant()
           if ($actual -ne $env:M18_RUNTIME_SHA256) { throw "M18 SHA mismatch: expected=$env:M18_RUNTIME_SHA256 actual=$actual" }
-          python -c "import zipfile; p=r'cws_convertor/manufacturing/m18_authority_runtime.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert 'cws_m18_authority/__init__.py' in z.namelist(); print('M18 ZIP OK', len(z.namelist()))"
+          python -c "import zipfile; p=r'cws_convertor/manufacturing/m18_authority_runtime.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert 'cws_m18_authority/__init__.py' in z.namelist(); print('M18 ZIP OK',len(z.namelist()))"
           [IO.File]::WriteAllText('build/authority_evidence/m18_authority_runtime.b64',[Convert]::ToBase64String($runtime),[Text.Encoding]::ASCII)
-          @{schema='cws-m18-authority-evidence-1.0';source_ref=$env:M18_SOURCE_REF;runtime_sha256=$actual;runtime_bytes=$runtime.Length} | ConvertTo-Json | Set-Content -Encoding utf8NoBOM build\authority_evidence\m18_authority_runtime.json
+          @{schema='cws-m18-authority-evidence-1.0';source_blob=$env:M18_BLOB_SHA;runtime_sha256=$actual;runtime_bytes=$runtime.Length} | ConvertTo-Json | Set-Content -Encoding utf8NoBOM build\authority_evidence\m18_authority_runtime.json
 
       - uses: actions/setup-python@v6
         with:
@@ -82,40 +81,14 @@ jobs:
       - name: Viewer V15 T3-T8 gates
         shell: pwsh
         run: |
-          $tests = @(
-            'tests/viewer_v15_workspace_contract_smoke.py',
-            'tests/viewer_v15_navigation_contract_smoke.py',
-            'tests/viewer_v15_interaction_foundation_smoke.py',
-            'tests/viewer_v15_selection_pivot_parity_smoke.py',
-            'tests/viewer_v15_trimble_input_contract_smoke.py',
-            'tests/viewer_v15_feel_fix_smoke.py',
-            'tests/viewer_v15_trimble_feel_v2_smoke.py',
-            'tests/viewer_v15_selection_measurement_smoke.py',
-            'tests/viewer_v15_review_workspace_smoke.py',
-            'tests/viewer_v15_coordination_smoke.py',
-            'tests/viewer_v15_export_center_smoke.py',
-            'tests/manufacturing_face_core_smoke.py'
-          )
-          foreach ($test in $tests) {
-            if (!(Test-Path $test)) { throw "missing gate: $test" }
-            python $test
-            if ($LASTEXITCODE -ne 0) { throw "failed gate: $test" }
-          }
+          $tests=@('tests/viewer_v15_workspace_contract_smoke.py','tests/viewer_v15_navigation_contract_smoke.py','tests/viewer_v15_interaction_foundation_smoke.py','tests/viewer_v15_selection_pivot_parity_smoke.py','tests/viewer_v15_trimble_input_contract_smoke.py','tests/viewer_v15_feel_fix_smoke.py','tests/viewer_v15_trimble_feel_v2_smoke.py','tests/viewer_v15_selection_measurement_smoke.py','tests/viewer_v15_review_workspace_smoke.py','tests/viewer_v15_coordination_smoke.py','tests/viewer_v15_export_center_smoke.py','tests/manufacturing_face_core_smoke.py')
+          foreach($test in $tests){if(!(Test-Path $test)){throw "missing gate: $test"};python $test;if($LASTEXITCODE -ne 0){throw "failed gate: $test"}}
 
       - name: U3-U4 integrated Viewer and workflow gates
         shell: pwsh
         run: |
-          $tests = @(
-            'tests/unified_ui_context_u3_smoke.py',
-            'tests/unified_ui_shell_u3_gui_smoke.py',
-            'tests/unified_viewer_v15_u3_smoke.py',
-            'tests/unified_production_workflow_u4_smoke.py',
-            'tests/unified_u4_gui_smoke.py'
-          )
-          foreach ($test in $tests) {
-            python $test
-            if ($LASTEXITCODE -ne 0) { throw "failed gate: $test" }
-          }
+          $tests=@('tests/unified_ui_context_u3_smoke.py','tests/unified_ui_shell_u3_gui_smoke.py','tests/unified_viewer_v15_u3_smoke.py','tests/unified_production_workflow_u4_smoke.py','tests/unified_u4_gui_smoke.py')
+          foreach($test in $tests){python $test;if($LASTEXITCODE -ne 0){throw "failed gate: $test"}}
 
       - name: Source launcher gates
         shell: pwsh
@@ -128,11 +101,11 @@ jobs:
         shell: pwsh
         run: |
           pyinstaller --noconfirm --clean CWS_Convertor.spec
-          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'GUI EXE missing' }
-          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CLI EXE missing' }
+          if(!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)){throw 'GUI EXE missing'}
+          if(!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)){throw 'CLI EXE missing'}
           $runtime='dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip'
-          if (!(Test-Path $runtime)) { throw 'packaged M18 runtime missing' }
-          if ((Get-FileHash -Algorithm SHA256 $runtime).Hash.ToLowerInvariant() -ne $env:M18_RUNTIME_SHA256) { throw 'packaged M18 SHA mismatch' }
+          if(!(Test-Path $runtime)){throw 'packaged M18 runtime missing'}
+          if((Get-FileHash -Algorithm SHA256 $runtime).Hash.ToLowerInvariant() -ne $env:M18_RUNTIME_SHA256){throw 'packaged M18 SHA mismatch'}
 
       - name: Packaged runtime gates
         shell: pwsh
@@ -143,31 +116,27 @@ jobs:
       - name: Build portable and installer
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force release | Out-Null
+          New-Item -ItemType Directory -Force release|Out-Null
           Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_U4_Windows_x64_Portable.zip -CompressionLevel Optimal
           Copy-Item dist\CWS_Convertor\CWS_Convertor.exe release\CWS_Convertor_U4.exe
-          $iscc='C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
-          if (!(Test-Path $iscc)) { throw 'Inno Setup missing' }
-          & $iscc installer\CWS_Convertor.iss
-          if ($LASTEXITCODE -ne 0) { throw 'installer build failed' }
-          $setup=Get-ChildItem dist_installer\*.exe | Select-Object -First 1
-          if (!$setup) { throw 'Setup EXE missing' }
+          $iscc='C:\Program Files (x86)\Inno Setup 6\ISCC.exe';if(!(Test-Path $iscc)){throw 'Inno Setup missing'}
+          & $iscc installer\CWS_Convertor.iss;if($LASTEXITCODE -ne 0){throw 'installer build failed'}
+          $setup=Get-ChildItem dist_installer\*.exe|Select-Object -First 1;if(!$setup){throw 'Setup EXE missing'}
           Copy-Item $setup.FullName release\CWS_Convertor_U4_Setup_Windows_x64.exe
 
       - name: Installed runtime gate
         shell: pwsh
         run: |
-          $installDir="$env:RUNNER_TEMP\CWS-U4-Installed"
-          $installer=(Resolve-Path release\CWS_Convertor_U4_Setup_Windows_x64.exe)
+          $installDir="$env:RUNNER_TEMP\CWS-U4-Installed";$installer=(Resolve-Path release\CWS_Convertor_U4_Setup_Windows_x64.exe)
           $p=Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',"/DIR=$installDir") -Wait -PassThru -WindowStyle Hidden
-          if ($p.ExitCode -ne 0) { throw 'installer failed' }
+          if($p.ExitCode -ne 0){throw 'installer failed'}
           & "$installDir\CWS_Convertor.exe" --quick-self-test --project build\u4-smoke.cwscproj --report build\u4-installed-selftest.json
-          if ($LASTEXITCODE -ne 0) { throw 'installed self-test failed' }
+          if($LASTEXITCODE -ne 0){throw 'installed self-test failed'}
 
       - name: Checksums and evidence
         shell: pwsh
         run: |
-          Get-ChildItem release\* | ForEach-Object { $h=Get-FileHash $_.FullName -Algorithm SHA256; "$($h.Hash.ToLower())  $($_.Name)" } | Out-File release\SHA256SUMS.txt -Encoding ascii
+          Get-ChildItem release\*|ForEach-Object{$h=Get-FileHash $_.FullName -Algorithm SHA256;"$($h.Hash.ToLower())  $($_.Name)"}|Out-File release\SHA256SUMS.txt -Encoding ascii
           Copy-Item build\u4-*.json release\ -ErrorAction SilentlyContinue
           Copy-Item build\authority_evidence\* release\
 
