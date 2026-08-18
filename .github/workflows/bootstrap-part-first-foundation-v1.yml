@@ -1,0 +1,46 @@
+name: Bootstrap CWS Part-First Foundation V1 source
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/part-first-foundation-v1
+
+permissions:
+  contents: write
+
+jobs:
+  expand-source:
+    if: ${{ !contains(github.event.head_commit.message, '[foundation-expanded]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Reassemble verified source delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          find .foundation -maxdepth 1 -type f -name 'chunk-*.b64' -print0 \
+            | sort -z \
+            | xargs -0 cat > /tmp/cws-foundation-source.b64
+          base64 --decode /tmp/cws-foundation-source.b64 > /tmp/cws-foundation-source.zip
+          echo "068514d04f9b5b6ef5fc5ad28ac68e0e5cef99bbed9050c9cbe37c64adb8e37b  /tmp/cws-foundation-source.zip" | sha256sum --check --strict
+          unzip -o /tmp/cws-foundation-source.zip -d .
+          rm -rf .foundation
+
+      - name: Publish normal source tree to the branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Foundation source was already expanded."
+            exit 0
+          fi
+          git commit -m "feat(foundation): expand part-first source baseline [foundation-expanded]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
