@@ -15,17 +15,52 @@ permissions:
 jobs:
   u4-production-exe:
     runs-on: windows-2022
-    timeout-minutes: 120
+    timeout-minutes: 150
     env:
       PYTHONUTF8: '1'
       QT_QPA_PLATFORM: offscreen
       CWS_HEADLESS_GUI_SMOKE: '1'
       CWS_REQUIRE_VIEWER_GUI: '1'
       CWS_REQUIRE_IFCOPENSHELL: '1'
+      M18_SOURCE_REF: 7ab6123c471f01458b10965efcf62c009beb9c43
+      M18_RUNTIME_SHA256: 62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Restore exact frozen M18 authority from historical GitHub contents
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force build\authority_evidence | Out-Null
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $path = 'cws_convertor/manufacturing/m18_authority_runtime.zip'
+          $uri = "https://api.github.com/repos/${{ github.repository }}/contents/$path?ref=$env:M18_SOURCE_REF"
+          $payload = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
+          if ($payload.encoding -ne 'base64') { throw "Unexpected M18 response encoding: $($payload.encoding)" }
+          $runtime = [Convert]::FromBase64String(([string]$payload.content -replace '\s', ''))
+          [IO.File]::WriteAllBytes((Join-Path $PWD $path), $runtime)
+          $actual = (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant()
+          if ($actual -ne $env:M18_RUNTIME_SHA256) {
+            throw "Historical M18 runtime SHA mismatch: expected=$env:M18_RUNTIME_SHA256 actual=$actual"
+          }
+          python -c "import zipfile; p=r'cws_convertor/manufacturing/m18_authority_runtime.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert 'cws_m18_authority/__init__.py' in z.namelist(); print('Exact M18 ZIP/CRC OK:', len(z.namelist()), 'entries')"
+          $base64 = [Convert]::ToBase64String($runtime)
+          [IO.File]::WriteAllText((Join-Path $PWD 'build/authority_evidence/m18_authority_runtime.b64'), $base64, [Text.Encoding]::ASCII)
+          @{
+            schema = 'cws-m18-authority-evidence-1.0'
+            source_ref = $env:M18_SOURCE_REF
+            source_path = $path
+            runtime_sha256 = $actual
+            runtime_bytes = $runtime.Length
+          } | ConvertTo-Json | Set-Content -Encoding utf8NoBOM build\authority_evidence\m18_authority_runtime.json
 
       - name: Set up Python 3.12 x64
         uses: actions/setup-python@v6
@@ -59,6 +94,30 @@ jobs:
 
       - name: Preserve U2 Manufacturing Scribing M1-M18
         run: python tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Preserve Viewer V15 T3-T8 contracts
+        shell: pwsh
+        run: |
+          $tests = @(
+            'tests/viewer_v15_workspace_contract_smoke.py',
+            'tests/viewer_v15_navigation_contract_smoke.py',
+            'tests/viewer_v15_interaction_foundation_smoke.py',
+            'tests/viewer_v15_selection_pivot_parity_smoke.py',
+            'tests/viewer_v15_trimble_input_contract_smoke.py',
+            'tests/viewer_v15_feel_fix_smoke.py',
+            'tests/viewer_v15_trimble_feel_v2_smoke.py',
+            'tests/viewer_v15_selection_measurement_smoke.py',
+            'tests/viewer_v15_review_workspace_smoke.py',
+            'tests/viewer_v15_coordination_smoke.py',
+            'tests/viewer_v15_export_center_smoke.py',
+            'tests/manufacturing_face_core_smoke.py'
+          )
+          foreach ($test in $tests) {
+            if (!(Test-Path $test)) { throw "Required V15 gate missing: $test" }
+            Write-Host "Running $test"
+            python $test
+            if ($LASTEXITCODE -ne 0) { throw "V15 gate failed: $test" }
+          }
 
       - name: Preserve U3 central V15 application context
         shell: pwsh
@@ -98,6 +157,8 @@ jobs:
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
           if (!(Test-Path dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip)) { throw 'Packaged M18 authority runtime missing' }
+          $packagedHash = (Get-FileHash -Algorithm SHA256 dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip).Hash.ToLowerInvariant()
+          if ($packagedHash -ne $env:M18_RUNTIME_SHA256) { throw "Packaged M18 SHA mismatch: $packagedHash" }
           Get-Item dist\CWS_Convertor\CWS_Convertor.exe | Select-Object Name,Length,LastWriteTime | ConvertTo-Json | Out-File build\u4-exe.json
 
       - name: Packaged EXE self-test and GUI smoke
@@ -145,6 +206,7 @@ jobs:
             "$($h.Hash.ToLower())  $($_.Name)"
           } | Out-File release\SHA256SUMS.txt -Encoding ascii
           Copy-Item build\u4-*.json release\ -ErrorAction SilentlyContinue
+          Copy-Item build\authority_evidence\* release\
 
       - name: Upload U4 Windows EXE release
         uses: actions/upload-artifact@v4
