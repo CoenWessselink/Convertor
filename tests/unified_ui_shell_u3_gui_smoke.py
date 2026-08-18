@@ -23,8 +23,13 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
     def test_default_shell_uses_one_context_for_viewer_scribing_bom_and_export(self) -> None:
         QtCore, _QtGui, QtWidgets = require_qt()
         from cws_convertor.ui_qt import CWSMainWindow, U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN
+        from cws_convertor.ui_qt.unified_shell import CWSMainWindow as U3MainWindow
 
-        self.assertTrue(CWSMainWindow.__module__.endswith("unified_shell"))
+        # U4 is allowed to layer a production-workflow shell on top of the U3
+        # central context.  What matters for this regression is that the public
+        # shell still inherits that one canonical U3 application context.
+        self.assertTrue(issubclass(CWSMainWindow, U3MainWindow))
+        self.assertIn(CWSMainWindow.__module__.rsplit(".", 1)[-1], {"unified_shell", "u4_shell"})
         application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         application.setApplicationName("CWS Convertor U3 smoke")
 
