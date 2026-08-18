@@ -1,0 +1,49 @@
+name: CWS Agent Foundation Source Snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/part-first-foundation-build-01
+    paths:
+      - '.github/workflows/agent-foundation-source-snapshot.yml'
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-v2
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact branch source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Record exact source identity
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force snapshot | Out-Null
+          git rev-parse HEAD | Out-File snapshot\SOURCE_COMMIT.txt -Encoding ascii
+          git status --short | Out-File snapshot\WORKTREE_STATUS.txt -Encoding utf8
+
+      - name: Create clean source archive
+        shell: pwsh
+        run: |
+          $stage = Join-Path $env:RUNNER_TEMP 'cws-foundation-source'
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          git archive --format=zip --output (Join-Path $stage 'CWS_Convertor_foundation_source.zip') HEAD
+          Copy-Item snapshot\SOURCE_COMMIT.txt $stage\SOURCE_COMMIT.txt
+          Copy-Item snapshot\WORKTREE_STATUS.txt $stage\WORKTREE_STATUS.txt
+
+      - name: Upload exact source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_Foundation_Source_${{ github.sha }}
+          path: ${{ runner.temp }}\cws-foundation-source\*
+          if-no-files-found: error
+          retention-days: 7
