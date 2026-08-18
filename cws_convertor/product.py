@@ -1,28 +1,24 @@
-"""Central SteelConverter identity and compatibility constants.
+"""Central CWS Convertor identity and compatibility constants.
 
-This module is the only source of truth for visible names, package names and
-version numbers.  Legacy payload markers intentionally stay unchanged so that
-v0.4/v0.5 IFC and Trusted PDF files, installed shortcuts and automation remain
-readable during the product-name migration.
+This module is the only source of truth for visible product names, package names
+and versions. Legacy payload markers intentionally remain stable so historical
+projects, trusted PDFs, automation and file associations continue to open while
+the unified product presents one consistent CWS Convertor identity.
 """
 from __future__ import annotations
 
-APP_NAME = "SteelConverter"
+APP_NAME = "CWS Convertor"
 APP_SHORT_NAME = APP_NAME
-# Compatibility identifiers are intentionally not renamed in place. Existing
-# projects, scripts, upgrades and file associations continue to resolve them.
-LEGACY_APP_NAME = "CWS Convertor"
+# Compatibility identifiers are deliberately not renamed in stored payloads.
+LEGACY_APP_NAME = "SteelConverter"
 APP_SLUG = "CWS_Convertor"
 APP_ID = "nl.cws.convertor"
-# Unified Viewer V15 + Convertor + Scribing integration line.  Project Model
-# 2.25 is the first schema that can losslessly ingest both the GitHub 2.5 line
-# and the frozen Scribing M18 2.24 authority line.
+# Unified Viewer V15 + Convertor + Scribing integration line. Project Model
+# 2.25 losslessly ingests both the GitHub 2.5 line and frozen M18 2.24 authority.
 APP_VERSION = "0.9.0-alpha-dev"
 APP_VERSION_NUMERIC = "0.9.0.0"
 APP_PUBLISHER = "CWS"
-APP_DESCRIPTION = (
-    "Gevalideerde staalmodel-, productie- en conversieomgeving"
-)
+APP_DESCRIPTION = "Gevalideerde staalmodel-, productie- en conversieomgeving"
 
 CLI_EXE_NAME = "CWS_Convertor_CLI.exe"
 GUI_EXE_NAME = "CWS_Convertor.exe"
