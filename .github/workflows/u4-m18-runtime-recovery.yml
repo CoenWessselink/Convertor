@@ -1,0 +1,70 @@
+name: CWS U4 M18 Exact Runtime Recovery
+
+on:
+  push:
+    branches:
+      - feature/u4-restore-u3-authority
+    paths:
+      - "tools/recovery/recover_m18_runtime.py"
+      - ".github/workflows/u4-m18-runtime-recovery.yml"
+      - ".github/recovery/m18-runtime-recovery-trigger.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cws-u4-m18-runtime-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    name: Search Git history and Actions artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Compile recovery scanner
+        run: python -m py_compile tools/recovery/recover_m18_runtime.py
+
+      - name: Recover checksum-exact M18 runtime
+        id: recovery
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python tools/recovery/recover_m18_runtime.py \
+            --output recovery-output \
+            --max-artifact-bytes 1500000000
+
+      - name: Publish recovery report to workflow summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f recovery-output/recovery_report.md ]]; then
+            cat recovery-output/recovery_report.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "# CWS M18 runtime recovery" >> "$GITHUB_STEP_SUMMARY"
+            echo "Recovery report was not produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload recovery evidence and exact runtime when found
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: u4-m18-exact-runtime-recovery-${{ github.run_number }}
+          path: recovery-output/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
