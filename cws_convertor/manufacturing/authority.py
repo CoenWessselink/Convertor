@@ -31,9 +31,11 @@ M18_RUNTIME_ARCHIVE = "m18_authority_runtime.zip"
 M18_RUNTIME_PAYLOAD_DIR = "m18_payload"
 M18_RUNTIME_PAYLOAD_STEM = "m18_authority_runtime.b64"
 M18_RUNTIME_PAYLOAD_COUNT = 11
-# SHA-256 of the normalized, concatenated Base64 payload text.
-M18_RUNTIME_PAYLOAD_SHA256 = "a0919672e47eb4c82ce93068cc1587a949a24faca7818bf3b1c66b5f887e6572"
-# SHA-256 of the original decoded/frozen M18 ZIP bytes.
+# SHA-256 of the normalized, concatenated Base64 payload text as verified by the
+# Windows unified CI runner for the repository chunk set.
+M18_RUNTIME_PAYLOAD_SHA256 = "f05acd67c0264fa15dee06de0fcf0074aa750597e56dbf558c38e41f2ad1e401"
+# SHA-256 of the original decoded/frozen M18 ZIP bytes.  This authority identity
+# is never relaxed to make a damaged payload pass.
 M18_RUNTIME_SHA256 = "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
 M18_ORIGIN_VERSION = "0.8.30-beta-dev"
 M18_ORIGIN_COMMIT = "b04b1c203583295e8c5ed018d75de68b2319c839"
