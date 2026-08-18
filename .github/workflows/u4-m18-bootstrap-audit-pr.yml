@@ -1,0 +1,96 @@
+name: U4 M18 bootstrap audit PR
+
+on:
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Audit expected canonical Git blobs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --all --tags --prune
+          cat > "$RUNNER_TEMP/expected.txt" <<'EOF'
+          001 4021d4e43a6ceee21c959c9123dc634581c164af 16000
+          002 9c219047ae5a34393f529e812e90d714ff37f047 8000
+          003 fb4358bdad1ca8f1da78de3ae87440d1bfbaeb46 8000
+          004 5c5b093dc68b8f74719eb73ca1f7f07c1f9a3422 8000
+          005 7ec41a26aa2b5aa623e4bc5e0b0206687d7fedc8 8000
+          006 7132049bd418941f34bf40071dafbb54590158b0 8000
+          007 2ea12272e8564f134bbb22c3e9351df82dcd9d1f 8000
+          008 5da789652693a41d2096cb1a6425afa7994b49b5 8000
+          009 bdd1ee5878a23f98947af1f77fdcf0bf1d2d1c8e 8000
+          010 12f6b1020cd5641e973a08a886f4123450bcd13f 8000
+          011 164d2469debf46e00e75d35f10e5cbb126578e0d 8000
+          012 7e4925559ec60c4c811adf9e7edf73f60251973b 8000
+          013 9516353e2e3c46671639a860ed76aced6b476b78 8000
+          014 5cf95617a7c8905371a1ee8fdac627d7fbf62153 8000
+          015 8ef00cbf52b492db253ba453b02b1e7a11f5058a 8000
+          016 e8a74625f098e4470981ebdd73182422e8567212 8000
+          017 04ada1db42d84184de1ec17bec0418e31468cbae 8000
+          018 7b2921fc6bbe0ab3c96478ec1a8b577017ace98e 8000
+          019 6c30bae699982648718371361c82785f3bf02264 8000
+          020 548b5042b9900bdf618d05f97e1c34f0760ae4c9 8000
+          021 a2b87c5a9035eaf8f27ba7f27af1a03efa6a91fa 8000
+          022 e68c89a46222645e260299e91e23780819c9de9d 8000
+          023 5bd3ac216d880fbd86bc19023f4a768e804a0ecd 8000
+          024 338c865ac3fca61055bb7b3f31951fc55139d21b 8000
+          025 36ada82794809cefcef13ce31ff987496f6dcc84 8000
+          026 30245f012f720a34f583fcc16568ee19fc9010a6 8000
+          027 be17ec4b2e5481afef46858e0a3832f78e5108a0 8000
+          028 e8f7eab8041828b2954a0e97fc6f0647e52c5425 8000
+          029 06fd625eba0398c229ea347240e272b9eea89f21 8000
+          030 65ec0c5a46bf9c8e260098af298a2c9690d651a0 8000
+          031 0eccdd563bd2da73ddde9986abb426043a1a062d 8000
+          032 4554a2b563ec56364f43a22c7bb07590dde3013b 8000
+          033 94b37434297f1dee95ce1195b3461cf79131e996 8000
+          034 4ed2fcd3cbd90c32c7ed32cefe99e6b36ba07164 8000
+          035 bcbaa88a8d5d5e801769674d8a12c23534c1a781 8000
+          036 d2ca87990a8bf0bfa847b94cb413b3facabda46b 8000
+          037 cf9c44ca48f22ba2767a1618a10309c7c97fec4d 8000
+          038 b892c246132486b0367eebb128729ee007bd5685 7204
+          EOF
+          missing=0
+          : > "$RUNNER_TEMP/canonical.b64"
+          while read -r idx oid sz; do
+            if git cat-file -e "$oid^{blob}" 2>/dev/null; then
+              actual="$(git cat-file -s "$oid")"
+              if [ "$actual" = "$sz" ]; then
+                echo "FOUND $idx $oid $actual"
+                git cat-file blob "$oid" >> "$RUNNER_TEMP/canonical.b64"
+              else
+                echo "BADSIZE $idx $oid expected=$sz actual=$actual"
+                missing=1
+              fi
+            else
+              echo "MISSING $idx $oid"
+              missing=1
+            fi
+          done < "$RUNNER_TEMP/expected.txt"
+          if [ "$missing" -ne 0 ]; then exit 2; fi
+          python - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, io, os, zipfile
+          p=Path(os.environ['RUNNER_TEMP'])/'canonical.b64'
+          payload=p.read_bytes()
+          assert len(payload)==311204, len(payload)
+          assert hashlib.sha256(payload).hexdigest()=='a0919bab74740db04e25b3f2782abb8427fba1a84f06e3b6e3d849b03b3a1c8b'
+          runtime=base64.b64decode(payload,validate=True)
+          assert len(runtime)==233402, len(runtime)
+          assert hashlib.sha256(runtime).hexdigest()=='62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          with zipfile.ZipFile(io.BytesIO(runtime)) as z:
+              assert z.testzip() is None
+              assert 'cws_m18_authority/__init__.py' in z.namelist()
+              print('CANONICAL M18 VERIFIED', len(z.namelist()))
+          PY
