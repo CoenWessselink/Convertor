@@ -1,0 +1,243 @@
+name: CWS U4 Self-Reporting Tested Windows EXE
+
+on:
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+  push:
+    branches:
+      - feature/u4-restore-u3-authority
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+  CWS_HEADLESS_GUI_SMOKE: "1"
+  CWS_REQUIRE_VIEWER_GUI: "1"
+  CWS_REQUIRE_IFCOPENSHELL: "1"
+  CWS_M18_FAILCLOSED_ALPHA: "1"
+
+jobs:
+  build-test:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repaired U4
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          architecture: x64
+          cache: pip
+
+      - name: Install locked build dependencies
+        id: deps
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\u4-selfreport | Out-Null
+          python -m pip install --upgrade pip 2>&1 | Tee-Object validation\u4-selfreport\deps.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r requirements-build.lock.txt 2>&1 | Tee-Object -Append validation\u4-selfreport\deps.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check 2>&1 | Tee-Object -Append validation\u4-selfreport\deps.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('native imports OK')" 2>&1 | Tee-Object -Append validation\u4-selfreport\deps.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Compile + U0/U1 + fail-closed M18 proof
+        id: baseline
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py 2>&1 | Tee-Object validation\u4-selfreport\baseline.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python validation/unified/validate_u0_baseline.py 2>&1 | Tee-Object -Append validation\u4-selfreport\baseline.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/unified_project_schema_u1_smoke.py 2>&1 | Tee-Object -Append validation\u4-selfreport\baseline.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, verify_m18_runtime_archive
+          expected='62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          assert M18_RUNTIME_SHA256 == expected
+          try:
+              actual=verify_m18_runtime_archive()
+          except RuntimeError as exc:
+              assert expected in str(exc), str(exc)
+              print('M18 status: BLOCKED_FAIL_CLOSED_PENDING_EXACT_DONOR_REPAIR')
+              print(str(exc))
+          else:
+              assert actual == expected
+              print('M18 status: VERIFIED', actual)
+          print('machine_observed_by_cws=false')
+          print('deployment_transport_authorized=false')
+          print('direct_machine_transfer=false')
+          print('machine_transfer.allowed=false')
+          '@ | Set-Content -Encoding utf8NoBOM "$env:RUNNER_TEMP\m18_failclosed.py"
+          python "$env:RUNNER_TEMP\m18_failclosed.py" 2>&1 | Tee-Object -Append validation\u4-selfreport\baseline.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Source application self-test
+        id: source_test
+        shell: pwsh
+        run: |
+          python CWS_Convertor_App.py --self-test 2>&1 | Tee-Object validation\u4-selfreport\source-self-test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build CWS Convertor EXE
+        id: pyinstaller
+        shell: pwsh
+        run: |
+          python -m PyInstaller --clean --noconfirm CWS_Convertor.spec 2>&1 | Tee-Object validation\u4-selfreport\pyinstaller.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $cli = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
+          if (-not $app) { throw 'CWS_Convertor.exe missing after PyInstaller' }
+          if (-not $cli) { throw 'CWS_Convertor_CLI.exe missing after PyInstaller' }
+          Write-Host "APP=$($app.FullName) SIZE=$($app.Length)" | Tee-Object -Append validation\u4-selfreport\pyinstaller.log
+          Write-Host "CLI=$($cli.FullName) SIZE=$($cli.Length)" | Tee-Object -Append validation\u4-selfreport\pyinstaller.log
+
+      - name: Packaged CWS Convertor EXE self-test
+        id: packaged_test
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          & $app.FullName --self-test 2>&1 | Tee-Object validation\u4-selfreport\packaged-self-test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build portable ZIP and Setup EXE
+        id: installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $appDir = $app.Directory.FullName
+          Compress-Archive -Path (Join-Path $appDir '*') -DestinationPath 'release/CWS_Convertor_0.9.0-alpha-dev_U4_FAILCLOSED_Windows_x64_PORTABLE.zip' -Force
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress 2>&1 | Tee-Object validation\u4-selfreport\installer.log }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe unavailable' }
+          $iss = Join-Path $env:RUNNER_TEMP 'CWS_Convertor_U4_FAILCLOSED.iss'
+          @"
+          [Setup]
+          AppId={{72C1888D-0646-4DAF-A8E6-C5A20C3B1860}}
+          AppName=CWS Convertor U4 Fail-Closed Alpha
+          AppVersion=0.9.0-alpha-dev
+          AppPublisher=CWS
+          DefaultDirName={autopf}\CWS Convertor U4 Fail-Closed Alpha
+          DefaultGroupName=CWS Convertor
+          OutputDir=$PWD\release
+          OutputBaseFilename=CWS_Convertor_U4_FAILCLOSED_Setup_0.9.0-alpha-dev_x64
+          Compression=lzma2/max
+          SolidCompression=yes
+          ArchitecturesAllowed=x64compatible
+          ArchitecturesInstallIn64BitMode=x64compatible
+          Uninstallable=yes
+          PrivilegesRequired=lowest
+          [Files]
+          Source: "$appDir\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+          [Icons]
+          Name: "{group}\CWS Convertor"; Filename: "{app}\CWS_Convertor.exe"
+          "@ | Set-Content -Encoding utf8NoBOM $iss
+          & $iscc $iss 2>&1 | Tee-Object -Append validation\u4-selfreport\installer.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_U4_FAILCLOSED_Setup_*_x64.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'Setup EXE missing' }
+          Write-Host "SETUP=$($setup.FullName) SIZE=$($setup.Length)" | Tee-Object -Append validation\u4-selfreport\installer.log
+
+      - name: Silent install and installed EXE self-test
+        id: installed_test
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_U4_FAILCLOSED_Setup_*_x64.exe' | Select-Object -First 1
+          $installDir = Join-Path $env:RUNNER_TEMP 'CWS_Convertor_U4_FAILCLOSED_Installed'
+          & $setup.FullName /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installDir" 2>&1 | Tee-Object validation\u4-selfreport\installed-self-test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installed = Get-ChildItem $installDir -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          if (-not $installed) { throw 'Installed CWS_Convertor.exe missing' }
+          & $installed.FullName --self-test 2>&1 | Tee-Object -Append validation\u4-selfreport\installed-self-test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host 'INSTALLED EXE SELF-TEST PASSED' | Tee-Object -Append validation\u4-selfreport\installed-self-test.log
+
+      - name: Prepare release payload
+        id: release_payload
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $cli = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
+          Copy-Item $app.FullName release\CWS_Convertor.exe -Force
+          Copy-Item $cli.FullName release\CWS_Convertor_CLI.exe -Force
+          $portable = Get-Item 'release/CWS_Convertor_0.9.0-alpha-dev_U4_FAILCLOSED_Windows_x64_PORTABLE.zip'
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_U4_FAILCLOSED_Setup_*_x64.exe' | Select-Object -First 1
+          $lines = foreach ($file in @((Get-Item release\CWS_Convertor.exe),(Get-Item release\CWS_Convertor_CLI.exe),$portable,$setup)) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content -Encoding ascii release\SHA256SUMS.txt
+          @'
+          BUILD_STATUS=TESTED_FAIL_CLOSED_ALPHA
+          M18_FROZEN_RUNTIME=BLOCKED_PENDING_EXACT_DONOR_REPAIR
+          MACHINE_OBSERVED_BY_CWS=false
+          DEPLOYMENT_TRANSPORT_AUTHORIZED=false
+          DIRECT_MACHINE_TRANSFER=false
+          MACHINE_TRANSFER_ALLOWED=false
+          '@ | Set-Content -Encoding ascii release\U4_BUILD_STATUS.txt
+          Get-Content release\SHA256SUMS.txt
+
+      - name: Upload tested Windows artifact
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_U4_FAILCLOSED_TESTED_Windows_x64
+          path: |
+            release/CWS_Convertor.exe
+            release/CWS_Convertor_CLI.exe
+            release/CWS_Convertor_0.9.0-alpha-dev_U4_FAILCLOSED_Windows_x64_PORTABLE.zip
+            release/CWS_Convertor_U4_FAILCLOSED_Setup_0.9.0-alpha-dev_x64.exe
+            release/SHA256SUMS.txt
+            release/U4_BUILD_STATUS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish known tested prerelease
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'u4-failclosed-alpha-tested'
+          gh release view $tag --repo '${{ github.repository }}' *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag release\CWS_Convertor.exe release\CWS_Convertor_CLI.exe release\CWS_Convertor_0.9.0-alpha-dev_U4_FAILCLOSED_Windows_x64_PORTABLE.zip release\CWS_Convertor_U4_FAILCLOSED_Setup_0.9.0-alpha-dev_x64.exe release\SHA256SUMS.txt release\U4_BUILD_STATUS.txt --clobber --repo '${{ github.repository }}'
+          } else {
+            gh release create $tag release\CWS_Convertor.exe release\CWS_Convertor_CLI.exe release\CWS_Convertor_0.9.0-alpha-dev_U4_FAILCLOSED_Windows_x64_PORTABLE.zip release\CWS_Convertor_U4_FAILCLOSED_Setup_0.9.0-alpha-dev_x64.exe release\SHA256SUMS.txt release\U4_BUILD_STATUS.txt --target '${{ github.event.pull_request.head.sha || github.sha }}' --title 'CWS Convertor U4 tested fail-closed Windows alpha' --notes 'Windows x64 alpha. CWS Convertor.exe, CLI, portable and installer were built and both packaged and installed EXE self-tests passed. Frozen M18 donor remains explicitly blocked pending exact payload repair; all machine/transport safety flags remain false.' --prerelease --repo '${{ github.repository }}'
+          }
+
+      - name: Report failure to PR 5
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $body = @()
+          $body += '### U4 self-reporting EXE build FAILED'
+          $body += ''
+          $body += "Commit: $env:GITHUB_SHA"
+          $body += "Run: $env:GITHUB_RUN_ID"
+          $body += ''
+          foreach ($file in Get-ChildItem validation\u4-selfreport -File -ErrorAction SilentlyContinue) {
+            $body += "#### $($file.Name)"
+            $body += '```text'
+            $tail = Get-Content $file.FullName -Tail 80 -ErrorAction SilentlyContinue
+            $body += $tail
+            $body += '```'
+          }
+          $text = ($body -join "`n")
+          if ($text.Length -gt 60000) { $text = $text.Substring($text.Length-60000) }
+          $tmp = Join-Path $env:RUNNER_TEMP 'u4_failure_comment.md'
+          $text | Set-Content -Encoding utf8NoBOM $tmp
+          gh pr comment 5 --repo '${{ github.repository }}' --body-file $tmp
