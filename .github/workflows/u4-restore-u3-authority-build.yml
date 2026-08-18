@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/u4-restore-u3-authority
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-exe
   workflow_dispatch:
 
 permissions:
