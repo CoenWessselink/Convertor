@@ -9,6 +9,7 @@ on:
     paths:
       - 'cws_convertor/integration/**'
       - 'cws_convertor/ui_qt/**'
+      - 'cws_convertor/manufacturing/**'
       - 'cws_viewer/**'
       - 'tests/unified_ui_context_u3_smoke.py'
       - 'tests/unified_ui_shell_u3_gui_smoke.py'
@@ -23,6 +24,7 @@ on:
     paths:
       - 'cws_convertor/integration/**'
       - 'cws_convertor/ui_qt/**'
+      - 'cws_convertor/manufacturing/**'
       - 'cws_viewer/**'
       - 'tests/unified_ui_context_u3_smoke.py'
       - 'tests/unified_ui_shell_u3_gui_smoke.py'
@@ -62,10 +64,10 @@ jobs:
           python -m pip install cryptography
           python -m pip check
 
-      - name: Compile U3 application context and shell
+      - name: Compile U3 application context, shell and U2 authority bridge
         shell: pwsh
         run: |
-          python -m compileall -q cws_convertor/integration cws_convertor/ui_qt tests/unified_ui_context_u3_smoke.py tests/unified_ui_shell_u3_gui_smoke.py
+          python -m compileall -q cws_convertor/integration cws_convertor/ui_qt cws_convertor/manufacturing/authority.py tests/unified_ui_context_u3_smoke.py tests/unified_ui_shell_u3_gui_smoke.py
           if ($LASTEXITCODE -ne 0) { throw 'U3 compileall failed' }
 
       - name: Preserve U0 baseline
