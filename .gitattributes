@@ -1,0 +1,21 @@
+# Keep binary release, runtime and evidence artifacts byte-exact on every OS.
+*.zip binary
+*.exe binary
+*.dll binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ifc binary
+*.step binary
+*.stp binary
+*.tsep binary
+
+# Text files use LF in the repository; Git may present platform-native endings
+# only where that cannot affect hashes or embedded runtime payloads.
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.txt text eol=lf
