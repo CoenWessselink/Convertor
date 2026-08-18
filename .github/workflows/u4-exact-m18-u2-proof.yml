@@ -1,0 +1,99 @@
+name: U4 exact M18 persistent U0-U2 proof
+
+on:
+  push:
+    branches:
+      - agent/u4-exact-m18-bootstrap
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  prove-and-record-u0-u2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact-runtime branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/u4-exact-m18-bootstrap
+          persist-credentials: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install authority verification dependency
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cryptography==46.0.4
+
+      - name: Compile exact-runtime integration
+        run: |
+          python -m compileall -q cws_convertor/project cws_convertor/manufacturing tests/unified_project_schema_u1_smoke.py tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Verify frozen runtime bytes and ZIP structure
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import zipfile
+          path = Path('cws_convertor/manufacturing/m18_authority_runtime.zip')
+          raw = path.read_bytes()
+          expected = '62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          assert len(raw) == 233402, len(raw)
+          assert hashlib.sha256(raw).hexdigest() == expected
+          with zipfile.ZipFile(path) as archive:
+              assert archive.testzip() is None
+              names = archive.namelist()
+              assert 'cws_m18_authority/__init__.py' in names
+              assert 'cws_m18_authority/release_gate.py' in names
+              assert 'cws_m18_authority/deployment_assurance.py' in names
+          PY
+
+      - name: Preserve U0 baseline
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Prove U2 Manufacturing and Scribing M1-M18
+        run: python tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Write immutable U0-U2 proof marker
+        run: |
+          mkdir -p validation/unified
+          cat > validation/unified/U2_EXACT_RUNTIME_VERIFIED.json <<'JSON'
+          {
+            "format": "CWS_U2_EXACT_RUNTIME_VERIFICATION_V1",
+            "status": "passed",
+            "project_model": "2.25",
+            "viewer_m1_m8": "canonical-current",
+            "authority_m9_m18": "frozen-runtime-exact",
+            "m18_origin_commit": "b04b1c203583295e8c5ed018d75de68b2319c839",
+            "m18_runtime_sha256": "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1",
+            "m18_runtime_size": 233402,
+            "machine_observed_by_cws": false,
+            "deployment_transport_authorized": false,
+            "direct_machine_transfer": false,
+            "machine_transfer_allowed": false
+          }
+          JSON
+
+      - name: Commit proof marker after successful tests
+        run: |
+          git config user.name 'CWS Unified Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add validation/unified/U2_EXACT_RUNTIME_VERIFIED.json
+          if git diff --cached --quiet; then
+            echo 'Proof marker already current.'
+          else
+            git commit -m 'test(unified): record exact M18 U0-U2 proof'
+            git push origin HEAD:agent/u4-exact-m18-bootstrap
+          fi
