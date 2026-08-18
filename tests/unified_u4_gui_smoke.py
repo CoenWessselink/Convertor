@@ -3,10 +3,15 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+import sys
 import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("CWS_HEADLESS_GUI_SMOKE", "1")
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.integration.selftest import create_synthetic_integration_project
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
