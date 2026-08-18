@@ -1,6 +1,13 @@
 name: CWS U4 M18 Exact Runtime Recovery
 
 on:
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+    paths:
+      - "tools/recovery/recover_m18_runtime.py"
+      - ".github/workflows/u4-m18-runtime-recovery.yml"
+      - ".github/recovery/m18-runtime-recovery-trigger.txt"
   push:
     branches:
       - feature/u4-restore-u3-authority
