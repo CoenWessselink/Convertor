@@ -7,6 +7,9 @@ on:
       - agent/part-first-foundation-build-01
     paths:
       - '.github/workflows/agent-foundation-source-snapshot.yml'
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-v2
 
 permissions:
   contents: read
