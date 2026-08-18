@@ -1,0 +1,402 @@
+name: U4 M18 comment bootstrap recovery
+
+on:
+  push:
+    branches:
+      - feature/u4-m18-comment-bootstrap-recovery
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+env:
+  TARGET_SHA256: 62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1
+  TARGET_SIZE: "233402"
+
+jobs:
+  recover:
+    name: recover-exact-m18-runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch complete PR 4 comment transport
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p recovery
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/issues/4/comments?per_page=100" \
+            > recovery/comments.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          comments = json.loads(Path("recovery/comments.json").read_text(encoding="utf-8"))
+          print(f"Fetched {len(comments)} comments")
+          PY
+
+      - name: Parse, verify and reconstruct bootstrap candidates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import base64
+          import bz2
+          import gzip
+          import hashlib
+          import itertools
+          import json
+          import lzma
+          import re
+          import string
+          import tarfile
+          import zlib
+          import zipfile
+          from io import BytesIO
+          from pathlib import Path
+          from typing import Any
+
+          ROOT = Path("recovery")
+          TARGET = "${{ env.TARGET_SHA256 }}"
+          TARGET_SIZE = int("${{ env.TARGET_SIZE }}")
+          HEADER = re.compile(
+              r"^M18_BOOTSTRAP_V1\s+part=(\d+)/(\d+)\s+sha256=([0-9a-fA-F]{64})\n(.*)\Z",
+              re.DOTALL,
+          )
+          B64_DATA = set((string.ascii_letters + string.digits + "+/").encode("ascii"))
+          B64_ALL = B64_DATA | {ord("=")}
+
+          comments = json.loads((ROOT / "comments.json").read_text(encoding="utf-8"))
+          parts: dict[int, dict[str, Any]] = {}
+          for comment in comments:
+              body = str(comment.get("body") or "").replace("\r\n", "\n").replace("\r", "\n")
+              match = HEADER.match(body)
+              if not match:
+                  continue
+              index = int(match.group(1))
+              total = int(match.group(2))
+              declared = match.group(3).lower()
+              payload_raw = match.group(4)
+              payload_stripped = payload_raw.strip()
+              payload_clean = b"".join(payload_raw.encode("utf-8").split())
+              if index in parts:
+                  raise SystemExit(f"Duplicate bootstrap part {index}")
+              parts[index] = {
+                  "index": index,
+                  "total": total,
+                  "declared_sha256": declared,
+                  "comment_id": comment.get("id"),
+                  "comment_url": comment.get("html_url"),
+                  "payload_raw": payload_raw,
+                  "payload_stripped": payload_stripped,
+                  "payload_clean": payload_clean,
+              }
+
+          if not parts:
+              raise SystemExit("No M18_BOOTSTRAP_V1 comments found")
+          totals = {int(item["total"]) for item in parts.values()}
+          if len(totals) != 1:
+              raise SystemExit(f"Inconsistent total counts: {sorted(totals)}")
+          total = totals.pop()
+          expected = list(range(1, total + 1))
+          if sorted(parts) != expected:
+              raise SystemExit(f"Incomplete bootstrap set: expected={expected} observed={sorted(parts)}")
+
+          report: dict[str, Any] = {
+              "schema": "cws-u4-m18-comment-bootstrap-recovery-1.0",
+              "target_sha256": TARGET,
+              "target_size": TARGET_SIZE,
+              "part_count": total,
+              "parts": [],
+              "candidates": [],
+              "matches": [],
+              "embedded_zip_findings": [],
+              "decompression_findings": [],
+          }
+
+          decoded_by_part: dict[int, bytes] = {}
+          for index in expected:
+              item = parts[index]
+              raw_b = item["payload_raw"].encode("utf-8")
+              stripped_b = item["payload_stripped"].encode("utf-8")
+              clean_b = item["payload_clean"]
+              data_only = bytes(value for value in clean_b if value in B64_DATA)
+              allowed_only = bytes(value for value in clean_b if value in B64_ALL)
+              hashes = {
+                  "raw_text": hashlib.sha256(raw_b).hexdigest(),
+                  "stripped_text": hashlib.sha256(stripped_b).hexdigest(),
+                  "clean_text": hashlib.sha256(clean_b).hexdigest(),
+                  "data_only_text": hashlib.sha256(data_only).hexdigest(),
+              }
+              decode_attempts: dict[str, Any] = {}
+              decoded: bytes | None = None
+              for strategy, encoded in (
+                  ("clean-strict", allowed_only),
+                  ("data-only-repadded", data_only + b"=" * ((-len(data_only)) % 4)),
+              ):
+                  try:
+                      candidate = base64.b64decode(encoded, validate=True)
+                      digest = hashlib.sha256(candidate).hexdigest()
+                      decode_attempts[strategy] = {
+                          "ok": True,
+                          "size": len(candidate),
+                          "sha256": digest,
+                          "prefix_hex": candidate[:24].hex(),
+                      }
+                      if decoded is None:
+                          decoded = candidate
+                      if digest == item["declared_sha256"]:
+                          decode_attempts[strategy]["matches_declared"] = True
+                  except Exception as exc:
+                      decode_attempts[strategy] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+              text_match_modes = [name for name, digest in hashes.items() if digest == item["declared_sha256"]]
+              if decoded is not None:
+                  decoded_by_part[index] = decoded
+              (ROOT / f"bootstrap_part_{index:02d}.txt").write_text(item["payload_stripped"] + "\n", encoding="utf-8")
+              if decoded is not None:
+                  (ROOT / f"bootstrap_part_{index:02d}.bin").write_bytes(decoded)
+              report["parts"].append({
+                  "index": index,
+                  "total": total,
+                  "comment_id": item["comment_id"],
+                  "comment_url": item["comment_url"],
+                  "declared_sha256": item["declared_sha256"],
+                  "raw_chars": len(item["payload_raw"]),
+                  "clean_chars": len(clean_b),
+                  "clean_mod4": len(clean_b) % 4,
+                  "invalid_non_whitespace_bytes": sorted({value for value in clean_b if value not in B64_ALL}),
+                  "text_hashes": hashes,
+                  "declared_text_match_modes": text_match_modes,
+                  "decode_attempts": decode_attempts,
+              })
+
+          def register(label: str, data: bytes, metadata: dict[str, Any] | None = None) -> bool:
+              digest = hashlib.sha256(data).hexdigest()
+              item = {
+                  "label": label,
+                  "size": len(data),
+                  "sha256": digest,
+                  "prefix_hex": data[:32].hex(),
+                  "suffix_hex": data[-32:].hex() if data else "",
+              }
+              if metadata:
+                  item.update(metadata)
+              report["candidates"].append(item)
+              exact = digest == TARGET and len(data) == TARGET_SIZE
+              if exact:
+                  report["matches"].append(item)
+                  (ROOT / "m18_authority_runtime.zip").write_bytes(data)
+              return exact
+
+          ordered = [parts[index] for index in expected]
+          joined_raw = "".join(item["payload_raw"] for item in ordered).encode("utf-8")
+          joined_stripped = "".join(item["payload_stripped"] for item in ordered).encode("utf-8")
+          joined_clean = b"".join(item["payload_clean"] for item in ordered)
+          joined_data_only = bytes(value for value in joined_clean if value in B64_DATA)
+          register("joined-raw-text", joined_raw)
+          register("joined-stripped-text", joined_stripped)
+          register("joined-clean-text", joined_clean)
+
+          binary_candidates: list[tuple[str, bytes]] = []
+          for label, encoded in (
+              ("joined-clean-strict", bytes(value for value in joined_clean if value in B64_ALL)),
+              ("joined-data-only-repadded", joined_data_only + b"=" * ((-len(joined_data_only)) % 4)),
+          ):
+              try:
+                  decoded = base64.b64decode(encoded, validate=True)
+                  binary_candidates.append((label, decoded))
+                  register(label, decoded)
+                  (ROOT / f"{label}.bin").write_bytes(decoded)
+              except Exception as exc:
+                  report["candidates"].append({"label": label, "decode_error": f"{type(exc).__name__}: {exc}"})
+
+          if len(decoded_by_part) == total:
+              segmented = b"".join(decoded_by_part[index] for index in expected)
+              binary_candidates.append(("segmented-decoded-ordered", segmented))
+              register("segmented-decoded-ordered", segmented)
+              (ROOT / "segmented-decoded-ordered.bin").write_bytes(segmented)
+
+          # Six segments are small enough to exhaustively test ordering without
+          # weakening the checksum authority. Only the exact target is accepted.
+          if total <= 8:
+              for permutation in itertools.permutations(expected):
+                  if list(permutation) == expected:
+                      continue
+                  perm_label = "-".join(map(str, permutation))
+                  perm_clean = b"".join(parts[index]["payload_clean"] for index in permutation)
+                  perm_data = bytes(value for value in perm_clean if value in B64_DATA)
+                  try:
+                      decoded = base64.b64decode(perm_data + b"=" * ((-len(perm_data)) % 4), validate=True)
+                  except Exception:
+                      decoded = b""
+                  if decoded and hashlib.sha256(decoded).hexdigest() == TARGET and len(decoded) == TARGET_SIZE:
+                      register("permuted-continuous-" + perm_label, decoded, {"permutation": list(permutation)})
+                      binary_candidates.append(("permuted-continuous-" + perm_label, decoded))
+                      break
+                  if len(decoded_by_part) == total:
+                      segmented = b"".join(decoded_by_part[index] for index in permutation)
+                      if hashlib.sha256(segmented).hexdigest() == TARGET and len(segmented) == TARGET_SIZE:
+                          register("permuted-segmented-" + perm_label, segmented, {"permutation": list(permutation)})
+                          binary_candidates.append(("permuted-segmented-" + perm_label, segmented))
+                          break
+
+          seen_binary: set[str] = set()
+          for label, data in list(binary_candidates):
+              digest = hashlib.sha256(data).hexdigest()
+              if digest in seen_binary:
+                  continue
+              seen_binary.add(digest)
+
+              # Search for an embedded complete ZIP beginning. Hash every suffix
+              # start because the End Of Central Directory determines validity.
+              starts: list[int] = []
+              cursor = 0
+              while True:
+                  pos = data.find(b"PK\x03\x04", cursor)
+                  if pos < 0:
+                      break
+                  starts.append(pos)
+                  cursor = pos + 1
+              for pos in starts[:200]:
+                  suffix = data[pos:]
+                  try:
+                      with zipfile.ZipFile(BytesIO(suffix)) as archive:
+                          bad = archive.testzip()
+                          names = archive.namelist()
+                      finding = {
+                          "source": label,
+                          "offset": pos,
+                          "suffix_size": len(suffix),
+                          "suffix_sha256": hashlib.sha256(suffix).hexdigest(),
+                          "entry_count": len(names),
+                          "crc_error": bad,
+                          "first_entries": names[:12],
+                      }
+                      report["embedded_zip_findings"].append(finding)
+                      if finding["suffix_sha256"] == TARGET and len(suffix) == TARGET_SIZE:
+                          register(f"embedded-zip-{label}-{pos}", suffix, finding)
+                  except Exception:
+                      pass
+
+              decompressors = (
+                  ("gzip", gzip.decompress),
+                  ("bz2", bz2.decompress),
+                  ("lzma", lzma.decompress),
+                  ("zlib", zlib.decompress),
+                  ("zlib-raw", lambda value: zlib.decompress(value, -zlib.MAX_WBITS)),
+                  ("zlib-gzip-auto", lambda value: zlib.decompress(value, zlib.MAX_WBITS | 32)),
+              )
+              for method, decoder in decompressors:
+                  try:
+                      output = decoder(data)
+                  except Exception:
+                      continue
+                  finding = {
+                      "source": label,
+                      "method": method,
+                      "size": len(output),
+                      "sha256": hashlib.sha256(output).hexdigest(),
+                      "prefix_hex": output[:32].hex(),
+                  }
+                  report["decompression_findings"].append(finding)
+                  register(f"decompressed-{method}-{label}", output)
+                  (ROOT / f"decompressed-{method}-{label}.bin").write_bytes(output)
+
+              try:
+                  with tarfile.open(fileobj=BytesIO(data), mode="r:*") as archive:
+                      names = archive.getnames()
+                  report["decompression_findings"].append({
+                      "source": label,
+                      "method": "tar",
+                      "entry_count": len(names),
+                      "first_entries": names[:12],
+                  })
+              except Exception:
+                  pass
+
+          # Validate an exact result and materialize canonical text chunks for
+          # the next repair commit. The target checksum remains non-negotiable.
+          result_path = ROOT / "m18_authority_runtime.zip"
+          recovered = result_path.is_file()
+          if recovered:
+              runtime = result_path.read_bytes()
+              if len(runtime) != TARGET_SIZE or hashlib.sha256(runtime).hexdigest() != TARGET:
+                  raise SystemExit("Internal recovery mismatch")
+              with zipfile.ZipFile(BytesIO(runtime)) as archive:
+                  bad = archive.testzip()
+                  names = archive.namelist()
+                  if bad is not None:
+                      raise SystemExit(f"Recovered ZIP CRC error: {bad}")
+                  if "cws_m18_authority/__init__.py" not in names:
+                      raise SystemExit("Recovered ZIP misses cws_m18_authority/__init__.py")
+              encoded = base64.b64encode(runtime).decode("ascii")
+              chunk_size = 16000
+              chunks = [encoded[pos:pos + chunk_size] for pos in range(0, len(encoded), chunk_size)]
+              canonical = ROOT / "canonical_payload"
+              canonical.mkdir(exist_ok=True)
+              for number, chunk in enumerate(chunks, 1):
+                  (canonical / f"m18_authority_runtime.b64.{number:03d}").write_text(chunk + "\n", encoding="ascii")
+              payload = "".join(chunks).encode("ascii")
+              manifest = {
+                  "runtime_sha256": TARGET,
+                  "runtime_size": TARGET_SIZE,
+                  "payload_sha256": hashlib.sha256(payload).hexdigest(),
+                  "payload_chars": len(payload),
+                  "chunk_count": len(chunks),
+                  "chunk_size": chunk_size,
+                  "zip_entries": len(names),
+                  "first_entries": names[:20],
+              }
+              (canonical / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+              report["canonical_payload"] = manifest
+
+          report["status"] = "recovered" if recovered else "not_recovered"
+          (ROOT / "diagnostic.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+          summary = [
+              "# U4 M18 comment-bootstrap recovery",
+              "",
+              f"- Status: **{report['status']}**",
+              f"- Parts: **{total}**",
+              f"- Exact target: `{TARGET}` / `{TARGET_SIZE}` bytes",
+              f"- Candidate records: **{len(report['candidates'])}**",
+              f"- Embedded valid ZIP findings: **{len(report['embedded_zip_findings'])}**",
+              f"- Exact matches: **{len(report['matches'])}**",
+              "",
+              "## Part verification",
+          ]
+          for item in report["parts"]:
+              summary.append(
+                  f"- part {item['index']}/{item['total']}: chars={item['clean_chars']}, "
+                  f"declared text matches={item['declared_text_match_modes'] or 'none'}, "
+                  f"invalid bytes={item['invalid_non_whitespace_bytes']}"
+              )
+          Path("recovery/summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
+          print("\n".join(summary))
+          PY
+
+      - name: Publish diagnostic summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f recovery/summary.md ]; then
+            cat recovery/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload checksum-bound recovery diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: u4-m18-comment-bootstrap-recovery
+          path: recovery/
+          if-no-files-found: error
+          retention-days: 3
