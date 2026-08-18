@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feature/u4-m18-binary-extract
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-exe
 
 permissions:
   contents: read
