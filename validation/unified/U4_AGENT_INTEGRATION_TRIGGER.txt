@@ -1,0 +1,4 @@
+CWS U4 integrated EXE build trigger
+branch=agent/u4-integrated-exe
+purpose=materialize current unified source for exact M18 integration and Windows packaging
+safety=fail-closed
