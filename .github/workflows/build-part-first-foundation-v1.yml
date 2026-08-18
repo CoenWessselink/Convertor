@@ -1,0 +1,120 @@
+name: Build CWS Convertor Part-First Foundation V1
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/part-first-foundation-v1
+    paths:
+      - ".foundation/**"
+      - ".github/workflows/build-part-first-foundation-v1.yml"
+      - "FOUNDATION_START_HERE.md"
+      - "tools/expand_foundation_source.py"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-foundation:
+    runs-on: windows-2022
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout exact branch commit
+        uses: actions/checkout@v4
+
+      - name: Reassemble checksum-verified foundation source
+        shell: pwsh
+        run: |
+          $chunks = Get-ChildItem .foundation\chunk-*.b64 | Sort-Object Name
+          if ($chunks.Count -ne 6) { throw "Expected six source chunks; found $($chunks.Count)" }
+          $encoded = ($chunks | ForEach-Object { Get-Content $_.FullName -Raw }) -join ""
+          $sourceZip = Join-Path $env:RUNNER_TEMP "CWS_Convertor_PartFirst_Foundation_SOURCE.zip"
+          [IO.File]::WriteAllBytes($sourceZip, [Convert]::FromBase64String($encoded))
+          $actual = (Get-FileHash $sourceZip -Algorithm SHA256).Hash.ToLower()
+          $expected = "068514d04f9b5b6ef5fc5ad28ac68e0e5cef99bbed9050c9cbe37c64adb8e37b"
+          if ($actual -ne $expected) { throw "Source checksum mismatch: $actual" }
+          Expand-Archive $sourceZip . -Force
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: "x64"
+          cache: pip
+          cache-dependency-path: requirements-foundation.lock.txt
+
+      - name: Install locked foundation dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-foundation.lock.txt
+          python -m pip install pyinstaller==6.15.0
+
+      - name: Compile and test source contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          python -m compileall -q CWS_Convertor_Foundation.py cws_convertor\foundation tests validation
+          python -m pytest -q tests\test_part_first_foundation.py | Tee-Object build\pytest.txt
+          python CWS_Convertor_Foundation.py --self-test --report build\python-selftest.json
+          python CWS_Convertor_Foundation.py --ui-smoke --report build\python-ui-smoke.json
+
+      - name: Generate and validate control image
+        shell: pwsh
+        run: |
+          python CWS_Convertor_Foundation.py --screenshot build\CWS_Convertor_PartFirst_CONTROL.png --report build\screenshot-run.json
+          python validation\validate_foundation_screenshot.py build\CWS_Convertor_PartFirst_CONTROL.png --report build\screenshot-validation.json --min-width 1400 --min-height 780
+
+      - name: Build real Windows GUI executable
+        shell: pwsh
+        run: |
+          (Get-Content CWS_Convertor_PartFirst.spec -Raw).Replace("console=True", "console=False") | Set-Content CWS_Convertor_PartFirst.spec -Encoding utf8
+          python -m PyInstaller --noconfirm --clean CWS_Convertor_PartFirst.spec
+          if (!(Test-Path dist\CWS_Convertor_PartFirst.exe)) { throw "Windows GUI EXE missing" }
+
+      - name: Run packaged GUI continuity self-test
+        shell: pwsh
+        run: |
+          & dist\CWS_Convertor_PartFirst.exe --self-test --report build\packaged-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw "Packaged GUI self-test failed" }
+          if (!(Test-Path build\packaged-selftest.json)) { throw "Packaged self-test report missing" }
+
+      - name: Assemble evidence delivery
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release\evidence, release\docs | Out-Null
+          Copy-Item dist\CWS_Convertor_PartFirst.exe release\
+          Copy-Item build\*.json release\evidence\
+          Copy-Item build\*.txt release\evidence\ -ErrorAction SilentlyContinue
+          Copy-Item build\CWS_Convertor_PartFirst_CONTROL.png release\evidence\
+          Copy-Item docs\PART_FIRST_FOUNDATION_V1.md release\docs\
+          Copy-Item docs\PART_FIRST_FOUNDATION_CONTRACT.json release\docs\
+          $status = [ordered]@{
+            schema = "cws-part-first-foundation-ci-1.0"
+            product = "CWS Convertor Part-First Foundation"
+            version = "0.9.0-foundation.1"
+            commit = "${{ github.sha }}"
+            branch = "${{ github.ref_name }}"
+            source_checksum_verified = $true
+            python_tests = "passed"
+            ui_smoke = "passed"
+            screenshot_validation = "passed"
+            packaged_gui_selftest = "passed"
+            production_claim = $false
+          }
+          $status | ConvertTo-Json -Depth 5 | Set-Content release\FOUNDATION_CI_STATUS.json -Encoding utf8
+          Get-ChildItem release -Recurse -File | Sort-Object FullName | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.FullName.Substring((Resolve-Path release).Path.Length + 1)
+          } | Set-Content release\SHA256SUMS.txt -Encoding ascii
+          Compress-Archive release\* CWS_Convertor_PartFirst_Foundation_Windows_x64.zip -Force
+
+      - name: Upload Windows EXE and control evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS-Convertor-PartFirst-Foundation-Windows-x64-${{ github.run_number }}
+          path: |
+            release/
+            CWS_Convertor_PartFirst_Foundation_Windows_x64.zip
+          if-no-files-found: error
+          retention-days: 30
