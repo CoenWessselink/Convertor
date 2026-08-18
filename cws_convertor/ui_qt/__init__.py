@@ -1,12 +1,15 @@
-"""Integrated PySide6 desktop shell for CWS Convertor V9.
+"""Integrated PySide6 desktop shell for CWS Convertor.
 
-The package is import-safe when PySide6 is absent; construction of a widget
-requires :func:`cws_viewer.ui_qt.qt_compat.require_qt` to succeed.
+U3 makes the Viewer V15 based unified shell the default desktop entry point.
+The historical V9 ``IntegratedProjectPage`` remains the same widget and the
+package stays import-safe when PySide6 is absent.
 """
-from .main_window import (
+from .main_window import IntegratedProjectPage
+from .unified_shell import (
     CWSMainWindow,
     CwsConvertorMainWindow,
-    IntegratedProjectPage,
+    U3_CONTEXT_PROPERTY,
+    U3_CONTEXT_TOKEN,
     run_qt_application,
 )
 
@@ -14,5 +17,7 @@ __all__ = [
     "CWSMainWindow",
     "CwsConvertorMainWindow",
     "IntegratedProjectPage",
+    "U3_CONTEXT_PROPERTY",
+    "U3_CONTEXT_TOKEN",
     "run_qt_application",
 ]
