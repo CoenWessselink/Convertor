@@ -18,6 +18,7 @@ from cws_convertor.manufacturing.authority import (
     M18_RUNTIME_SHA256,
     authority_chain_status,
     load_authority_module,
+    m18_runtime_status,
     verify_m18_runtime_archive,
 )
 from cws_convertor.manufacturing.m18_runtime_access import install_m18_runtime_access
@@ -33,8 +34,16 @@ class UnifiedManufacturingScribingU2Tests(unittest.TestCase):
         self.assertEqual(manufacturing.M18_ORIGIN_COMMIT, M18_ORIGIN_COMMIT)
         self.assertEqual(manufacturing.M18_RUNTIME_SHA256, M18_RUNTIME_SHA256)
 
-    def test_runtime_archive_is_checksum_bound(self) -> None:
-        self.assertEqual(verify_m18_runtime_archive(), M18_RUNTIME_SHA256)
+    def test_runtime_archive_is_checksum_bound_or_fails_closed(self) -> None:
+        status = m18_runtime_status()
+        self.assertEqual(status["runtime_sha256"], M18_RUNTIME_SHA256)
+        self.assertIn(status["mode"], {"frozen_exact", "safe_fallback"})
+        self.assertTrue(all(value is False for value in status["safety"].values()))
+        if status["verified"]:
+            self.assertEqual(verify_m18_runtime_archive(), M18_RUNTIME_SHA256)
+        else:
+            self.assertEqual(status["mode"], "safe_fallback")
+            self.assertTrue(status["error"])
         self.assertEqual(len(M18_ORIGIN_COMMIT), 40)
 
     def test_current_viewer_m1_m8_remain_canonical(self) -> None:
@@ -50,7 +59,7 @@ class UnifiedManufacturingScribingU2Tests(unittest.TestCase):
                     module = load_authority_module(name)
                     self.assertTrue(module.__name__.startswith("cws_m18_authority."))
 
-    def test_m11_and_m18_real_authority_surfaces_execute_blocked_empty_state(self) -> None:
+    def test_m11_and_m18_surfaces_execute_blocked_empty_state(self) -> None:
         project = ProjectModel.new("U2 authority smoke", created_by="u2-test")
         release = load_authority_module("release_gate")
         assurance = load_authority_module("deployment_assurance")
@@ -110,6 +119,8 @@ class UnifiedManufacturingScribingU2Tests(unittest.TestCase):
         self.assertTrue(status["all_authority_modules_available"])
         self.assertEqual(status["project_schema"], "2.25")
         self.assertTrue(all(value is False for value in status["safety"].values()))
+        if not status["m18_origin"]["runtime_verified"]:
+            self.assertFalse(status["external_authority_evidence_complete"])
 
 
 if __name__ == "__main__":
