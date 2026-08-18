@@ -1,0 +1,168 @@
+name: CWS Unified U4 Production Workflow + Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/unified-u4-production-workflow-v2
+      - feature/unified-v15-scribing-m18
+    paths:
+      - 'cws_convertor/integration/**'
+      - 'cws_convertor/ui_qt/**'
+      - 'cws_convertor/production_export/**'
+      - 'cws_convertor/manufacturing/**'
+      - 'cws_viewer/**'
+      - 'tests/unified_*'
+      - 'CWS_Convertor.spec'
+      - 'CWS_Convertor_App.py'
+      - 'installer/**'
+      - 'validation/unified/U4_**'
+      - 'docs/unified/U4_**'
+      - '.github/workflows/unified-u4-production-release.yml'
+  pull_request:
+    branches:
+      - feature/unified-u3-central-ui
+      - feature/unified-v15-scribing-m18
+
+permissions:
+  contents: read
+
+jobs:
+  u4-production-and-exe:
+    runs-on: windows-2022
+    timeout-minutes: 150
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: 'offscreen'
+      CWS_HEADLESS_GUI_SMOKE: '1'
+      CWS_REQUIRE_VIEWER_GUI: '1'
+      CWS_REQUIRE_IFCOPENSHELL: '1'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install locked build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip install cryptography
+          python -m pip check
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('U4 native dependencies OK')"
+
+      - name: Compile unified U4 source
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor/integration cws_convertor/ui_qt cws_convertor/production_export tests/unified_production_workflow_u4_smoke.py tests/unified_production_workflow_u4_gui_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U4 compileall failed' }
+
+      - name: Preserve U0 baseline
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Preserve U2 Manufacturing Scribing M1-M18
+        run: python tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Preserve U3 single application context
+        run: python tests/unified_ui_context_u3_smoke.py
+
+      - name: Preserve U3 central Viewer GUI
+        run: python tests/unified_ui_shell_u3_gui_smoke.py
+
+      - name: Prove U4 production workflow contract
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\unified-u4 | Out-Null
+          python tests/unified_production_workflow_u4_smoke.py 2>&1 | Tee-Object validation\unified-u4\u4_workflow.txt
+          if ($LASTEXITCODE -ne 0) { throw 'U4 production workflow smoke failed' }
+
+      - name: Prove U4 production GUI binding
+        shell: pwsh
+        run: |
+          python tests/unified_production_workflow_u4_gui_smoke.py 2>&1 | Tee-Object validation\unified-u4\u4_gui.txt
+          if ($LASTEXITCODE -ne 0) { throw 'U4 production GUI smoke failed' }
+
+      - name: Default launcher quick self-test
+        run: python CWS_Convertor_App.py --quick-self-test --report validation\unified-u4\u4_source_selftest.json
+
+      - name: Create packaged integration project
+        run: python CWS_Convertor_App.py --create-smoke-project build\u4-smoke.cwscproj --report validation\unified-u4\u4_create_project.json
+
+      - name: Build PyInstaller Windows application
+        run: pyinstaller --noconfirm --clean CWS_Convertor.spec
+
+      - name: Verify U4 packaged application content
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
+          $payload = Get-ChildItem dist\CWS_Convertor -Recurse -Filter 'm18_authority_runtime.b64.001' | Select-Object -First 1
+          if ($null -eq $payload) { throw 'M18 runtime payload missing from packaged executable' }
+          Get-FileHash dist\CWS_Convertor\CWS_Convertor.exe -Algorithm SHA256 | ConvertTo-Json | Out-File validation\unified-u4\u4_gui_exe_hash.json
+
+      - name: Packaged quick self-test
+        run: dist\CWS_Convertor\CWS_Convertor.exe --quick-self-test --report validation\unified-u4\u4_packaged_selftest.json
+
+      - name: Packaged GUI smoke
+        run: dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report validation\unified-u4\u4_packaged_gui_smoke.json
+
+      - name: Build portable U4 ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_U4_Portable_0.9.0-alpha-dev_x64.zip -CompressionLevel Optimal
+
+      - name: Build U4 installer EXE
+        shell: pwsh
+        run: |
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $iscc)) { throw 'Inno Setup 6 not found' }
+          & $iscc installer\CWS_Convertor.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup build failed' }
+          Copy-Item dist_installer\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe release\CWS_Convertor_U4_Setup_0.9.0-alpha-dev_x64.exe
+
+      - name: Silent install and packaged runtime proof
+        shell: pwsh
+        run: |
+          $installDir = "$env:RUNNER_TEMP\CWS-U4-Installed"
+          $installer = (Resolve-Path release\CWS_Convertor_U4_Setup_0.9.0-alpha-dev_x64.exe)
+          $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',"/DIR=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw 'U4 installer failed' }
+          if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw 'Installed U4 GUI executable missing' }
+          & "$installDir\CWS_Convertor.exe" --quick-self-test --report validation\unified-u4\u4_installed_selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installed U4 self-test failed' }
+
+      - name: Generate release SHA-256 manifest
+        shell: pwsh
+        run: |
+          Get-FileHash release\CWS_Convertor_U4_Setup_0.9.0-alpha-dev_x64.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii
+          Get-FileHash release\CWS_Convertor_U4_Portable_0.9.0-alpha-dev_x64.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([IO.Path]::GetFileName($_.Path))" } | Out-File release\SHA256SUMS.txt -Encoding ascii -Append
+          Copy-Item validation\unified-u4\*.json release\ -ErrorAction SilentlyContinue
+          Copy-Item validation\unified-u4\*.txt release\ -ErrorAction SilentlyContinue
+
+      - name: Upload U4 Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_U4_0.9.0-alpha-dev_Windows_x64
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload U4 validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Unified_U4_Validation_${{ github.run_id }}
+          path: validation/unified-u4/*
+          if-no-files-found: warn
+          retention-days: 30
