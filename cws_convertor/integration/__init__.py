@@ -1,10 +1,10 @@
 """CWS Convertor unified viewer/main-build integration services.
 
-The package deliberately contains no GUI toolkit objects.  It is the single
+The package deliberately contains no GUI toolkit objects. It is the single
 application boundary through which the Qt shell, CLI validation and automated
 tests obtain one canonical project, one viewer scene, one property grid, one
-BOM snapshot and — from U3 onward — one application-wide project/selection
-context.
+BOM snapshot, one application-wide project/selection context and the U4
+production-workflow snapshot.
 """
 from .selftest import (
     IntegrationCheck,
@@ -25,6 +25,15 @@ from .ui_context import (
     UnifiedApplicationContext,
     UnifiedUiContextSnapshot,
 )
+from .production_workflow import (
+    PRODUCTION_FORMATS,
+    REVIEW_FORMATS,
+    U4_SAFETY_FLAGS,
+    U4_WORKFLOW_SCHEMA,
+    ProductionPartStatus,
+    ProductionWorkflowSnapshot,
+    build_production_workflow_snapshot,
+)
 from .workspace import (
     ExactPartOpenResult,
     IdentityAuditReport,
@@ -42,12 +51,19 @@ __all__ = [
     "IntegrationCheck",
     "IntegrationSelfTestReport",
     "IntegratedProjectWorkspace",
+    "PRODUCTION_FORMATS",
     "PdfFeatureHighlightBridge",
+    "ProductionPartStatus",
+    "ProductionWorkflowSnapshot",
+    "REVIEW_FORMATS",
     "U3_CONTEXT_SCHEMA",
     "U3_SAFETY_FLAGS",
+    "U4_SAFETY_FLAGS",
+    "U4_WORKFLOW_SCHEMA",
     "UnifiedApplicationContext",
     "UnifiedUiContextSnapshot",
     "WorkspaceLoadReport",
+    "build_production_workflow_snapshot",
     "create_synthetic_integration_project",
     "run_integration_self_test",
 ]

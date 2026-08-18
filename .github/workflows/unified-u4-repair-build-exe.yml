@@ -1,0 +1,207 @@
+name: CWS Unified U4 M18 Repair + Tested Windows EXE
+
+on:
+  push:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+  CWS_HEADLESS_GUI_SMOKE: "1"
+  CWS_REQUIRE_VIEWER_GUI: "1"
+  CWS_REQUIRE_IFCOPENSHELL: "1"
+
+jobs:
+  repair-build-test:
+    name: verify-m18-build-and-test-exe
+    runs-on: windows-2022
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout U4 branch
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          architecture: x64
+          cache: pip
+
+      - name: Install locked build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip check
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('U4 native imports OK')"
+
+      - name: Verify bundled checksum-exact frozen M18 runtime
+        shell: pwsh
+        run: |
+          python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, verify_m18_runtime_archive; actual=verify_m18_runtime_archive(); assert actual == M18_RUNTIME_SHA256, (actual, M18_RUNTIME_SHA256); print('M18 runtime SHA/ZIP gate PASSED:', actual)"
+
+      - name: Compile unified source
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py cli.py tests
+          if ($LASTEXITCODE -ne 0) { throw 'Unified compile failed' }
+
+      - name: Preserve U0 baseline
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Preserve U2 Manufacturing Scribing M1-M18
+        run: python tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Preserve U3 central Viewer application context
+        shell: pwsh
+        run: |
+          $tests = Get-ChildItem tests -File | Where-Object { $_.Name -match '(?i)u3.*\.py$' }
+          if (-not $tests) { throw 'No U3 tests found' }
+          foreach ($test in $tests) {
+            Write-Host "Running U3 test $($test.Name)"
+            python $test.FullName
+            if ($LASTEXITCODE -ne 0) { throw "U3 test failed: $($test.Name)" }
+          }
+
+      - name: Prove U4 production workflow
+        shell: pwsh
+        run: |
+          $tests = Get-ChildItem tests -File | Where-Object { $_.Name -match '(?i)u4.*\.py$' }
+          if (-not $tests) { throw 'No U4 tests found' }
+          foreach ($test in $tests) {
+            Write-Host "Running U4 test $($test.Name)"
+            python $test.FullName
+            if ($LASTEXITCODE -ne 0) { throw "U4 test failed: $($test.Name)" }
+          }
+
+      - name: Create packaged smoke project
+        run: python CWS_Convertor_App.py --create-smoke-project build\u4-smoke.cwscproj --report build\create-project.json
+
+      - name: Source launcher self-test and GUI smoke
+        shell: pwsh
+        run: |
+          python CWS_Convertor_App.py --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-source-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Source self-test failed' }
+          python CWS_Convertor_App.py --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-source-gui-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'Source GUI smoke failed' }
+
+      - name: Build CWS Convertor EXE
+        shell: pwsh
+        run: |
+          python -m PyInstaller --clean --noconfirm CWS_Convertor.spec
+          if ($LASTEXITCODE -ne 0) { throw 'PyInstaller build failed' }
+
+      - name: Verify EXE files
+        shell: pwsh
+        run: |
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
+          $runtime = 'dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip'
+          if (!(Test-Path $runtime)) { throw 'Packaged M18 authority runtime missing' }
+
+      - name: Packaged EXE self-test and GUI smoke
+        shell: pwsh
+        run: |
+          dist\CWS_Convertor\CWS_Convertor.exe --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-packaged-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
+          dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-packaged-gui-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged GUI smoke failed' }
+
+      - name: Create portable Windows package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Compress-Archive -Path 'dist\CWS_Convertor\*' -DestinationPath 'release\CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip' -Force
+          Copy-Item 'dist\CWS_Convertor\CWS_Convertor.exe' 'release\CWS_Convertor.exe' -Force
+          Copy-Item 'dist\CWS_Convertor\CWS_Convertor_CLI.exe' 'release\CWS_Convertor_CLI.exe' -Force
+
+      - name: Build Setup EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe unavailable' }
+          $appDir = (Resolve-Path 'dist\CWS_Convertor').Path.Replace('\','\\')
+          @"
+          [Setup]
+          AppId={{72C1888D-0646-4DAF-A8E6-C5A20C3B1860}}
+          AppName=CWS Convertor
+          AppVersion=0.9.0-alpha-dev
+          AppPublisher=CWS
+          DefaultDirName={autopf}\CWS Convertor
+          DefaultGroupName=CWS Convertor
+          OutputDir=$PWD\release
+          OutputBaseFilename=CWS_Convertor_Setup_0.9.0-alpha-dev_x64
+          Compression=lzma2/max
+          SolidCompression=yes
+          ArchitecturesAllowed=x64compatible
+          ArchitecturesInstallIn64BitMode=x64compatible
+          Uninstallable=yes
+          PrivilegesRequired=lowest
+
+          [Files]
+          Source: "$appDir\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{group}\CWS Convertor"; Filename: "{app}\CWS_Convertor.exe"
+          Name: "{userdesktop}\CWS Convertor"; Filename: "{app}\CWS_Convertor.exe"; Tasks: desktopicon
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+          "@ | Set-Content -Encoding utf8NoBOM "$env:RUNNER_TEMP\CWS_Convertor_U4.iss"
+          & $iscc "$env:RUNNER_TEMP\CWS_Convertor_U4.iss"
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup build failed' }
+          if (!(Test-Path 'release\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe')) { throw 'Setup EXE missing' }
+
+      - name: Smoke install Setup EXE and test installed application
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Resolve-Path 'release\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe'
+          $installDir = Join-Path $env:RUNNER_TEMP 'CWS_Convertor_Installed'
+          $process = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',("/DIR=$installDir")) -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $installed = Join-Path $installDir 'CWS_Convertor.exe'
+          if (!(Test-Path $installed)) { throw 'Installed CWS_Convertor.exe missing' }
+          & $installed --quick-self-test --project build\u4-smoke.cwscproj --report build\u4-installed-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installed application self-test failed' }
+
+      - name: Generate release checksums
+        shell: pwsh
+        run: |
+          $files = @(
+            Get-Item 'release\CWS_Convertor.exe',
+            Get-Item 'release\CWS_Convertor_CLI.exe',
+            Get-Item 'release\CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip',
+            Get-Item 'release\CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe'
+          )
+          $lines = foreach ($file in $files) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content -Encoding ascii 'release\SHA256SUMS.txt'
+          Get-Content 'release\SHA256SUMS.txt'
+
+      - name: Upload tested U4 Windows release
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_U4_TESTED_Windows_x64
+          path: |
+            release/CWS_Convertor.exe
+            release/CWS_Convertor_CLI.exe
+            release/CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip
+            release/CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe
+            release/SHA256SUMS.txt
+            build/u4-*.json
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,294 @@
+name: CWS U4 Integrated Windows Release
+
+on:
+  push:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: cws-u4-integrated-windows-release
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+  CWS_HEADLESS_GUI_SMOKE: "1"
+  CWS_REQUIRE_VIEWER_GUI: "1"
+  CWS_REQUIRE_IFCOPENSHELL: "1"
+  RELEASE_TAG: u4-integrated-alpha-tested
+
+jobs:
+  build-test-install-publish:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    steps:
+      - name: Checkout exact unified U4 commit
+        uses: actions/checkout@v6
+        with:
+          ref: feature/unified-u4-production-workflow-exe
+          fetch-depth: 0
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+
+      - name: Install locked build dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip check
+          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz, cryptography; print('U4 native imports OK')"
+
+      - name: Verify checksum-exact frozen M18 runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          from pathlib import Path
+          import hashlib
+          import zipfile
+          path = Path('cws_convertor/manufacturing/m18_authority_runtime.zip')
+          raw = path.read_bytes()
+          expected = '62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          assert len(raw) == 233402, len(raw)
+          assert hashlib.sha256(raw).hexdigest() == expected
+          with zipfile.ZipFile(path) as archive:
+              assert archive.testzip() is None
+              names = archive.namelist()
+              assert 'cws_m18_authority/__init__.py' in names
+              assert 'cws_m18_authority/release_gate.py' in names
+              assert 'cws_m18_authority/deployment_assurance.py' in names
+              print({'runtime_sha256': expected, 'runtime_size': len(raw), 'members': len(names)})
+          '@ | python -
+
+      - name: Compile unified source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py CWS_Convertor_CLI.py tests
+
+      - name: Run U0-U4 regression gates
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python validation/unified/validate_u0_baseline.py
+          python tests/unified_project_schema_u1_smoke.py
+          python tests/unified_manufacturing_scribing_u2_smoke.py
+          python tests/unified_ui_context_u3_smoke.py
+          python tests/unified_ui_shell_u3_gui_smoke.py
+          python tests/unified_production_workflow_u4_smoke.py
+          python tests/unified_u4_gui_smoke.py
+
+      - name: Source launcher self-test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python CWS_Convertor_App.py --self-test
+
+      - name: Build CWS Convertor executables
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item -Recurse -Force build, dist -ErrorAction SilentlyContinue
+          python -m PyInstaller --noconfirm --clean CWS_Convertor.spec
+          $app = Get-ChildItem -Path dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          $cli = Get-ChildItem -Path dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
+          if (-not $app) { throw 'CWS_Convertor.exe was not built' }
+          if (-not $cli) { throw 'CWS_Convertor_CLI.exe was not built' }
+          "APP_EXE=$($app.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CLI_EXE=$($cli.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Get-ChildItem -Path dist -Recurse -File | Select-Object FullName, Length
+
+      - name: Packaged EXE self-test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Invoke-CwsSelfTest([string]$Executable) {
+            $process = Start-Process -FilePath $Executable -ArgumentList '--self-test' -PassThru
+            if (-not $process.WaitForExit(180000)) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              throw "Self-test timed out: $Executable"
+            }
+            if ($process.ExitCode -ne 0) {
+              throw "Self-test failed with exit code $($process.ExitCode): $Executable"
+            }
+          }
+          Invoke-CwsSelfTest $env:APP_EXE
+          Invoke-CwsSelfTest $env:CLI_EXE
+
+      - name: Create portable Windows package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force release | Out-Null
+          $portable = Join-Path $PWD 'release/CWS_Convertor_U4_Windows_x64_PORTABLE.zip'
+          Remove-Item $portable -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path 'dist/*' -DestinationPath $portable -CompressionLevel Optimal
+          if (-not (Test-Path $portable)) { throw 'Portable ZIP not created' }
+
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $iscc = @(
+            'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
+            'C:\Program Files\Inno Setup 6\ISCC.exe'
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --yes --no-progress
+            $iscc = @(
+              'C:\Program Files (x86)\Inno Setup 6\ISCC.exe',
+              'C:\Program Files\Inno Setup 6\ISCC.exe'
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $iscc) { throw 'Inno Setup compiler not available' }
+
+          $app = Get-Item $env:APP_EXE
+          $distRoot = (Resolve-Path 'dist').Path
+          $relativeApp = [IO.Path]::GetRelativePath($distRoot, $app.FullName).Replace('/', '\')
+          $iss = @"
+          [Setup]
+          AppId={{D54F694F-6C11-4D62-9E3E-C0810945F58A}
+          AppName=CWS Convertor
+          AppVersion=0.9.0-alpha-dev
+          AppPublisher=CWS
+          DefaultDirName={autopf}\CWS Convertor
+          DefaultGroupName=CWS Convertor
+          UninstallDisplayIcon={app}\$relativeApp
+          OutputDir=$($PWD.Path)\release
+          OutputBaseFilename=CWS_Convertor_U4_Setup_x64
+          Compression=lzma2/ultra64
+          SolidCompression=yes
+          ArchitecturesAllowed=x64compatible
+          ArchitecturesInstallIn64BitMode=x64compatible
+          PrivilegesRequired=lowest
+          WizardStyle=modern
+          DisableProgramGroupPage=yes
+
+          [Files]
+          Source: "$($PWD.Path)\dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{group}\CWS Convertor"; Filename: "{app}\$relativeApp"
+          Name: "{autodesktop}\CWS Convertor"; Filename: "{app}\$relativeApp"; Tasks: desktopicon
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
+
+          [Run]
+          Filename: "{app}\$relativeApp"; Description: "Launch CWS Convertor"; Flags: nowait postinstall skipifsilent
+          "@
+          $issPath = Join-Path $PWD 'build_u4_integrated.iss'
+          Set-Content -Path $issPath -Value $iss -Encoding utf8
+          & $iscc $issPath
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup build failed' }
+          $setup = Get-ChildItem release -File -Filter 'CWS_Convertor_U4_Setup_x64.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'Setup EXE not created' }
+          "SETUP_EXE=$($setup.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Silent install and installed-runtime self-test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installDir = Join-Path $env:RUNNER_TEMP 'CWS_Convertor_U4_Installed'
+          Remove-Item -Recurse -Force $installDir -ErrorAction SilentlyContinue
+          $arguments = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$installDir")
+          $install = Start-Process -FilePath $env:SETUP_EXE -ArgumentList $arguments -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer exit code $($install.ExitCode)" }
+          $installedApp = Get-ChildItem $installDir -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
+          if (-not $installedApp) { throw 'Installed CWS_Convertor.exe not found' }
+          $process = Start-Process -FilePath $installedApp.FullName -ArgumentList '--self-test' -PassThru
+          if (-not $process.WaitForExit(180000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw 'Installed EXE self-test timed out'
+          }
+          if ($process.ExitCode -ne 0) { throw "Installed EXE self-test exit code $($process.ExitCode)" }
+
+      - name: Generate release evidence and checksums
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $status = [ordered]@{
+            format = 'CWS_U4_INTEGRATED_WINDOWS_BUILD_V1'
+            status = 'passed'
+            commit = '${{ github.sha }}'
+            branch = '${{ github.ref_name }}'
+            app_version = '0.9.0-alpha-dev'
+            viewer_version = '1.4.0-v15-preview.2'
+            project_model = '2.25'
+            m18_origin_commit = 'b04b1c203583295e8c5ed018d75de68b2319c839'
+            m18_runtime_sha256 = '62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+            source_tests = 'passed'
+            packaged_self_test = 'passed'
+            portable_package = 'passed'
+            installer_build = 'passed'
+            installed_runtime_self_test = 'passed'
+            machine_observed_by_cws = $false
+            deployment_transport_authorized = $false
+            direct_machine_transfer = $false
+            machine_transfer_allowed = $false
+          }
+          $status | ConvertTo-Json -Depth 5 | Set-Content release/U4_WINDOWS_BUILD_VERIFIED.json -Encoding utf8
+          $lines = foreach ($file in Get-ChildItem release -File | Sort-Object Name) {
+            $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)"
+          }
+          $lines | Set-Content release/SHA256SUMS.txt -Encoding ascii
+          @"
+          # CWS Convertor U4 integrated Windows prerelease
+
+          - Commit: `${{ github.sha }}`
+          - Viewer: V15 / 1.4.0-v15-preview.2
+          - Convertor: 0.9.0-alpha-dev
+          - Canonical Project Model: 2.25
+          - Manufacturing/Scribing: M1-M18
+          - Frozen M18 origin: b04b1c203583295e8c5ed018d75de68b2319c839
+          - Runtime SHA-256: 62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1
+          - Windows source, packaged, portable and installed-runtime checks: passed
+
+          Safety boundary remains closed: no machine observation, deployment transport authorization or direct machine transfer.
+          "@ | Set-Content release/RELEASE_NOTES.md -Encoding utf8
+
+      - name: Upload tested Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS-Convertor-U4-Integrated-Windows-x64
+          path: |
+            release/CWS_Convertor_U4_Windows_x64_PORTABLE.zip
+            release/CWS_Convertor_U4_Setup_x64.exe
+            release/U4_WINDOWS_BUILD_VERIFIED.json
+            release/SHA256SUMS.txt
+            release/RELEASE_NOTES.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish tested GitHub prerelease
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          gh release delete $env:RELEASE_TAG --yes --cleanup-tag 2>$null
+          if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0 }
+          git tag -f $env:RELEASE_TAG $env:GITHUB_SHA
+          git push origin ":refs/tags/$env:RELEASE_TAG" 2>$null
+          if ($LASTEXITCODE -ne 0) { $global:LASTEXITCODE = 0 }
+          git push origin $env:RELEASE_TAG
+          $assets = @(
+            (Resolve-Path 'release/CWS_Convertor_U4_Windows_x64_PORTABLE.zip').Path,
+            (Resolve-Path 'release/CWS_Convertor_U4_Setup_x64.exe').Path,
+            (Resolve-Path 'release/U4_WINDOWS_BUILD_VERIFIED.json').Path,
+            (Resolve-Path 'release/SHA256SUMS.txt').Path
+          )
+          gh release create $env:RELEASE_TAG @assets --prerelease --title 'CWS Convertor U4 Integrated Windows Alpha (tested)' --notes-file release/RELEASE_NOTES.md --target $env:GITHUB_SHA

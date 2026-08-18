@@ -1,0 +1,83 @@
+name: Repair exact M18 text transport
+
+on:
+  push:
+    branches: [feature/unified-u4-production-workflow-exe]
+    paths: ['.github/workflows/repair-exact-m18-transport.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feature/unified-u4-production-workflow-exe
+          fetch-depth: 0
+
+      - name: Fetch immutable Git blob and create text-safe transport
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: python
+        run: |
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+
+          repo = os.environ['GITHUB_REPOSITORY']
+          blob_sha = '0acef19f119bbe19540e19f8e82fb9ac5c97f638'
+          expected = '62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          url = f'https://api.github.com/repos/{repo}/git/blobs/{blob_sha}'
+          request = Request(url, headers={
+              'Authorization': f'Bearer {os.environ["GH_TOKEN"]}',
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+          })
+          with urlopen(request, timeout=60) as response:
+              payload = json.load(response)
+          if payload.get('encoding') != 'base64':
+              raise SystemExit(f'unexpected blob encoding: {payload.get("encoding")}')
+          runtime = base64.b64decode(''.join(str(payload['content']).split()), validate=True)
+          actual = hashlib.sha256(runtime).hexdigest()
+          if actual != expected:
+              raise SystemExit(f'historical runtime SHA mismatch: expected={expected} actual={actual}')
+
+          encoded = base64.b64encode(runtime).decode('ascii')
+          wrapped = '\n'.join(encoded[i:i + 120] for i in range(0, len(encoded), 120)) + '\n'
+          Path('cws_convertor/manufacturing/m18_authority_runtime.b64').write_text(
+              wrapped, encoding='ascii', newline='\n'
+          )
+          manifest = {
+              'schema': 'cws-m18-text-transport-1.0',
+              'origin_commit': 'b04b1c203583295e8c5ed018d75de68b2319c839',
+              'source_blob_sha': blob_sha,
+              'runtime_sha256': expected,
+              'base64_sha256': hashlib.sha256(wrapped.encode('ascii')).hexdigest(),
+              'runtime_bytes': len(runtime),
+          }
+          Path('cws_convertor/manufacturing/m18_authority_runtime.manifest.json').write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8', newline='\n'
+          )
+          print(json.dumps(manifest, indent=2, sort_keys=True))
+
+      - name: Commit repaired text transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'CWS Unified Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add cws_convertor/manufacturing/m18_authority_runtime.b64 \
+                  cws_convertor/manufacturing/m18_authority_runtime.manifest.json
+          if git diff --cached --quiet; then
+            echo 'Exact text transport already current.'
+            exit 0
+          fi
+          git commit -m 'fix(manufacturing): store exact M18 authority as text-safe transport'
+          git push origin HEAD:feature/unified-u4-production-workflow-exe
