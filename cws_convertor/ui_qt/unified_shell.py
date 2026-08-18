@@ -1,9 +1,10 @@
-"""U3 central CWS Convertor Qt shell.
+"""U3/U4 central CWS Convertor Qt shell.
 
-The existing V15/V9 integrated window remains the visual and functional base.
-U3 adds one GUI-toolkit-independent :class:`UnifiedApplicationContext` above it
-and routes all application surfaces through that context.  No project, scene,
-BOM or manufacturing truth is duplicated here.
+The existing Viewer V15/V9 integrated window remains the visual and functional
+base. U3 provides one GUI-toolkit-independent :class:`UnifiedApplicationContext`.
+U4 adds one production-workflow surface over that same context and the existing
+production release engine. No project, scene, BOM, manufacturing truth or
+export engine is duplicated here.
 """
 from __future__ import annotations
 
@@ -21,10 +22,13 @@ from .main_window import CWSMainWindow as _BaseCWSMainWindow
 
 U3_CONTEXT_PROPERTY = "cwsUnifiedApplicationContext"
 U3_CONTEXT_TOKEN = "CWS-U3-SINGLE-PROJECT-SELECTION-CONTEXT"
+U4_WORKFLOW_PROPERTY = "cwsUnifiedProductionWorkflow"
+U4_WORKFLOW_TOKEN = "CWS-U4-PRODUCTION-WORKFLOW"
 
 
 if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
+    from .production_workflow_page import ProductionWorkflowPage
 
     class UnifiedContextStrip(QtWidgets.QFrame):
         """Always-visible project/selection status shared by every tab."""
@@ -94,7 +98,7 @@ if qt_available():
 
 
     class CWSMainWindow(_BaseCWSMainWindow):
-        """Viewer V15 based desktop with one U3 project/selection context."""
+        """Viewer V15 desktop with one U3 context and one U4 production workflow."""
 
         def __init__(self, initial_paths: Iterable[str | Path] = ()) -> None:
             self.application_context = UnifiedApplicationContext(active_surface="start")
@@ -102,6 +106,7 @@ if qt_available():
             self._u3_context_unsubscribe = None
             self._u3_bom_context: Any | None = None
             super().__init__(initial_paths)
+            self._install_u4_production_workflow()
             self._install_u3_context()
             self._u3_ready = True
             self._u3_context_unsubscribe = self.application_context.subscribe(
@@ -114,9 +119,30 @@ if qt_available():
         def context_snapshot(self) -> UnifiedUiContextSnapshot:
             return self.application_context.snapshot
 
+        def _install_u4_production_workflow(self) -> None:
+            self.production_page = ProductionWorkflowPage(self.application_context, self)
+            self.production_page.setProperty(U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN)
+            self.production_page.setProperty(U4_WORKFLOW_PROPERTY, U4_WORKFLOW_TOKEN)
+            index = self.tabs.indexOf(self.export_page)
+            if index < 0:
+                index = self.tabs.count()
+            self.tabs.insertTab(
+                index,
+                self.production_page,
+                self.style().standardIcon(QtWidgets.QStyle.StandardPixmap.SP_DriveHDIcon),
+                "Productie",
+            )
+            production_menu = self.menuBar().addMenu("Productie")
+            production_menu.addAction(
+                "Productieworkflow",
+                lambda: self.tabs.setCurrentWidget(self.production_page),
+            )
+            production_menu.addAction(
+                "Exporteren (laag niveau)",
+                lambda: self.tabs.setCurrentWidget(self.export_page),
+            )
+
         def _install_u3_context(self) -> None:
-            # Keep the exact existing tab widget, VTK viewer and page objects;
-            # only compose an always-visible context strip above them.
             current_central = self.takeCentralWidget()
             container = QtWidgets.QWidget(self)
             container.setObjectName("cwsU3CentralViewerShell")
@@ -130,8 +156,6 @@ if qt_available():
                 layout.addWidget(current_central, 1)
             self.setCentralWidget(container)
 
-            # BOM previously had project status but no live selection status.
-            # Add a read-only context line; the BOM snapshot itself is unchanged.
             bom_layout = self.bom_excel_page.layout()
             if bom_layout is not None:
                 self._u3_bom_context = QtWidgets.QLabel("Geen selectie")
@@ -139,13 +163,12 @@ if qt_available():
                 self._u3_bom_context.setWordWrap(True)
                 bom_layout.insertWidget(1, self._u3_bom_context)
 
-            # Mark all production-relevant surfaces as consumers of the exact
-            # same context object.  This is metadata only, never project state.
             for page in (
                 self.project_page,
                 self.edit_page,
                 self.scribing_page,
                 self.bom_excel_page,
+                self.production_page,
                 self.export_page,
                 self.converter_page,
                 self.pdf_page,
@@ -154,9 +177,6 @@ if qt_available():
 
             self.tabs.currentChanged.connect(lambda _index: self._update_active_surface())
 
-            # Toolbar workbench launches bypass the main routing table in the
-            # V9 base.  Rewire that one action so U3 can expose the Workbench as
-            # the active surface while the modal is open.
             try:
                 self.project_page.exact_action.triggered.disconnect()
             except (TypeError, RuntimeError):
@@ -176,6 +196,7 @@ if qt_available():
                 self.drawings_page: "drawings",
                 self.scribing_page: "scribing",
                 self.bom_excel_page: "bom",
+                self.production_page: "production",
                 self.export_page: "export",
             }
             return mapping.get(page, "application")
@@ -188,8 +209,6 @@ if qt_available():
             if workspace is not None:
                 self.application_context.attach_workspace(workspace)
             _BaseCWSMainWindow._project_loaded(self, path)
-            # The base window adds a second direct interaction subscription.
-            # U3 uses the application context / workspace selection bus instead.
             if self._selection_unsubscribe is not None:
                 self._selection_unsubscribe()
                 self._selection_unsubscribe = None
@@ -202,7 +221,6 @@ if qt_available():
             _BaseCWSMainWindow._project_closed(self)
 
         def _selection_changed(self, selection: Any | None) -> None:
-            # The base constructor calls this before U3 composition exists.
             if not getattr(self, "_u3_ready", False):
                 _BaseCWSMainWindow._selection_changed(self, selection)
                 return
@@ -219,8 +237,6 @@ if qt_available():
         def _apply_u3_snapshot(self, snapshot: UnifiedUiContextSnapshot) -> None:
             self.context_strip.apply_snapshot(snapshot)
             selection = snapshot.selection if snapshot.project_attached else None
-            # Reuse the proven V9 page binders, but feed them only from this
-            # single U3 snapshot instead of parallel per-tab state.
             _BaseCWSMainWindow._selection_changed(self, selection)
             if self._u3_bom_context is not None:
                 if snapshot.project_attached and snapshot.selection.primary_entity_id:
@@ -245,6 +261,10 @@ if qt_available():
             if str(action) == "open_exact":
                 self._open_exact_workbench_u3()
                 return
+            if str(action) == "production":
+                self.tabs.setCurrentWidget(self.production_page)
+                self._update_active_surface()
+                return
             _BaseCWSMainWindow._route_action(self, action)
             self._update_active_surface()
 
@@ -254,15 +274,11 @@ if qt_available():
             try:
                 self.project_page.open_exact_workbench()
             finally:
-                # Return to the visible page after the modal closes.
                 self.application_context.set_active_surface(
                     self._surface_for_current_tab() or previous
                 )
 
         def _highlight_pdf_feature(self, entity_id: str, feature_id: str) -> None:
-            # Preserve the base command but use the U3 broker explicitly.  This
-            # makes the PDF highlight visible in the viewer interaction model as
-            # well as on the feature-aware application selection bus.
             if self.workspace is None:
                 return _BaseCWSMainWindow._highlight_pdf_feature(self, entity_id, feature_id)
             try:
@@ -325,6 +341,8 @@ __all__ = [
     "CwsConvertorMainWindow",
     "U3_CONTEXT_PROPERTY",
     "U3_CONTEXT_TOKEN",
+    "U4_WORKFLOW_PROPERTY",
+    "U4_WORKFLOW_TOKEN",
     "UnifiedContextStrip",
     "run_qt_application",
 ]
