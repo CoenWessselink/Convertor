@@ -41,6 +41,10 @@ datas = [
         str(ROOT / "cws_convertor" / "manufacturing" / "m18_authority_runtime.zip"),
         "cws_convertor/manufacturing",
     ),
+    (
+        str(ROOT / "cws_convertor" / "manufacturing" / "m18_payload_clean"),
+        "cws_convertor/manufacturing/m18_payload_clean",
+    ),
     (str(ROOT / "requirements-viewer-v9.lock.txt"), "."),
 ]
 hiddenimports = [
