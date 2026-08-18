@@ -1,9 +1,10 @@
-"""CWS Convertor V9 viewer/main-build integration services.
+"""CWS Convertor unified viewer/main-build integration services.
 
 The package deliberately contains no GUI toolkit objects.  It is the single
 application boundary through which the Qt shell, CLI validation and automated
-tests obtain one canonical project, one viewer scene, one property grid and one
-BOM snapshot.
+tests obtain one canonical project, one viewer scene, one property grid, one
+BOM snapshot and — from U3 onward — one application-wide project/selection
+context.
 """
 from .selftest import (
     IntegrationCheck,
@@ -17,6 +18,12 @@ from .selection import (
     BomSelectionIndex,
     BomSelectionRecord,
     PdfFeatureHighlightBridge,
+)
+from .ui_context import (
+    U3_CONTEXT_SCHEMA,
+    U3_SAFETY_FLAGS,
+    UnifiedApplicationContext,
+    UnifiedUiContextSnapshot,
 )
 from .workspace import (
     ExactPartOpenResult,
@@ -36,7 +43,11 @@ __all__ = [
     "IntegrationSelfTestReport",
     "IntegratedProjectWorkspace",
     "PdfFeatureHighlightBridge",
+    "U3_CONTEXT_SCHEMA",
+    "U3_SAFETY_FLAGS",
+    "UnifiedApplicationContext",
+    "UnifiedUiContextSnapshot",
+    "WorkspaceLoadReport",
     "create_synthetic_integration_project",
     "run_integration_self_test",
-    "WorkspaceLoadReport",
 ]
