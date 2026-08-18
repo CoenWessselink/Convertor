@@ -1,0 +1,65 @@
+name: U4 exact M18 U0-U2 verification
+
+on:
+  push:
+    branches:
+      - agent/u4-exact-m18-bootstrap
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  verify-u0-u2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact-runtime branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/u4-exact-m18-bootstrap
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install authority verification dependency
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cryptography==46.0.4
+
+      - name: Compile Project Model and M18 authority facade
+        run: |
+          python -m compileall -q cws_convertor/project cws_convertor/manufacturing tests/unified_project_schema_u1_smoke.py tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Verify exact runtime identity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import zipfile
+          path = Path('cws_convertor/manufacturing/m18_authority_runtime.zip')
+          raw = path.read_bytes()
+          assert len(raw) == 233402, len(raw)
+          assert hashlib.sha256(raw).hexdigest() == '62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          with zipfile.ZipFile(path) as archive:
+              assert archive.testzip() is None
+              assert 'cws_m18_authority/__init__.py' in archive.namelist()
+              assert 'cws_m18_authority/release_gate.py' in archive.namelist()
+              assert 'cws_m18_authority/deployment_assurance.py' in archive.namelist()
+              print({'size': len(raw), 'members': len(archive.namelist())})
+          PY
+
+      - name: Preserve U0 baseline
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Prove U2 Manufacturing and Scribing M1-M18
+        run: python tests/unified_manufacturing_scribing_u2_smoke.py
