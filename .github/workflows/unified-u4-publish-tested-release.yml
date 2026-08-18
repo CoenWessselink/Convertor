@@ -1,0 +1,61 @@
+name: Publish tested CWS U4 Windows release
+
+on:
+  workflow_run:
+    workflows:
+      - CWS Unified U4 M18 Repair + Tested Windows EXE
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download tested release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: CWS_Convertor_U4_TESTED_Windows_x64
+          path: payload
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Flatten release payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p publish
+          find payload -type f -name 'CWS_Convertor.exe' -exec cp '{}' publish/CWS_Convertor.exe ';'
+          find payload -type f -name 'CWS_Convertor_CLI.exe' -exec cp '{}' publish/CWS_Convertor_CLI.exe ';'
+          find payload -type f -name 'CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip' -exec cp '{}' publish/ ';'
+          find payload -type f -name 'CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe' -exec cp '{}' publish/ ';'
+          find payload -type f -name 'SHA256SUMS.txt' -exec cp '{}' publish/ ';'
+          test -s publish/CWS_Convertor.exe
+          test -s publish/CWS_Convertor_CLI.exe
+          test -s publish/CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip
+          test -s publish/CWS_Convertor_Setup_0.9.0-alpha-dev_x64.exe
+          test -s publish/SHA256SUMS.txt
+          printf 'workflow_run=%s\ncommit=%s\nstatus=TESTED\n' '${{ github.event.workflow_run.id }}' '${{ github.event.workflow_run.head_sha }}' > publish/U4_BUILD_STATUS.txt
+          cat publish/SHA256SUMS.txt
+
+      - name: Create or update tested prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='u4-tested-windows'
+          if gh release view "$tag" --repo '${{ github.repository }}' >/dev/null 2>&1; then
+            gh release upload "$tag" publish/* --clobber --repo '${{ github.repository }}'
+          else
+            gh release create "$tag" publish/* \
+              --repo '${{ github.repository }}' \
+              --target '${{ github.event.workflow_run.head_sha }}' \
+              --title 'CWS Convertor U4 tested Windows x64' \
+              --notes 'Automatically published only after U0-U4, packaged EXE self-test, Setup EXE build and installed-application self-test all pass.' \
+              --prerelease
+          fi
