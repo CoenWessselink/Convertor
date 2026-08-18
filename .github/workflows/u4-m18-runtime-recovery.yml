@@ -20,6 +20,8 @@ on:
 permissions:
   contents: read
   actions: read
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: cws-u4-m18-runtime-recovery
@@ -67,6 +69,7 @@ jobs:
           fi
 
       - name: Upload recovery evidence and exact runtime when found
+        id: evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -75,3 +78,27 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 3
+
+      - name: Report recovery result on repair PR
+        if: always() && github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.evidence.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.evidence.outputs.artifact-url }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## M18 exact-runtime recovery"
+            echo
+            echo "- Run: ${RUN_URL}"
+            echo "- Artifact ID: \`${ARTIFACT_ID:-unavailable}\`"
+            echo "- Artifact: ${ARTIFACT_URL:-unavailable}"
+            echo
+            if [[ -f recovery-output/recovery_report.md ]]; then
+              tail -n +2 recovery-output/recovery_report.md
+            else
+              echo "Recovery report was not produced."
+            fi
+          } > recovery-output/pr-comment.md
+          gh pr comment 5 --body-file recovery-output/pr-comment.md
