@@ -10,9 +10,11 @@ on:
     paths:
       - .github/workflows/u4-m18-comment-bootstrap-recovery.yml
       - tools/recover_m18_comment_bootstrap.py
+      - tools/collect_m18_recovery_evidence.py
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
   issues: read
   pull-requests: read
@@ -21,35 +23,131 @@ env:
   TARGET_SHA256: 62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1
   TARGET_SIZE: "233402"
   RECOVERY_ROOT: recovery
+  EVIDENCE_ROOT: recovery/evidence
 
 jobs:
   recover:
     name: recover-exact-m18-runtime
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout complete repository history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Fetch complete PR 4 comment transport
+      - name: Fetch every branch, pull-request head and tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force --prune --tags origin \
+            '+refs/heads/*:refs/remotes/origin/*' \
+            '+refs/pull/*/head:refs/remotes/pull/*/head'
+          git count-objects -vH
+
+      - name: Fetch issue, workflow-run and artifact metadata
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p recovery
+          mkdir -p recovery/api recovery/external_artifacts recovery/run_logs
+          for issue in 3 4 5 6 7; do
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/issues/${issue}/comments?per_page=100" \
+              > "recovery/api/issue_${issue}_comments.json"
+          done
+          cp recovery/api/issue_4_comments.json recovery/comments.json
           gh api \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${GITHUB_REPOSITORY}/issues/4/comments?per_page=100" \
-            > recovery/comments.json
+            "/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            > recovery/api/actions_artifacts.json
+          gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100" \
+            > recovery/api/actions_runs.json
+
+      - name: Download relevant non-expired M18 artifacts and logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
           python - <<'PY'
           import json
+          import os
+          import re
+          import subprocess
           from pathlib import Path
-          comments = json.loads(Path("recovery/comments.json").read_text(encoding="utf-8"))
-          print(f"Fetched {len(comments)} comments")
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          token = os.environ["GH_TOKEN"]
+          headers = [
+              "-H", f"Authorization: Bearer {token}",
+              "-H", "Accept: application/vnd.github+json",
+              "-H", "X-GitHub-Api-Version: 2022-11-28",
+          ]
+          artifact_meta = json.loads(Path("recovery/api/actions_artifacts.json").read_text())
+          selected_artifacts = []
+          pattern = re.compile(r"m18|bootstrap|payload|history|authority", re.I)
+          for item in artifact_meta.get("artifacts", []):
+              if item.get("expired") or not pattern.search(str(item.get("name") or "")):
+                  continue
+              selected_artifacts.append(item)
+              artifact_id = int(item["id"])
+              name = re.sub(r"[^A-Za-z0-9._-]+", "_", str(item.get("name") or artifact_id))[:100]
+              output = Path("recovery/external_artifacts") / f"{artifact_id}_{name}.zip"
+              command = [
+                  "curl", "-L", "--fail", "--silent", "--show-error",
+                  *headers,
+                  f"https://api.github.com/repos/{repo}/actions/artifacts/{artifact_id}/zip",
+                  "-o", str(output),
+              ]
+              subprocess.run(command, check=False)
+          Path("recovery/api/selected_artifacts.json").write_text(
+              json.dumps(selected_artifacts, indent=2, sort_keys=True) + "\n"
+          )
+
+          runs_meta = json.loads(Path("recovery/api/actions_runs.json").read_text())
+          selected_runs = []
+          run_pattern = re.compile(r"m18|authority|bootstrap", re.I)
+          for item in runs_meta.get("workflow_runs", []):
+              if not run_pattern.search(str(item.get("name") or "")):
+                  continue
+              selected_runs.append({
+                  "id": item.get("id"),
+                  "name": item.get("name"),
+                  "head_sha": item.get("head_sha"),
+                  "status": item.get("status"),
+                  "conclusion": item.get("conclusion"),
+                  "html_url": item.get("html_url"),
+              })
+              run_id = int(item["id"])
+              name = re.sub(r"[^A-Za-z0-9._-]+", "_", str(item.get("name") or run_id))[:100]
+              output = Path("recovery/run_logs") / f"{run_id}_{name}.zip"
+              command = [
+                  "curl", "-L", "--fail", "--silent", "--show-error",
+                  *headers,
+                  f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/logs",
+                  "-o", str(output),
+              ]
+              subprocess.run(command, check=False)
+          Path("recovery/api/selected_runs.json").write_text(
+              json.dumps(selected_runs, indent=2, sort_keys=True) + "\n"
+          )
+          print(f"Selected {len(selected_artifacts)} artifacts and {len(selected_runs)} run logs")
           PY
 
-      - name: Parse, verify and reconstruct bootstrap candidates
+      - name: Collect historical Git blobs and commit context
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tools/collect_m18_recovery_evidence.py
+
+      - name: Inspect PR comment bootstrap without weakening authority
         shell: bash
         run: |
           set -euo pipefail
@@ -62,12 +160,24 @@ jobs:
           if [ -f recovery/summary.md ]; then
             cat recovery/summary.md >> "$GITHUB_STEP_SUMMARY"
           fi
+          if [ -f recovery/evidence/git_evidence.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+          data = json.loads(Path("recovery/evidence/git_evidence.json").read_text())
+          print("\n## Repository evidence")
+          print(f"- Stored relevant historical blobs: **{data['stored_blob_count']}**")
+          print(f"- Exact target blobs found: **{len(data['exact_matches'])}**")
+          print(f"- Marker-bearing blobs: **{len(data['marker_matches'])}**")
+          PY
+          fi
 
-      - name: Upload checksum-bound recovery diagnostics
+      - name: Upload complete checksum-bound recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: u4-m18-comment-bootstrap-recovery
+          name: u4-m18-complete-recovery-evidence
           path: recovery/
           if-no-files-found: error
           retention-days: 3
+          compression-level: 6
