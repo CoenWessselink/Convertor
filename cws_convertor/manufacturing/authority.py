@@ -32,7 +32,8 @@ M18_ORIGIN_VERSION = "0.8.30-beta-dev"
 M18_ORIGIN_COMMIT = "b04b1c203583295e8c5ed018d75de68b2319c839"
 M18_ORIGIN_TAG = "scribing-m18-deployment-assurance-0.8.30-beta-dev"
 M18_RUNTIME_PACKAGE = "cws_m18_authority"
-_BASE64_BYTES = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+_BASE64_DATA_BYTES = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/")
+_BASE64_BYTES = frozenset((*_BASE64_DATA_BYTES, ord("=")))
 
 CANONICAL_M1_M8 = {
     "M1": "cws_convertor.manufacturing.faces",
@@ -109,24 +110,80 @@ def _validate_runtime_member(info: zipfile.ZipInfo) -> PurePosixPath:
     return path
 
 
-def _verified_runtime_bytes() -> bytes:
-    """Verify transport bytes, decode each historical segment, then verify ZIP.
+def _pad_base64(value: bytes) -> bytes:
+    return value + (b"=" * ((-len(value)) % 4))
 
-    The frozen runtime was transported as independently Base64-encoded binary
-    segments. The complete normalized text transport is fingerprinted first.
-    Each segment is then deterministically stripped of non-Base64 display bytes
-    and strict-decoded independently, preserving legitimate padding boundaries.
-    The concatenated binary MUST equal the immutable M18 runtime SHA-256.
+
+def _decode_runtime_candidates(normalized_chunks: list[bytes]) -> tuple[bytes, str]:
+    """Recover the historic transport without relaxing the authority hash.
+
+    Several connector generations stored the same M18 ZIP using slightly
+    different Base64 segmentation.  Candidate decoding is therefore allowed,
+    but only an exact SHA-256 match with ``M18_RUNTIME_SHA256`` is accepted.
+    This makes the recovery fail closed: a changed or incomplete payload can
+    never become authority evidence merely because one decoder accepts it.
     """
+    candidates: list[tuple[str, bytes]] = []
+
+    # 1. Exact continuous Base64 after display-only bytes are removed.
+    joined = b"".join(normalized_chunks)
+    clean_joined = bytes(value for value in joined if value in _BASE64_BYTES)
+    try:
+        candidates.append(("continuous", base64.b64decode(clean_joined, validate=True)))
+    except Exception:
+        pass
+
+    # 2. Some historic connector writes introduced padding at transport
+    # boundaries. Remove padding characters, restore one legal final padding
+    # sequence and decode as one stream.
+    data_only = bytes(value for value in joined if value in _BASE64_DATA_BYTES)
+    try:
+        candidates.append(("continuous-repadded", base64.b64decode(_pad_base64(data_only), validate=True)))
+    except Exception:
+        pass
+
+    # 3. Other historic writes treated the text files as separately encoded
+    # segments. Re-pad each segment independently before binary concatenation.
+    decoded_segments: list[bytes] = []
+    segmented_ok = True
+    for encoded in normalized_chunks:
+        segment = bytes(value for value in encoded if value in _BASE64_DATA_BYTES)
+        if not segment:
+            segmented_ok = False
+            break
+        try:
+            decoded_segments.append(base64.b64decode(_pad_base64(segment), validate=True))
+        except Exception:
+            segmented_ok = False
+            break
+    if segmented_ok:
+        candidates.append(("segmented-repadded", b"".join(decoded_segments)))
+
+    observed: list[str] = []
+    for strategy, runtime in candidates:
+        digest = hashlib.sha256(runtime).hexdigest()
+        observed.append(f"{strategy}:{digest}")
+        if digest == M18_RUNTIME_SHA256:
+            return runtime, strategy
+    raise RuntimeError(
+        "Frozen M18 transport kon niet checksum-exact worden gereconstrueerd; "
+        f"expected={M18_RUNTIME_SHA256} observed={observed!r}"
+    )
+
+
+def _verified_runtime_bytes() -> bytes:
+    """Verify stored transport identity, recover bytes, then verify ZIP."""
     global _RUNTIME_BYTES
     if _RUNTIME_BYTES is not None:
         return _RUNTIME_BYTES
+
     normalized_chunks: list[bytes] = []
     for path in _payload_files():
         try:
             normalized_chunks.append(b"".join(path.read_bytes().split()))
         except OSError as exc:
             raise RuntimeError(f"Frozen M18 payload chunk onleesbaar: {path}") from exc
+
     payload = b"".join(normalized_chunks)
     payload_sha256 = hashlib.sha256(payload).hexdigest()
     if payload_sha256 != M18_RUNTIME_PAYLOAD_SHA256:
@@ -134,24 +191,15 @@ def _verified_runtime_bytes() -> bytes:
             "Frozen M18 Base64 payload SHA-256 wijkt af; "
             f"expected={M18_RUNTIME_PAYLOAD_SHA256} actual={payload_sha256}"
         )
-    decoded_chunks: list[bytes] = []
-    for index, encoded in enumerate(normalized_chunks, 1):
-        transport = bytes(value for value in encoded if value in _BASE64_BYTES)
-        if not transport:
-            raise RuntimeError(f"Frozen M18 Base64 transportchunk {index:03d} is leeg")
-        try:
-            decoded_chunks.append(base64.b64decode(transport, validate=True))
-        except Exception as exc:
-            raise RuntimeError(
-                f"Frozen M18 Base64 transportchunk {index:03d} is niet strict decodeerbaar"
-            ) from exc
-    runtime = b"".join(decoded_chunks)
+
+    runtime, _strategy = _decode_runtime_candidates(normalized_chunks)
     runtime_sha256 = hashlib.sha256(runtime).hexdigest()
     if runtime_sha256 != M18_RUNTIME_SHA256:
         raise RuntimeError(
             "Frozen M18 decoded runtime SHA-256 wijkt af; "
             f"expected={M18_RUNTIME_SHA256} actual={runtime_sha256}"
         )
+
     try:
         with zipfile.ZipFile(BytesIO(runtime), "r") as source:
             bad_member = source.testzip()
@@ -166,6 +214,7 @@ def _verified_runtime_bytes() -> bytes:
                 raise RuntimeError(f"M18 runtime mist {expected_init}")
     except zipfile.BadZipFile as exc:
         raise RuntimeError("Frozen M18 decoded runtime is geen geldig ZIP-bestand") from exc
+
     _RUNTIME_BYTES = runtime
     return runtime
 
