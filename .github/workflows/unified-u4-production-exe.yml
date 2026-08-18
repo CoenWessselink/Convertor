@@ -2,9 +2,6 @@ name: CWS Unified U4 Production Workflow + Windows EXE
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/unified-u4-production-workflow-exe
   pull_request:
     branches:
       - feature/unified-u3-central-ui
@@ -48,7 +45,7 @@ jobs:
           python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py cli.py tests
           if ($LASTEXITCODE -ne 0) { throw 'U4 compile failed' }
 
-      - name: Verify bundled frozen M18 runtime
+      - name: Verify checksum-bound frozen M18 transport
         run: python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, verify_m18_runtime_archive; assert verify_m18_runtime_archive() == M18_RUNTIME_SHA256; print('M18 authority runtime verified')"
 
       - name: Preserve U0 baseline
@@ -92,12 +89,13 @@ jobs:
       - name: Build CWS Convertor EXE
         run: pyinstaller --noconfirm --clean CWS_Convertor.spec
 
-      - name: Verify EXE files
+      - name: Verify EXE files and frozen transport
         shell: pwsh
         run: |
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
-          if (!(Test-Path dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip)) { throw 'Packaged M18 authority runtime missing' }
+          $payload = 'dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_payload_clean\m18_authority_runtime.b64.001'
+          if (!(Test-Path $payload)) { throw 'Packaged M18 text transport missing' }
           Get-Item dist\CWS_Convertor\CWS_Convertor.exe | Select-Object Name,Length,LastWriteTime | ConvertTo-Json | Out-File build\u4-exe.json
 
       - name: Packaged EXE self-test and GUI smoke
