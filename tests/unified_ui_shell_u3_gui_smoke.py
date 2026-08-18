@@ -23,8 +23,11 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
     def test_default_shell_uses_one_context_for_viewer_scribing_bom_and_export(self) -> None:
         QtCore, _QtGui, QtWidgets = require_qt()
         from cws_convertor.ui_qt import CWSMainWindow, U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN
+        from cws_convertor.ui_qt.unified_shell import CWSMainWindow as U3MainWindow
 
-        self.assertTrue(CWSMainWindow.__module__.endswith("unified_shell"))
+        # Later unified shells may add workflow surfaces, but must retain the U3
+        # single-project/single-selection contract through inheritance.
+        self.assertTrue(issubclass(CWSMainWindow, U3MainWindow))
         application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
         application.setApplicationName("CWS Convertor U3 smoke")
 
