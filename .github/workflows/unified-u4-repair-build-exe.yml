@@ -41,10 +41,10 @@ jobs:
           python -m pip check
           python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('U4 native imports OK')"
 
-      - name: Verify checksum-exact frozen M18 text transport
+      - name: Verify bundled checksum-exact frozen M18 runtime
         shell: pwsh
         run: |
-          python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, runtime_archive_path, verify_m18_runtime_archive; import zipfile; actual=verify_m18_runtime_archive(); assert actual == M18_RUNTIME_SHA256, (actual, M18_RUNTIME_SHA256); archive=runtime_archive_path(); assert zipfile.is_zipfile(archive); z=zipfile.ZipFile(archive); assert z.testzip() is None; assert 'cws_m18_authority/__init__.py' in z.namelist(); print('M18 text transport/ZIP gate PASSED:', actual, len(z.namelist()))"
+          python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, verify_m18_runtime_archive; actual=verify_m18_runtime_archive(); assert actual == M18_RUNTIME_SHA256, (actual, M18_RUNTIME_SHA256); print('M18 runtime SHA/ZIP gate PASSED:', actual)"
 
       - name: Compile unified source
         shell: pwsh
@@ -100,37 +100,29 @@ jobs:
           python -m PyInstaller --clean --noconfirm CWS_Convertor.spec
           if ($LASTEXITCODE -ne 0) { throw 'PyInstaller build failed' }
 
-      - name: Locate and verify Windows EXE and frozen transport
+      - name: Verify EXE files
         shell: pwsh
         run: |
-          $exe = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
-          if (-not $exe) { throw 'CWS_Convertor.exe not found in dist' }
-          $cli = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
-          if (-not $cli) { throw 'CWS_Convertor_CLI.exe not found in dist' }
-          $payload = 'dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_payload_clean\m18_authority_runtime.b64.001'
-          if (!(Test-Path $payload)) { throw 'Packaged M18 text transport missing' }
-          Write-Host "Application EXE: $($exe.FullName) size=$($exe.Length)"
-          Write-Host "CLI EXE: $($cli.FullName) size=$($cli.Length)"
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
+          $runtime = 'dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip'
+          if (!(Test-Path $runtime)) { throw 'Packaged M18 authority runtime missing' }
 
-      - name: Packaged Windows EXE self-test and GUI smoke
+      - name: Packaged EXE self-test and GUI smoke
         shell: pwsh
         run: |
-          $exe = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
-          & $exe.FullName --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-packaged-selftest.json
+          dist\CWS_Convertor\CWS_Convertor.exe --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-packaged-selftest.json
           if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
-          & $exe.FullName --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-packaged-gui-smoke.json
+          dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-packaged-gui-smoke.json
           if ($LASTEXITCODE -ne 0) { throw 'Packaged GUI smoke failed' }
 
       - name: Create portable Windows package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release | Out-Null
-          $exe = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor.exe | Select-Object -First 1
-          $appDir = $exe.Directory.FullName
-          Compress-Archive -Path (Join-Path $appDir '*') -DestinationPath 'release/CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip' -Force
-          Copy-Item $exe.FullName 'release/CWS_Convertor.exe' -Force
-          $cli = Get-ChildItem dist -Recurse -File -Filter CWS_Convertor_CLI.exe | Select-Object -First 1
-          Copy-Item $cli.FullName 'release/CWS_Convertor_CLI.exe' -Force
+          Compress-Archive -Path 'dist\CWS_Convertor\*' -DestinationPath 'release\CWS_Convertor_0.9.0-alpha-dev_Windows_x64_PORTABLE.zip' -Force
+          Copy-Item 'dist\CWS_Convertor\CWS_Convertor.exe' 'release\CWS_Convertor.exe' -Force
+          Copy-Item 'dist\CWS_Convertor\CWS_Convertor_CLI.exe' 'release\CWS_Convertor_CLI.exe' -Force
 
       - name: Build Setup EXE
         shell: pwsh

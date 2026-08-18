@@ -38,8 +38,8 @@ datas = [
     (str(ROOT / "cws_viewer" / "schemas"), "cws_viewer/schemas"),
     (str(ROOT / "cws_viewer" / "fixtures" / "data"), "cws_viewer/fixtures/data"),
     (
-        str(ROOT / "cws_convertor" / "manufacturing" / "m18_payload_clean"),
-        "cws_convertor/manufacturing/m18_payload_clean",
+        str(ROOT / "cws_convertor" / "manufacturing" / "m18_authority_runtime.zip"),
+        "cws_convertor/manufacturing",
     ),
     (str(ROOT / "requirements-viewer-v9.lock.txt"), "."),
 ]
