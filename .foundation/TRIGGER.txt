@@ -1,1 +1,0 @@
-Trigger normal GitHub push handling for the checksum-verified CWS Part-First Foundation bootstrap.
