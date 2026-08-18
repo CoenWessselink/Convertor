@@ -1,15 +1,21 @@
-"""Unified U2 facade for Scribing M9-M18 authorities.
+"""Unified U2/U3 facade for Scribing M9-M18 authorities.
 
 Canonical M1-M8 geometry/marking/nesting/neutral-job code remains the newer
-Viewer V15 implementation in :mod:`cws_convertor.manufacturing`. The frozen
-M18 authority implementation is kept in a checksum-bound runtime archive and is
-loaded only for M9-M18 evidence/release/governance operations. It reads and
-writes the *same* Project Model 2.25 stores through ``m18_runtime_access``.
+Viewer V15 implementation in :mod:`cws_convertor.manufacturing`.  The frozen
+M18 authority implementation is stored as text-safe Base64 chunks so GitHub
+text writes cannot corrupt the binary ZIP.  The payload is decoded only after
+its chunk set and payload hash are verified; the decoded ZIP must then match
+the original M18 runtime SHA-256 before any module is imported.
+
+The frozen M9-M18 authority layer reads and writes the *same* Project Model
+2.25 stores through ``m18_runtime_access``.  It is not a second project truth.
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import importlib
+from io import BytesIO
 from pathlib import Path, PurePosixPath
 import stat
 import sys
@@ -22,8 +28,13 @@ from cws_convertor.project.unified_schema import m18_store_snapshot
 from .m18_runtime_access import install_m18_runtime_access
 
 M18_RUNTIME_ARCHIVE = "m18_authority_runtime.zip"
-# Exact SHA-256 of the runtime archive bytes as checked out by Windows CI.
-M18_RUNTIME_SHA256 = "30bcbb5bdd0aa6bac825a31dcbd5eb69586f051dc66c01e3485d4e8a56d7a745"
+M18_RUNTIME_PAYLOAD_DIR = "m18_payload"
+M18_RUNTIME_PAYLOAD_STEM = "m18_authority_runtime.b64"
+M18_RUNTIME_PAYLOAD_COUNT = 11
+# SHA-256 of the normalized, concatenated Base64 payload text.
+M18_RUNTIME_PAYLOAD_SHA256 = "a0919672e47eb4c82ce93068cc1587a949a24faca7818bf3b1c66b5f887e6572"
+# SHA-256 of the original decoded/frozen M18 ZIP bytes.
+M18_RUNTIME_SHA256 = "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
 M18_ORIGIN_VERSION = "0.8.30-beta-dev"
 M18_ORIGIN_COMMIT = "b04b1c203583295e8c5ed018d75de68b2319c839"
 M18_ORIGIN_TAG = "scribing-m18-deployment-assurance-0.8.30-beta-dev"
@@ -116,26 +127,117 @@ STORE_BY_PHASE = {
 _ALLOWED_MODULES = {name for names in AUTHORITY_MODULES.values() for name in names}
 _ARCHIVE_VERIFIED = False
 _COMPATIBILITY_ALIASES_INSTALLED = False
+_RUNTIME_BYTES: bytes | None = None
+_RUNTIME_ARCHIVE_PATH: Path | None = None
 _RUNTIME_IMPORT_ROOT: Path | None = None
 
 
+def runtime_payload_dir() -> Path:
+    return Path(__file__).resolve().with_name(M18_RUNTIME_PAYLOAD_DIR)
+
+
+def _expected_payload_names() -> tuple[str, ...]:
+    return tuple(
+        f"{M18_RUNTIME_PAYLOAD_STEM}.{index:03d}"
+        for index in range(1, M18_RUNTIME_PAYLOAD_COUNT + 1)
+    )
+
+
+def _payload_files() -> tuple[Path, ...]:
+    directory = runtime_payload_dir()
+    if not directory.is_dir():
+        raise RuntimeError(f"Frozen M18 payload-directory ontbreekt: {directory}")
+    files = tuple(sorted(directory.glob(f"{M18_RUNTIME_PAYLOAD_STEM}.*")))
+    names = tuple(path.name for path in files)
+    expected = _expected_payload_names()
+    if names != expected:
+        missing = tuple(name for name in expected if name not in names)
+        unexpected = tuple(name for name in names if name not in expected)
+        raise RuntimeError(
+            "Frozen M18 payload chunkset klopt niet; "
+            f"expected={expected!r} missing={missing!r} unexpected={unexpected!r}"
+        )
+    return files
+
+
+def _verified_runtime_bytes() -> bytes:
+    global _RUNTIME_BYTES, _ARCHIVE_VERIFIED
+    if _RUNTIME_BYTES is not None:
+        return _RUNTIME_BYTES
+
+    normalized_chunks: list[bytes] = []
+    for path in _payload_files():
+        try:
+            raw = path.read_bytes()
+            # Base64 is ASCII.  Whitespace is formatting only and is removed
+            # before both the payload fingerprint and strict decoder.
+            normalized_chunks.append(b"".join(raw.split()))
+        except OSError as exc:
+            raise RuntimeError(f"Frozen M18 payload chunk onleesbaar: {path}") from exc
+
+    payload = b"".join(normalized_chunks)
+    payload_sha256 = hashlib.sha256(payload).hexdigest()
+    if payload_sha256 != M18_RUNTIME_PAYLOAD_SHA256:
+        raise RuntimeError(
+            "Frozen M18 Base64 payload SHA-256 wijkt af; "
+            f"expected={M18_RUNTIME_PAYLOAD_SHA256} actual={payload_sha256}"
+        )
+    try:
+        runtime = base64.b64decode(payload, validate=True)
+    except Exception as exc:
+        raise RuntimeError("Frozen M18 Base64 payload is niet strict decodeerbaar") from exc
+
+    runtime_sha256 = hashlib.sha256(runtime).hexdigest()
+    if runtime_sha256 != M18_RUNTIME_SHA256:
+        raise RuntimeError(
+            "Frozen M18 decoded runtime SHA-256 wijkt af; "
+            f"expected={M18_RUNTIME_SHA256} actual={runtime_sha256}"
+        )
+
+    try:
+        with zipfile.ZipFile(BytesIO(runtime), "r") as source:
+            bad_member = source.testzip()
+            if bad_member is not None:
+                raise RuntimeError(f"Frozen M18 runtime CRC-fout in {bad_member}")
+            infos = source.infolist()
+            if not infos:
+                raise RuntimeError("Frozen M18 authority runtime is leeg")
+            validated = [_validate_runtime_member(info) for info in infos]
+            expected_init = PurePosixPath(M18_RUNTIME_PACKAGE) / "__init__.py"
+            if expected_init not in validated:
+                observed = [str(path) for path in validated[:8]]
+                raise RuntimeError(
+                    f"M18 runtime mist {expected_init}; eerste entries={observed!r}"
+                )
+    except zipfile.BadZipFile as exc:
+        raise RuntimeError("Frozen M18 decoded runtime is geen geldig ZIP-bestand") from exc
+
+    _RUNTIME_BYTES = runtime
+    _ARCHIVE_VERIFIED = True
+    return runtime
+
+
 def runtime_archive_path() -> Path:
-    return Path(__file__).resolve().with_name(M18_RUNTIME_ARCHIVE)
+    """Return a process-local materialization of the verified decoded ZIP.
+
+    Compatibility helper for callers that still need a filesystem path.  The
+    repository never trusts or imports a binary archive directly.
+    """
+    global _RUNTIME_ARCHIVE_PATH
+    if _RUNTIME_ARCHIVE_PATH is not None:
+        return _RUNTIME_ARCHIVE_PATH
+    runtime = _verified_runtime_bytes()
+    root = Path(tempfile.mkdtemp(prefix=f"cws-m18-archive-{M18_RUNTIME_SHA256[:12]}-"))
+    path = root / M18_RUNTIME_ARCHIVE
+    path.write_bytes(runtime)
+    _RUNTIME_ARCHIVE_PATH = path
+    return path
 
 
 def verify_m18_runtime_archive() -> str:
-    global _ARCHIVE_VERIFIED
-    archive = runtime_archive_path()
-    if not archive.is_file():
-        raise RuntimeError(f"Frozen M18 authority runtime ontbreekt: {archive}")
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    if digest != M18_RUNTIME_SHA256:
-        raise RuntimeError(
-            "Frozen M18 authority runtime SHA-256 wijkt af; "
-            f"expected={M18_RUNTIME_SHA256} actual={digest}"
-        )
-    _ARCHIVE_VERIFIED = True
-    return digest
+    """Verify text payload, decoded runtime hash and ZIP structure."""
+    _verified_runtime_bytes()
+    return M18_RUNTIME_SHA256
 
 
 def _validate_runtime_member(info: zipfile.ZipInfo) -> PurePosixPath:
@@ -155,33 +257,18 @@ def _validate_runtime_member(info: zipfile.ZipInfo) -> PurePosixPath:
 
 
 def _prepare_runtime_import_root() -> Path:
-    """Safely materialize the verified runtime into a process-local directory.
-
-    Direct ``zipimport`` proved platform-sensitive on the Windows runner. The
-    archive remains the immutable authority artifact: its SHA is verified first,
-    every member path is validated, and only those verified bytes are written to
-    a fresh temporary root. No Project Model data is copied here.
-    """
+    """Safely materialize verified runtime members into a temporary root."""
     global _RUNTIME_IMPORT_ROOT
     if _RUNTIME_IMPORT_ROOT is not None:
         return _RUNTIME_IMPORT_ROOT
 
-    verify_m18_runtime_archive()
-    archive = runtime_archive_path()
+    runtime = _verified_runtime_bytes()
     root = Path(tempfile.mkdtemp(prefix=f"cws-m18-{M18_RUNTIME_SHA256[:12]}-"))
     resolved_root = root.resolve()
     try:
-        with zipfile.ZipFile(archive, "r") as source:
+        with zipfile.ZipFile(BytesIO(runtime), "r") as source:
             infos = source.infolist()
-            if not infos:
-                raise RuntimeError("Frozen M18 authority runtime is leeg")
             validated = [(info, _validate_runtime_member(info)) for info in infos]
-            expected_init = f"{M18_RUNTIME_PACKAGE}/__init__.py"
-            if expected_init not in {info.filename for info, _ in validated}:
-                observed = [info.filename for info, _ in validated[:8]]
-                raise RuntimeError(
-                    f"M18 runtime mist {expected_init}; eerste entries={observed!r}"
-                )
             for info, relative in validated:
                 target = root.joinpath(*relative.parts)
                 resolved_target = target.resolve()
@@ -193,8 +280,6 @@ def _prepare_runtime_import_root() -> Path:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(source.read(info))
     except Exception:
-        # The directory is process-temporary; leave no import path behind when
-        # validation/materialization fails.
         for candidate in sorted(root.rglob("*"), reverse=True):
             try:
                 candidate.unlink() if candidate.is_file() else candidate.rmdir()
@@ -211,14 +296,7 @@ def _prepare_runtime_import_root() -> Path:
 
 
 def _install_internal_compatibility_aliases() -> None:
-    """Keep one frozen M18 internal absolute import inside the isolated runtime.
-
-    Frozen M18 ``adapter_certification`` contains a lazy absolute import of
-    ``cws_convertor.manufacturing.certification_ops``. Point that exact legacy
-    name at the checksum-verified M18 module rather than creating/copying a
-    second current implementation. This alias exists only for M18's own
-    certification call path; the normal public U2 API remains this facade.
-    """
+    """Keep M18's one frozen legacy absolute import inside its runtime."""
     global _COMPATIBILITY_ALIASES_INSTALLED
     if _COMPATIBILITY_ALIASES_INSTALLED:
         return
@@ -241,7 +319,7 @@ def _activate_runtime() -> None:
 
 
 def load_authority_module(name: str):
-    """Load one frozen M9-M18 module after checksum and ProjectModel bridge validation."""
+    """Load one frozen M9-M18 module after all authority checks."""
     if name not in _ALLOWED_MODULES:
         raise KeyError(f"Module {name!r} is geen publieke U2 M9-M18 authority-module")
     _activate_runtime()
@@ -288,6 +366,7 @@ def authority_chain_status(project: ProjectModel) -> dict[str, Any]:
             "version": M18_ORIGIN_VERSION,
             "commit": M18_ORIGIN_COMMIT,
             "tag": M18_ORIGIN_TAG,
+            "payload_sha256": M18_RUNTIME_PAYLOAD_SHA256,
             "runtime_sha256": M18_RUNTIME_SHA256,
         },
         "safety": {
@@ -303,6 +382,7 @@ def authority_chain_status(project: ProjectModel) -> dict[str, Any]:
 
 
 __all__ = [
+    "M18_RUNTIME_PAYLOAD_SHA256",
     "M18_RUNTIME_SHA256",
     "M18_ORIGIN_VERSION",
     "M18_ORIGIN_COMMIT",
