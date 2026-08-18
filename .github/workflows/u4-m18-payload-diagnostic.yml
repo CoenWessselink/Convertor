@@ -38,21 +38,22 @@ jobs:
           print('chunk_count=', len(files))
           print('payload_len=', len(payload))
           print('payload_sha=', hashlib.sha256(payload).hexdigest())
-          alphabet = set(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
-          bad = [(i,b) for i,b in enumerate(payload) if b not in alphabet]
+          alphabet_no_pad = set(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/')
+          alphabet_with_pad = alphabet_no_pad | {ord('=')}
+          bad = [(i,b) for i,b in enumerate(payload) if b not in alphabet_with_pad]
           print('invalid_count=', len(bad), 'invalid_unique=', sorted(set(b for _,b in bad)), 'invalid_first=', bad[:20])
           decoded_parts = []
           for index, path in enumerate(files, 1):
               raw = b''.join(path.read_bytes().split())
-              clean = bytes(b for b in raw if b in alphabet)
+              clean = bytes(b for b in raw if b in alphabet_with_pad)
               removed = len(raw) - len(clean)
-              try:
-                  decoded = base64.b64decode(clean, validate=True)
-                  decoded_parts.append(decoded)
-                  print('CHUNK_OK', index, 'raw=', len(raw), 'clean=', len(clean), 'removed=', removed, 'decoded=', len(decoded), 'sha=', hashlib.sha256(decoded).hexdigest())
-              except Exception as exc:
-                  print('CHUNK_ERROR', index, 'raw=', len(raw), 'clean=', len(clean), 'removed=', removed, type(exc).__name__, str(exc))
-                  raise
+              body = clean.rstrip(b'=')
+              if b'=' in body:
+                  raise RuntimeError(f'chunk {index} contains non-terminal padding')
+              padded = body + b'=' * ((-len(body)) % 4)
+              decoded = base64.b64decode(padded, validate=True)
+              decoded_parts.append(decoded)
+              print('CHUNK_OK', index, 'raw=', len(raw), 'removed=', removed, 'body=', len(body), 'pad=', len(padded)-len(body), 'decoded=', len(decoded), 'sha=', hashlib.sha256(decoded).hexdigest())
           runtime = b''.join(decoded_parts)
           print('CHUNKWISE_RUNTIME', len(runtime), hashlib.sha256(runtime).hexdigest(), zipfile.is_zipfile(io.BytesIO(runtime)))
           if zipfile.is_zipfile(io.BytesIO(runtime)):
