@@ -1,0 +1,49 @@
+name: U4 M18 historical binary extract
+
+on:
+  push:
+    branches:
+      - feature/u4-m18-binary-extract
+
+permissions:
+  contents: read
+
+jobs:
+  extract-m18-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract historical M18 runtime from Git history
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMIT="5c6e82fb5cde20310f79a025cb65a88307fa0602"
+          PATH_IN_COMMIT="cws_convertor/manufacturing/m18_authority_runtime.zip"
+          git cat-file -e "${COMMIT}^{commit}"
+          git cat-file -e "${COMMIT}:${PATH_IN_COMMIT}"
+          git show "${COMMIT}:${PATH_IN_COMMIT}" > historical_m18_authority_runtime.zip
+          test -s historical_m18_authority_runtime.zip
+          sha256sum historical_m18_authority_runtime.zip | tee historical_m18_authority_runtime.sha256
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p = Path('historical_m18_authority_runtime.zip')
+          data = p.read_bytes()
+          print('bytes=', len(data))
+          print('sha256=', hashlib.sha256(data).hexdigest())
+          assert len(data) == 233402
+          PY
+
+      - name: Upload historical runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: u4-m18-historical-runtime
+          path: |
+            historical_m18_authority_runtime.zip
+            historical_m18_authority_runtime.sha256
+          if-no-files-found: error
+          retention-days: 1
