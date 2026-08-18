@@ -17,6 +17,20 @@ on:
       - 'validation/unified/U3_**'
       - 'docs/unified/U3_**'
       - '.github/workflows/unified-u3-central-ui.yml'
+  pull_request:
+    branches:
+      - feature/unified-v15-scribing-m18
+    paths:
+      - 'cws_convertor/integration/**'
+      - 'cws_convertor/ui_qt/**'
+      - 'cws_viewer/**'
+      - 'tests/unified_ui_context_u3_smoke.py'
+      - 'tests/unified_ui_shell_u3_gui_smoke.py'
+      - 'tests/unified_project_schema_u1_smoke.py'
+      - 'tests/unified_manufacturing_scribing_u2_smoke.py'
+      - 'validation/unified/U3_**'
+      - 'docs/unified/U3_**'
+      - '.github/workflows/unified-u3-central-ui.yml'
 
 permissions:
   contents: read
