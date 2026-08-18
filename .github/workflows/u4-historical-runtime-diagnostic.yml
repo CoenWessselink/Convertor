@@ -1,0 +1,106 @@
+name: U4 historical M18 runtime diagnostic
+
+on:
+  push:
+    branches:
+      - agent/u4-integrated-exe
+  pull_request:
+    branches:
+      - feature/unified-u4-production-workflow-exe
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"
+
+jobs:
+  verify-historical-runtime:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install M18 verification dependency
+        run: python -m pip install cryptography==46.0.4
+
+      - name: Materialize and verify historical M18 Git blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          git cat-file blob 0acef19f119bbe19540e19f8e82fb9ac5c97f638 > build/m18_authority_runtime.zip
+          python - <<'PY'
+          from __future__ import annotations
+          import hashlib
+          import importlib
+          import json
+          from pathlib import Path
+          import sys
+          import zipfile
+
+          runtime = Path('build/m18_authority_runtime.zip')
+          raw = runtime.read_bytes()
+          result = {
+              'git_blob': '0acef19f119bbe19540e19f8e82fb9ac5c97f638',
+              'size': len(raw),
+              'sha256': hashlib.sha256(raw).hexdigest(),
+          }
+          with zipfile.ZipFile(runtime) as archive:
+              result['crc_error'] = archive.testzip()
+              result['members'] = archive.namelist()
+              result['member_count'] = len(result['members'])
+              assert result['crc_error'] is None
+              assert 'cws_m18_authority/__init__.py' in result['members']
+              assert 'cws_m18_authority/release_gate.py' in result['members']
+              assert 'cws_m18_authority/deployment_assurance.py' in result['members']
+
+          sys.path.insert(0, str(runtime.resolve()))
+          from cws_convertor.manufacturing.m18_runtime_access import install_m18_runtime_access
+          install_m18_runtime_access()
+          root = importlib.import_module('cws_m18_authority')
+          result['origin_commit'] = getattr(root, 'M18_ORIGIN_COMMIT', None)
+          result['origin_version'] = getattr(root, 'M18_ORIGIN_VERSION', None)
+          assert result['origin_commit'] == 'b04b1c203583295e8c5ed018d75de68b2319c839'
+
+          modules = {
+              'M9': ('dstv_marking_adapter',),
+              'M10': ('reporting',),
+              'M11': ('release_gate',),
+              'M12': ('simulation_contracts','simulation_engine','simulation_validator','simulation_service','adapter_rehearsal'),
+              'M13': ('adapter_certification',),
+              'M14': ('adapter_sdk','certification_ops'),
+              'M15': ('certification_lab',),
+              'M16': ('fleet_governance',),
+              'M17': ('controlled_deployment',),
+              'M18': ('deployment_assurance',),
+          }
+          loaded = []
+          for phase, names in modules.items():
+              for name in names:
+                  module = importlib.import_module(f'cws_m18_authority.{name}')
+                  loaded.append(f'{phase}:{module.__name__}')
+          result['loaded_modules'] = loaded
+          Path('build/m18-historical-runtime.json').write_text(
+              json.dumps(result, indent=2, sort_keys=True) + '\n', encoding='utf-8'
+          )
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: u4-historical-m18-runtime-diagnostic
+          path: |
+            build/m18_authority_runtime.zip
+            build/m18-historical-runtime.json
+          if-no-files-found: error
+          retention-days: 3
