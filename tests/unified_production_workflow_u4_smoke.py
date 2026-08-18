@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+import sys
 import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.integration.production_workflow import (
     U4_SAFETY_FLAGS,
