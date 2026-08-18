@@ -10,6 +10,7 @@ on:
       - ".github/workflows/build-part-first-foundation-v1.yml"
       - "FOUNDATION_START_HERE.md"
       - "tools/expand_foundation_source.py"
+      - "tools/prepare_windowed_entrypoint.py"
 
 permissions:
   contents: read
@@ -69,6 +70,7 @@ jobs:
       - name: Build real Windows GUI executable
         shell: pwsh
         run: |
+          python tools\prepare_windowed_entrypoint.py
           (Get-Content CWS_Convertor_PartFirst.spec -Raw).Replace("console=True", "console=False") | Set-Content CWS_Convertor_PartFirst.spec -Encoding utf8
           python -m PyInstaller --noconfirm --clean CWS_Convertor_PartFirst.spec
           if (!(Test-Path dist\CWS_Convertor_PartFirst.exe)) { throw "Windows GUI EXE missing" }
