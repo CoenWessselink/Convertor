@@ -38,30 +38,26 @@ jobs:
           print('chunk_count=', len(files))
           print('payload_len=', len(payload))
           print('payload_sha=', hashlib.sha256(payload).hexdigest())
-          alphabet_no_pad = set(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/')
-          alphabet_with_pad = alphabet_no_pad | {ord('=')}
-          bad = [(i,b) for i,b in enumerate(payload) if b not in alphabet_with_pad]
-          print('invalid_count=', len(bad))
-          print('invalid_unique=', sorted(set(b for _,b in bad)))
-          print('invalid_first=', bad[:20])
-          clean = bytes(b for b in payload if b in alphabet_with_pad)
-          print('clean_len=', len(clean), 'equals=', clean.count(b'='), 'first_equals=', clean.find(b'='), 'last_equals=', clean.rfind(b'='))
-          try:
-              decoded = base64.b64decode(clean, validate=True)
-              print('WITH_PAD_OK', len(decoded), hashlib.sha256(decoded).hexdigest(), zipfile.is_zipfile(io.BytesIO(decoded)))
-          except Exception as exc:
-              print('WITH_PAD_ERROR', type(exc).__name__, str(exc))
-          no_pad = bytes(b for b in payload if b in alphabet_no_pad)
-          rebuilt = no_pad + b'=' * ((-len(no_pad)) % 4)
-          print('rebuilt_len=', len(rebuilt), 'terminal_padding=', len(rebuilt)-len(no_pad))
-          try:
-              decoded = base64.b64decode(rebuilt, validate=True)
-              print('REBUILT_PAD_OK', len(decoded), hashlib.sha256(decoded).hexdigest(), zipfile.is_zipfile(io.BytesIO(decoded)))
-              if zipfile.is_zipfile(io.BytesIO(decoded)):
-                  with zipfile.ZipFile(io.BytesIO(decoded)) as zf:
-                      print('ZIP_TEST=', zf.testzip())
-                      print('ZIP_MEMBERS=', len(zf.infolist()))
-          except Exception as exc:
-              print('REBUILT_PAD_ERROR', type(exc).__name__, str(exc))
+          alphabet = set(b'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+          bad = [(i,b) for i,b in enumerate(payload) if b not in alphabet]
+          print('invalid_count=', len(bad), 'invalid_unique=', sorted(set(b for _,b in bad)), 'invalid_first=', bad[:20])
+          decoded_parts = []
+          for index, path in enumerate(files, 1):
+              raw = b''.join(path.read_bytes().split())
+              clean = bytes(b for b in raw if b in alphabet)
+              removed = len(raw) - len(clean)
+              try:
+                  decoded = base64.b64decode(clean, validate=True)
+                  decoded_parts.append(decoded)
+                  print('CHUNK_OK', index, 'raw=', len(raw), 'clean=', len(clean), 'removed=', removed, 'decoded=', len(decoded), 'sha=', hashlib.sha256(decoded).hexdigest())
+              except Exception as exc:
+                  print('CHUNK_ERROR', index, 'raw=', len(raw), 'clean=', len(clean), 'removed=', removed, type(exc).__name__, str(exc))
+                  raise
+          runtime = b''.join(decoded_parts)
+          print('CHUNKWISE_RUNTIME', len(runtime), hashlib.sha256(runtime).hexdigest(), zipfile.is_zipfile(io.BytesIO(runtime)))
+          if zipfile.is_zipfile(io.BytesIO(runtime)):
+              with zipfile.ZipFile(io.BytesIO(runtime)) as zf:
+                  print('ZIP_TEST=', zf.testzip())
+                  print('ZIP_MEMBERS=', len(zf.infolist()))
           '@ | Set-Content -Encoding utf8 diagnostic.py
           python diagnostic.py
