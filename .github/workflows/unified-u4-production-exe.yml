@@ -3,11 +3,9 @@ name: CWS Unified U4 Production Workflow + Windows EXE
 on:
   workflow_dispatch:
   push:
-    branches:
-      - feature/unified-u4-production-workflow-exe
+    branches: [feature/unified-u4-production-workflow-exe]
   pull_request:
-    branches:
-      - feature/unified-u3-central-ui
+    branches: [feature/unified-u3-central-ui]
 
 permissions:
   contents: read
@@ -22,14 +20,13 @@ jobs:
       CWS_HEADLESS_GUI_SMOKE: '1'
       CWS_REQUIRE_VIEWER_GUI: '1'
       CWS_REQUIRE_IFCOPENSHELL: '1'
-      M18_SOURCE_REF: 7ab6123c471f01458b10965efcf62c009beb9c43
+      M18_SOURCE_REF: feature/unified-v15-scribing-m18
       M18_RUNTIME_SHA256: 62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Restore exact frozen M18 authority from historical GitHub contents
+      - name: Restore checksum-exact frozen M18 authority
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,61 +38,48 @@ jobs:
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
           }
-          $path = 'cws_convertor/manufacturing/m18_authority_runtime.zip'
-          $uri = "https://api.github.com/repos/${{ github.repository }}/contents/$path?ref=$env:M18_SOURCE_REF"
+          $sourcePath = 'cws_convertor/manufacturing/m18_authority_runtime.zip'
+          $encodedRef = [Uri]::EscapeDataString($env:M18_SOURCE_REF)
+          $uri = "https://api.github.com/repos/${{ github.repository }}/contents/$sourcePath?ref=$encodedRef"
           $payload = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
-          if ($payload.encoding -ne 'base64') { throw "Unexpected M18 response encoding: $($payload.encoding)" }
-          $runtime = [Convert]::FromBase64String(([string]$payload.content -replace '\s', ''))
-          [IO.File]::WriteAllBytes((Join-Path $PWD $path), $runtime)
-          $actual = (Get-FileHash -Algorithm SHA256 $path).Hash.ToLowerInvariant()
-          if ($actual -ne $env:M18_RUNTIME_SHA256) {
-            throw "Historical M18 runtime SHA mismatch: expected=$env:M18_RUNTIME_SHA256 actual=$actual"
-          }
-          python -c "import zipfile; p=r'cws_convertor/manufacturing/m18_authority_runtime.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert 'cws_m18_authority/__init__.py' in z.namelist(); print('Exact M18 ZIP/CRC OK:', len(z.namelist()), 'entries')"
-          $base64 = [Convert]::ToBase64String($runtime)
-          [IO.File]::WriteAllText((Join-Path $PWD 'build/authority_evidence/m18_authority_runtime.b64'), $base64, [Text.Encoding]::ASCII)
-          @{
-            schema = 'cws-m18-authority-evidence-1.0'
-            source_ref = $env:M18_SOURCE_REF
-            source_path = $path
-            runtime_sha256 = $actual
-            runtime_bytes = $runtime.Length
-          } | ConvertTo-Json | Set-Content -Encoding utf8NoBOM build\authority_evidence\m18_authority_runtime.json
+          if ($payload.encoding -ne 'base64') { throw "Unexpected M18 encoding: $($payload.encoding)" }
+          $runtime = [Convert]::FromBase64String(([string]$payload.content -replace '\s',''))
+          [IO.File]::WriteAllBytes((Join-Path $PWD $sourcePath), $runtime)
+          $actual = (Get-FileHash -Algorithm SHA256 $sourcePath).Hash.ToLowerInvariant()
+          if ($actual -ne $env:M18_RUNTIME_SHA256) { throw "M18 SHA mismatch: expected=$env:M18_RUNTIME_SHA256 actual=$actual" }
+          python -c "import zipfile; p=r'cws_convertor/manufacturing/m18_authority_runtime.zip'; z=zipfile.ZipFile(p); assert z.testzip() is None; assert 'cws_m18_authority/__init__.py' in z.namelist(); print('M18 ZIP OK', len(z.namelist()))"
+          [IO.File]::WriteAllText('build/authority_evidence/m18_authority_runtime.b64',[Convert]::ToBase64String($runtime),[Text.Encoding]::ASCII)
+          @{schema='cws-m18-authority-evidence-1.0';source_ref=$env:M18_SOURCE_REF;runtime_sha256=$actual;runtime_bytes=$runtime.Length} | ConvertTo-Json | Set-Content -Encoding utf8NoBOM build\authority_evidence\m18_authority_runtime.json
 
-      - name: Set up Python 3.12 x64
-        uses: actions/setup-python@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: x64
           cache: pip
 
-      - name: Install locked build dependencies
+      - name: Install locked native stack
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-build.lock.txt
           python -m pip check
-          python -c "import cadquery, OCP, ifcopenshell, PySide6, vtk, fitz; print('U4 native imports OK')"
+          python -c "import cadquery,OCP,ifcopenshell,PySide6,vtk,fitz; print('native imports OK')"
 
-      - name: Compile U4 source
+      - name: Compile source
         shell: pwsh
         run: |
           python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py cli.py tests
-          if ($LASTEXITCODE -ne 0) { throw 'U4 compile failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'compile failed' }
 
-      - name: Verify bundled frozen M18 runtime
-        run: python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, verify_m18_runtime_archive; assert verify_m18_runtime_archive() == M18_RUNTIME_SHA256; print('M18 authority runtime verified')"
+      - name: U0-U2 canonical gates
+        shell: pwsh
+        run: |
+          python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256,verify_m18_runtime_archive; assert verify_m18_runtime_archive()==M18_RUNTIME_SHA256"
+          python validation/unified/validate_u0_baseline.py
+          python tests/unified_project_schema_u1_smoke.py
+          python tests/unified_manufacturing_scribing_u2_smoke.py
 
-      - name: Preserve U0 baseline
-        run: python validation/unified/validate_u0_baseline.py
-
-      - name: Preserve U1 Project Model 2.25
-        run: python tests/unified_project_schema_u1_smoke.py
-
-      - name: Preserve U2 Manufacturing Scribing M1-M18
-        run: python tests/unified_manufacturing_scribing_u2_smoke.py
-
-      - name: Preserve Viewer V15 T3-T8 contracts
+      - name: Viewer V15 T3-T8 gates
         shell: pwsh
         run: |
           $tests = @(
@@ -113,103 +97,81 @@ jobs:
             'tests/manufacturing_face_core_smoke.py'
           )
           foreach ($test in $tests) {
-            if (!(Test-Path $test)) { throw "Required V15 gate missing: $test" }
-            Write-Host "Running $test"
+            if (!(Test-Path $test)) { throw "missing gate: $test" }
             python $test
-            if ($LASTEXITCODE -ne 0) { throw "V15 gate failed: $test" }
+            if ($LASTEXITCODE -ne 0) { throw "failed gate: $test" }
           }
 
-      - name: Preserve U3 central V15 application context
+      - name: U3-U4 integrated Viewer and workflow gates
         shell: pwsh
         run: |
-          python tests/unified_ui_context_u3_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'U3 context smoke failed' }
-          python tests/unified_ui_shell_u3_gui_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'U3 shell smoke failed' }
-          python tests/unified_viewer_v15_u3_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'U3 integrated V15 host smoke failed' }
+          $tests = @(
+            'tests/unified_ui_context_u3_smoke.py',
+            'tests/unified_ui_shell_u3_gui_smoke.py',
+            'tests/unified_viewer_v15_u3_smoke.py',
+            'tests/unified_production_workflow_u4_smoke.py',
+            'tests/unified_u4_gui_smoke.py'
+          )
+          foreach ($test in $tests) {
+            python $test
+            if ($LASTEXITCODE -ne 0) { throw "failed gate: $test" }
+          }
 
-      - name: Prove U4 production workflow
+      - name: Source launcher gates
         shell: pwsh
         run: |
-          python tests/unified_production_workflow_u4_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'U4 production workflow smoke failed' }
-          python tests/unified_u4_gui_smoke.py
-          if ($LASTEXITCODE -ne 0) { throw 'U4 GUI smoke failed' }
-
-      - name: Create packaged smoke project
-        run: python CWS_Convertor_App.py --create-smoke-project build\u4-smoke.cwscproj --report build\create-project.json
-
-      - name: Source launcher self-test and GUI smoke
-        shell: pwsh
-        run: |
+          python CWS_Convertor_App.py --create-smoke-project build\u4-smoke.cwscproj --report build\create-project.json
           python CWS_Convertor_App.py --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-source-selftest.json
-          if ($LASTEXITCODE -ne 0) { throw 'Source self-test failed' }
           python CWS_Convertor_App.py --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-source-gui-smoke.json
-          if ($LASTEXITCODE -ne 0) { throw 'Source GUI smoke failed' }
 
-      - name: Build CWS Convertor EXE
-        run: pyinstaller --noconfirm --clean CWS_Convertor.spec
-
-      - name: Verify EXE files
+      - name: Build Windows distribution
         shell: pwsh
         run: |
-          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
-          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
-          if (!(Test-Path dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip)) { throw 'Packaged M18 authority runtime missing' }
-          $packagedHash = (Get-FileHash -Algorithm SHA256 dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip).Hash.ToLowerInvariant()
-          if ($packagedHash -ne $env:M18_RUNTIME_SHA256) { throw "Packaged M18 SHA mismatch: $packagedHash" }
-          Get-Item dist\CWS_Convertor\CWS_Convertor.exe | Select-Object Name,Length,LastWriteTime | ConvertTo-Json | Out-File build\u4-exe.json
+          pyinstaller --noconfirm --clean CWS_Convertor.spec
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'GUI EXE missing' }
+          if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CLI EXE missing' }
+          $runtime='dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip'
+          if (!(Test-Path $runtime)) { throw 'packaged M18 runtime missing' }
+          if ((Get-FileHash -Algorithm SHA256 $runtime).Hash.ToLowerInvariant() -ne $env:M18_RUNTIME_SHA256) { throw 'packaged M18 SHA mismatch' }
 
-      - name: Packaged EXE self-test and GUI smoke
+      - name: Packaged runtime gates
         shell: pwsh
         run: |
           dist\CWS_Convertor\CWS_Convertor.exe --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-packaged-selftest.json
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
           dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-packaged-gui-smoke.json
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged GUI smoke failed' }
 
-      - name: Create portable package
+      - name: Build portable and installer
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release | Out-Null
           Compress-Archive -Path dist\CWS_Convertor\* -DestinationPath release\CWS_Convertor_U4_Windows_x64_Portable.zip -CompressionLevel Optimal
           Copy-Item dist\CWS_Convertor\CWS_Convertor.exe release\CWS_Convertor_U4.exe
-
-      - name: Build Setup EXE
-        shell: pwsh
-        run: |
-          $iscc = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
-          if (!(Test-Path $iscc)) { throw 'Inno Setup not found' }
+          $iscc='C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+          if (!(Test-Path $iscc)) { throw 'Inno Setup missing' }
           & $iscc installer\CWS_Convertor.iss
-          if ($LASTEXITCODE -ne 0) { throw 'ISCC failed' }
-          $setup = Get-ChildItem dist_installer\*.exe | Select-Object -First 1
+          if ($LASTEXITCODE -ne 0) { throw 'installer build failed' }
+          $setup=Get-ChildItem dist_installer\*.exe | Select-Object -First 1
           if (!$setup) { throw 'Setup EXE missing' }
           Copy-Item $setup.FullName release\CWS_Convertor_U4_Setup_Windows_x64.exe
 
-      - name: Smoke install Setup EXE
+      - name: Installed runtime gate
         shell: pwsh
         run: |
-          $installDir = "$env:RUNNER_TEMP\CWS-U4-Installed"
-          $installer = (Resolve-Path release\CWS_Convertor_U4_Setup_Windows_x64.exe)
-          $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',"/DIR=$installDir") -Wait -PassThru -WindowStyle Hidden
-          if ($process.ExitCode -ne 0) { throw 'U4 setup install failed' }
-          if (!(Test-Path "$installDir\CWS_Convertor.exe")) { throw 'Installed U4 EXE missing' }
+          $installDir="$env:RUNNER_TEMP\CWS-U4-Installed"
+          $installer=(Resolve-Path release\CWS_Convertor_U4_Setup_Windows_x64.exe)
+          $p=Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER',"/DIR=$installDir") -Wait -PassThru -WindowStyle Hidden
+          if ($p.ExitCode -ne 0) { throw 'installer failed' }
           & "$installDir\CWS_Convertor.exe" --quick-self-test --project build\u4-smoke.cwscproj --report build\u4-installed-selftest.json
-          if ($LASTEXITCODE -ne 0) { throw 'Installed U4 EXE self-test failed' }
+          if ($LASTEXITCODE -ne 0) { throw 'installed self-test failed' }
 
-      - name: Generate release checksums
+      - name: Checksums and evidence
         shell: pwsh
         run: |
-          Get-ChildItem release\* | ForEach-Object {
-            $h = Get-FileHash $_.FullName -Algorithm SHA256
-            "$($h.Hash.ToLower())  $($_.Name)"
-          } | Out-File release\SHA256SUMS.txt -Encoding ascii
+          Get-ChildItem release\* | ForEach-Object { $h=Get-FileHash $_.FullName -Algorithm SHA256; "$($h.Hash.ToLower())  $($_.Name)" } | Out-File release\SHA256SUMS.txt -Encoding ascii
           Copy-Item build\u4-*.json release\ -ErrorAction SilentlyContinue
           Copy-Item build\authority_evidence\* release\
 
-      - name: Upload U4 Windows EXE release
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: CWS_Convertor_U4_Windows_x64
           path: release/*
