@@ -110,13 +110,13 @@ def _validate_runtime_member(info: zipfile.ZipInfo) -> PurePosixPath:
 
 
 def _verified_runtime_bytes() -> bytes:
-    """Verify exact stored transport, deterministically clean it, then verify runtime.
+    """Verify transport bytes, decode each historical segment, then verify ZIP.
 
-    The historic connector transport inserted non-Base64 display characters in
-    an otherwise checksum-bound payload. We first require the exact known
-    transport SHA. Only bytes outside the Base64 alphabet are removed. The
-    resulting bytes are strict-decoded and MUST still equal the frozen original
-    runtime SHA; therefore missing/changed authority bytes can never pass.
+    The frozen runtime was transported as independently Base64-encoded binary
+    segments. The complete normalized text transport is fingerprinted first.
+    Each segment is then deterministically stripped of non-Base64 display bytes
+    and strict-decoded independently, preserving legitimate padding boundaries.
+    The concatenated binary MUST equal the immutable M18 runtime SHA-256.
     """
     global _RUNTIME_BYTES
     if _RUNTIME_BYTES is not None:
@@ -134,13 +134,18 @@ def _verified_runtime_bytes() -> bytes:
             "Frozen M18 Base64 payload SHA-256 wijkt af; "
             f"expected={M18_RUNTIME_PAYLOAD_SHA256} actual={payload_sha256}"
         )
-    transport = bytes(value for value in payload if value in _BASE64_BYTES)
-    if not transport:
-        raise RuntimeError("Frozen M18 Base64 transport is leeg na deterministische normalisatie")
-    try:
-        runtime = base64.b64decode(transport, validate=True)
-    except Exception as exc:
-        raise RuntimeError("Frozen M18 Base64 transport is niet strict decodeerbaar") from exc
+    decoded_chunks: list[bytes] = []
+    for index, encoded in enumerate(normalized_chunks, 1):
+        transport = bytes(value for value in encoded if value in _BASE64_BYTES)
+        if not transport:
+            raise RuntimeError(f"Frozen M18 Base64 transportchunk {index:03d} is leeg")
+        try:
+            decoded_chunks.append(base64.b64decode(transport, validate=True))
+        except Exception as exc:
+            raise RuntimeError(
+                f"Frozen M18 Base64 transportchunk {index:03d} is niet strict decodeerbaar"
+            ) from exc
+    runtime = b"".join(decoded_chunks)
     runtime_sha256 = hashlib.sha256(runtime).hexdigest()
     if runtime_sha256 != M18_RUNTIME_SHA256:
         raise RuntimeError(
