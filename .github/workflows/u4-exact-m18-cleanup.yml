@@ -1,0 +1,49 @@
+name: U4 exact M18 bootstrap cleanup
+
+on:
+  push:
+    branches:
+      - agent/u4-exact-m18-bootstrap
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup-bootstrap-only-files:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout proven exact-runtime branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/u4-exact-m18-bootstrap
+          persist-credentials: true
+
+      - name: Require committed U0-U2 proof
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          path = Path('validation/unified/U2_EXACT_RUNTIME_VERIFIED.json')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          assert data['status'] == 'passed'
+          assert data['m18_runtime_sha256'] == '62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1'
+          assert data['m18_runtime_size'] == 233402
+          assert data['direct_machine_transfer'] is False
+          PY
+
+      - name: Remove temporary bootstrap workflows and scanner
+        run: |
+          git rm -f \
+            .github/workflows/u4-exact-m18-artifact-bootstrap.yml \
+            .github/workflows/u4-exact-m18-u2-verify.yml \
+            .github/workflows/u4-exact-m18-u2-proof.yml \
+            .github/workflows/u4-exact-m18-cleanup.yml \
+            tools/recovery/bootstrap_exact_m18_from_artifacts.py
+
+      - name: Commit clean integrated runtime result
+        run: |
+          git config user.name 'CWS Unified Build Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git commit -m 'chore(unified): remove temporary M18 bootstrap tooling'
+          git push origin HEAD:agent/u4-exact-m18-bootstrap
