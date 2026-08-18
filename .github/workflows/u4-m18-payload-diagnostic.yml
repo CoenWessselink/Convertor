@@ -7,6 +7,13 @@ on:
       - feature/unified-u4-production-workflow-v2
     paths:
       - '.github/workflows/u4-m18-payload-diagnostic.yml'
+  pull_request:
+    branches:
+      - feature/unified-u3-central-ui
+    paths:
+      - '.github/workflows/u4-m18-payload-diagnostic.yml'
+      - 'cws_convertor/manufacturing/authority.py'
+      - 'cws_convertor/manufacturing/m18_payload/**'
 
 permissions:
   contents: read
