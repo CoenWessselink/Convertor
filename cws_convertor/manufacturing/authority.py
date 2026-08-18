@@ -1,11 +1,11 @@
 """Fail-closed facade for the frozen CWS Scribing M9-M18 authority.
 
-The immutable Git artifact is SHA-256 bound. Its central ZIP directory was lost
-in one historical transport, while the local file records remained present.
-Normal ZIPs are read normally; otherwise local records are recovered only after
-strict path, compression, size and CRC validation. The full required module set
-and frozen source identity must exist before import. Project data remains solely
-in canonical Project Model 2.25.
+The canonical runtime is SHA-256 bound. A historical Windows checkout treated
+the binary ZIP as text and expanded LF bytes to CRLF. Recovery is permitted only
+when the checked-out transport hash matches its known fingerprint and reversing
+that conversion produces the exact canonical runtime hash. ZIP members are then
+path, CRC and completeness checked before import. Project data remains solely in
+canonical Project Model 2.25.
 """
 from __future__ import annotations
 
@@ -27,8 +27,10 @@ from cws_convertor.project.unified_schema import m18_store_snapshot
 from .m18_runtime_access import install_m18_runtime_access
 
 M18_RUNTIME_ARCHIVE = "m18_authority_runtime.zip"
-# Exact bytes checked out and verified by the Windows runner.
-M18_RUNTIME_SHA256 = "30bcbb5bdd0aa6bac825a31dcbd5eb69586f051dc66c01e3485d4e8a56d7a745"
+# Canonical frozen ZIP bytes before the historic Windows line-ending expansion.
+M18_RUNTIME_SHA256 = "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
+# Exact expanded checkout bytes observed and pinned by Windows CI.
+M18_WINDOWS_TRANSPORT_SHA256 = "30bcbb5bdd0aa6bac825a31dcbd5eb69586f051dc66c01e3485d4e8a56d7a745"
 M18_ORIGIN_VERSION = "0.8.30-beta-dev"
 M18_ORIGIN_COMMIT = "b04b1c203583295e8c5ed018d75de68b2319c839"
 M18_ORIGIN_TAG = "scribing-m18-deployment-assurance-0.8.30-beta-dev"
@@ -109,6 +111,7 @@ _RUNTIME_ENTRIES: dict[str, bytes] | None = None
 _RUNTIME_IMPORT_ROOT: Path | None = None
 _COMPATIBILITY_ALIASES_INSTALLED = False
 _RECOVERY_MODE = ""
+_TRANSPORT_SHA256 = ""
 
 
 def runtime_archive_path() -> Path:
@@ -122,6 +125,26 @@ def _safe_path(name: str) -> PurePosixPath:
     if not path.parts or path.parts[0] != M18_RUNTIME_PACKAGE:
         raise RuntimeError(f"M18 entry buiten authority package: {name}")
     return path
+
+
+def _canonical_runtime_bytes(raw: bytes) -> tuple[bytes, str, str]:
+    transport_sha = hashlib.sha256(raw).hexdigest()
+    if transport_sha == M18_RUNTIME_SHA256:
+        return raw, "canonical-binary", transport_sha
+    if transport_sha != M18_WINDOWS_TRANSPORT_SHA256:
+        raise RuntimeError(
+            "Frozen M18 transport SHA-256 wijkt af; "
+            f"canonical={M18_RUNTIME_SHA256} windows={M18_WINDOWS_TRANSPORT_SHA256} "
+            f"actual={transport_sha}"
+        )
+    canonical = raw.replace(b"\r\n", b"\n")
+    canonical_sha = hashlib.sha256(canonical).hexdigest()
+    if canonical_sha != M18_RUNTIME_SHA256:
+        raise RuntimeError(
+            "Windows M18 CRLF-recovery levert niet de canonical frozen runtime; "
+            f"expected={M18_RUNTIME_SHA256} actual={canonical_sha}"
+        )
+    return canonical, "windows-crlf-recovered", transport_sha
 
 
 def _normal_entries(raw: bytes) -> dict[str, bytes]:
@@ -142,7 +165,7 @@ def _normal_entries(raw: bytes) -> dict[str, bytes]:
 
 
 def _local_entries(raw: bytes) -> dict[str, bytes]:
-    """Recover checked local ZIP records when the central index is absent."""
+    """CRC-checked fallback if only the canonical local ZIP records survive."""
     result: dict[str, bytes] = {}
     header = struct.Struct("<IHHHHHIIIHH")
     offset = 0
@@ -173,19 +196,13 @@ def _local_entries(raw: bytes) -> dict[str, bytes]:
         if data_end > len(raw):
             raise RuntimeError("Afgekapt M18 ZIP-payload")
         encoding = "utf-8" if flags & 0x0800 else "cp437"
-        try:
-            name = raw[name_start:name_end].decode(encoding)
-        except UnicodeDecodeError as exc:
-            raise RuntimeError("Ongeldige M18 ZIP-bestandsnaam") from exc
+        name = raw[name_start:name_end].decode(encoding)
         _safe_path(name)
         compressed = raw[data_start:data_end]
         if method == 0:
             payload = compressed
         elif method == 8:
-            try:
-                payload = zlib.decompress(compressed, -15)
-            except zlib.error as exc:
-                raise RuntimeError(f"Deflate-fout in M18 entry {name}") from exc
+            payload = zlib.decompress(compressed, -15)
         else:
             raise RuntimeError(f"Niet-ondersteunde M18 ZIP-compressie {method}: {name}")
         if len(payload) != uncompressed_size:
@@ -199,32 +216,27 @@ def _local_entries(raw: bytes) -> dict[str, bytes]:
 
 
 def _verified_entries() -> dict[str, bytes]:
-    global _RUNTIME_ENTRIES, _RECOVERY_MODE
+    global _RUNTIME_ENTRIES, _RECOVERY_MODE, _TRANSPORT_SHA256
     if _RUNTIME_ENTRIES is not None:
         return _RUNTIME_ENTRIES
     archive = runtime_archive_path()
     if not archive.is_file():
         raise RuntimeError(f"Frozen M18 authority runtime ontbreekt: {archive}")
-    raw = archive.read_bytes()
-    digest = hashlib.sha256(raw).hexdigest()
-    if digest != M18_RUNTIME_SHA256:
-        raise RuntimeError(
-            "Frozen M18 authority SHA-256 wijkt af; "
-            f"expected={M18_RUNTIME_SHA256} actual={digest}"
-        )
+    canonical, transport_mode, transport_sha = _canonical_runtime_bytes(archive.read_bytes())
     try:
-        entries = _normal_entries(raw)
-        mode = "central-directory"
+        entries = _normal_entries(canonical)
+        zip_mode = "central-directory"
     except (zipfile.BadZipFile, RuntimeError):
-        entries = _local_entries(raw)
-        mode = "validated-local-record-recovery"
+        entries = _local_entries(canonical)
+        zip_mode = "validated-local-record-recovery"
     missing = sorted(_REQUIRED_FILES - set(entries))
     if missing:
         raise RuntimeError(f"Frozen M18 runtime mist verplichte modules: {missing}")
     init_text = entries[f"{M18_RUNTIME_PACKAGE}/__init__.py"].decode("utf-8")
     if M18_ORIGIN_COMMIT not in init_text:
         raise RuntimeError("M18 runtime mist frozen source-commit identiteit")
-    _RECOVERY_MODE = mode
+    _RECOVERY_MODE = f"{transport_mode}+{zip_mode}"
+    _TRANSPORT_SHA256 = transport_sha
     _RUNTIME_ENTRIES = entries
     return entries
 
@@ -311,7 +323,7 @@ def authority_chain_status(project: ProjectModel) -> dict[str, Any]:
             "available": not errors,
         }
     return {
-        "schema": "cws-unified-manufacturing-authority-1.1",
+        "schema": "cws-unified-manufacturing-authority-1.2",
         "project_id": project.project_id,
         "project_schema": project.schema_version,
         "canonical_m1_m8": dict(CANONICAL_M1_M8),
@@ -320,6 +332,7 @@ def authority_chain_status(project: ProjectModel) -> dict[str, Any]:
             "version": M18_ORIGIN_VERSION,
             "commit": M18_ORIGIN_COMMIT,
             "tag": M18_ORIGIN_TAG,
+            "transport_sha256": _TRANSPORT_SHA256,
             "runtime_sha256": M18_RUNTIME_SHA256,
             "recovery_mode": _RECOVERY_MODE,
         },
@@ -334,7 +347,8 @@ def authority_chain_status(project: ProjectModel) -> dict[str, Any]:
 
 
 __all__ = [
-    "M18_RUNTIME_SHA256", "M18_ORIGIN_VERSION", "M18_ORIGIN_COMMIT",
-    "M18_ORIGIN_TAG", "CANONICAL_M1_M8", "AUTHORITY_MODULES",
-    "verify_m18_runtime_archive", "load_authority_module", "authority_chain_status",
+    "M18_RUNTIME_SHA256", "M18_WINDOWS_TRANSPORT_SHA256", "M18_ORIGIN_VERSION",
+    "M18_ORIGIN_COMMIT", "M18_ORIGIN_TAG", "CANONICAL_M1_M8",
+    "AUTHORITY_MODULES", "verify_m18_runtime_archive", "load_authority_module",
+    "authority_chain_status",
 ]
