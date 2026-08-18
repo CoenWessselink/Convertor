@@ -45,8 +45,11 @@ jobs:
       - name: Compile U4 source
         shell: pwsh
         run: |
-          python -m compileall -q cws_convertor CWS_Convertor_App.py tests/unified_production_workflow_u4_smoke.py tests/unified_u4_gui_smoke.py
+          python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py cli.py tests
           if ($LASTEXITCODE -ne 0) { throw 'U4 compile failed' }
+
+      - name: Verify bundled frozen M18 runtime
+        run: python -c "from cws_convertor.manufacturing.authority import M18_RUNTIME_SHA256, verify_m18_runtime_archive; assert verify_m18_runtime_archive() == M18_RUNTIME_SHA256; print('M18 authority runtime verified')"
 
       - name: Preserve U0 baseline
         run: python validation/unified/validate_u0_baseline.py
@@ -57,17 +60,23 @@ jobs:
       - name: Preserve U2 Manufacturing Scribing M1-M18
         run: python tests/unified_manufacturing_scribing_u2_smoke.py
 
-      - name: Preserve U3 central application context
+      - name: Preserve U3 central V15 application context
         shell: pwsh
         run: |
           python tests/unified_ui_context_u3_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U3 context smoke failed' }
           python tests/unified_ui_shell_u3_gui_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U3 shell smoke failed' }
+          python tests/unified_viewer_v15_u3_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U3 integrated V15 host smoke failed' }
 
       - name: Prove U4 production workflow
         shell: pwsh
         run: |
           python tests/unified_production_workflow_u4_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U4 production workflow smoke failed' }
           python tests/unified_u4_gui_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U4 GUI smoke failed' }
 
       - name: Create packaged smoke project
         run: python CWS_Convertor_App.py --create-smoke-project build\u4-smoke.cwscproj --report build\create-project.json
@@ -76,7 +85,9 @@ jobs:
         shell: pwsh
         run: |
           python CWS_Convertor_App.py --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-source-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Source self-test failed' }
           python CWS_Convertor_App.py --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-source-gui-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'Source GUI smoke failed' }
 
       - name: Build CWS Convertor EXE
         run: pyinstaller --noconfirm --clean CWS_Convertor.spec
@@ -86,13 +97,16 @@ jobs:
         run: |
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor.exe)) { throw 'CWS_Convertor.exe missing' }
           if (!(Test-Path dist\CWS_Convertor\CWS_Convertor_CLI.exe)) { throw 'CWS_Convertor_CLI.exe missing' }
+          if (!(Test-Path dist\CWS_Convertor\_internal\cws_convertor\manufacturing\m18_authority_runtime.zip)) { throw 'Packaged M18 authority runtime missing' }
           Get-Item dist\CWS_Convertor\CWS_Convertor.exe | Select-Object Name,Length,LastWriteTime | ConvertTo-Json | Out-File build\u4-exe.json
 
       - name: Packaged EXE self-test and GUI smoke
         shell: pwsh
         run: |
           dist\CWS_Convertor\CWS_Convertor.exe --quick-self-test --project build\u4-smoke.cwscproj --require-gui-runtime --report build\u4-packaged-selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged self-test failed' }
           dist\CWS_Convertor\CWS_Convertor.exe --gui-smoke --project build\u4-smoke.cwscproj --report build\u4-packaged-gui-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged GUI smoke failed' }
 
       - name: Create portable package
         shell: pwsh
