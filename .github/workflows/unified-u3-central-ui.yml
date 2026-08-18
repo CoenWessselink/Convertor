@@ -1,0 +1,99 @@
+name: CWS Unified U3 Central Viewer UI gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/unified-u3-central-ui
+      - feature/unified-v15-scribing-m18
+    paths:
+      - 'cws_convertor/integration/**'
+      - 'cws_convertor/ui_qt/**'
+      - 'cws_viewer/**'
+      - 'tests/unified_ui_context_u3_smoke.py'
+      - 'tests/unified_ui_shell_u3_gui_smoke.py'
+      - 'tests/unified_project_schema_u1_smoke.py'
+      - 'tests/unified_manufacturing_scribing_u2_smoke.py'
+      - 'validation/unified/U3_**'
+      - 'docs/unified/U3_**'
+      - '.github/workflows/unified-u3-central-ui.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  u3-central-viewer-ui:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: 'offscreen'
+      CWS_HEADLESS_GUI_SMOKE: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.12 x64
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+
+      - name: Install unified Viewer V15 dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-standalone.lock.txt
+          python -m pip install cryptography
+          python -m pip check
+
+      - name: Compile U3 application context and shell
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor/integration cws_convertor/ui_qt tests/unified_ui_context_u3_smoke.py tests/unified_ui_shell_u3_gui_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'U3 compileall failed' }
+
+      - name: Preserve U0 baseline
+        shell: pwsh
+        run: python validation/unified/validate_u0_baseline.py
+
+      - name: Preserve U1 Project Model 2.25
+        shell: pwsh
+        run: python tests/unified_project_schema_u1_smoke.py
+
+      - name: Preserve U2 Manufacturing Scribing M1-M18
+        shell: pwsh
+        run: python tests/unified_manufacturing_scribing_u2_smoke.py
+
+      - name: Prove U3 single project and selection context
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation\unified-u3 | Out-Null
+          python tests/unified_ui_context_u3_smoke.py 2>&1 | Tee-Object validation\unified-u3\u3_context.txt
+          if ($LASTEXITCODE -ne 0) { throw 'U3 context contract failed' }
+
+      - name: Prove offscreen Viewer Workbench Scribing BOM Export binding
+        shell: pwsh
+        run: |
+          python tests/unified_ui_shell_u3_gui_smoke.py 2>&1 | Tee-Object validation\unified-u3\u3_gui.txt
+          if ($LASTEXITCODE -ne 0) { throw 'U3 GUI integration failed' }
+
+      - name: Run integrated quick self-test through default launcher
+        shell: pwsh
+        run: |
+          python CWS_Convertor_App.py --quick-self-test --report validation\unified-u3\u3_launcher_selftest.json
+          if ($LASTEXITCODE -ne 0) { throw 'U3 launcher self-test failed' }
+
+      - name: Project storage no-regression
+        shell: pwsh
+        run: python tests/project_storage_smoke.py
+
+      - name: Upload U3 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Unified_U3_Central_Viewer_UI_${{ github.run_id }}
+          path: validation/unified-u3/*
+          if-no-files-found: warn
+          retention-days: 30
