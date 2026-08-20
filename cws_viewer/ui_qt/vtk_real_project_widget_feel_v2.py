@@ -219,6 +219,23 @@ if qt_available():
                 QtCore.Qt.MouseButton.MiddleButton,
             }:
                 self._begin_interaction_quality()
+                # Bind each orbit gesture to the actual surface under the
+                # cursor without changing the central project selection.
+                if (
+                    event.button() == QtCore.Qt.MouseButton.LeftButton
+                    and self.navigation_mode == NavigationMode.ORBIT
+                ):
+                    try:
+                        backend = getattr(self, "backend", None) or getattr(self, "_backend", None)
+                        if backend is not None:
+                            x, y = self._vtk_xy(event.position())
+                            hit = backend.pick_at(x, y, self.controller.index)
+                            if hit is not None:
+                                self.controller.set_orbit_pivot(hit.world_point)
+                    except Exception:
+                        # Clicking empty space, or clicking while a scene is
+                        # loading, preserves the last valid model pivot.
+                        pass
             super().mousePressEvent(event)
 
         def wheelEvent(self, event: Any) -> None:

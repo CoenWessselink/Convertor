@@ -41,9 +41,122 @@ class EngineeringDrawingGenerator:
     @classmethod
     def _draw_logo(cls, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
         """Draw the product mark as vectors so PNG and PDF never miss an asset."""
-        draw.rounded_rectangle((x, y, x + 122, y + 42), radius=6, fill=(0, 78, 162))
-        draw.text((x + 13, y + 5), "CWS", fill="white", font=cls._font(25, bold=True))
-        draw.text((x + 137, y + 8), "CONVERTOR", fill=(20, 58, 99), font=cls._font(21, bold=True))
+        draw.rounded_rectangle((x, y, x + 70, y + 42), radius=5, fill=(0, 78, 162))
+        draw.text((x + 8, y + 5), "CWS", fill="white", font=cls._font(25, bold=True))
+        draw.text((x + 82, y + 7), "CONVERTOR", fill=(20, 58, 99), font=cls._font(22, bold=True))
+        draw.line((x + 82, y + 34, x + 236, y + 34), fill=(22, 112, 214), width=2)
+
+    @staticmethod
+    def _number(mapping: Mapping[str, Any], *names: str, default: float = 0.0) -> float:
+        for name in names:
+            value = mapping.get(name)
+            if value not in (None, ""):
+                try:
+                    return float(str(value).replace(",", "."))
+                except (TypeError, ValueError):
+                    continue
+        return float(default)
+
+    @classmethod
+    def _draw_feature_overlay(
+        cls,
+        draw: ImageDraw.ImageDraw,
+        *,
+        features: Sequence[Mapping[str, Any]],
+        view: str,
+        screen: np.ndarray,
+        projected: np.ndarray,
+        rectangle: tuple[int, int, int, int],
+        scale: float,
+        dimensions: bool,
+        dimension_mode: str,
+    ) -> None:
+        if not features or view == "iso":
+            return
+        minimum, maximum = screen.min(axis=0), screen.max(axis=0)
+        model_span = np.maximum(projected.max(axis=0) - projected.min(axis=0), 1.0)
+        left, _top, _right, bottom = rectangle
+        shown_positions = 0
+
+        for feature in features:
+            kind = str(feature.get("kind") or feature.get("type") or "").lower()
+            if kind not in {"hole", "slot", "countersink", "countersunk_hole"}:
+                continue
+            parameters = dict(feature.get("parameters") or feature)
+            side = str(
+                feature.get("reference_side")
+                or parameters.get("reference_side")
+                or parameters.get("face")
+                or ""
+            ).strip().lower()
+            visible = (
+                not side
+                or (view == "top" and (side in {"o", "u"} or any(token in side for token in ("top", "boven", "bottom", "onder", "flange"))))
+                or (view == "front" and (side in {"v", "h"} or any(token in side for token in ("front", "voor", "back", "achter", "web"))))
+                or (view == "side" and any(token in side for token in ("side", "zijde", "left", "right", "end", "kop")))
+            )
+            if not visible:
+                continue
+
+            x_mm = cls._number(parameters, "x_mm", "x", "offset_x_mm")
+            y_mm = cls._number(parameters, "y_mm", "y", "offset_y_mm")
+            if not (-0.02 * model_span[0] <= x_mm <= 1.02 * model_span[0]):
+                continue
+            if not (-0.02 * model_span[1] <= y_mm <= 1.02 * model_span[1]):
+                centered_y = y_mm + float(model_span[1]) * 0.5
+                if -0.02 * model_span[1] <= centered_y <= 1.02 * model_span[1]:
+                    y_mm = centered_y
+                else:
+                    continue
+            cx = float(minimum[0]) + (x_mm / float(model_span[0])) * float(maximum[0] - minimum[0])
+            cy = float(maximum[1]) - (y_mm / float(model_span[1])) * float(maximum[1] - minimum[1])
+            diameter = max(cls._number(parameters, "diameter_mm", "diameter", "width_mm", default=1.0), 1.0)
+            radius = max(2.4, diameter * scale * 0.5)
+
+            if kind == "slot":
+                length = max(cls._number(parameters, "length_mm", "slot_length_mm", default=diameter * 2.0), diameter)
+                half = max(0.0, (length - diameter) * scale * 0.5)
+                angle = math.radians(cls._number(parameters, "angle_deg", "rotation_deg"))
+                ux, uy = math.cos(angle), -math.sin(angle)
+                vx, vy = -uy, ux
+                points: list[tuple[float, float]] = []
+                for index in range(13):
+                    theta = math.pi * 0.5 + math.pi * index / 12.0
+                    points.append((cx - ux * half + (ux * math.cos(theta) + vx * math.sin(theta)) * radius,
+                                   cy - uy * half + (uy * math.cos(theta) + vy * math.sin(theta)) * radius))
+                for index in range(13):
+                    theta = -math.pi * 0.5 + math.pi * index / 12.0
+                    points.append((cx + ux * half + (ux * math.cos(theta) + vx * math.sin(theta)) * radius,
+                                   cy + uy * half + (uy * math.cos(theta) + vy * math.sin(theta)) * radius))
+                draw.polygon(points, fill=(255, 255, 255))
+                draw.line(points + [points[0]], fill=(20, 58, 99), width=2, joint="curve")
+                callout = f"{diameter:g} x {length:g}"
+            else:
+                draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill="white", outline=(20, 58, 99), width=2)
+                countersink = cls._number(parameters, "countersink_diameter_mm", "outer_diameter_mm")
+                if countersink > diameter:
+                    outer = max(radius + 2.0, countersink * scale * 0.5)
+                    draw.ellipse((cx - outer, cy - outer, cx + outer, cy + outer), outline=(20, 58, 99), width=1)
+                callout = f"Ø{diameter:g}"
+
+            blue = (22, 112, 214)
+            draw.line((cx - radius - 4, cy, cx + radius + 4, cy), fill=blue, width=1)
+            draw.line((cx, cy - radius - 4, cx, cy + radius + 4), fill=blue, width=1)
+            draw.line((cx + radius, cy - radius, cx + radius + 22, cy - radius - 17), fill=blue, width=1)
+            draw.text((cx + radius + 25, cy - radius - 26), callout, fill=blue, font=cls._font(12, bold=True))
+
+            if dimensions and dimension_mode != "Hoofdmaten" and shown_positions < 4:
+                datum_y = min(float(bottom - 10), float(maximum[1] + 48 + shown_positions * 18))
+                cls._draw_dimension(
+                    draw,
+                    orientation="horizontal",
+                    start=(float(minimum[0]), datum_y),
+                    end=(cx, datum_y),
+                    witness_start=(float(minimum[0]), float(maximum[1]) + 4),
+                    witness_end=(cx, cy + radius + 4),
+                    label=f"{max(0.0, x_mm):,.1f} mm",
+                )
+                shown_positions += 1
 
     def _resolve(self, entity_id: str | None) -> tuple[Any, Any, str, np.ndarray, np.ndarray]:
         project = self.workspace.project
@@ -248,6 +361,7 @@ class EngineeringDrawingGenerator:
         dimensions: bool,
         dimension_mode: str,
         manual_dimensions: Sequence[Mapping[str, Any]],
+        production_features: Sequence[Mapping[str, Any]] = (),
     ) -> None:
         left, top, right, bottom = rectangle
         draw.rounded_rectangle(rectangle, radius=6, outline=(190, 205, 221), width=2, fill=(252, 253, 255))
@@ -273,11 +387,22 @@ class EngineeringDrawingGenerator:
             normal = np.cross(b - a, c - a)
             normal_length = float(np.linalg.norm(normal))
             facing = abs(float(np.dot(normal / normal_length, direction))) if normal_length > 1.0e-9 else 0.0
-            shade = int(round(242.0 - 35.0 * facing))
-            draw.polygon(points, fill=(shade - 8, shade - 2, min(255, shade + 8)))
+            shade = int(round(236.0 - 43.0 * facing))
+            draw.polygon(points, fill=(shade - 10, shade, min(255, shade + 12)))
 
         for first, second in self._visible_edges(triangles, vertices, direction):
             draw.line((float(screen[first, 0]), float(screen[first, 1]), float(screen[second, 0]), float(screen[second, 1])), fill=(24, 60, 96), width=2)
+        self._draw_feature_overlay(
+            draw,
+            features=production_features,
+            view=view,
+            screen=screen,
+            projected=projected,
+            rectangle=rectangle,
+            scale=scale,
+            dimensions=dimensions,
+            dimension_mode=str(dimension_mode),
+        )
         if dimensions:
             minimum, maximum = screen.min(axis=0), screen.max(axis=0)
             model_span = projected.max(axis=0) - projected.min(axis=0)
@@ -289,7 +414,7 @@ class EngineeringDrawingGenerator:
                 witness_start=(x0, float(maximum[1]) + 4), witness_end=(x1, float(maximum[1]) + 4),
                 label=f"{float(model_span[0]):,.1f} mm",
             )
-            if str(dimension_mode) in {"Contour + gaten", "Productiematen"} or view == "front":
+            if view != "iso":
                 dimension_x = max(float(left + 20), float(minimum[0] - 28))
                 self._draw_dimension(
                     draw, orientation="vertical", start=(dimension_x, y0), end=(dimension_x, y1),
@@ -330,6 +455,10 @@ class EngineeringDrawingGenerator:
         manual_dimensions: Sequence[Mapping[str, Any]] = (),
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
+        production_features = tuple(
+            item for item in (getattr(entity, "production_features", None) or ())
+            if isinstance(item, Mapping)
+        )
         selected_views = tuple(view for view in views if view in {"front", "top", "side", "3d", "iso"})
         if not selected_views:
             raise ValueError("Selecteer ten minste een aanzicht")
@@ -352,7 +481,7 @@ class EngineeringDrawingGenerator:
         for source_view, drawing_view, rectangle in zip(selected_views, drawing_views, rectangles):
             self._draw_view(
                 draw, vertices, triangles, drawing_view, rectangle, labels[source_view], denominator,
-                px_per_mm, dimensions, dimension_mode, manual_dimensions,
+                px_per_mm, dimensions, dimension_mode, manual_dimensions, production_features,
             )
         warnings: list[str] = []
         if adjusted:

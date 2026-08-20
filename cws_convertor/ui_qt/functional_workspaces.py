@@ -512,7 +512,9 @@ if qt_available():
                 except Exception:
                     return False
 
-            if drawable(current):
+            # A fastener or assembly may have renderable geometry, but a
+            # production drawing must resolve to its canonical make part.
+            if current in project.parts and drawable(current):
                 return current
 
             candidates: list[str] = []
@@ -540,12 +542,12 @@ if qt_available():
                         add_assembly_parts(assembly)
 
             ordered = tuple(dict.fromkeys(candidates))
-            if ordered:
-                return ordered[0]
             for candidate in ordered:
                 if drawable(candidate):
                     return candidate
-            for collection in collections:
+            if drawable(current):
+                return current
+            for collection in (project.parts, project.purchased_items):
                 for entity_id in collection:
                     if drawable(str(entity_id)):
                         return str(entity_id)

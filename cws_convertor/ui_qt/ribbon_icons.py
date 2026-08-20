@@ -11,11 +11,15 @@ if qt_available():
 
     def ribbon_icon(action: str, title: str = "") -> Any:
         key = f"{action} {title}".lower()
-        pixmap = QtGui.QPixmap(32, 32)
+        # Paint at twice the logical resolution. Qt scales the result back to
+        # 32 px without jagged diagonals on ordinary and high-DPI displays.
+        pixmap = QtGui.QPixmap(64, 64)
         pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+        pixmap.setDevicePixelRatio(2.0)
         painter = QtGui.QPainter(pixmap)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
-        pen = QtGui.QPen(QtGui.QColor("#075fce"), 1.8)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing, True)
+        pen = QtGui.QPen(QtGui.QColor("#075fce"), 1.65)
         pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
@@ -31,7 +35,10 @@ if qt_available():
         def circle(x: float, y: float, radius: float) -> None:
             painter.drawEllipse(QtCore.QPointF(x, y), radius, radius)
 
-        if any(token in key for token in ("zoeken", "search")):
+        if any(token in key for token in ("apart venster", "nieuw venster", "external")):
+            rect(5, 9, 17, 17); rect(11, 5, 16, 16)
+            line(17, 5, 27, 5, 27, 15); line(27, 5, 17, 15)
+        elif any(token in key for token in ("zoeken", "search")):
             circle(13, 13, 6.5); line(18, 18, 25, 25)
         elif any(token in key for token in ("wissen", "clear", "verwijder", "annuleer")):
             circle(16, 16, 10); line(11, 11, 21, 21); line(21, 11, 11, 21)
@@ -39,6 +46,18 @@ if qt_available():
             rect(7, 5, 18, 22); rect(11, 5, 10, 7); rect(11, 18, 10, 7)
         elif any(token in key for token in ("export", "pdf genereren")):
             rect(6, 15, 20, 11); line(16, 21, 16, 5); line(11, 10, 16, 5, 21, 10)
+        elif any(token in key for token in ("titelblok", "title block")):
+            rect(5, 6, 22, 20); line(5, 19, 27, 19); line(18, 19, 18, 26)
+            line(8, 22, 15, 22); line(20, 22, 24, 22)
+        elif any(token in key for token in ("stuklijst", "bom", "hoeveelheden")):
+            rect(5, 5, 22, 22)
+            for y in (11, 17, 23):
+                circle(9, y, 1.2); line(13, y, 24, y)
+        elif any(token in key for token in ("profielbibliotheek", "profile library")):
+            line(5, 7, 27, 7, 27, 12, 18, 12, 18, 20, 27, 20, 27, 25, 5, 25, 5, 20, 14, 20, 14, 12, 5, 12, 5, 7)
+        elif any(token in key for token in ("materiaal", "ral", "kleur")):
+            circle(16, 16, 11); circle(11, 12, 1.5); circle(18, 10, 1.5); circle(22, 16, 1.5)
+            painter.drawArc(QtCore.QRectF(8, 8, 16, 17), 210 * 16, 120 * 16)
         elif any(token in key for token in ("instelling", "settings")):
             circle(16, 16, 5); circle(16, 16, 11)
             for values in ((16,2,16,6),(16,26,16,30),(2,16,6,16),(26,16,30,16),(6,6,9,9),(23,23,26,26),(26,6,23,9),(9,23,6,26)):
@@ -96,7 +115,7 @@ if qt_available():
             path.lineTo(20, 4); path.lineTo(26, 10); path.lineTo(26, 28); path.lineTo(8, 28); path.closeSubpath()
             painter.drawPath(path); line(20, 4, 20, 10, 26, 10); line(12, 16, 22, 16); line(12, 21, 22, 21)
         else:
-            circle(16, 16, 10); line(16, 10, 16, 18); circle(16, 23, 1)
+            rect(7, 7, 18, 18); line(11, 12, 21, 12); line(11, 16, 21, 16); line(11, 20, 18, 20)
 
         painter.end()
         return QtGui.QIcon(pixmap)
