@@ -117,7 +117,7 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
             picker = vtk.vtkCellPicker()
             # Thin plates, bolts and distant instances need a practical screen
             # tolerance; the former value caused visible objects to be skipped.
-            picker.SetTolerance(0.004)
+            picker.SetTolerance(0.008)
             picker.PickFromListOn()
             for group in self._mesh_groups:
                 picker.AddPickList(group.actor)

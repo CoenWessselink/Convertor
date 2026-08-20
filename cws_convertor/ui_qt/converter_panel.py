@@ -72,7 +72,7 @@ if qt_available():
                 results = []
                 timeout_seconds = max(
                     30.0,
-                    float(os.environ.get("CWS_CONVERSION_TIMEOUT_SECONDS", "900")),
+                    float(os.environ.get("CWS_CONVERSION_TIMEOUT_SECONDS", "300")),
                 )
                 for index, source in enumerate(self.files, start=1):
                     if self._cancel_requested:
@@ -199,6 +199,7 @@ if qt_available():
             """Add a compact view over the canonical BOM used by Converteren."""
             group = QtWidgets.QGroupBox("Kleine BOM - centrale selectie")
             group.setObjectName("converterCompactBom")
+            group.setMinimumHeight(166)
             layout = QtWidgets.QVBoxLayout(group)
             layout.setContentsMargins(8, 6, 8, 8)
             layout.setSpacing(4)
@@ -218,11 +219,16 @@ if qt_available():
             self.compact_bom.verticalHeader().setVisible(False)
             self.compact_bom.horizontalHeader().setStretchLastSection(True)
             self.compact_bom.itemSelectionChanged.connect(self._compact_bom_selection_changed)
-            self.compact_bom.setMaximumHeight(142)
+            self.compact_bom.setMinimumHeight(104)
+            self.compact_bom.setMaximumHeight(170)
             layout.addWidget(self.compact_bom)
             root = self.layout()
             if root is not None:
-                root.insertWidget(max(0, root.count() - 1), group)
+                # Insert before the expanding file/log splitter. Previously the
+                # BOM followed that stretch widget and disappeared below the
+                # viewport on common display sizes.
+                root.insertWidget(min(3, root.count()), group)
+                root.setStretchFactor(group, 0)
 
         @staticmethod
         def _selection_part_id(workspace: Any | None, selection: Any | None) -> str:

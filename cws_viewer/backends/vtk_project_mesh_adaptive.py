@@ -28,9 +28,9 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     INTERACTIVE_MULTISAMPLES = 8
     MIN_IDLE_MULTISAMPLES = 4
     # A cell pick identifies the shared mesh actor, not the concrete instance.
-    # Dense IFC models can contain hundreds of copies of the same profile. A
-    # broad safety net prevents a nearby plate from displacing a clicked beam.
-    PICK_FALLBACK_CANDIDATES = 256
+    # Dense IFC models can contain hundreds of copies of the same profile. The
+    # final surface-distance check must therefore see every instance in that
+    # geometry group; a capped nearest-centre list can omit a clicked long beam.
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -173,7 +173,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         )
         values = [int(ids.GetId(index)) for index in range(ids.GetNumberOfIds())]
         fallback = vtk.vtkIdList()
-        count = min(self.PICK_FALLBACK_CANDIDATES, len(entry.node_ids))
+        count = len(entry.node_ids)
         if count > 0:
             entry.locator.FindClosestNPoints(count, point.to_tuple(), fallback)
             values.extend(

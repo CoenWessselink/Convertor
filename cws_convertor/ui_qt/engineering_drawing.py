@@ -98,8 +98,22 @@ class EngineeringDrawingGenerator:
             if not visible:
                 continue
 
-            x_mm = cls._number(parameters, "x_mm", "x", "offset_x_mm")
-            y_mm = cls._number(parameters, "y_mm", "y", "offset_y_mm")
+            x_mm = cls._number(
+                parameters,
+                "x_mm",
+                "x",
+                "offset_x_mm",
+                "position_x_mm",
+                "distance_x_mm",
+            )
+            y_mm = cls._number(
+                parameters,
+                "y_mm",
+                "y",
+                "offset_y_mm",
+                "position_y_mm",
+                "distance_y_mm",
+            )
             if not (-0.02 * model_span[0] <= x_mm <= 1.02 * model_span[0]):
                 continue
             if not (-0.02 * model_span[1] <= y_mm <= 1.02 * model_span[1]):
@@ -110,11 +124,33 @@ class EngineeringDrawingGenerator:
                     continue
             cx = float(minimum[0]) + (x_mm / float(model_span[0])) * float(maximum[0] - minimum[0])
             cy = float(maximum[1]) - (y_mm / float(model_span[1])) * float(maximum[1] - minimum[1])
-            diameter = max(cls._number(parameters, "diameter_mm", "diameter", "width_mm", default=1.0), 1.0)
+            diameter = max(
+                cls._number(
+                    parameters,
+                    "diameter_mm",
+                    "diameter",
+                    "d_mm",
+                    "hole_diameter_mm",
+                    "diameter_top_mm",
+                    "diameter_bottom_mm",
+                    "width_mm",
+                    default=1.0,
+                ),
+                1.0,
+            )
             radius = max(2.4, diameter * scale * 0.5)
 
             if kind == "slot":
-                length = max(cls._number(parameters, "length_mm", "slot_length_mm", default=diameter * 2.0), diameter)
+                length = max(
+                    cls._number(
+                        parameters,
+                        "length_mm",
+                        "slot_length_mm",
+                        "overall_length_mm",
+                        default=diameter * 2.0,
+                    ),
+                    diameter,
+                )
                 half = max(0.0, (length - diameter) * scale * 0.5)
                 angle = math.radians(cls._number(parameters, "angle_deg", "rotation_deg"))
                 ux, uy = math.cos(angle), -math.sin(angle)
@@ -133,7 +169,12 @@ class EngineeringDrawingGenerator:
                 callout = f"{diameter:g} x {length:g}"
             else:
                 draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill="white", outline=(20, 58, 99), width=2)
-                countersink = cls._number(parameters, "countersink_diameter_mm", "outer_diameter_mm")
+                countersink = cls._number(
+                    parameters,
+                    "countersink_diameter_mm",
+                    "outer_diameter_mm",
+                    "head_diameter_mm",
+                )
                 if countersink > diameter:
                     outer = max(radius + 2.0, countersink * scale * 0.5)
                     draw.ellipse((cx - outer, cy - outer, cx + outer, cy + outer), outline=(20, 58, 99), width=1)
@@ -455,10 +496,51 @@ class EngineeringDrawingGenerator:
         manual_dimensions: Sequence[Mapping[str, Any]] = (),
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
-        production_features = tuple(
-            item for item in (getattr(entity, "production_features", None) or ())
-            if isinstance(item, Mapping)
-        )
+        aliases = {
+            "drill": "hole",
+            "drilling": "hole",
+            "round_hole": "hole",
+            "bore": "hole",
+            "slotted_hole": "slot",
+            "elongated_hole": "slot",
+            "oblong": "slot",
+            "csk": "countersink",
+            "countersunk": "countersink",
+            "countersink_hole": "countersink",
+        }
+        normalized_features: list[Mapping[str, Any]] = []
+        seen_features: set[str] = set()
+        for source_name in ("production_features", "features"):
+            for item in (getattr(entity, source_name, None) or ()):
+                if not isinstance(item, Mapping):
+                    continue
+                record = dict(item)
+                kind = str(
+                    record.get("kind")
+                    or record.get("type")
+                    or record.get("operation")
+                    or record.get("operation_type")
+                    or ""
+                ).strip().lower()
+                record["kind"] = aliases.get(kind, kind)
+                parameters = record.get("parameters")
+                if not isinstance(parameters, Mapping):
+                    parameters = {
+                        str(key): value
+                        for key, value in record.items()
+                        if key not in {"id", "feature_id", "kind", "type"}
+                    }
+                record["parameters"] = dict(parameters)
+                identity = str(record.get("feature_id") or record.get("id") or "")
+                if not identity:
+                    identity = repr(
+                        sorted((str(key), repr(value)) for key, value in record.items())
+                    )
+                if identity in seen_features:
+                    continue
+                seen_features.add(identity)
+                normalized_features.append(record)
+        production_features = tuple(normalized_features)
         selected_views = tuple(view for view in views if view in {"front", "top", "side", "3d", "iso"})
         if not selected_views:
             raise ValueError("Selecteer ten minste een aanzicht")
