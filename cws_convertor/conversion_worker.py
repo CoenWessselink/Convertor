@@ -7,9 +7,60 @@ interactive application.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
+import tempfile
 import traceback
 from typing import Any
+
+
+def _convert_project_selection(
+    project_path: Path,
+    entity_id: str,
+    output: Path,
+    direction: str,
+    material: str,
+) -> tuple[list[Path], list[str], list[str]]:
+    """Isolate one canonical make-part in the child process before conversion."""
+    from cws_convertor.integration.exact_source import ExactSourceProjectService
+
+    service = ExactSourceProjectService.open(project_path, read_only=True)
+    part, source_path, isolation = service.isolate(entity_id, allow_heavy=True)
+    if not isolation.source_shape_available or isolation.shape is None:
+        evidence = "; ".join(str(value) for value in (isolation.evidence or ()))
+        raise RuntimeError(
+            f"Geselecteerd maakdeel {entity_id} kon niet exact uit {source_path.name} worden geisoleerd"
+            + (f": {evidence}" if evidence else ".")
+        )
+    raw_name = str(getattr(part, "part_position", "") or entity_id)
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._") or "selected_part"
+    target_format = direction.lower().replace("dstv", "nc1").replace("->", "-").split("-")[-1]
+    output.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="cws-selected-part-") as temp_dir:
+        isolated_step = Path(temp_dir) / f"{safe_name}.step"
+        import cadquery as cq
+
+        cq.exporters.export(isolation.shape, str(isolated_step), exportType="STEP")
+        warnings = [f"{safe_name}: exact geselecteerd maakdeel uit {source_path.name} geisoleerd."]
+        if target_format == "step":
+            target = output / isolated_step.name
+            target.write_bytes(isolated_step.read_bytes())
+            return [target], warnings, []
+        if target_format in {"nc1", "ifc"}:
+            from conversion import convert_file
+
+            outputs, converted_warnings, failures = convert_file(
+                isolated_step,
+                output,
+                f"step-{target_format}",
+                material=material,
+                preferred_profile=str(
+                    getattr(part, "normalized_profile", "") or getattr(part, "profile", "") or ""
+                ),
+                strict_validation=True,
+            )
+            return outputs, warnings + list(converted_warnings), failures
+    raise ValueError(f"Doelformaat {target_format!r} ondersteunt geen selectieconversie.")
 
 
 def _convert_one(job: dict[str, Any]) -> dict[str, Any]:
@@ -19,7 +70,18 @@ def _convert_one(job: dict[str, Any]) -> dict[str, Any]:
     material = str(job.get("material") or "S235JR")
     output.mkdir(parents=True, exist_ok=True)
 
-    if source.suffix.lower() == ".pdf":
+    project_path = Path(str(job.get("project_path") or "")) if job.get("project_path") else None
+    entity_id = str(job.get("entity_id") or "")
+    if project_path is not None and entity_id:
+        outputs, warnings, failures = _convert_project_selection(
+            project_path,
+            entity_id,
+            output,
+            direction,
+            material,
+        )
+
+    elif source.suffix.lower() == ".pdf":
         from pdf_support import pdf_to_ifc, pdf_to_nc1, pdf_to_step
 
         target_suffix = {

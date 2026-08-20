@@ -15,8 +15,8 @@ APP_SLUG = "CWS_Convertor"
 APP_ID = "nl.cws.convertor"
 # Unified Viewer V15 + Convertor + Scribing integration line. Project Model
 # 2.25 losslessly ingests both the GitHub 2.5 line and frozen M18 2.24 authority.
-APP_VERSION = "0.10.11-beta-dev"
-APP_VERSION_NUMERIC = "0.10.11.0"
+APP_VERSION = "0.10.12-beta-dev"
+APP_VERSION_NUMERIC = "0.10.12.0"
 APP_PUBLISHER = "CWS"
 APP_DESCRIPTION = "Gevalideerde staalmodel-, productie- en conversieomgeving"
 

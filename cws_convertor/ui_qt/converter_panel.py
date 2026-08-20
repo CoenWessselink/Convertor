@@ -21,9 +21,20 @@ if qt_available():
         finished = QtCore.Signal(dict)
         failed = QtCore.Signal(str)
 
-        def __init__(self, files: tuple[Path, ...], output: Path, direction: str, material: str) -> None:
+        def __init__(
+            self,
+            files: tuple[Path, ...],
+            output: Path,
+            direction: str,
+            material: str,
+            *,
+            project_path: Path | None = None,
+            entity_id: str = "",
+        ) -> None:
             super().__init__()
             self.files, self.output, self.direction, self.material = files, output, direction, material
+            self.project_path = project_path
+            self.entity_id = str(entity_id or "")
             self._cancel_requested = False
             self._process: subprocess.Popen[Any] | None = None
 
@@ -79,6 +90,8 @@ if qt_available():
                                     "output": str(self.output),
                                     "direction": self.direction,
                                     "material": self.material,
+                                    "project_path": str(self.project_path or ""),
+                                    "entity_id": self.entity_id,
                                 },
                                 ensure_ascii=False,
                             ),
@@ -177,7 +190,141 @@ if qt_available():
             self._thread = self._worker = None
             self._files: list[Path] = []
             self._workspace = self._selection = None
+            self._selected_part_id = ""
+            self._syncing_compact_bom = False
             self._build_ui()
+            self._install_compact_bom()
+
+        def _install_compact_bom(self) -> None:
+            """Add a compact view over the canonical BOM used by Converteren."""
+            group = QtWidgets.QGroupBox("Kleine BOM - centrale selectie")
+            group.setObjectName("converterCompactBom")
+            layout = QtWidgets.QVBoxLayout(group)
+            layout.setContentsMargins(8, 6, 8, 8)
+            layout.setSpacing(4)
+            self.compact_bom_context = QtWidgets.QLabel(
+                "Open een project; klik daarna een maakdeel om uitsluitend dat onderdeel te converteren."
+            )
+            self.compact_bom_context.setObjectName("mutedText")
+            layout.addWidget(self.compact_bom_context)
+            self.compact_bom = QtWidgets.QTableWidget(0, 6)
+            self.compact_bom.setHorizontalHeaderLabels(
+                ("Merk", "Positie", "Profiel", "Materiaal", "Lengte (mm)", "Aantal")
+            )
+            self.compact_bom.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.compact_bom.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+            self.compact_bom.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.compact_bom.setAlternatingRowColors(True)
+            self.compact_bom.verticalHeader().setVisible(False)
+            self.compact_bom.horizontalHeader().setStretchLastSection(True)
+            self.compact_bom.itemSelectionChanged.connect(self._compact_bom_selection_changed)
+            self.compact_bom.setMaximumHeight(142)
+            layout.addWidget(self.compact_bom)
+            root = self.layout()
+            if root is not None:
+                root.insertWidget(max(0, root.count() - 1), group)
+
+        @staticmethod
+        def _selection_part_id(workspace: Any | None, selection: Any | None) -> str:
+            if workspace is None:
+                return ""
+            primary = str(getattr(selection, "primary_entity_id", "") or "")
+            candidates = (primary,) + tuple(
+                str(value) for value in (getattr(selection, "entity_ids", ()) or ()) if str(value)
+            )
+            for entity_id in dict.fromkeys(candidates):
+                if entity_id in workspace.project.parts:
+                    return entity_id
+            return ""
+
+        @staticmethod
+        def _part_value(part: Any, *names: str, fallback: str = "-") -> str:
+            for name in names:
+                value = getattr(part, name, None)
+                if value not in (None, ""):
+                    return str(value)
+            return fallback
+
+        def _refresh_compact_bom(self) -> None:
+            self._syncing_compact_bom = True
+            try:
+                self.compact_bom.setRowCount(0)
+                workspace = self._workspace
+                if workspace is None:
+                    self.compact_bom_context.setText("Geen project geopend.")
+                    return
+                project = workspace.project
+                selected = self._selected_part_id
+                selected_part = project.parts.get(selected) if selected else None
+                selected_source = getattr(selected_part, "source_identity", None)
+                selected_mark = str(
+                    getattr(selected_part, "assembly_mark", "")
+                    or getattr(selected_source, "assembly_mark", "")
+                    or ""
+                )
+                rows: list[tuple[str, Any]] = []
+                for entity_id, part in sorted(project.parts.items()):
+                    source = getattr(part, "source_identity", None)
+                    mark = str(
+                        getattr(part, "assembly_mark", "")
+                        or getattr(source, "assembly_mark", "")
+                        or ""
+                    )
+                    if selected_mark and mark != selected_mark:
+                        continue
+                    rows.append((str(entity_id), part))
+                if not rows:
+                    rows = [(str(entity_id), part) for entity_id, part in sorted(project.parts.items())]
+                rows = rows[:24]
+                self.compact_bom.setRowCount(len(rows))
+                selected_row = -1
+                for row, (entity_id, part) in enumerate(rows):
+                    source = getattr(part, "source_identity", None)
+                    mark = self._part_value(part, "assembly_mark", fallback="") or self._part_value(
+                        source, "assembly_mark", fallback="-"
+                    )
+                    position = self._part_value(part, "part_position", fallback="") or self._part_value(
+                        source, "part_position", fallback=entity_id
+                    )
+                    profile = self._part_value(part, "normalized_profile", "profile")
+                    material = self._part_value(part, "normalized_material", "material")
+                    try:
+                        length = f"{float(getattr(part, 'length_mm', 0.0) or 0.0):,.0f}"
+                    except (TypeError, ValueError):
+                        length = "-"
+                    quantity = str(int(getattr(part, "quantity", 1) or 1))
+                    for column, value in enumerate((mark or "-", position, profile, material, length, quantity)):
+                        item = QtWidgets.QTableWidgetItem(str(value))
+                        item.setData(QtCore.Qt.ItemDataRole.UserRole, entity_id)
+                        self.compact_bom.setItem(row, column, item)
+                    if entity_id == selected:
+                        selected_row = row
+                self.compact_bom.resizeColumnsToContents()
+                if selected_row >= 0:
+                    self.compact_bom.selectRow(selected_row)
+                    self.compact_bom.scrollToItem(self.compact_bom.item(selected_row, 0))
+                    self.compact_bom_context.setText(
+                        "Geselecteerd maakdeel wordt exact uit de projectbron geisoleerd en geconverteerd."
+                    )
+                elif rows:
+                    self.compact_bom_context.setText(
+                        "Selecteer een maakdeel in Viewer of klik een BOM-regel; assemblies en bouten zijn geen NC-maakdelen."
+                    )
+                else:
+                    self.compact_bom_context.setText("Dit project bevat geen converteerbare maakdelen.")
+            finally:
+                self._syncing_compact_bom = False
+
+        def _compact_bom_selection_changed(self) -> None:
+            if self._syncing_compact_bom or self._workspace is None:
+                return
+            rows = self.compact_bom.selectionModel().selectedRows()
+            if not rows:
+                return
+            item = self.compact_bom.item(rows[0].row(), 0)
+            entity_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "") if item else ""
+            if entity_id:
+                self._workspace.interaction.select_entities((entity_id,), origin="converter_compact_bom")
 
         def _build_ui(self) -> None:
             root = QtWidgets.QVBoxLayout(self)
@@ -264,15 +411,18 @@ if qt_available():
 
         def set_project_selection(self, workspace: Any | None, selection: Any | None) -> None:
             self._workspace, self._selection = workspace, selection
+            self._selected_part_id = self._selection_part_id(workspace, selection)
             entity_id = str(getattr(selection, "primary_entity_id", "") or "")
             if workspace is None:
                 self.selection_context.setText("Bron: losse modelbestanden")
+                self._refresh_compact_bom()
                 return
-            entity = workspace.project.parts.get(entity_id) if entity_id else None
+            entity = workspace.project.parts.get(self._selected_part_id) if self._selected_part_id else None
             name = str(getattr(entity, "part_position", "") or entity_id or "geen object geselecteerd")
             self.selection_context.setText(f"Project: {workspace.project.project_name} · Selectie: {name}")
             self.source_preview.set_caption(name)
             self.target_preview.set_caption("Doelpreview wordt na conversie bijgewerkt")
+            self._refresh_compact_bom()
 
         def add_files(self, paths) -> None:
             allowed = {".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf"}
@@ -329,8 +479,19 @@ if qt_available():
         def _run(self) -> None:
             if self._thread is not None:
                 return
-            if not self._files:
-                QtWidgets.QMessageBox.information(self, "Converteren", "Selecteer eerst bestanden.")
+            project_path: Path | None = None
+            files = tuple(self._files)
+            if self._workspace is not None and self._selected_part_id:
+                project_path = Path(self._workspace.project_path)
+                files = (project_path,)
+            if not files:
+                message = (
+                    "Selecteer eerst een maakdeel in Viewer of Kleine BOM, of voeg losse bronbestanden toe. "
+                    "Assemblies en bouten kunnen niet rechtstreeks als NC-maakdeel worden geconverteerd."
+                    if self._workspace is not None
+                    else "Selecteer eerst bestanden."
+                )
+                QtWidgets.QMessageBox.information(self, "Converteren", message)
                 return
             target = Path(self.output.text()).expanduser()
             target.mkdir(parents=True, exist_ok=True)
@@ -341,7 +502,8 @@ if qt_available():
                 "ifc-step": {".ifc"}, "ifc-nc1": {".ifc"},
                 "pdf-step": {".pdf"}, "pdf-nc1": {".pdf"}, "pdf-ifc": {".pdf"},
             }.get(direction, set())
-            invalid = [path.name for path in self._files if path.suffix.lower() not in expected]
+            validation_files = () if project_path is not None else files
+            invalid = [path.name for path in validation_files if path.suffix.lower() not in expected]
             if invalid:
                 QtWidgets.QMessageBox.warning(self, "Converteren", f"De gekozen richting past niet bij: {', '.join(invalid)}")
                 return
@@ -351,7 +513,14 @@ if qt_available():
             self.conversion_progress.setFormat("Conversie starten · %p%")
             self.log.appendPlainText("Conversie gestart...")
             thread = QtCore.QThread(self)
-            worker = _ConversionWorker(tuple(self._files), target, direction, self.material.currentText())
+            worker = _ConversionWorker(
+                files,
+                target,
+                direction,
+                self.material.currentText(),
+                project_path=project_path,
+                entity_id=self._selected_part_id,
+            )
             worker.moveToThread(thread)
             thread.started.connect(worker.run)
             worker.progress.connect(self._conversion_progress)
