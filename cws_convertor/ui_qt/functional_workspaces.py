@@ -432,17 +432,65 @@ if qt_available():
             target.mkdir(parents=True, exist_ok=True)
             return target
 
+        def _resolved_part_id(self) -> str:
+            """Resolve assemblies and shop items to one unambiguous make part."""
+            if self._workspace is None:
+                return ""
+            project = self._workspace.project
+            current = str(self._entity_id or "")
+            if current in project.parts:
+                return current
+
+            candidates: list[str] = []
+
+            def add_assembly_parts(assembly: Any | None) -> None:
+                if assembly is None:
+                    return
+                main = str(getattr(assembly, "main_part_id", "") or "")
+                if main in project.parts:
+                    candidates.append(main)
+                for part_id in getattr(assembly, "part_ids", ()) or ():
+                    part_id = str(part_id)
+                    if part_id in project.parts:
+                        candidates.append(part_id)
+
+            add_assembly_parts(project.assemblies.get(current))
+            if current:
+                for assembly in project.assemblies.values():
+                    related_ids = (
+                        tuple(getattr(assembly, "fastener_ids", ()) or ())
+                        + tuple(getattr(assembly, "weld_ids", ()) or ())
+                        + tuple(getattr(assembly, "purchased_item_ids", ()) or ())
+                    )
+                    if current in related_ids:
+                        add_assembly_parts(assembly)
+
+            ordered = tuple(dict.fromkeys(candidates))
+            if ordered:
+                return ordered[0]
+            if len(project.parts) == 1:
+                return next(iter(project.parts))
+            return ""
+
         def _generate(self, *, make_png: bool, make_pdf: bool):
             if self._workspace is None:
-                QtWidgets.QMessageBox.information(self, "PDF / Tekening", "Open eerst een project en selecteer een onderdeel.")
+                self.status.setText("Open eerst een project en selecteer daarna een maakdeel.")
+                self.preview.setText("Geen project geopend")
                 return None
-            if not self._entity_id or self._entity_id not in self._workspace.project.parts:
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "PDF / Tekening",
-                    "Selecteer eerst één maakdeel in Viewer, modelstructuur of BOM. De tekening wordt uitsluitend van die centrale selectie gemaakt.",
+            resolved_part_id = self._resolved_part_id()
+            if not resolved_part_id:
+                self.status.setText("Selecteer een maakdeel in de Viewer, modelstructuur of BOM.")
+                self.preview.setText(
+                    "Deze selectie is geen maakdeel.\n"
+                    "Selecteer een profiel, plaat of ander maakdeel om een tekening te genereren."
                 )
                 return None
+            if resolved_part_id != self._entity_id:
+                self._entity_id = resolved_part_id
+                part = self._workspace.project.parts[resolved_part_id]
+                name = _value(part, "part_position", "mark", "name", default=resolved_part_id)
+                self.title.setText(f"PDF / Tekening - {name}")
+                self.status.setText(f"Gekoppeld maakdeel geselecteerd: {name}")
             try:
                 from cws_convertor.ui_qt.engineering_drawing import EngineeringDrawingGenerator
                 selected_views = tuple(key for key, button in self.view_buttons.items() if button.isChecked())
