@@ -77,8 +77,9 @@ if qt_available():
                     load_all_geometry=self.load_geometry,
                     allow_proxy=True,
                     prefer_proxy=prefer_proxy,
+                    progress_callback=lambda percent, message: self.progress.emit(percent, message),
                 )
-                if prefer_proxy:
+                if workspace.load_result.catalog_report.proxy_geometry_count:
                     self.progress.emit(70, "Groot project: snelle 3D-proxyweergave opgebouwd")
                 self.progress.emit(80, "Viewer-scene en selectiecontext voorbereiden")
                 self.loaded.emit(workspace)
@@ -103,6 +104,10 @@ if qt_available():
             self.workspace: IntegratedProjectWorkspace | None = None
             self._thread: QtCore.QThread | None = None
             self._worker: _LoadWorker | None = None
+            self._load_elapsed = QtCore.QElapsedTimer()
+            self._load_heartbeat = QtCore.QTimer(self)
+            self._load_heartbeat.setInterval(1000)
+            self._load_heartbeat.timeout.connect(self._loading_tick)
             self._tree_items: dict[str, Any] = {}
             self._syncing = False
             self._interaction_unsubscribe: Any | None = None
@@ -166,11 +171,15 @@ if qt_available():
             self.loading_progress.setValue(0)
             self.loading_progress.setFormat("%p%")
             self.loading_progress.setMinimumHeight(20)
+            self.loading_elapsed = QtWidgets.QLabel("Verstreken tijd: 0 s")
+            self.loading_elapsed.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.loading_elapsed.setStyleSheet("color:#52647c;")
             loading_layout.addWidget(self.loading_title)
             loading_layout.addSpacing(8)
             loading_layout.addWidget(self.loading_detail)
             loading_layout.addSpacing(10)
             loading_layout.addWidget(self.loading_progress)
+            loading_layout.addWidget(self.loading_elapsed)
             loading_layout.addStretch(1)
             self.stack.addWidget(self.loading)
             self.host = QtWidgets.QWidget()
@@ -228,7 +237,18 @@ if qt_available():
             thread.finished.connect(lambda: setattr(self, "_worker", None))
             self._worker = worker
             self._thread = thread
+            self._load_elapsed.start()
+            self._load_heartbeat.start()
             thread.start()
+
+        def _loading_tick(self) -> None:
+            if self._thread is None or not self._load_elapsed.isValid():
+                self._load_heartbeat.stop()
+                return
+            seconds = max(0, self._load_elapsed.elapsed() // 1000)
+            self.loading_elapsed.setText(f"Verstreken tijd: {seconds} s · verwerking draait op de achtergrond")
+            value = self.loading_progress.value()
+            self.loading_progress.setFormat(f"{value}% · {seconds} s")
 
         @QtCore.Slot(int, str)
         def _load_progress_changed(self, percent: int, message: str) -> None:
@@ -239,6 +259,7 @@ if qt_available():
 
         @QtCore.Slot(object)
         def _project_loaded(self, workspace: IntegratedProjectWorkspace) -> None:
+            self._load_heartbeat.stop()
             self._load_progress_changed(84, "Viewer V15-renderer initialiseren")
             self.workspace = workspace
             while self.host_layout.count():
@@ -333,6 +354,7 @@ if qt_available():
 
         @QtCore.Slot(str)
         def _project_failed(self, message: str) -> None:
+            self._load_heartbeat.stop()
             self.load_progress.emit(0, f"Project laden mislukt: {message}")
             self.status.setText(f"Project laden mislukt: {message}")
             self.stack.setCurrentWidget(self.empty)

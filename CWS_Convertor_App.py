@@ -46,6 +46,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--viewer-report", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--output", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--require-gui-runtime", action="store_true")
+    parser.add_argument("--conversion-worker", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--conversion-result", type=Path, help=argparse.SUPPRESS)
     return parser
 
 
@@ -175,6 +177,12 @@ def _run_legacy(initial_files: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.conversion_worker:
+        if args.conversion_result is None:
+            raise ValueError("--conversion-result ontbreekt voor de conversieworker")
+        from cws_convertor.conversion_worker import run_job_file
+
+        return run_job_file(args.conversion_worker, args.conversion_result)
     report_path = _report_path(args)
     project = _project_argument(args)
     if args.version:

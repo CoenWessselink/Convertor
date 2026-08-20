@@ -1,7 +1,13 @@
 """Production-oriented before/after converter workspace."""
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import time
 from typing import Any
 
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
@@ -11,42 +17,126 @@ if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
 
     class _ConversionWorker(QtCore.QObject):
-        progress = QtCore.Signal(str)
+        progress = QtCore.Signal(int, str)
         finished = QtCore.Signal(dict)
         failed = QtCore.Signal(str)
 
         def __init__(self, files: tuple[Path, ...], output: Path, direction: str, material: str) -> None:
             super().__init__()
             self.files, self.output, self.direction, self.material = files, output, direction, material
+            self._cancel_requested = False
+            self._process: subprocess.Popen[Any] | None = None
+
+        def request_cancel(self) -> None:
+            self._cancel_requested = True
+            process = self._process
+            if process is not None and process.poll() is None:
+                try:
+                    process.terminate()
+                except OSError:
+                    pass
+
+        @staticmethod
+        def _command(job: Path, result: Path) -> list[str]:
+            arguments = ["--conversion-worker", str(job), "--conversion-result", str(result)]
+            if bool(getattr(sys, "frozen", False)):
+                return [sys.executable, *arguments]
+            launcher = Path(__file__).resolve().parents[2] / "CWS_Convertor_App.py"
+            return [sys.executable, str(launcher), *arguments]
+
+        @staticmethod
+        def _stop_process(process: subprocess.Popen[Any]) -> None:
+            if process.poll() is not None:
+                return
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=3)
 
         @QtCore.Slot()
         def run(self) -> None:
             try:
-                from conversion import convert_file
                 results = []
+                timeout_seconds = max(
+                    30.0,
+                    float(os.environ.get("CWS_CONVERSION_TIMEOUT_SECONDS", "900")),
+                )
                 for index, source in enumerate(self.files, start=1):
-                    self.progress.emit(f"{index}/{len(self.files)} · {source.name}")
-                    if source.suffix.lower() == ".pdf":
-                        from pdf_support import pdf_to_ifc, pdf_to_nc1, pdf_to_step
-
-                        target_suffix = {"pdf-nc1": ".nc1", "pdf-step": ".step", "pdf-ifc": ".ifc"}.get(self.direction)
-                        if target_suffix is None:
-                            raise ValueError("Kies voor een PDF-bron de richting PDF → NC1, STEP of IFC")
-                        target = self.output / f"{source.stem}{target_suffix}"
-                        if self.direction == "pdf-nc1":
-                            result = pdf_to_nc1(source, target)
-                        elif self.direction == "pdf-step":
-                            result = pdf_to_step(source, target)
-                        else:
-                            result = pdf_to_ifc(source, target, material=self.material)
-                        outputs, warnings, failures = result.outputs, result.warnings, []
-                    else:
-                        outputs, warnings, failures = convert_file(source, self.output, self.direction, material=self.material, strict_validation=True)
-                    if failures:
-                        raise RuntimeError("; ".join(str(value) for value in failures))
-                    results.append({"source": str(source), "outputs": [str(path) for path in outputs], "warnings": list(warnings), "failures": list(failures)})
+                    if self._cancel_requested:
+                        raise RuntimeError("Conversie door gebruiker geannuleerd")
+                    base_percent = int(((index - 1) / max(1, len(self.files))) * 100)
+                    self.progress.emit(base_percent, f"{index}/{len(self.files)} · {source.name} voorbereiden")
+                    with tempfile.TemporaryDirectory(prefix="cws-conversion-job-") as folder:
+                        job_path = Path(folder) / "job.json"
+                        result_path = Path(folder) / "result.json"
+                        log_path = Path(folder) / "worker.log"
+                        job_path.write_text(
+                            json.dumps(
+                                {
+                                    "source": str(source),
+                                    "output": str(self.output),
+                                    "direction": self.direction,
+                                    "material": self.material,
+                                },
+                                ensure_ascii=False,
+                            ),
+                            encoding="utf-8",
+                        )
+                        started = time.monotonic()
+                        with log_path.open("wb") as worker_log:
+                            self._process = subprocess.Popen(
+                                self._command(job_path, result_path),
+                                stdout=worker_log,
+                                stderr=subprocess.STDOUT,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                            )
+                            while self._process.poll() is None:
+                                elapsed = time.monotonic() - started
+                                if self._cancel_requested:
+                                    self._stop_process(self._process)
+                                    raise RuntimeError("Conversie door gebruiker geannuleerd")
+                                if elapsed >= timeout_seconds:
+                                    self._stop_process(self._process)
+                                    raise TimeoutError(
+                                        f"{source.name}: worker-timeout na {timeout_seconds:.0f} s. "
+                                        "Het bronbestand is niet stil blijven hangen; de native worker is gestopt."
+                                    )
+                                within_file = min(90, int((elapsed / timeout_seconds) * 90))
+                                total_percent = min(
+                                    99,
+                                    base_percent + int(within_file / max(1, len(self.files))),
+                                )
+                                self.progress.emit(
+                                    total_percent,
+                                    f"{index}/{len(self.files)} · {source.name} · {elapsed:.0f} s · native worker actief",
+                                )
+                                time.sleep(0.25)
+                        return_code = self._process.returncode
+                        self._process = None
+                        if not result_path.exists():
+                            details = log_path.read_text(encoding="utf-8", errors="replace")[-8000:]
+                            raise RuntimeError(
+                                f"Conversieworker stopte zonder resultaat (code {return_code}). {details}"
+                            )
+                        payload = json.loads(result_path.read_text(encoding="utf-8"))
+                        if payload.get("status") != "passed":
+                            raise RuntimeError(str(payload.get("error") or "Onbekende conversieworkerfout"))
+                        results.append(dict(payload["result"]))
+                    self.progress.emit(
+                        int((index / max(1, len(self.files))) * 100),
+                        f"{index}/{len(self.files)} · {source.name} afgerond",
+                    )
                 self.finished.emit({"status": "passed", "results": results})
             except Exception as exc:
+                process = self._process
+                if process is not None:
+                    try:
+                        self._stop_process(process)
+                    except Exception:
+                        pass
+                    self._process = None
                 self.failed.emit(f"{type(exc).__name__}: {exc}")
 
     class _ModelPreview(QtWidgets.QFrame):
@@ -124,6 +214,9 @@ if qt_available():
             self.run_button = QtWidgets.QPushButton("Converteren")
             self.run_button.setObjectName("primaryButton")
             self.run_button.clicked.connect(self._run)
+            self.cancel_button = QtWidgets.QPushButton("Annuleren")
+            self.cancel_button.setEnabled(False)
+            self.cancel_button.clicked.connect(self._cancel)
             grid.addWidget(QtWidgets.QLabel("Richting"), 0, 0)
             grid.addWidget(self.direction, 1, 0)
             grid.addWidget(QtWidgets.QLabel("Materiaal"), 0, 1)
@@ -132,6 +225,12 @@ if qt_available():
             grid.addWidget(self.output, 1, 2)
             grid.addWidget(browse, 1, 3)
             grid.addWidget(self.run_button, 1, 4)
+            grid.addWidget(self.cancel_button, 1, 5)
+            self.conversion_progress = QtWidgets.QProgressBar()
+            self.conversion_progress.setRange(0, 100)
+            self.conversion_progress.setValue(0)
+            self.conversion_progress.setFormat("Gereed")
+            grid.addWidget(self.conversion_progress, 2, 0, 1, 6)
             grid.setColumnStretch(2, 1)
             root.addWidget(settings)
             lower = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -228,6 +327,8 @@ if qt_available():
             self.source_preview.set_caption("Wacht op selectie")
 
         def _run(self) -> None:
+            if self._thread is not None:
+                return
             if not self._files:
                 QtWidgets.QMessageBox.information(self, "Converteren", "Selecteer eerst bestanden.")
                 return
@@ -245,12 +346,15 @@ if qt_available():
                 QtWidgets.QMessageBox.warning(self, "Converteren", f"De gekozen richting past niet bij: {', '.join(invalid)}")
                 return
             self.run_button.setEnabled(False)
+            self.cancel_button.setEnabled(True)
+            self.conversion_progress.setValue(0)
+            self.conversion_progress.setFormat("Conversie starten · %p%")
             self.log.appendPlainText("Conversie gestart...")
             thread = QtCore.QThread(self)
             worker = _ConversionWorker(tuple(self._files), target, direction, self.material.currentText())
             worker.moveToThread(thread)
             thread.started.connect(worker.run)
-            worker.progress.connect(self.status.setText)
+            worker.progress.connect(self._conversion_progress)
             worker.finished.connect(self._finished)
             worker.failed.connect(self._failed)
             worker.finished.connect(thread.quit)
@@ -263,9 +367,25 @@ if qt_available():
             self._worker, self._thread = worker, thread
             thread.start()
 
+        @QtCore.Slot(int, str)
+        def _conversion_progress(self, percent: int, message: str) -> None:
+            value = max(0, min(100, int(percent)))
+            self.conversion_progress.setValue(value)
+            self.conversion_progress.setFormat(f"{message} · %p%")
+            self.status.setText(message)
+
+        def _cancel(self) -> None:
+            worker = self._worker
+            if worker is None:
+                return
+            self.cancel_button.setEnabled(False)
+            self.status.setText("Conversie wordt gecontroleerd gestopt...")
+            worker.request_cancel()
+
         @QtCore.Slot(dict)
         def _finished(self, payload: dict) -> None:
             self.run_button.setEnabled(True)
+            self.cancel_button.setEnabled(False)
             outputs = []
             for row in payload.get("results", []):
                 self.log.appendPlainText(f"OK  {Path(row['source']).name}")
@@ -275,12 +395,16 @@ if qt_available():
                 for warning in row.get("warnings", []):
                     self.log.appendPlainText(f"WAARSCHUWING  {warning}")
             self.status.setText("Conversie succesvol afgerond")
+            self.conversion_progress.setValue(100)
+            self.conversion_progress.setFormat("Conversie succesvol afgerond · 100%")
             self.target_preview.set_caption(Path(outputs[-1]).name if outputs else "Conversie gereed")
 
         @QtCore.Slot(str)
         def _failed(self, message: str) -> None:
             self.run_button.setEnabled(True)
+            self.cancel_button.setEnabled(False)
             self.status.setText("Conversie mislukt")
+            self.conversion_progress.setFormat("Conversie gestopt of mislukt")
             self.log.appendPlainText(f"FOUT  {message}")
             QtWidgets.QMessageBox.critical(self, "Conversie mislukt", message)
 else:

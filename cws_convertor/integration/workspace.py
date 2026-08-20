@@ -8,10 +8,11 @@ stable canonical entity IDs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 import tempfile
 import time
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from canonical_model import write_attachment
 from cws_convertor.bom import build_bom_snapshot
@@ -170,27 +171,55 @@ class IntegratedProjectWorkspace:
         load_all_geometry: bool = True,
         allow_proxy: bool = True,
         prefer_proxy: bool = False,
+        progress_callback: Callable[[int, str], None] | None = None,
     ) -> "IntegratedProjectWorkspace":
         started = time.perf_counter()
+        notify = progress_callback or (lambda _percent, _message: None)
         project_path = Path(path).expanduser().resolve()
         session = ProjectSession.open(project_path, read_only=read_only)
+        notify(24, "Project Model 2.25 en bronverwijzingen geopend")
         temporary_directory: tempfile.TemporaryDirectory[str] | None = None
         controller: ViewerCoreController | None = None
         interaction: ProjectInteractionModel | None = None
         try:
             roots = list(source_search_roots)
             roots.extend(value.parent for value in session.source_paths.values())
+            effective_prefer_proxy = bool(prefer_proxy)
+            if load_all_geometry and allow_proxy and not effective_prefer_proxy:
+                limit = max(
+                    8 * 1024 * 1024,
+                    int(float(os.environ.get("CWS_FULL_GEOMETRY_MAX_MB", "64")) * 1024 * 1024),
+                )
+                source_sizes: list[int] = []
+                for value in session.source_paths.values():
+                    candidate = Path(value)
+                    if not candidate.is_absolute():
+                        candidate = project_path.parent / candidate
+                    try:
+                        source_sizes.append(candidate.stat().st_size)
+                    except OSError:
+                        continue
+                effective_prefer_proxy = bool(
+                    source_sizes
+                    and (max(source_sizes) > limit or sum(source_sizes) > limit * 2)
+                )
+            if effective_prefer_proxy:
+                notify(31, "Grote IFC/STEP-bron gedetecteerd; responsieve proxyweergave voorbereiden")
+            else:
+                notify(31, "Exacte brongeometrie voorbereiden")
             loader = ProjectSceneLoader(
                 cache_root=cache_root,
                 source_search_roots=roots,
-                provider_factory=(lambda: ()) if prefer_proxy else None,
+                provider_factory=(lambda: ()) if effective_prefer_proxy else None,
             )
+            notify(38, "Viewer-scene en geometriecatalogus opbouwen")
             load_result = loader.load_project(
                 session.project,
                 project_path,
                 load_all=load_all_geometry,
                 allow_proxy=allow_proxy,
             )
+            notify(64, "Viewer-scene opgebouwd; selectie-index maken")
             if load_result.project is not session.project:
                 raise RuntimeError("Viewer heeft een tweede projectinstantie aangemaakt")
 
@@ -216,6 +245,7 @@ class IntegratedProjectWorkspace:
             # BOM generation may classify/audit.  Run it on a detached snapshot
             # so the viewer opening a project can never mutate production state.
             bom_project = ProjectModel.from_dict(session.project.to_dict())
+            notify(70, "BOM, classificatie en traceability opbouwen")
             bom_snapshot = build_bom_snapshot(bom_project, user="viewer-v9", classify_if_needed=True)
             cls._complete_bom_traceability(session.project, bom_snapshot)
 
@@ -231,6 +261,7 @@ class IntegratedProjectWorkspace:
             )
             if not identity_audit.passed:
                 raise RuntimeError(f"V9 identity audit failed: {identity_audit.to_dict()}")
+            notify(78, "Identiteiten en centrale selectie gecontroleerd")
 
             temporary_directory = tempfile.TemporaryDirectory(prefix="cws-v9-exact-")
             report = WorkspaceLoadReport(
