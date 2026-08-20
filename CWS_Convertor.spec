@@ -1,25 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_dynamic_libs, collect_submodules
 
 ROOT = Path(SPECPATH)
 
-packages = [
+native_packages = [
     "cadquery",
     "OCP",
     "casadi",
-    "matplotlib",
-    "numpy",
-    "scipy",
-    "PIL",
     "ifcopenshell",
+]
+data_packages = [
+    "matplotlib",
+    "PIL",
     "xlsxwriter",
     "pymupdf",
     "pypdf",
     "reportlab",
     "ezdxf",
-    "vtkmodules",
-    "PySide6",
 ]
 binaries = []
 datas = [
@@ -27,25 +25,14 @@ datas = [
     (str(ROOT / "materials.json"), "."),
     (str(ROOT / "templates"), "templates"),
     (str(ROOT / "assets"), "assets"),
-    (str(ROOT / "README.md"), "."),
-    (str(ROOT / "CHANGELOG.md"), "."),
-    (str(ROOT / "VERSIE_EN_TESTSTATUS.txt"), "."),
-    (str(ROOT / "WINDOWS_EXE_RELEASE.md"), "."),
-    (str(ROOT / "SBOM.spdx.json"), "."),
-    (str(ROOT / "requirements-runtime.lock.txt"), "."),
-    (str(ROOT / "requirements-build.lock.txt"), "."),
-    (str(ROOT / "docs"), "docs"),
     (str(ROOT / "cws_viewer" / "schemas"), "cws_viewer/schemas"),
-    (str(ROOT / "cws_viewer" / "fixtures" / "data"), "cws_viewer/fixtures/data"),
     (
         str(ROOT / "cws_convertor" / "manufacturing" / "m18_authority_runtime.zip"),
         "cws_convertor/manufacturing",
     ),
-    (str(ROOT / "requirements-viewer-v9.lock.txt"), "."),
 ]
 hiddenimports = [
     "fitz",
-    "matplotlib.backends.backend_tkagg",
     "ifcopenshell.api",
     "ifcopenshell.geom",
     "ifcopenshell.util.element",
@@ -68,16 +55,24 @@ hiddenimports = [
     "vtkmodules.vtkRenderingFreeType",
     "vtkmodules.vtkRenderingOpenGL2",
 ]
-for package in packages:
+optional_binary_markers = (
+    "knitro", "snopt", "worhp", "madnlp", "libhsl", "matlab", "libeng.dll", "libmx.dll",
+    "fbclient.dll", "oci.dll", "libpq.dll", "sqldrivers", "qsql",
+)
+for package in native_packages:
     package_datas, package_binaries, package_hidden = collect_all(package)
     datas += package_datas
-    binaries += package_binaries
-    hiddenimports += package_hidden
+    binaries += [entry for entry in package_binaries if not any(marker in str(entry[0]).lower() for marker in optional_binary_markers)]
+    hiddenimports += [name for name in package_hidden if not any(marker in name.lower() for marker in ("matlab", "knitro", "snopt", "worhp", "madnlp"))]
+for package in data_packages:
+    datas += collect_data_files(package)
+    binaries += collect_dynamic_libs(package)
 hiddenimports += collect_submodules("ifcopenshell.api")
 hiddenimports += collect_submodules("scipy._external.array_api_compat")
 hiddenimports += collect_submodules("scipy._lib.array_api_compat")
 hiddenimports += collect_submodules("cws_viewer")
 hiddenimports += collect_submodules("cws_convertor")
+hiddenimports += collect_submodules("reportlab.graphics.barcode")
 hiddenimports += [
     "vtk",
     "vtkmodules.qt.QVTKRenderWindowInteractor",
@@ -93,7 +88,7 @@ common = dict(
     hookspath=[str(ROOT / "pyinstaller_hooks")],
     hooksconfig={},
     runtime_hooks=[str(ROOT / "pyinstaller_hooks" / "pyi_rth_cws_native_dll_path.py")],
-    excludes=[],
+    excludes=["PySide6.QtSql", "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtMultimedia"],
     noarchive=False,
     optimize=1,
 )

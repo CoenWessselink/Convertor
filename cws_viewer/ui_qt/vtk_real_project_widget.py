@@ -330,7 +330,34 @@ if qt_available():
                 super().resizeEvent(event)
                 size = event.size()
                 if size.width() > 0 and size.height() > 0:
-                    self._controller.resize(size.width(), size.height())
+                    self._cws_pending_resize = (size.width(), size.height())
+                    timer = getattr(self, "_cws_resize_timer", None)
+                    if timer is None:
+                        timer = QtCore.QTimer(self)
+                        timer.setSingleShot(True)
+                        timer.timeout.connect(self._apply_cws_pending_resize)
+                        self._cws_resize_timer = timer
+                    timer.start(60)
+
+            def _apply_cws_pending_resize(self) -> None:
+                pending = getattr(self, "_cws_pending_resize", None)
+                if pending is None or not self.isVisible():
+                    return
+                self._cws_pending_resize = None
+                # QVTKRenderWindowInteractor already converts Qt logical sizes
+                # to its device-pixel render surface. Multiplying the HWND size
+                # by devicePixelRatioF a second time made the native viewer
+                # overlap its neighbour by 47 px at 125% Windows scaling.
+                logical_size = (
+                    max(1, int(pending[0])),
+                    max(1, int(pending[1])),
+                )
+                self._controller.resize(*logical_size)
+                render_window = getattr(self, "_RenderWindow", None)
+                if render_window is not None:
+                    render_window.SetSize(*logical_size)
+                    render_window.Render()
+                self.update()
 
             def closeEvent(self, event: Any) -> None:
                 self._controller.shutdown()

@@ -26,6 +26,7 @@ if qt_available():
         distance,
     )
     from cws_viewer.measurements.export import export_csv, export_json, export_pdf
+    from cws_viewer.core.v15_selection_measurement import V15SelectionMeasurementService
 
     class IntegratedViewerToolsPanel(QtWidgets.QWidget):
         """Functional V5 tools over the integrated project viewer controller."""
@@ -35,8 +36,27 @@ if qt_available():
         def __init__(self, workspace: Any, parent: Any | None = None) -> None:
             super().__init__(parent)
             self.workspace = workspace
+            application = QtWidgets.QApplication.instance()
+            widgets = () if application is None else application.allWidgets()
+            self.viewer = next(
+                (
+                    widget for widget in widgets
+                    if hasattr(widget, "pick_result") and hasattr(widget, "controller")
+                    and widget.controller is workspace.controller
+                ),
+                None,
+            )
+            self.measure_service = V15SelectionMeasurementService(
+                workspace.controller,
+                mesh_repository=workspace.load_result.repository,
+            )
+            self._point_anchors: list[Any] = []
             self.setObjectName("cwsV9IntegratedViewerTools")
             self._build_ui()
+            if self.viewer is not None:
+                self.viewer.pick_result.connect(self._measurement_pick)
+                if hasattr(self.viewer, "tool_cancelled"):
+                    self.viewer.tool_cancelled.connect(self._cancel_measurement)
             self.refresh()
 
         @property
@@ -94,7 +114,8 @@ if qt_available():
             measurements = QtWidgets.QGroupBox("Meetwerkruimte")
             measurement_layout = QtWidgets.QVBoxLayout(measurements)
             controls = QtWidgets.QHBoxLayout()
-            self.quick_distance = QtWidgets.QPushButton("Afstand tussen 2 selecties")
+            self.quick_distance = QtWidgets.QPushButton("Afstand meten (2 punten)")
+            self.quick_distance.setObjectName("primaryButton")
             self.unit = QtWidgets.QComboBox()
             self.unit.addItems(["mm", "cm", "m", "in", "ft"])
             self.precision = QtWidgets.QSpinBox()
@@ -262,27 +283,44 @@ if qt_available():
                 return
 
         def _quick_distance(self) -> None:
-            selected = tuple(self.controller.get_selection())
-            if len(selected) != 2:
-                QtWidgets.QMessageBox.information(
-                    self,
-                    "Meten",
-                    "Selecteer exact twee renderbare objecten. De afstand wordt tussen hun wereld-bounding-boxcentra gemeten.",
-                )
+            if self.viewer is None:
+                QtWidgets.QMessageBox.information(self, "Meten", "De gedeelde 3D-viewer is nog niet beschikbaar.")
+                return
+            self._point_anchors.clear()
+            self.controller.begin_measurement(MeasurementKind.DISTANCE)
+            self.quick_distance.setText("Klik punt 1 van 2...")
+            self.status_changed.emit("Meting actief: klik twee punten op de 3D-geometrie; Esc annuleert")
+            self.state.setText("Meting actief - klik punt 1 van 2 in de 3D-viewer")
+
+        def _cancel_measurement(self) -> None:
+            self.controller.cancel_tool()
+            self._point_anchors.clear()
+            self.quick_distance.setText("Afstand meten (2 punten)")
+            self.refresh()
+
+        def _measurement_pick(self, pick: Any) -> None:
+            if getattr(self.controller, "_active_measurement_kind", None) != MeasurementKind.DISTANCE:
                 return
             try:
-                record = distance(
-                    self._anchor_for_center(selected[0]),
-                    self._anchor_for_center(selected[1]),
-                    self.controller.get_measurement_settings(),
+                anchor = self.measure_service.anchor_from_project_pick(pick)
+                self._point_anchors.append(anchor)
+                if len(self._point_anchors) == 1:
+                    self.quick_distance.setText("Klik punt 2 van 2...")
+                    point = anchor.world_point
+                    self.state.setText(f"Punt 1: X {point.x:.3f} / Y {point.y:.3f} / Z {point.z:.3f} mm")
+                    return
+                record = self.measure_service.add_distance(
+                    self._point_anchors[0],
+                    self._point_anchors[1],
+                    settings=self.controller.get_measurement_settings(),
                 )
-                self.controller.add_measurement(record)
-                self.controller.begin_measurement(MeasurementKind.DISTANCE)
+                self.controller.cancel_tool()
+                self._point_anchors.clear()
+                self.quick_distance.setText("Afstand meten (2 punten)")
                 self.refresh()
-                self.status_changed.emit(
-                    f"Meting toegevoegd: {record.formatted_text} ({record.proof.value})"
-                )
+                self.status_changed.emit(f"Meting toegevoegd: {record.formatted_text} ({record.proof.value})")
             except Exception as exc:
+                self._cancel_measurement()
                 QtWidgets.QMessageBox.critical(self, "Meten", f"{type(exc).__name__}: {exc}")
 
         def _selected_measurement_id(self) -> str | None:

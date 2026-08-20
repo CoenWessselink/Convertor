@@ -48,14 +48,25 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         vtk = self._vtk
         if renderer is None or vtk is None:
             return
+        fxaa_off = getattr(renderer, "UseFXAAOff", None)
+        if callable(fxaa_off):
+            fxaa_off()
+        renderer.SetPass(None)
+        self._ssao_pass = None
+        window = self._render_window
+        if window is not None:
+            for method_name in ("LineSmoothingOn", "PolygonSmoothingOn"):
+                method = getattr(window, method_name, None)
+                if callable(method):
+                    method()
 
         try:
             kit = vtk.vtkLightKit()
             for name, value in (
-                ("SetKeyLightIntensity", 0.78),
-                ("SetKeyToFillRatio", 2.6),
-                ("SetKeyToHeadRatio", 3.0),
-                ("SetKeyToBackRatio", 3.8),
+                ("SetKeyLightIntensity", 0.90),
+                ("SetKeyToFillRatio", 2.25),
+                ("SetKeyToHeadRatio", 2.50),
+                ("SetKeyToBackRatio", 3.20),
             ):
                 method = getattr(kit, name, None)
                 if callable(method):
@@ -70,50 +81,52 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         except Exception:
             self._light_kit = None
 
-        # Screen-space ambient occlusion supplies the contact-shadow depth that
-        # was visibly missing in the user screenshots. Radius is updated from
-        # the real scene diagonal in ``apply_state`` because project units are
-        # millimetres and a fixed 0.x world-unit radius would be invisible.
-        if not self._offscreen:
-            try:
-                if hasattr(vtk, "vtkSSAOPass") and hasattr(vtk, "vtkRenderStepsPass"):
-                    basic = vtk.vtkRenderStepsPass()
-                    ssao = vtk.vtkSSAOPass()
-                    ssao.SetDelegatePass(basic)
-                    for name, value in (
-                        ("SetRadius", 25.0),
-                        ("SetBias", 0.015),
-                        ("SetKernelSize", 64),
-                    ):
-                        method = getattr(ssao, name, None)
-                        if callable(method):
-                            method(value)
-                    blur = getattr(ssao, "BlurOn", None)
-                    if callable(blur):
-                        blur()
-                    renderer.SetPass(ssao)
-                    self._ssao_pass = ssao
-            except Exception:
-                self._ssao_pass = None
+        # SSAO is intentionally disabled. On large IFC scenes it introduced
+        # stippling, blurred edges and a visible frame-time change while orbiting.
 
     @staticmethod
     def _quality_material(prop: Any) -> None:
         prop.SetInterpolationToPhong()
-        prop.SetAmbient(0.18)
-        prop.SetDiffuse(0.76)
-        prop.SetSpecular(0.22)
-        prop.SetSpecularPower(30.0)
+        # Keep source IFC RGB visually authoritative.  A high ambient share
+        # prevents the camera lights from turning Trimble-bright object colours
+        # into the much darker greens seen in the previous build, while a small
+        # diffuse/specular share still gives profiles readable face depth.
+        # Calibrated against the same live IFC in Trimble. The former material
+        # measured only 51/152/51 for green steel versus 94/215/94 in Trimble.
+        prop.SetAmbient(0.36)
+        prop.SetDiffuse(0.60)
+        prop.SetSpecular(0.08)
+        prop.SetSpecularPower(28.0)
 
     @staticmethod
     def _blend_selection(rgba: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
-        target = (255, 205, 66)
-        amount = 0.38
+        # The reference workflow consistently uses a saturated engineering blue
+        # for selected steel.  Yellow-on-green was too subtle on IFC models.
+        target = (0, 102, 220)
+        amount = 0.94
         return (
             int(round(rgba[0] * (1.0 - amount) + target[0] * amount)),
             int(round(rgba[1] * (1.0 - amount) + target[1] * amount)),
             int(round(rgba[2] * (1.0 - amount) + target[2] * amount)),
             rgba[3],
         )
+
+    def _apply_background_theme(self, state: Any) -> None:
+        if self._renderer is None:
+            return
+        theme = state.display_preferences.background_theme.value
+        if theme == "light":
+            # Trimble's light workspace is neutral white.  The tiny lower tint
+            # keeps white geometry readable without shifting source colours.
+            self._renderer.SetBackground(0.988, 0.990, 0.994)
+            self._renderer.SetBackground2(0.958, 0.968, 0.980)
+        elif theme == "slate":
+            self._renderer.SetBackground(0.115, 0.135, 0.165)
+            self._renderer.SetBackground2(0.25, 0.285, 0.335)
+        else:
+            self._renderer.SetBackground(0.025, 0.032, 0.045)
+            self._renderer.SetBackground2(0.085, 0.105, 0.145)
+        self._renderer.GradientBackgroundOn()
 
     def _sync_selection_fill(self, state: Any, index: Any) -> None:
         selected = set(state.selected_node_ids)
@@ -153,7 +166,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         diagonal = self._scene_diagonal()
         # Structural IFCs use mm. Around 0.5% of model diagonal gives visible
         # local contact depth while avoiding a broad muddy halo on large halls.
-        radius = max(8.0, min(350.0, diagonal * 0.005))
+        radius = max(5.0, min(140.0, diagonal * 0.0015))
         try:
             ssao.SetRadius(float(radius))
         except Exception:
@@ -406,6 +419,8 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         self.render()
 
     def render(self) -> None:
+        if self._renderer is not None:
+            self._renderer.ResetCameraClippingRange()
         self._position_measurement_labels(self._measurement_label_bindings)
         self._position_measurement_labels(self._measurement_preview_labels)
         super().render()

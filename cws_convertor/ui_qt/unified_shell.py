@@ -195,7 +195,16 @@ if qt_available():
                 self._selection_unsubscribe = None
             if self.workspace is not None and self.application_context.workspace is not self.workspace:
                 self.application_context.attach_workspace(self.workspace)
+            current_selection = self.project_page._selected_nodes() if self.workspace is not None else None
+            for page_name in ("edit_page", "pdf_page"):
+                page = getattr(self, page_name, None)
+                set_context = getattr(page, "set_context", None)
+                if callable(set_context):
+                    set_context(self.workspace, current_selection)
             self._update_active_surface()
+            place_viewer = getattr(self, "_place_shared_viewer", None)
+            if callable(place_viewer):
+                place_viewer(self._surface_for_current_tab())
 
         def _project_closed(self) -> None:
             self.application_context.detach_workspace()
@@ -215,6 +224,11 @@ if qt_available():
             if self.application_context.workspace is not workspace:
                 self.application_context.attach_workspace(workspace)
             self.application_context.ingest_interaction_selection(selection)
+            for page_name in ("edit_page", "pdf_page"):
+                page = getattr(self, page_name, None)
+                set_context = getattr(page, "set_context", None)
+                if callable(set_context):
+                    set_context(workspace, selection)
 
         def _apply_u3_snapshot(self, snapshot: UnifiedUiContextSnapshot) -> None:
             self.context_strip.apply_snapshot(snapshot)

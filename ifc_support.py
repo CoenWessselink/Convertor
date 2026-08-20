@@ -314,6 +314,103 @@ def _load_ifcopenshell_geometry(source: Path) -> IFCModelData:
     )
 
 
+def _load_internal_occt_geometry(source: Path) -> IFCModelData:
+    """Read common swept/BREP IFC geometry with the bundled Viewer V15 core."""
+
+    import hashlib
+
+    from cws_convertor.importers.ifc_project import IfcPlacementResolver
+    from cws_convertor.importers.p21 import P21Document
+    from cws_viewer.geometry.ifc_provider import (
+        GeometryRequest,
+        IfcMeshProvider,
+        TessellationSettings,
+        _detect_units,
+    )
+
+    document = P21Document.load(source)
+    units = _detect_units(document)
+    placements = IfcPlacementResolver(document, units)
+    provider = IfcMeshProvider()
+    settings = TessellationSettings(linear_deflection_mm=1.5, angular_deflection_rad=0.35)
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
+    denied_tokens = (
+        "REPRESENTATION", "REL", "PROPERTY", "QUANTITY", "STYLE",
+        "MATERIAL", "PLACEMENT", "OWNERHISTORY", "CONTEXT", "PROFILE",
+    )
+    denied_types = {
+        "IFCPROJECT", "IFCSITE", "IFCBUILDING", "IFCBUILDINGSTOREY",
+        "IFCOPENINGELEMENT", "IFCSPACE", "IFCANNOTATION", "IFCGRID",
+    }
+    candidates = [
+        (entity_id, entity)
+        for entity_id, entity in document.entities.items()
+        if entity.type_name.startswith("IFC")
+        and entity.type_name not in denied_types
+        and not any(token in entity.type_name for token in denied_tokens)
+        and entity.ref(6) is not None
+    ]
+    items: list[IFCGeometryItem] = []
+    warnings: list[str] = []
+    for entity_id, entity in candidates:
+        request = GeometryRequest(
+            geometry_id=f"ifc:{source_hash}:{entity_id}",
+            source_geometry_hash=source_hash,
+            source_format="IFC",
+            source_file_id=source.name,
+            source_path=str(source),
+            source_sha256=source_hash,
+            source_entity_id=f"#{entity_id}",
+        )
+        try:
+            mesh = provider.load(request, settings)
+            if mesh is None or len(mesh.vertices) < 3 or len(mesh.triangles) < 1:
+                continue
+            vertices = np.asarray(mesh.vertices, dtype=float)
+            placement_id = entity.ref(5)
+            if placement_id is not None:
+                _local, global_placement = placements.local_placement(placement_id)
+                matrix = np.asarray(global_placement.matrix, dtype=float)
+                homogeneous = np.column_stack((vertices, np.ones(len(vertices), dtype=float)))
+                vertices = (homogeneous @ matrix.T)[:, :3]
+            items.append(
+                IFCGeometryItem(
+                    guid=entity.string(0, "") or f"ifc-{entity_id}",
+                    name=entity.string(2, "") or f"{entity.type_name} #{entity_id}",
+                    ifc_class=entity.type_name,
+                    tag=entity.string(7, ""),
+                    material_name="",
+                    vertices_mm=vertices,
+                    triangles=np.asarray(mesh.triangles, dtype=int),
+                    properties={
+                        "reader": "viewer-v15-internal-occt",
+                        "source_entity_id": f"#{entity_id}",
+                        "material_recognition": "manual_required",
+                    },
+                    quantities={},
+                    warnings=list(mesh.warnings),
+                )
+            )
+        except Exception as exc:
+            if len(warnings) < 40:
+                warnings.append(f"#{entity_id} ({entity.type_name}): {exc}")
+    if not items:
+        detail = f" Waarschuwingen: {'; '.join(warnings[:3])}" if warnings else ""
+        raise ValueError(f"Viewer V15 kon geen ondersteunde IFC-productgeometrie opbouwen.{detail}")
+    warnings.insert(
+        0,
+        "IFC gelezen met de interne Viewer V15/OCCT-fallback; materiaalgrade blijft handmatig tot bronbewijs beschikbaar is.",
+    )
+    return IFCModelData(
+        source,
+        document.schema or "IFC",
+        source.stem,
+        items,
+        warnings,
+        reader="viewer-v15-internal-occt",
+    )
+
+
 def load_ifc_geometry(path: str | Path) -> IFCModelData:
     """Lees IFC-geometrie via IfcOpenShell of de ingebouwde tessellatielezer."""
 
@@ -331,6 +428,13 @@ def load_ifc_geometry(path: str | Path) -> IFCModelData:
         return model
     except Exception as native_exc:
         errors.append(f"ingebouwde IFC-lezer: {native_exc}")
+    try:
+        model = _load_internal_occt_geometry(source)
+        if errors:
+            model.warnings.insert(0, "Fallback na " + "; ".join(errors))
+        return model
+    except Exception as internal_exc:
+        errors.append(f"Viewer V15/OCCT: {internal_exc}")
     raise IFCDependencyError(
         f"IFC-geometrie van {source.name} kon niet worden gelezen. " + "; ".join(errors)
     )

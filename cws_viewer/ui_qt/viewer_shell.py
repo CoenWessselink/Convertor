@@ -9,20 +9,22 @@ from cws_viewer.contracts.enums import ProjectionType, StandardView
 from cws_viewer.contracts.events import SelectionChanged, VisibilityChanged
 from cws_viewer.contracts.scene import ProjectScene
 from cws_viewer.fixtures import build_synthetic_product_scene
+from cws_viewer.geometry.loader import MeshRepository
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.vtk_project_widget import VtkProjectWidget
+from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import VtkRealProjectWidgetFeelV2
 
 
 _QSS = """
-QMainWindow { background: #111821; color: #e8eef5; }
-QToolBar { background: #182331; border-bottom: 1px solid #2a3949; spacing: 5px; padding: 5px; }
-QToolButton { background: #233246; color: #eaf2f8; border: 1px solid #33485f; border-radius: 4px; padding: 6px 10px; }
-QToolButton:hover { background: #2d4662; }
-QTreeWidget, QTableWidget { background: #151f2a; alternate-background-color: #192531; color: #dfe9f2; border: 1px solid #2a3949; }
-QHeaderView::section { background: #233246; color: #ecf3f8; border: 0; padding: 6px; }
-QDockWidget::title { background: #1e2b3a; color: #f0f5f8; padding: 7px; }
-QStatusBar { background: #0d141c; color: #aebdcc; }
-QLabel#statusPill { border-radius: 8px; padding: 4px 9px; background: #164e3b; color: #d8fff0; }
+QMainWindow { background: #f7f9fc; color: #162a43; }
+QToolBar { background: #ffffff; border-bottom: 1px solid #d8e2ee; spacing: 5px; padding: 6px; }
+QToolButton { background: #ffffff; color: #0b55b5; border: 1px solid #cbd9e8; border-radius: 3px; padding: 7px 11px; }
+QToolButton:hover { background: #eaf3ff; border-color: #7cacdf; }
+QTreeWidget, QTableWidget { background: #ffffff; alternate-background-color: #f7faff; color: #20334a; border: 1px solid #d5e0ec; }
+QHeaderView::section { background: #eff4fa; color: #50657d; border: 0; padding: 7px; }
+QDockWidget::title { background: #f2f6fb; color: #173653; padding: 8px; font-weight: 600; }
+QStatusBar { background: #ffffff; color: #667a91; border-top: 1px solid #d8e2ee; }
+QLabel#statusPill { border-radius: 8px; padding: 4px 9px; background: #e7f7ef; color: #087a43; }
 """
 
 
@@ -30,16 +32,24 @@ if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
 
     class ViewerMainWindow(QtWidgets.QMainWindow):
-        def __init__(self, scene: ProjectScene | None = None) -> None:
+        def __init__(
+            self,
+            scene: ProjectScene | None = None,
+            repository: MeshRepository | None = None,
+        ) -> None:
             super().__init__()
             self.setObjectName("cwsViewerV2MainWindow")
-            self.setWindowTitle("CWS Viewer V2 — Projectscene")
+            self.setWindowTitle("CWS Convertor · Viewer V15")
             self.resize(1480, 900)
             self.setStyleSheet(_QSS)
             self._syncing_selection = False
             self._items_by_node: dict[str, Any] = {}
 
-            self.viewer = VtkProjectWidget(self)
+            self.viewer = (
+                VtkRealProjectWidgetFeelV2(repository, self)
+                if repository is not None
+                else VtkProjectWidget(self)
+            )
             self.setCentralWidget(self.viewer)
             self._tree = self._create_tree_dock()
             self._properties = self._create_properties_dock()
@@ -216,8 +226,11 @@ if qt_available():
             super().closeEvent(event)
 
 
-    def create_viewer_window(scene: ProjectScene | None = None) -> ViewerMainWindow:
-        return ViewerMainWindow(scene)
+    def create_viewer_window(
+        scene: ProjectScene | None = None,
+        repository: MeshRepository | None = None,
+    ) -> ViewerMainWindow:
+        return ViewerMainWindow(scene, repository)
 
 
     def run_viewer_shell(

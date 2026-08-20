@@ -48,6 +48,7 @@ if qt_available():
 
     class _LoadWorker(QtCore.QObject):
         loaded = QtCore.Signal(object)
+        progress = QtCore.Signal(int, str)
         failed = QtCore.Signal(str)
         finished = QtCore.Signal()
 
@@ -59,12 +60,27 @@ if qt_available():
         @QtCore.Slot()
         def run(self) -> None:
             try:
+                self.progress.emit(5, "Projectbestand en schema controleren")
+                self.progress.emit(18, "Projectmodel, bronnen en geometrie openen")
+                project_size = Path(self.path).stat().st_size
+                full_geometry_limit = int(
+                    # Compressed Tekla packages expand far beyond archive size.
+                    # Keep the shared Viewer responsive; exact selected-part
+                    # geometry remains available from the workbench.
+                    float(__import__("os").environ.get("CWS_FULL_GEOMETRY_MAX_MB", "64"))
+                    * 1024 * 1024
+                )
+                prefer_proxy = bool(self.load_geometry and project_size > full_geometry_limit)
                 workspace = IntegratedProjectWorkspace.open(
                     self.path,
                     read_only=False,
                     load_all_geometry=self.load_geometry,
                     allow_proxy=True,
+                    prefer_proxy=prefer_proxy,
                 )
+                if prefer_proxy:
+                    self.progress.emit(70, "Groot project: snelle 3D-proxyweergave opgebouwd")
+                self.progress.emit(80, "Viewer-scene en selectiecontext voorbereiden")
                 self.loaded.emit(workspace)
             except Exception as exc:
                 self.failed.emit(f"{type(exc).__name__}: {exc}")
@@ -76,6 +92,7 @@ if qt_available():
         """Tree, V8 grid, VTK model, properties, BOM and V6 exact review."""
 
         project_loaded = QtCore.Signal(str)
+        load_progress = QtCore.Signal(int, str)
         project_closed = QtCore.Signal()
         selection_changed = QtCore.Signal(object)
         action_requested = QtCore.Signal(str)
@@ -134,8 +151,27 @@ if qt_available():
             )
             self.empty.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             self.stack.addWidget(self.empty)
-            self.loading = QtWidgets.QLabel("Project wordt gecontroleerd en geladen …")
-            self.loading.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.loading = QtWidgets.QFrame()
+            loading_layout = QtWidgets.QVBoxLayout(self.loading)
+            loading_layout.setContentsMargins(80, 80, 80, 80)
+            loading_layout.addStretch(1)
+            self.loading_title = QtWidgets.QLabel("Project wordt geladen in Viewer V15")
+            self.loading_title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.loading_title.setStyleSheet("font-size:18px; font-weight:600; color:#103f77;")
+            self.loading_detail = QtWidgets.QLabel("Projectbestand controleren")
+            self.loading_detail.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            self.loading_detail.setStyleSheet("color:#52647c;")
+            self.loading_progress = QtWidgets.QProgressBar()
+            self.loading_progress.setRange(0, 100)
+            self.loading_progress.setValue(0)
+            self.loading_progress.setFormat("%p%")
+            self.loading_progress.setMinimumHeight(20)
+            loading_layout.addWidget(self.loading_title)
+            loading_layout.addSpacing(8)
+            loading_layout.addWidget(self.loading_detail)
+            loading_layout.addSpacing(10)
+            loading_layout.addWidget(self.loading_progress)
+            loading_layout.addStretch(1)
             self.stack.addWidget(self.loading)
             self.host = QtWidgets.QWidget()
             self.host_layout = QtWidgets.QVBoxLayout(self.host)
@@ -182,6 +218,7 @@ if qt_available():
             worker = _LoadWorker(project_path, load_geometry=load_geometry)
             worker.moveToThread(thread)
             thread.started.connect(worker.run)
+            worker.progress.connect(self._load_progress_changed)
             worker.loaded.connect(self._project_loaded)
             worker.failed.connect(self._project_failed)
             worker.finished.connect(thread.quit)
@@ -193,8 +230,16 @@ if qt_available():
             self._thread = thread
             thread.start()
 
+        @QtCore.Slot(int, str)
+        def _load_progress_changed(self, percent: int, message: str) -> None:
+            self.loading_progress.setValue(max(0, min(100, int(percent))))
+            self.loading_detail.setText(message)
+            self.status.setText(message)
+            self.load_progress.emit(percent, message)
+
         @QtCore.Slot(object)
         def _project_loaded(self, workspace: IntegratedProjectWorkspace) -> None:
+            self._load_progress_changed(84, "Viewer V15-renderer initialiseren")
             self.workspace = workspace
             while self.host_layout.count():
                 item = self.host_layout.takeAt(0)
@@ -207,13 +252,15 @@ if qt_available():
             if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
                 viewer = _HeadlessGuiSmokeViewer()
                 display_evidence = "headless GUI-integratierenderer"
-            elif len(workspace.load_result.repository):
-                viewer = VtkRealProjectWidget(workspace.load_result.repository)
-                display_evidence = "source/proxy meshrepository"
             else:
-                viewer = VtkProjectWidget()
-                display_evidence = "project bounds (geometrie wordt later/lazy geladen)"
+                viewer = VtkRealProjectWidget(workspace.load_result.repository)
+                display_evidence = (
+                    "source/proxy meshrepository"
+                    if len(workspace.load_result.repository)
+                    else "Viewer V15 actief; geometrie wordt later/lazy geladen"
+                )
             viewer.load_scene(workspace.load_result.scene)
+            self._load_progress_changed(90, "Geometrie, camera en selectie koppelen")
             workspace.bind_controller(viewer.controller)
             self.viewer = viewer
             viewer.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -267,6 +314,7 @@ if qt_available():
 
             self._populate_tree()
             self._populate_bom()
+            self._load_progress_changed(97, "Modelstructuur, eigenschappen en BOM vullen")
             self.tree.itemSelectionChanged.connect(self._tree_selection_changed)
             self._interaction_unsubscribe = workspace.interaction.subscribe(
                 self._interaction_selection_changed
@@ -280,10 +328,12 @@ if qt_available():
             )
             self.stack.setCurrentWidget(self.host)
             self._set_actions_enabled(True)
+            self._load_progress_changed(100, "Project volledig geladen in Viewer V15")
             self.project_loaded.emit(str(workspace.project_path))
 
         @QtCore.Slot(str)
         def _project_failed(self, message: str) -> None:
+            self.load_progress.emit(0, f"Project laden mislukt: {message}")
             self.status.setText(f"Project laden mislukt: {message}")
             self.stack.setCurrentWidget(self.empty)
             QtWidgets.QMessageBox.critical(self, "Project laden", message)
@@ -530,3 +580,68 @@ else:
 
 
 __all__ = ["IntegratedProjectWorkspaceWidget"]
+
+# _CWS_DETACHED_VIEWER_PATCH_V1
+# Keep the production viewer available as a first-class, independent review window.
+if "IntegratedProjectWorkspaceWidget" in globals():
+    _cws_workspace_widget_init = IntegratedProjectWorkspaceWidget.__init__
+
+    def _cws_workspace_widget_init_with_detached_viewer(self, *args, **kwargs):
+        _cws_workspace_widget_init(self, *args, **kwargs)
+        self._detached_viewer_windows = []
+        host = getattr(self, "host", None)
+        if host is not None:
+            host.setMinimumHeight(360)
+            host.setSizePolicy(host.sizePolicy().horizontalPolicy(), host.sizePolicy().verticalPolicy())
+        actions_button = getattr(self, "actions_button", None)
+        menu = actions_button.menu() if actions_button is not None else None
+        if menu is not None:
+            from PySide6.QtGui import QAction, QKeySequence
+
+            menu.addSeparator()
+            detached_action = QAction("Viewer in apart venster", self)
+            detached_action.setShortcut(QKeySequence("F11"))
+            detached_action.triggered.connect(self.open_detached_viewer)
+            menu.addAction(detached_action)
+            self._detached_viewer_action = detached_action
+
+    def _cws_open_detached_viewer(self):
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QMessageBox
+        from cws_viewer.ui_qt.cockpit_trimble_feel_v2 import (
+            CwsViewerV15TrimbleFeelV2CockpitWindow,
+        )
+
+        workspace = getattr(self, "workspace", None)
+        load_result = getattr(workspace, "load_result", None)
+        scene = getattr(load_result, "scene", None)
+        if scene is None:
+            QMessageBox.information(self, "Viewer V15", "Open eerst een project met 3D-geometrie.")
+            return None
+        # Keep the independent review window on the same V15 renderer and
+        # expose its complete selection, views, measurement and review cockpit.
+        window = CwsViewerV15TrimbleFeelV2CockpitWindow(load_result)
+        project_name = getattr(getattr(workspace, "document", None), "project_name", "Project")
+        window.setWindowTitle(f"CWS Convertor Viewer V15 - {project_name}")
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        self._detached_viewer_windows.append(window)
+
+        selection = getattr(getattr(workspace, "interaction", None), "selection", None)
+        entity_ids = tuple(getattr(selection, "entity_ids", ()) or ())
+        if entity_ids:
+            try:
+                window.interaction.select_entities(entity_ids, origin="convertor")
+                window.viewer.controller.fit_selection()
+            except Exception:
+                pass
+
+        def forget_window(*_):
+            if window in self._detached_viewer_windows:
+                self._detached_viewer_windows.remove(window)
+
+        window.destroyed.connect(forget_window)
+        window.showMaximized()
+        return window
+
+    IntegratedProjectWorkspaceWidget.open_detached_viewer = _cws_open_detached_viewer
+    IntegratedProjectWorkspaceWidget.__init__ = _cws_workspace_widget_init_with_detached_viewer

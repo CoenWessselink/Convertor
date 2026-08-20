@@ -520,7 +520,7 @@ def _ifc_worker_payload(
         "ifc_entity_id": f"#{entity_id}",
         "global_id": actual_global_id,
         "representation_id": actual_representation,
-        "coordinate_space": "product_local",
+        "coordinate_space": "project_world",
         "ifcopenshell_output_units": "SI converted to mm",
         "worker_process_isolated": True,
     }
@@ -542,6 +542,12 @@ def _ifc_worker_payload(
             "triangles": [],
         }
     settings = ifcopenshell.geom.settings()
+    # IfcOpenShell is authoritative for nested IFC placements. The viewer
+    # converts this world mesh back to the entity-local Project Model frame.
+    try:
+        settings.set(settings.USE_WORLD_COORDS, True)
+    except Exception:
+        settings.set("use-world-coords", True)
     shape = ifcopenshell.geom.create_shape(settings, entity)
     flat_vertices = tuple(float(value) * 1000.0 for value in shape.geometry.verts)
     flat_faces = tuple(int(value) for value in shape.geometry.faces)

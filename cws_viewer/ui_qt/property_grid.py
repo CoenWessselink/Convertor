@@ -250,6 +250,7 @@ if qt_available():
             self.current_query = GridQuery()
             self._sorts: tuple[GridSort, ...] = (GridSort("part_position"),)
             self._groups: tuple[GridGroupSpec, ...] = ()
+            self._syncing_selection = False
             self.setObjectName("cwsV8ProfessionalPropertyGrid")
             self.setAccessibleName("CWS projecteigenschappen")
             self._build_ui()
@@ -374,6 +375,8 @@ if qt_available():
             self.query_changed.emit(result.to_summary_dict())
 
         def _selection_changed(self, *_args: Any) -> None:
+            if self._syncing_selection:
+                return
             entity_ids = []
             for index in self.table.selectionModel().selectedRows():
                 entity_id = self.model.entity_id_at(index.row())
@@ -381,22 +384,34 @@ if qt_available():
                     entity_ids.append(entity_id)
             values = tuple(dict.fromkeys(entity_ids))
             self.entities_selected.emit(values)
-            if self.bridge is not None and values:
+            if self.bridge is not None:
                 self.bridge.select_entities(values)
 
         def select_entities(self, entity_ids: Iterable[str]) -> None:
             wanted = set(map(str, entity_ids))
             selection = QtCore.QItemSelection()
+            first_match = None
             for row_index in range(self.model.rowCount()):
                 entity_id = self.model.entity_id_at(row_index)
                 if entity_id in wanted:
                     left = self.model.index(row_index, 0)
                     right = self.model.index(row_index, max(0, self.model.columnCount() - 1))
                     selection.select(left, right)
-            self.table.selectionModel().select(
-                selection,
-                QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect | QtCore.QItemSelectionModel.SelectionFlag.Rows,
-            )
+                    if first_match is None:
+                        first_match = left
+            self._syncing_selection = True
+            try:
+                self.table.selectionModel().select(
+                    selection,
+                    QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+                )
+                if first_match is not None:
+                    self.table.scrollTo(
+                        first_match,
+                        QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible,
+                    )
+            finally:
+                self._syncing_selection = False
 
         def _double_clicked(self, index: Any) -> None:
             entity_id = self.model.entity_id_at(index.row())

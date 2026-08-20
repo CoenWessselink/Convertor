@@ -94,11 +94,11 @@ class PartWorkbenchTests(unittest.TestCase):
 
         restored = ProjectModel.from_dict(raw)
         migrated = restored.parts["part-1"]
-        self.assertEqual(restored.schema_version, "2.5")
+        self.assertEqual(restored.schema_version, "2.25")
         self.assertEqual(migrated.workbench["schema_version"], "1.1")
         self.assertNotEqual(migrated.manufacturing_hash, legacy_hash)
         self.assertTrue(
-            any(item.get("from") == "2.4" and item.get("to") == "2.5" for item in restored.migration_history)
+            any(item.get("from") == "2.4" and item.get("to") == "2.25" for item in restored.migration_history)
         )
 
     def make_session(self, part_id: str = "part-1") -> ProjectSession:

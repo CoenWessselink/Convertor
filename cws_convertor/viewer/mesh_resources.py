@@ -53,6 +53,28 @@ def _coordinate(value: Any) -> float:
     return 0.0 if rounded == 0.0 else rounded
 
 
+def _project_world_to_entity_local_vertices(
+    values: Sequence[Sequence[float]],
+    transform: Sequence[float],
+) -> tuple[tuple[float, float, float], ...]:
+    """Convert authoritative IFC world vertices to the local scene frame."""
+    matrix = tuple(float(value) for value in transform)
+    if len(matrix) != 16:
+        raise ValueError("Expected a 4x4 entity transform")
+    tx, ty, tz = matrix[3], matrix[7], matrix[11]
+    converted: list[tuple[float, float, float]] = []
+    for vertex in values:
+        dx = float(vertex[0]) - tx
+        dy = float(vertex[1]) - ty
+        dz = float(vertex[2]) - tz
+        converted.append((
+            _coordinate((matrix[0] * dx) + (matrix[4] * dy) + (matrix[8] * dz)),
+            _coordinate((matrix[1] * dx) + (matrix[5] * dy) + (matrix[9] * dz)),
+            _coordinate((matrix[2] * dx) + (matrix[6] * dy) + (matrix[10] * dz)),
+        ))
+    return tuple(converted)
+
+
 def _vertices(
     values: Iterable[Iterable[float]],
 ) -> tuple[tuple[float, float, float], ...]:
@@ -410,11 +432,16 @@ def build_viewer_mesh_resource(
         if entity.source.source_format.upper() != "IFC":
             raise ValueError("Triangulated source viewer mesh is not bound to an IFC source")
         vertices = inspection.mesh_vertices_mm
+        source_coordinate_space = str(inspection.evidence.get("coordinate_space") or "product_local")
+        if source_coordinate_space in {"project_world", "world"}:
+            vertices = _project_world_to_entity_local_vertices(vertices, entity.global_transform)
         triangles = inspection.mesh_triangles
         geometry_basis = "source_ifc_triangulation"
         tessellation = {
             "method": "ifcopenshell_entity_triangulation",
             "source_mesh_sha256": str(inspection.evidence.get("mesh_sha256") or ""),
+            "source_coordinate_space": source_coordinate_space,
+            "viewer_coordinate_space": "entity_local",
         }
     else:
         raise ValueError(

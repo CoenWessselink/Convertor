@@ -197,3 +197,45 @@ else:
 
 
 __all__ = ["ReviewMarkupOverlay"]
+
+
+# A permanently visible transparent QWidget over a native Win32 OpenGL child
+# can retain pixels from the widget that previously occupied that screen area.
+# Keep the review layer physically absent while it has nothing to draw and use
+# a true translucent/no-background surface while markup is active.
+if qt_available():
+    _cws_markup_init = ReviewMarkupOverlay.__init__
+    _cws_markup_set_records = ReviewMarkupOverlay.set_records
+    _cws_markup_set_preview = ReviewMarkupOverlay.set_preview
+    _cws_markup_clear_preview = ReviewMarkupOverlay.clear_preview
+
+    def _cws_review_markup_init(self, viewer):
+        _cws_markup_init(self, viewer)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAutoFillBackground(False)
+        self.hide()
+
+    def _cws_review_markup_visibility(self) -> None:
+        active = bool(getattr(self, "_records", ())) or bool(getattr(self, "_preview_kind", ""))
+        self.setVisible(active)
+        if active:
+            self.raise_()
+            self.update()
+
+    def _cws_review_markup_set_records(self, records):
+        _cws_markup_set_records(self, records)
+        _cws_review_markup_visibility(self)
+
+    def _cws_review_markup_set_preview(self, kind="", points=(), *, text=""):
+        _cws_markup_set_preview(self, kind, points, text=text)
+        _cws_review_markup_visibility(self)
+
+    def _cws_review_markup_clear_preview(self):
+        _cws_markup_clear_preview(self)
+        _cws_review_markup_visibility(self)
+
+    ReviewMarkupOverlay.__init__ = _cws_review_markup_init
+    ReviewMarkupOverlay.set_records = _cws_review_markup_set_records
+    ReviewMarkupOverlay.set_preview = _cws_review_markup_set_preview
+    ReviewMarkupOverlay.clear_preview = _cws_review_markup_clear_preview

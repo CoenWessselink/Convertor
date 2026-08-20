@@ -46,7 +46,13 @@ class ProjectInteractionModel:
         self.colorizer = ProjectColorizer(project, controller.index)
         self.accuracy_provider = ViewerAccuracyProvider(controller.index, project, mesh_repository)
         self._listeners: list[Callable[[InteractionSelection], None]] = []
-        self._node_by_entity = {node.entity_id: node.node_id for node in controller.index.scene.nodes}
+        nodes_by_entity: dict[str, list[str]] = {}
+        for node in controller.index.scene.nodes:
+            nodes_by_entity.setdefault(node.entity_id, []).append(node.node_id)
+        self._nodes_by_entity = {
+            entity_id: tuple(node_ids)
+            for entity_id, node_ids in nodes_by_entity.items()
+        }
         self._origin = "viewer"
         self._selection = InteractionSelection()
         self._subscription: Subscription = controller.subscribe(SelectionChanged, self._on_selection_changed)
@@ -93,25 +99,32 @@ class ProjectInteractionModel:
         )
 
     def node_for_entity(self, entity_id: str) -> str:
-        hit = self._node_by_entity.get(str(entity_id))
-        if hit is None:
+        hits = self._nodes_by_entity.get(str(entity_id), ())
+        if not hits:
             raise KeyError(entity_id)
-        return hit
+        return hits[0]
+
+    def nodes_for_entity(self, entity_id: str) -> tuple[str, ...]:
+        hits = self._nodes_by_entity.get(str(entity_id), ())
+        if not hits:
+            raise KeyError(entity_id)
+        return hits
 
     def select_nodes(self, node_ids: Iterable[str], *, origin: str = "tree", mode: str = "replace") -> None:
         self._origin = str(origin or "tree")
         self.controller.set_selection(tuple(node_ids), mode=mode)
 
+    def clear_selection(self, *, origin: str = "viewer") -> None:
+        self.select_nodes((), origin=origin, mode="replace")
+
     def select_entities(self, entity_ids: Iterable[str], *, origin: str = "grid", mode: str = "replace") -> None:
-        nodes = tuple(self.node_for_entity(entity_id) for entity_id in entity_ids)
-        level = self.controller.session.selection_level
-        promoted = tuple(
-            dict.fromkeys(
-                self.controller.index.selectable_node_for_level(node_id, level)
-                for node_id in nodes
-            )
-        )
-        self.select_nodes(promoted, origin=origin, mode=mode)
+        # A table row identifies an exact project entity.  Do not promote that
+        # selection to an assembly merely because another viewer selection level
+        # is active; highlight every scene instance belonging to the row instead.
+        nodes: list[str] = []
+        for entity_id in entity_ids:
+            nodes.extend(self._nodes_by_entity.get(str(entity_id), ()))
+        self.select_nodes(tuple(dict.fromkeys(nodes)), origin=origin, mode=mode)
 
     def search(self, query: str, *, limit: int = 200) -> tuple[SearchHit, ...]:
         return self.search_index.search(query, limit=limit)

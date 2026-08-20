@@ -132,6 +132,13 @@ class VtkProjectMeshBackend(VtkProjectBackend):
     def _mesh_polydata(self, geometry_id: str):
         vtk = self._vtk
         assert vtk is not None
+        cache = getattr(self, "_cws_polydata_cache", None)
+        if cache is None:
+            cache = {}
+            self._cws_polydata_cache = cache
+        cached = cache.get(geometry_id)
+        if cached is not None:
+            return cached
         mesh = self.repository.require(geometry_id)
         from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
         import numpy as np
@@ -148,14 +155,13 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         polydata = vtk.vtkPolyData()
         polydata.SetPoints(points)
         polydata.SetPolys(cell_array)
-        normals = vtk.vtkPolyDataNormals()
-        normals.SetInputData(polydata)
-        normals.ConsistencyOn()
-        normals.AutoOrientNormalsOn()
-        normals.SplittingOff()
-        normals.Update()
+        # AutoOrientNormals traverses complete connected surfaces and can block
+        # the Qt GUI for minutes on heterogeneous IFC models. The source is
+        # already triangulated; direct polydata gives VTK a correct, immediate
+        # first frame while preserving picking and all per-instance state.
         output = vtk.vtkPolyData()
-        output.ShallowCopy(normals.GetOutput())
+        output.ShallowCopy(polydata)
+        cache[geometry_id] = output
         return output
 
     def _build_static_mesh_group(

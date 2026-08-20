@@ -89,6 +89,8 @@ class Hole:
     datum: str = ""
     operation: str = ""
     depth: float = 0.0
+    slot_length: float = 0.0
+    angle_deg: float = 0.0
 
 
 @dataclass
@@ -226,10 +228,21 @@ def parse_nc1(path: str | Path) -> NC1Part:
                     x = _float(line[3:14])
                     datum = line[14].lower() if line[14].lower() in "osu" else ""
                     q = _float(line[15:25])
-                    diameter = _float(line[25:36])
-                    op = line[36].lower() if len(line) > 36 and line[36].lower() in "glms" else ""
-                    depth = _float(line[37:47]) if op else 0.0
-                    holes.append(Hole(face, x, q, diameter, datum, op, depth))
+                    # A DSTV special-operation code can be attached directly
+                    # to q, for example ``75.00s 33.60 8.80``.  Do not parse
+                    # that ``s`` as part of the diameter.
+                    op = ""
+                    diameter_start = 25
+                    if line[25:26].lower() in "glms":
+                        op = line[25:26].lower()
+                        diameter_start = 26
+                    diameter = _float(line[diameter_start:36])
+                    if not op and len(line) > 36 and line[36].lower() in "glms":
+                        op = line[36].lower()
+                    depth = _float(line[36:47]) if op else 0.0
+                    slot_length = _float(line[47:57]) if op == "l" and line[47:57].strip() else 0.0
+                    angle_deg = _float(line[67:77]) if op and line[67:77].strip() else 0.0
+                    holes.append(Hole(face, x, q, diameter, datum, op, depth, slot_length, angle_deg))
                 except ValueError as exc:
                     warnings.append(f"Boorgatregel niet gelezen in {path.name}: {raw!r} ({exc})")
         else:
@@ -423,50 +436,98 @@ def _apply_holes(part: NC1Part, solid: cq.Workplane, profile_type: str, h: float
         )
 
     result = solid
-    for hole in part.holes:
+    # Through holes are cut before countersinks so the latter only removes the
+    # annular cone around the already existing bore.
+    holes = sorted(part.holes, key=lambda item: bool(item.operation or item.depth > 0))
+    for hole in holes:
         if hole.diameter <= 0:
             raise ValueError(f"Ongeldige gatdiameter: {hole.diameter:g}")
-        if hole.operation or hole.depth > 0:
-            raise NotImplementedError(
-                f"Speciale BO-bewerking bij gat Ø{hole.diameter:g} wordt nog niet ondersteund"
-            )
         r = hole.diameter / 2.0
         expected_wall = 0.0
         try:
+            origin = (hole.x, hole.q, -1.0)
+            direction = (0.0, 0.0, 1.0)
             if profile_type == "B":
                 if hole.face not in {"v", "h"}:
                     raise NotImplementedError("Randboringen in plaatdelen worden nog niet ondersteund")
                 expected_wall = t1
-                cutter = _cylinder(r, t1 + 2.0, (hole.x, hole.q, -1.0), (0.0, 0.0, 1.0))
+                origin, direction = (hole.x, hole.q, -1.0), (0.0, 0.0, 1.0)
             elif profile_type == "I":
                 web_y0 = (b - t2) / 2.0
                 if hole.face in {"v", "h"}:
                     expected_wall = t2
-                    cutter = _cylinder(r, t2 + 2.0, (hole.x, web_y0 - 1.0, hole.q), (0.0, 1.0, 0.0))
+                    origin, direction = (hole.x, web_y0 - 1.0, hole.q), (0.0, 1.0, 0.0)
                 elif hole.face == "o":
                     expected_wall = t1
-                    cutter = _cylinder(r, t1 + 2.0, (hole.x, hole.q, h - t1 - 1.0), (0.0, 0.0, 1.0))
+                    origin, direction = (hole.x, hole.q, h - t1 - 1.0), (0.0, 0.0, 1.0)
                 elif hole.face == "u":
                     expected_wall = t1
-                    cutter = _cylinder(r, t1 + 2.0, (hole.x, hole.q, -1.0), (0.0, 0.0, 1.0))
+                    origin, direction = (hole.x, hole.q, -1.0), (0.0, 0.0, 1.0)
                 else:
                     raise NotImplementedError(f"Onbekend boorvlak voor I-profiel: {hole.face}")
             elif profile_type == "L":
                 if hole.face in {"v", "h"}:
                     expected_wall = t2
-                    cutter = _cylinder(r, t2 + 2.0, (hole.x, -1.0, hole.q), (0.0, 1.0, 0.0))
+                    origin, direction = (hole.x, -1.0, hole.q), (0.0, 1.0, 0.0)
                 elif hole.face in {"o", "u"}:
                     expected_wall = t1
-                    cutter = _cylinder(r, t1 + 2.0, (hole.x, hole.q, -1.0), (0.0, 0.0, 1.0))
+                    origin, direction = (hole.x, hole.q, -1.0), (0.0, 0.0, 1.0)
                 else:
                     raise NotImplementedError(f"Onbekend boorvlak voor L-profiel: {hole.face}")
             else:
                 raise NotImplementedError(f"Boorgaten voor profieltype {profile_type} worden nog niet ondersteund")
 
+            if hole.operation == "s":
+                depth = min(max(float(hole.depth), 0.1), expected_wall)
+                paired = next(
+                    (
+                        candidate for candidate in holes
+                        if not candidate.operation
+                        and candidate.face == hole.face
+                        and abs(candidate.x - hole.x) < 0.01
+                        and abs(candidate.q - hole.q) < 0.01
+                        and candidate.diameter < hole.diameter
+                    ),
+                    None,
+                )
+                inner_r = paired.diameter / 2.0 if paired is not None else max(0.1, r - depth)
+                if hole.face == "o" and profile_type == "I":
+                    cone_origin, cone_direction = (hole.x, hole.q, h + 0.01), (0.0, 0.0, -1.0)
+                elif hole.face in {"o", "u"}:
+                    cone_origin, cone_direction = (hole.x, hole.q, expected_wall + 0.01), (0.0, 0.0, -1.0)
+                elif hole.face in {"v", "h"}:
+                    cone_origin, cone_direction = (hole.x, -0.01, hole.q), (0.0, 1.0, 0.0)
+                else:
+                    raise NotImplementedError(f"Verzinking op DSTV-vlak {hole.face} wordt niet ondersteund")
+                cone = cq.Solid.makeCone(
+                    r,
+                    inner_r,
+                    depth + 0.02,
+                    cq.Vector(*cone_origin),
+                    cq.Vector(*cone_direction),
+                )
+                cutter = cq.Workplane("XY").newObject([cone])
+            elif hole.operation == "l" and hole.slot_length > hole.diameter:
+                half_run = (hole.slot_length - hole.diameter) / 2.0
+                first = _cylinder(r, expected_wall + 2.0, origin, direction)
+                shifted = (origin[0] + 2.0 * half_run, origin[1], origin[2])
+                second = _cylinder(r, expected_wall + 2.0, shifted, direction)
+                if direction[1]:
+                    bridge = _box(2.0 * half_run, expected_wall + 2.0, 2.0 * r, origin[0], origin[1], origin[2] - r)
+                else:
+                    bridge = _box(2.0 * half_run, 2.0 * r, expected_wall + 2.0, origin[0], origin[1] - r, origin[2])
+                cutter = first.union(second).union(bridge)
+            elif hole.operation:
+                raise NotImplementedError(
+                    f"Speciale BO-bewerking '{hole.operation}' bij gat Ø{hole.diameter:g} wordt niet ondersteund"
+                )
+            else:
+                cutter = _cylinder(r, expected_wall + 2.0, origin, direction)
+
             before = result.val().Volume()
             candidate = result.cut(cutter)
             removed = max(0.0, before - candidate.val().Volume())
-            expected = math.pi * r * r * expected_wall
+            expected = math.pi * r * r * expected_wall if not hole.operation else max(removed, 1e-6)
             if removed <= max(1e-6, expected * 0.05):
                 raise ValueError(
                     f"Boorgat Ø{hole.diameter:g} op {hole.face} snijdt het onderdeel niet of nauwelijks"

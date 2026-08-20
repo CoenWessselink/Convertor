@@ -183,6 +183,13 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         mapper.SetOrientationArray("cws_quaternion")
         mapper.SetOrientationModeToQuaternion()
         mapper.ScalarVisibilityOff()
+        try:
+            # Pull feature lines just in front of the shaded surface so the
+            # selection outline cannot disappear through depth fighting.
+            mapper.SetResolveCoincidentTopologyToPolygonOffset()
+            mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0.0, -4.0)
+        except Exception:
+            pass
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
@@ -190,7 +197,7 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         prop = actor.GetProperty()
         selected = entries[0][2] if entries else Rgba(0.02, 0.62, 1.0, 1.0)
         prop.SetColor(selected.red, selected.green, selected.blue)
-        prop.SetLineWidth(2.2)
+        prop.SetLineWidth(3.4)
         prop.LightingOff()
         self._renderer.AddActor(actor)
         return _ActorGroup(

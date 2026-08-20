@@ -368,10 +368,10 @@ if qt_available():
             for index, (key, label) in enumerate((
                 ("nc1", "DSTV / NC1"), ("step", "STEP"), ("ifc", "IFC"),
                 ("production_pdf", "Productie-PDF"), ("review_pdf", "Review-PDF"),
-                ("json", "JSON"), ("csv", "CSV"),
+                ("review_png", "Reviewtekening PNG"), ("json", "JSON"), ("csv", "CSV"),
             )):
                 check = QtWidgets.QCheckBox(label)
-                check.setChecked(key in {"nc1", "step", "ifc", "production_pdf", "review_pdf"})
+                check.setChecked(key in {"review_pdf", "review_png"})
                 self.format_checks[key] = check
                 format_layout.addWidget(check, index // 3, index % 3)
             root.addWidget(formats)
@@ -423,23 +423,44 @@ if qt_available():
             part_ids = tuple(value for value in selected_ids if value in self._workspace.project.parts)
             target = Path(self.output.text()).expanduser()
             target.mkdir(parents=True, exist_ok=True)
+            review_formats = {"review_pdf", "review_png"}
+            production_formats = [value for value in formats if value not in review_formats]
+            messages = []
+            review_output = None
             try:
-                manifest, root, zip_path = self._workspace.session.export_production_package(
-                    target,
-                    formats=formats,
-                    part_ids=part_ids,
-                    user="qt-gui",
-                )
-                self._workspace.session.save(user="qt-gui", revision_message="Productiepakket geexporteerd")
-                self.log.setPlainText(
-                    f"Status: {manifest.summary}\nMap: {root}\nZIP: {zip_path or '-'}\n"
-                    f"Manifest: {manifest.manifest_sha256}"
-                )
-                self.status.setText("Export afgerond")
+                if review_formats.intersection(formats):
+                    from cws_convertor.ui_qt.engineering_drawing import EngineeringDrawingGenerator
+                    primary = str(getattr(self._selection, "primary_entity_id", "") or "")
+                    review_output = EngineeringDrawingGenerator(self._workspace).generate(
+                        target / "Review",
+                        entity_id=primary,
+                        make_png="review_png" in formats,
+                        make_pdf="review_pdf" in formats,
+                    )
+                    messages.append(f"Reviewtekening: {review_output.pdf_path or review_output.png_path}")
+                if production_formats:
+                    manifest, package_root, zip_path = self._workspace.session.export_production_package(
+                        target,
+                        formats=production_formats,
+                        part_ids=part_ids,
+                        user="qt-gui",
+                    )
+                    self._workspace.session.save(user="qt-gui", revision_message="Productiepakket geexporteerd")
+                    messages.extend((f"Productie: {manifest.summary}", f"Map: {package_root}", f"ZIP: {zip_path or '-'}", f"Manifest: {manifest.manifest_sha256}"))
+                self.log.setPlainText("\n".join(messages))
+                self.status.setText("Reviewuitvoer gereed" if not production_formats else "Export afgerond")
             except Exception as exc:
-                self.status.setText("Export geblokkeerd of mislukt")
-                self.log.setPlainText(f"{type(exc).__name__}: {exc}")
-                QtWidgets.QMessageBox.critical(self, "Exporteren", f"{type(exc).__name__}: {exc}")
+                prefix = "\n".join(messages)
+                self.status.setText("Review gereed; productie geblokkeerd" if review_output else "Export geblokkeerd of mislukt")
+                self.log.setPlainText((prefix + "\n" if prefix else "") + f"Productieblokkade: {type(exc).__name__}: {exc}")
+                if review_output is None:
+                    QtWidgets.QMessageBox.critical(self, "Exporteren", f"{type(exc).__name__}: {exc}")
+                else:
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "Reviewuitvoer",
+                        "De reviewtekening is gemaakt. Productie-export blijft veilig geblokkeerd totdat het onderdeel een maakdeel en vrijgegeven is.",
+                    )
 
 
 else:
@@ -457,3 +478,258 @@ __all__ = [
     "OptimizationPanel",
     "ProfilesPanel",
 ]
+
+if qt_available():
+    _LegacyImportPanel = ImportPanel
+
+    class IntakeDashboard(_LegacyImportPanel):
+        """Project intake dashboard matching the product reference."""
+
+        FORMAT_FILTERS = {
+            "IFC": "IFC modellen (*.ifc)",
+            "STEP": "STEP modellen (*.step *.stp)",
+            "NC / NC1": "DSTV bestanden (*.nc *.nc1)",
+            "PDF": "Technische PDF (*.pdf)",
+            "Pakket (ZIP)": "CWS pakketten (*.zip *.cwscproj)",
+        }
+
+        def _build(self) -> None:
+            self.setAcceptDrops(True)
+            root = QtWidgets.QVBoxLayout(self)
+            root.setContentsMargins(22, 18, 22, 18)
+            root.setSpacing(16)
+            actions = QtWidgets.QHBoxLayout()
+            new_project = QtWidgets.QPushButton("＋  Nieuw project")
+            new_project.setObjectName("primaryOutlineButton")
+            new_project.clicked.connect(self._choose_files)
+            open_project = QtWidgets.QPushButton("Open projectbestand")
+            open_project.clicked.connect(self._open_project)
+            import_files = QtWidgets.QPushButton("Importeren")
+            import_files.clicked.connect(self._choose_files)
+            actions.addWidget(new_project)
+            actions.addWidget(open_project)
+            actions.addWidget(import_files)
+            actions.addStretch(1)
+            root.addLayout(actions)
+            title = QtWidgets.QLabel("Importeren vanuit")
+            title.setObjectName("sectionTitle")
+            root.addWidget(title)
+            cards = QtWidgets.QHBoxLayout()
+            cards.setSpacing(12)
+            for card_title, subtitle in (("IFC", "IFC 2x3 / IFC4"), ("STEP", ".step / .stp"), ("NC / NC1", "DSTV productie"), ("PDF", "Herkennen / converteren"), ("Pakket (ZIP)", "CWS-projectpakket")):
+                button = QtWidgets.QPushButton(f"{card_title}\n{subtitle}")
+                button.setObjectName("formatCard")
+                button.setMinimumHeight(72)
+                button.clicked.connect(
+                    lambda _checked=False, title=card_title: self._choose_files(
+                        format_filter=self.FORMAT_FILTERS[title]
+                    )
+                )
+                cards.addWidget(button, 1)
+            root.addLayout(cards)
+            body = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            recent_box = QtWidgets.QGroupBox("Recente projecten")
+            recent_layout = QtWidgets.QVBoxLayout(recent_box)
+            self.recent = QtWidgets.QListWidget()
+            self.recent.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
+            self.recent.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
+            self.recent.setMovement(QtWidgets.QListView.Movement.Static)
+            self.recent.setIconSize(QtCore.QSize(210, 112))
+            self.recent.setGridSize(QtCore.QSize(235, 162))
+            self.recent.setWordWrap(True)
+            self.recent.itemDoubleClicked.connect(self._open_recent)
+            recent_layout.addWidget(self.recent)
+            body.addWidget(recent_box)
+            queue_box = QtWidgets.QGroupBox("Nieuwe projectimport")
+            queue_layout = QtWidgets.QVBoxLayout(queue_box)
+            self.files = QtWidgets.QTreeWidget()
+            self.files.setHeaderLabels(["Bestand", "Type", "Grootte", "Status"])
+            self.files.setRootIsDecorated(False)
+            self.files.setAlternatingRowColors(True)
+            self.files.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+            queue_layout.addWidget(self.files, 1)
+            queue_actions = QtWidgets.QHBoxLayout()
+            clear = QtWidgets.QPushButton("Lijst wissen")
+            clear.clicked.connect(self.clear)
+            self.create = QtWidgets.QPushButton("Project aanmaken en openen")
+            self.create.setObjectName("primaryButton")
+            self.create.setEnabled(False)
+            self.create.clicked.connect(self._emit_models)
+            queue_actions.addWidget(clear)
+            queue_actions.addStretch(1)
+            queue_actions.addWidget(self.create)
+            queue_layout.addLayout(queue_actions)
+            body.addWidget(queue_box)
+            body.setStretchFactor(0, 2)
+            body.setStretchFactor(1, 3)
+            root.addWidget(body, 1)
+            self.progress = QtWidgets.QProgressBar()
+            self.progress.setRange(0, 100)
+            self.progress.setValue(0)
+            self.status = QtWidgets.QLabel("Sleep IFC-, STEP-, NC1- of projectbestanden naar dit scherm")
+            self.status.setObjectName("mutedText")
+            root.addWidget(self.progress)
+            root.addWidget(self.status)
+            self._load_recent()
+
+        def _load_recent(self) -> None:
+            self.recent.clear()
+            root = Path.home() / "Documents" / "CWS Convertor Projects"
+            stored = QtCore.QSettings("CWS", "CWS Convertor").value("recent_inputs", [], list) or []
+            candidates = [Path(value) for value in stored if Path(value).is_file()]
+            if root.exists():
+                candidates.extend(root.glob("*.cwscproj"))
+            paths = sorted(
+                {path.resolve() for path in candidates if path.is_file()},
+                key=lambda path: path.stat().st_mtime,
+                reverse=True,
+            )[:12]
+            if not paths:
+                item = QtWidgets.QListWidgetItem("Nog geen recente projecten\nImporteer IFC, STEP, NC1 of PDF")
+                item.setIcon(self._preview_icon("project", "CWS"))
+                item.setFlags(QtCore.Qt.ItemFlag.NoItemFlags)
+                self.recent.addItem(item)
+                return
+            for path in paths:
+                kind = "project" if path.suffix.lower() in {".ifc", ".cwscproj", ".zip"} else "part"
+                item = QtWidgets.QListWidgetItem(f"{path.stem}\n{path.suffix.upper().lstrip('.')}")
+                item.setIcon(self._preview_icon(kind, path.stem))
+                item.setToolTip(str(path))
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, str(path))
+                self.recent.addItem(item)
+
+        def _preview_icon(self, kind: str, seed: str) -> QtGui.QIcon:
+            pixmap = QtGui.QPixmap(420, 224)
+            pixmap.fill(QtGui.QColor("#f7faff"))
+            painter = QtGui.QPainter(pixmap)
+            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+            painter.setPen(QtGui.QPen(QtGui.QColor("#a9bbcf"), 3))
+            painter.setBrush(QtGui.QColor("#e9f1fa"))
+            if kind == "project":
+                for offset in (0, 72, 144, 216, 288):
+                    x = 42 + offset
+                    painter.drawLine(x, 176, x, 62)
+                    painter.drawLine(x, 62, x + 42, 34)
+                    painter.drawLine(x + 42, 34, x + 72, 62)
+                    painter.drawLine(x, 102, x + 72, 102)
+                    painter.drawLine(x, 142, x + 72, 142)
+                painter.setPen(QtGui.QPen(QtGui.QColor("#1f6fd2"), 7))
+                painter.drawLine(112, 142, 328, 102)
+            else:
+                painter.setBrush(QtGui.QColor("#d8e5f3"))
+                painter.setPen(QtGui.QPen(QtGui.QColor("#65809c"), 3))
+                body = QtCore.QRectF(58, 84, 304, 58)
+                painter.drawRect(body)
+                painter.drawRect(QtCore.QRectF(48, 64, 18, 98))
+                painter.drawRect(QtCore.QRectF(354, 64, 18, 98))
+                painter.setPen(QtGui.QPen(QtGui.QColor("#1f6fd2"), 4))
+                painter.drawLine(66, 113, 354, 113)
+            painter.setPen(QtGui.QColor("#52677c"))
+            painter.setFont(QtGui.QFont("Segoe UI", 10))
+            painter.drawText(12, 210, seed[:48])
+            painter.end()
+            return QtGui.QIcon(pixmap)
+
+        def _remember_recent(self, path: Path) -> None:
+            settings = QtCore.QSettings("CWS", "CWS Convertor")
+            values = [str(path), *(settings.value("recent_inputs", [], list) or [])]
+            settings.setValue("recent_inputs", list(dict.fromkeys(values))[:24])
+
+        def _open_recent(self, item: QtWidgets.QListWidgetItem) -> None:
+            value = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+            if not value:
+                return
+            path = Path(value)
+            if path.suffix.lower() == ".cwscproj":
+                self.project_requested.emit(str(path))
+            else:
+                self.add_paths((path,))
+
+        @staticmethod
+        def _inspect_format(path: Path) -> tuple[str, str, bool]:
+            suffix = path.suffix.lower()
+            try:
+                with path.open("rb") as stream:
+                    head = stream.read(8192)
+            except OSError as exc:
+                return suffix.upper().lstrip("."), f"Niet leesbaar: {exc}", False
+            upper = head.upper()
+            if suffix == ".pdf":
+                return "PDF", "PDF-document herkend", head.startswith(b"%PDF-")
+            if suffix == ".ifc":
+                valid = b"ISO-10303-21" in upper and b"IFC" in upper
+                edition = "IFC4" if b"IFC4" in upper else "IFC2x3 / IFC"
+                return "IFC", edition, valid
+            if suffix in {".step", ".stp"}:
+                valid = b"ISO-10303-21" in upper and b"FILE_SCHEMA" in upper
+                return "STEP", "ISO 10303 STEP", valid
+            if suffix in {".nc", ".nc1"}:
+                text = head.decode("latin-1", errors="ignore").lstrip()
+                return "NC1", "DSTV / NC productie", bool(text and ("ST" in text[:80] or "BO" in text))
+            if suffix == ".zip":
+                return "ZIP", "CWS projectpakket", head.startswith(b"PK")
+            if suffix == ".cwscproj":
+                return "CWS", "CWS Project Model", True
+            return suffix.upper().lstrip("."), "Onbekend formaat", False
+
+        def add_paths(self, values: Iterable[str | Path]) -> None:
+            allowed = {".ifc", ".step", ".stp", ".nc", ".nc1", ".pdf", ".zip", ".cwscproj"}
+            for value in values:
+                path = Path(value).expanduser().resolve()
+                if not path.is_file() or path.suffix.lower() not in allowed:
+                    continue
+                if path.suffix.lower() == ".cwscproj":
+                    self._remember_recent(path)
+                    self.project_requested.emit(str(path))
+                    continue
+                if path.suffix.lower() == ".pdf":
+                    kind, detail, valid = self._inspect_format(path)
+                    self._remember_recent(path)
+                    self.status.setText(f"{path.name}: {detail}" if valid else f"{path.name}: ongeldige {kind}-inhoud")
+                    self.pdf_requested.emit(str(path))
+                    continue
+                if path not in self._paths:
+                    self._paths.append(path)
+                    kind, detail, valid = self._inspect_format(path)
+                    item = QtWidgets.QTreeWidgetItem([path.name, kind, f"{path.stat().st_size / 1_048_576:.2f} MB", detail if valid else "Bestandsinhoud wijkt af van extensie"])
+                    item.setToolTip(0, str(path))
+                    if not valid:
+                        item.setForeground(3, QtGui.QColor("#b34b00"))
+                    self.files.addTopLevelItem(item)
+                    self._remember_recent(path)
+            self.create.setEnabled(bool(self._paths))
+            self.status.setText(f"{len(self._paths)} bestand(en) gereed voor projectimport")
+            self.progress.setValue(8 if self._paths else 0)
+
+        def clear(self) -> None:
+            self._paths.clear()
+            self.files.clear()
+            self.create.setEnabled(False)
+            self.progress.setValue(0)
+            self.status.setText("Sleep IFC-, STEP-, NC1- of projectbestanden naar dit scherm")
+
+        def _choose_files(self, _checked: bool = False, *, format_filter: str = "") -> None:
+            file_filter = format_filter or "CWS bestanden (*.cwscproj *.ifc *.step *.stp *.nc *.nc1 *.pdf *.zip)"
+            names, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Bestanden importeren", "", file_filter)
+            self.add_paths(names)
+
+        def _open_project(self) -> None:
+            name, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Project openen", "", "CWS Project (*.cwscproj)")
+            if name:
+                self.project_requested.emit(name)
+
+        def _emit_models(self) -> None:
+            if self._paths:
+                self.progress.setValue(12)
+                self.status.setText("Projectwizard wordt geopend...")
+                self.models_requested.emit(tuple(str(path) for path in self._paths))
+
+        def dragEnterEvent(self, event: Any) -> None:
+            if event.mimeData().hasUrls():
+                event.acceptProposedAction()
+
+        def dropEvent(self, event: Any) -> None:
+            self.add_paths([url.toLocalFile() for url in event.mimeData().urls()])
+            event.acceptProposedAction()
+
+    ImportPanel = IntakeDashboard

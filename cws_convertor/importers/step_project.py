@@ -550,8 +550,24 @@ class STEPSemanticProjectImporter:
                 or ""
             )
             profile_type = str(profile_suggestion.get("profile_type") or "")
+        material = str((profile_suggestion or {}).get("material") or "")
+        material_status = "source_confirmed" if material else "manual_required"
+        descriptor["material_recognition"] = {
+            "status": material_status,
+            "confidence": 1.0 if material else 0.0,
+            "reason": (
+                "Materiaalgrade bevestigd door canonieke NC1/converterpayload."
+                if material
+                else "Materiaalgrade kan niet betrouwbaar uit uitsluitend STEP-geometrie worden afgeleid; handmatig invullen."
+            ),
+        }
         bbox = list((metrics or {}).get("bbox_mm") or [])
-        length_mm = max((float(item) for item in bbox), default=0.0)
+        length_mm = float((profile_suggestion or {}).get("length_mm") or 0.0)
+        if length_mm <= 0.0:
+            length_mm = max((float(item) for item in bbox), default=0.0)
+        canonical_part_id = str((profile_suggestion or {}).get("part_id") or "")
+        if canonical_part_id:
+            base_name = canonical_part_id
         part = Part(
             internal_id=internal_id,
             name=base_name,
@@ -561,12 +577,18 @@ class STEPSemanticProjectImporter:
             global_placement=global_placement,
             confidence=1.0,
             status=ReviewStatus.REVIEW_REQUIRED.value,
-            part_position=(occurrence.reference_designator if occurrence else ""),
-            quantity_total=1,
+            part_position=(
+                str((profile_suggestion or {}).get("part_position") or "")
+                or (occurrence.reference_designator if occurrence else "")
+            ),
+            quantity_total=max(1, int((profile_suggestion or {}).get("quantity") or 1)),
             part_type="step_brep" if solid_ids else "step_product_without_shape",
             profile=profile,
             profile_type=profile_type,
+            material=material,
+            material_grade=material,
             length_mm=length_mm,
+            mass_each_kg=float((profile_suggestion or {}).get("mass_each_kg") or 0.0),
             geometry_descriptor=descriptor,
             production_features=[],
             nc1_eligible=False,
@@ -584,6 +606,10 @@ class STEPSemanticProjectImporter:
                 "classification_hint": "make_or_purchased_part",
                 "source_solid_count": len(solid_ids),
                 "filename_quantity_tokens_are_not_geometry": True,
+                "profile_recognition_status": str((profile_suggestion or {}).get("status") or "manual_required"),
+                "profile_recognition_method": str((profile_suggestion or {}).get("method") or "geometry_analysis"),
+                "material_recognition_status": material_status,
+                "manual_profile_material_edit_allowed": True,
             },
             field_provenance={
                 "name": self._provenance(
@@ -605,6 +631,25 @@ class STEPSemanticProjectImporter:
             part.properties["volume_mm3"] = volume
             part.surface_area_each_m2 = area / 1_000_000.0
             part.properties["cadquery_valid"] = bool(metrics.get("valid", False))
+        # Converter payloads are lossless manufacturing evidence, unlike a
+        # geometry-only profile guess.  They can therefore enter the normal
+        # make-part/export flow without a second classification round.
+        if str((profile_suggestion or {}).get("method") or "") == "lossless_converter_payload_and_profile_database":
+            part.category = EntityCategory.MAKE_PART.value
+            part.part_type = "profile"
+            part.nc1_eligible = True
+            part.export_status = "validated"
+            part.classification_status = "automatic"
+            part.classification_method = "lossless_converter_payload"
+            part.classification_rule_id = "CWS-STEP-PAYLOAD-001"
+            part.classification_reason = "Bronbevestigde NC1-converterpayload en profielendatabase"
+            part.classification_confidence = 1.0
+            part.normalized_profile = profile
+            part.normalized_material = material
+            part.profile_confidence = 1.0
+            part.material_confidence = 1.0 if material and material != "manual_required" else 0.0
+            part.properties["classification_status"] = "automatic"
+            part.properties["manual_profile_material_edit_allowed"] = False
         part.recompute_hashes()
         part.validate_base()
         return part
@@ -637,6 +682,13 @@ class STEPSemanticProjectImporter:
         source_class_counts = Counter(entity.type_name for entity in document.entities.values())
         metrics = self._geometry_metrics(source)
         profile_suggestion: dict[str, Any] = {}
+        canonical_payload = None
+        try:
+            from canonical_model import extract_part_from_step
+
+            canonical_payload = extract_part_from_step(source_path, strict=False)
+        except Exception as exc:
+            warnings.append(f"Canonieke STEP-payload kon niet worden gelezen: {exc}")
         if len(index.products) == 1:
             advanced_faces = int(source_class_counts.get("ADVANCED_FACE", 0) or 0)
             # The semantic importer must remain responsive on large AP242
@@ -657,6 +709,45 @@ class STEPSemanticProjectImporter:
                 }
             else:
                 profile_suggestion = self._profile_suggestion(source_path)
+        if canonical_payload is not None:
+            source_profile = str(canonical_payload.header.profile or canonical_payload.product.profile_designation or "")
+            canonical_profile = source_profile
+            profile_definition: dict[str, Any] = {}
+            try:
+                from profile_database import ProfileDatabase
+
+                database = ProfileDatabase()
+                database.load()
+                definition = database.find(source_profile)
+                if definition is not None:
+                    canonical_profile = definition.designation
+                    profile_definition = {
+                        "designation": definition.designation,
+                        "alias": source_profile,
+                        "family": definition.family,
+                        "standard": definition.standard,
+                        "mass_kg_m": definition.mass_kg_m,
+                    }
+            except Exception as exc:
+                warnings.append(f"Profielendatabase kon payloadprofiel niet normaliseren: {exc}")
+            length_mm = float(canonical_payload.header.length or canonical_payload.product.length_mm or 0.0)
+            mass_kg_m = float(profile_definition.get("mass_kg_m") or 0.0)
+            profile_suggestion = {
+                "status": "matched",
+                "method": "lossless_converter_payload_and_profile_database",
+                "confidence": 1.0,
+                "profile": canonical_profile,
+                "source_profile": source_profile,
+                "profile_type": str(canonical_payload.header.profile_type or ""),
+                "material": str(canonical_payload.header.material or canonical_payload.product.material_grade or ""),
+                "part_id": str(canonical_payload.part_id or canonical_payload.header.position_number or ""),
+                "part_position": str(canonical_payload.header.position_number or canonical_payload.part_id or ""),
+                "quantity": int(canonical_payload.header.quantity or 1),
+                "length_mm": length_mm,
+                "mass_each_kg": mass_kg_m * length_mm / 1000.0 if mass_kg_m > 0.0 else 0.0,
+                "database": profile_definition,
+                "production_evidence": "embedded_nc1_payload",
+            }
 
         _progress(progress, 0.58, "STEP placements en productidentiteit materialiseren")
 

@@ -230,7 +230,26 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     try:
-        raise SystemExit(main())
+        exit_code = main()
+        diagnostic_flags = {
+            "--self-test",
+            "--quick-self-test",
+            "--gui-smoke",
+            "--viewer-self-test",
+            "--viewer-gui-smoke",
+        }
+        if bool(getattr(sys, "frozen", False)) and diagnostic_flags.intersection(sys.argv[1:]):
+            # Native CAD/OpenGL libraries can fault while Python tears down a
+            # frozen one-file process after a completed headless diagnostic.
+            # The report is already durable, so bypass only that destructor
+            # phase; normal interactive application shutdown is unchanged.
+            for stream in (sys.stdout, sys.stderr):
+                try:
+                    stream.flush()
+                except Exception:
+                    pass
+            os._exit(exit_code)
+        raise SystemExit(exit_code)
     except SystemExit:
         raise
     except Exception as exc:

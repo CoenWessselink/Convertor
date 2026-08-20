@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 import re
+from functools import lru_cache
 from typing import Any, Iterable
 
 from .model import (
@@ -53,11 +54,50 @@ def _text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip())
 
 
+@lru_cache(maxsize=1)
+def _profile_catalog() -> Any:
+    from profile_database import ProfileDatabase
+
+    return ProfileDatabase(writable_copy=False)
+
+
+@lru_cache(maxsize=1)
+def _material_catalog() -> Any:
+    from material_database import MaterialDatabase
+
+    return MaterialDatabase()
+
+
+def _catalog_profile(value: Any) -> str:
+    key = re.sub(r"[^A-Z0-9]", "", _text(value).upper())
+    if not key:
+        return ""
+    try:
+        matches = [profile.designation for profile in _profile_catalog().profiles if key in profile.search_names]
+    except Exception:
+        matches = []
+    return matches[0] if len(set(matches)) == 1 else ""
+
+
+def _catalog_material(value: Any) -> str:
+    from material_database import normalise_material
+
+    key = normalise_material(_MATERIAL_ALIASES.get(_text(value).upper(), _text(value)))
+    if not key:
+        return ""
+    try:
+        matches = [material.code for material in _material_catalog().materials if key in material.search_names]
+    except Exception:
+        matches = []
+    return matches[0] if len(set(matches)) == 1 else ""
+
+
 def normalize_material(value: Any) -> str:
     text = _text(value).upper().replace("–", "-")
     if text.startswith("STEEL/") and text not in _MATERIAL_ALIASES:
         text = text.split("/", 1)[1]
-    return _MATERIAL_ALIASES.get(text, text)
+    text = _MATERIAL_ALIASES.get(text, text)
+    return _catalog_material(text) or text
 
 
 def normalize_profile(value: Any) -> str:
@@ -67,7 +107,7 @@ def normalize_profile(value: Any) -> str:
     text = re.sub(r"\s+", "", text)
     # Preserve recognisable catalog spellings while removing harmless separators.
     text = text.replace("HEA-", "HEA").replace("HEB-", "HEB").replace("IPE-", "IPE")
-    return text
+    return _catalog_profile(text) or text
 
 
 @dataclass(frozen=True)
@@ -164,8 +204,12 @@ def _raw_material(part: Part) -> str:
 
 
 def decide_part_classification(part: Part) -> ClassificationDecision:
-    material = normalize_material(_raw_material(part))
-    profile = normalize_profile(part.profile)
+    raw_material = _raw_material(part)
+    raw_profile = part.profile
+    exact_material = _catalog_material(raw_material)
+    exact_profile = _catalog_profile(raw_profile)
+    material = exact_material or normalize_material(raw_material)
+    profile = exact_profile or normalize_profile(raw_profile)
     source_format = _text(part.source_identity.source_format).upper()
     source_class = _part_source_class(part)
     combined = " ".join(
@@ -222,6 +266,10 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
             blocking.append("Materiaal ontbreekt")
         if not profile and not part.geometry_hash:
             blocking.append("Profiel en gevalideerde geometrie ontbreken")
+        elif profile and not exact_profile:
+            blocking.append("Profiel niet exact in de vaste profielendatabase; handmatig bevestigen")
+        if material and not exact_material:
+            blocking.append("Materiaal niet exact in de materialendatabase; handmatig bevestigen")
         if blocking:
             status = "review_required"
     if not part.part_position:
@@ -239,8 +287,8 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
         confidence=confidence,
         normalized_profile=profile,
         normalized_material=material,
-        profile_confidence=1.0 if profile else 0.0,
-        material_confidence=1.0 if material else 0.0,
+        profile_confidence=1.0 if exact_profile else (0.65 if profile else 0.0),
+        material_confidence=1.0 if exact_material else (0.65 if material else 0.0),
         blocking_reasons=tuple(dict.fromkeys(blocking)),
         source_entity_id=part.source_identity.source_entity_id,
     )

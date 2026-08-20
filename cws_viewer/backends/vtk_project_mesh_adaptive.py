@@ -25,7 +25,7 @@ class _PickLocatorEntry:
 class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     """V15 renderer with interactive/idle quality states and indexed picking."""
 
-    INTERACTIVE_MULTISAMPLES = 2
+    INTERACTIVE_MULTISAMPLES = 8
     MIN_IDLE_MULTISAMPLES = 4
     PICK_FALLBACK_CANDIDATES = 24
 
@@ -62,23 +62,10 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         if requested == self._interaction_quality_active:
             return False
 
-        renderer = self._renderer
         window = self._render_window
-        if renderer is not None:
-            try:
-                renderer.SetPass(None if requested else self._ssao_pass)
-            except Exception:
-                # Not every VTK/OpenGL combination exposes render-pass switching.
-                # The multisample path below still provides a safe degradation.
-                pass
         if window is not None:
             try:
-                samples = (
-                    self.INTERACTIVE_MULTISAMPLES
-                    if requested
-                    else self._idle_multisamples
-                )
-                window.SetMultiSamples(int(samples))
+                window.SetMultiSamples(int(self._idle_multisamples))
             except Exception:
                 pass
 

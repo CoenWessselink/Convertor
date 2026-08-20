@@ -169,6 +169,7 @@ class IntegratedProjectWorkspace:
         source_search_roots: Iterable[str | Path] = (),
         load_all_geometry: bool = True,
         allow_proxy: bool = True,
+        prefer_proxy: bool = False,
     ) -> "IntegratedProjectWorkspace":
         started = time.perf_counter()
         project_path = Path(path).expanduser().resolve()
@@ -179,7 +180,11 @@ class IntegratedProjectWorkspace:
         try:
             roots = list(source_search_roots)
             roots.extend(value.parent for value in session.source_paths.values())
-            loader = ProjectSceneLoader(cache_root=cache_root, source_search_roots=roots)
+            loader = ProjectSceneLoader(
+                cache_root=cache_root,
+                source_search_roots=roots,
+                provider_factory=(lambda: ()) if prefer_proxy else None,
+            )
             load_result = loader.load_project(
                 session.project,
                 project_path,

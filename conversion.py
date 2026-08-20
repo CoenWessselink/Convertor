@@ -1053,6 +1053,9 @@ def convert_file(
     output.mkdir(parents=True, exist_ok=True)
     normalised = direction.lower().replace(" ", "").replace("/", "")
     normalised = normalised.replace("dstv", "nc1").replace("→", "-").replace("_", "-").replace("to", "-")
+    while "--" in normalised:
+        normalised = normalised.replace("--", "-")
+    normalised = normalised.strip("-")
 
     if normalised in {"nc1-step", "nc1-step", "nc1step"}:
         target = output / f"{source.stem}.step"

@@ -371,6 +371,8 @@ if qt_available():
             self.setMinimumSize(1280, 760)
             self.setStyleSheet(_QSS)
             self._selection_unsubscribe = None
+            self._intake_thread = None
+            self._intake_worker = None
             self.tabs = QtWidgets.QTabWidget()
             self.tabs.setDocumentMode(True)
             self.tabs.setMovable(False)
@@ -426,6 +428,7 @@ if qt_available():
             self.import_page.models_requested.connect(self._queue_models)
             self.import_page.pdf_requested.connect(self._open_pdf)
             self.project_page.project_loaded.connect(self._project_loaded)
+            self.project_page.load_progress.connect(self._project_load_progress)
             self.project_page.project_closed.connect(self._project_closed)
             self.project_page.selection_changed.connect(self._selection_changed)
             self.project_page.action_requested.connect(self._route_action)
@@ -469,16 +472,97 @@ if qt_available():
             if project is not None:
                 self._open_project(project)
             if models:
-                self.converter_page.add_files(models)
                 if project is None:
-                    self.tabs.setCurrentWidget(self.converter_page)
+                    self._queue_models(models)
+                else:
+                    self.converter_page.add_files(models)
             if pdf is not None and self.pdf_page.load_pdf(pdf):
                 if project is None and not models:
                     self.tabs.setCurrentWidget(self.pdf_page)
 
         def _queue_models(self, values: Iterable[str | Path]) -> None:
-            self.converter_page.add_files(values)
-            self.tabs.setCurrentWidget(self.converter_page)
+            paths = [str(Path(value).resolve()) for value in values]
+            self.converter_page.add_files(paths)
+            if self._intake_thread is not None and self._intake_thread.isRunning():
+                self.statusBar().showMessage("Er wordt al een modelproject opgebouwd.", 5000)
+                return
+
+            from cws_convertor.ui_qt.project_intake import ModelIntakeWorker, suggest_project_path
+
+            first = Path(paths[0])
+            name_widget = getattr(self.import_page, "project_name", None)
+            number_widget = getattr(self.import_page, "project_number", None)
+            material_widget = getattr(self.import_page, "material", None)
+            project_name = name_widget.text().strip() if name_widget is not None else first.stem
+            project_name = project_name or first.stem
+            project_number = number_widget.text().strip() if number_widget is not None else ""
+            material = material_widget.currentText().strip() if material_widget is not None else "S355JR"
+            target = suggest_project_path(project_name)
+
+            self.tabs.setCurrentWidget(self.import_page)
+            self.statusBar().showMessage("Modelbestanden worden ingelezen en voor Viewer V15 opgebouwd...")
+            open_button = getattr(self.import_page, "open_button", None)
+            if open_button is not None:
+                open_button.setEnabled(False)
+
+            thread = QtCore.QThread(self)
+            worker = ModelIntakeWorker(
+                paths,
+                str(target),
+                {
+                    "project_name": project_name,
+                    "project_number": project_number,
+                    "material": material,
+                },
+            )
+            worker.moveToThread(thread)
+            thread.started.connect(worker.run)
+            worker.progress.connect(self.statusBar().showMessage)
+            worker.progress_detail.connect(self._model_intake_progress)
+            worker.completed.connect(self._model_intake_completed)
+            worker.failed.connect(self._model_intake_failed)
+            worker.finished.connect(thread.quit)
+            worker.finished.connect(self._model_intake_finished)
+            worker.finished.connect(worker.deleteLater)
+            thread.finished.connect(thread.deleteLater)
+            self._intake_thread = thread
+            self._intake_worker = worker
+            thread.start()
+
+        @QtCore.Slot(str, object)
+        def _model_intake_completed(self, project_path: str, payload: object) -> None:
+            del payload
+            self._load_progress_changed(72, "Projectcontainer gereed; Viewer V15 wordt geopend")
+            self._open_project(Path(project_path), progress_floor=72)
+            self.tabs.setCurrentWidget(self.project_page)
+            self.statusBar().showMessage(
+                f"Projectcontainer gereed; Viewer V15 bouwt de scene: {Path(project_path).name}"
+            )
+
+        @QtCore.Slot(int, str)
+        def _model_intake_progress(self, percent: int, message: str) -> None:
+            scaled = min(72, max(1, int(percent * 0.72)))
+            self._load_progress_changed(scaled, f"Inlezen: {message}")
+
+        @QtCore.Slot(int, str)
+        def _project_load_progress(self, percent: int, message: str) -> None:
+            floor = max(0, min(95, int(getattr(self, "_project_progress_floor", 0))))
+            mapped = floor + int(max(0, min(100, percent)) * (100 - floor) / 100)
+            self._load_progress_changed(mapped, message)
+
+        @QtCore.Slot(str)
+        def _model_intake_failed(self, message: str) -> None:
+            self._load_progress_failed(f"Modelinname mislukt: {message}")
+            self.statusBar().showMessage("Modelinname mislukt", 10000)
+            QtWidgets.QMessageBox.critical(self, "Model inladen mislukt", message)
+
+        @QtCore.Slot()
+        def _model_intake_finished(self) -> None:
+            open_button = getattr(self.import_page, "open_button", None)
+            if open_button is not None:
+                open_button.setEnabled(True)
+            self._intake_worker = None
+            self._intake_thread = None
 
         def _open_pdf(self, value: str | Path) -> None:
             if self.pdf_page.load_pdf(value):
@@ -490,6 +574,8 @@ if qt_available():
 
         def _project_loaded(self, path: str) -> None:
             self.statusBar().showMessage(f"Project geopend: {path}")
+            self._load_progress_changed(100, "Project, geometrie en Viewer V15 volledig gereed")
+            QtCore.QTimer.singleShot(3000, self._hide_load_progress)
             self.bom_excel_page.refresh()
             self.revisions_page.refresh()
             if self._selection_unsubscribe is not None:
@@ -593,6 +679,40 @@ if qt_available():
             self.statusBar().showMessage(
                 "CWS Convertor gereed · productie-export blijft format-specifiek gevalideerd"
             )
+            self.load_status_label = QtWidgets.QLabel()
+            self.load_status_label.setObjectName("cwsLoadStatusLabel")
+            self.load_status_progress = QtWidgets.QProgressBar()
+            self.load_status_progress.setObjectName("cwsLoadStatusProgress")
+            self.load_status_progress.setRange(0, 100)
+            self.load_status_progress.setValue(0)
+            self.load_status_progress.setFormat("%p%")
+            self.load_status_progress.setFixedWidth(190)
+            self.load_status_progress.setFixedHeight(17)
+            self.statusBar().addPermanentWidget(self.load_status_label, 1)
+            self.statusBar().addPermanentWidget(self.load_status_progress)
+            self._hide_load_progress()
+
+        @QtCore.Slot(int, str)
+        def _load_progress_changed(self, percent: int, message: str) -> None:
+            if not hasattr(self, "load_status_progress"):
+                return
+            value = max(0, min(100, int(percent)))
+            self.load_status_label.setText(message)
+            self.load_status_progress.setValue(value)
+            self.load_status_label.show()
+            self.load_status_progress.show()
+            self.statusBar().showMessage(message)
+
+        def _load_progress_failed(self, message: str) -> None:
+            self._load_progress_changed(0, message)
+            self.load_status_progress.setFormat("Mislukt")
+
+        def _hide_load_progress(self) -> None:
+            if not hasattr(self, "load_status_progress"):
+                return
+            self.load_status_progress.setFormat("%p%")
+            self.load_status_label.hide()
+            self.load_status_progress.hide()
 
         def _show_validation(self) -> None:
             self.tabs.setCurrentWidget(self.control_page)
@@ -613,7 +733,12 @@ if qt_available():
             if name:
                 self._open_project(Path(name))
 
-        def _open_project(self, path: Path) -> None:
+        def _open_project(self, path: Path, *, progress_floor: int = 0) -> None:
+            self._project_progress_floor = max(0, min(95, int(progress_floor)))
+            self._load_progress_changed(
+                self._project_progress_floor,
+                f"Project openen: {path.name}",
+            )
             self.tabs.setCurrentWidget(self.project_page)
             self.project_page.open_project(path)
 

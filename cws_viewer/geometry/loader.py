@@ -66,8 +66,9 @@ class GeometryLoadCoordinator:
             if allow_proxy and self.proxy_provider is not None:
                 try:
                     mesh=self.proxy_provider.load(request,self.settings,cancel_check=check);self.repository.put(request.geometry_id,mesh)
-                    if self.cache is not None and key is not None and provider is not None:
-                        self.cache.put(key,mesh,provider_version=f'{provider.provider_version}|fallback:{self.proxy_provider.provider_version}',settings=self.settings)
+                    # Never store a fallback proxy under the primary provider key.
+                    # Doing so makes a transient worker/startup failure permanently
+                    # shadow valid IFC/STEP source geometry on every later run.
                     return GeometryLoadResult(request,GeometryLoadStatus.PARTIAL,mesh,time.perf_counter()-start,False,mesh.warnings,str(exc))
                 except Exception as proxy_exc:exc=RuntimeError(f'{exc}; proxy faalde: {proxy_exc}')
             return GeometryLoadResult(request,GeometryLoadStatus.FAILED,None,time.perf_counter()-start,False,(),str(exc))

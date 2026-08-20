@@ -171,6 +171,7 @@ if qt_available():
 
             self._build_status_bar()
             self._populate_tree()
+            self._populate_mark_position_filters()
             self._populate_layers()
             self._initialise_grid_catalog()
             self._refresh_properties()
@@ -189,7 +190,7 @@ if qt_available():
             row.addWidget(title); row.addSpacing(14); row.addWidget(subtitle); row.addStretch(1)
             self._header_selection = QtWidgets.QLabel("Geen selectie"); self._header_selection.setObjectName("statusPill")
             row.addWidget(self._header_selection)
-            version = QtWidgets.QLabel("1.3.0-rc1"); version.setObjectName("cwsVersion")
+            version = QtWidgets.QLabel("Viewer V15"); version.setObjectName("cwsVersion")
             row.addSpacing(8); row.addWidget(version)
             return frame
 
@@ -205,6 +206,11 @@ if qt_available():
             box.addWidget(bar)
 
             self._area_action = self._action(bar, "Vensterselectie", lambda checked=False: self.viewer.set_area_selection(True), "Ctrl+R")
+            bar.addSeparator()
+            mark_label = QtWidgets.QLabel("Merk"); mark_label.setObjectName("mutedText"); bar.addWidget(mark_label)
+            self._mark_combo = QtWidgets.QComboBox(); self._mark_combo.setMinimumWidth(125); self._mark_combo.setToolTip("Selecteer alle onderdelen van een merk"); self._mark_combo.currentIndexChanged.connect(self._mark_or_position_changed); bar.addWidget(self._mark_combo)
+            position_label = QtWidgets.QLabel("Pos"); position_label.setObjectName("mutedText"); bar.addWidget(position_label)
+            self._position_combo = QtWidgets.QComboBox(); self._position_combo.setMinimumWidth(125); self._position_combo.setToolTip("Selecteer onderdelen met deze positie"); self._position_combo.currentIndexChanged.connect(self._mark_or_position_changed); bar.addWidget(self._position_combo)
             bar.addSeparator()
             self._nav_group = QtGui.QActionGroup(self); self._nav_group.setExclusive(True)
             self._nav_actions: dict[NavigationMode, Any] = {}
@@ -267,7 +273,7 @@ if qt_available():
             for key, theme in THEMES.items(): self._theme_combo.addItem(theme.title, key)
             idx = self._theme_combo.findData(self._theme_key); self._theme_combo.setCurrentIndex(max(0, idx)); self._theme_combo.currentIndexChanged.connect(self._theme_changed); bar.addWidget(self._theme_combo)
             bar.addSeparator()
-            self._action(bar, "Los scherm", self._detach_viewer)
+            self._action(bar, "Screenshot", self._screenshot)
             self._action(bar, "Volledig scherm", self._fullscreen, "F11")
             return frame
 
@@ -347,6 +353,48 @@ if qt_available():
                 show=own or child; item.setHidden(not show); return show
             for i in range(self._tree.topLevelItemCount()): visit(self._tree.topLevelItem(i))
 
+        def _part_selector_values(self, part: Any) -> tuple[str, str]:
+            source = getattr(part, "source_identity", None)
+            mark = str(getattr(part, "assembly_mark", "") or getattr(part, "mark", "") or getattr(source, "assembly_mark", "") or "").strip()
+            position = str(getattr(part, "part_position", "") or getattr(source, "part_position", "") or getattr(part, "name", "") or "").strip()
+            return mark, position
+
+        def _populate_mark_position_filters(self) -> None:
+            self._selector_rows = []
+            for entity_id, part in self.project.parts.items():
+                mark, position = self._part_selector_values(part)
+                self._selector_rows.append((str(entity_id), mark, position))
+            mark_blocker = QtCore.QSignalBlocker(self._mark_combo)
+            position_blocker = QtCore.QSignalBlocker(self._position_combo)
+            self._mark_combo.clear(); self._mark_combo.addItem("Alle merken", "")
+            for mark in sorted({row[1] for row in self._selector_rows if row[1]}, key=str.casefold): self._mark_combo.addItem(mark, mark)
+            self._position_combo.clear(); self._position_combo.addItem("Alle posities", "")
+            for position in sorted({row[2] for row in self._selector_rows if row[2]}, key=str.casefold): self._position_combo.addItem(position, position)
+            del mark_blocker, position_blocker
+
+        def _refresh_position_filter(self, mark: str, selected_position: str = "") -> None:
+            blocker = QtCore.QSignalBlocker(self._position_combo)
+            self._position_combo.clear(); self._position_combo.addItem("Alle posities", "")
+            positions = {position for _entity_id, row_mark, position in self._selector_rows if position and (not mark or row_mark == mark)}
+            for position in sorted(positions, key=str.casefold): self._position_combo.addItem(position, position)
+            index = self._position_combo.findData(selected_position)
+            self._position_combo.setCurrentIndex(max(0, index))
+            del blocker
+
+        def _mark_or_position_changed(self, _index: int = -1) -> None:
+            if self._syncing: return
+            mark = str(self._mark_combo.currentData() or "")
+            selected_position = str(self._position_combo.currentData() or "")
+            if self.sender() is self._mark_combo:
+                self._refresh_position_filter(mark, selected_position)
+                selected_position = str(self._position_combo.currentData() or "")
+            entity_ids = tuple(entity_id for entity_id, row_mark, position in self._selector_rows if (not mark or row_mark == mark) and (not selected_position or position == selected_position))
+            if not mark and not selected_position:
+                self.interaction.clear_selection(origin="merk-pos")
+                return
+            self.interaction.select_entities(entity_ids, origin="merk-pos")
+            if entity_ids: self.viewer.controller.fit_selection()
+
         def _tree_selection(self) -> None:
             if self._syncing: return
             ids = [str(item.data(0,QtCore.Qt.ItemDataRole.UserRole)) for item in self._tree.selectedItems() if item.data(0,QtCore.Qt.ItemDataRole.UserRole)]
@@ -367,8 +415,18 @@ if qt_available():
                     item=self._tree_items.get(node_id)
                     if item:item.setSelected(True);self._tree.scrollToItem(item)
                 self._header_selection.setText(f"Selectie: {len(selection.entity_ids)}")
+                primary = str(getattr(selection, "primary_entity_id", "") or "")
+                part = self.project.parts.get(primary)
+                if part is not None:
+                    mark, position = self._part_selector_values(part)
+                    mark_blocker = QtCore.QSignalBlocker(self._mark_combo)
+                    mark_index = self._mark_combo.findData(mark)
+                    self._mark_combo.setCurrentIndex(max(0, mark_index))
+                    del mark_blocker
+                    self._refresh_position_filter(mark, position)
                 self._refresh_properties()
                 self._project_grid.refresh()
+                self._project_grid.select_entities(selection.entity_ids)
             finally:self._syncing=False
 
         def _refresh_properties(self) -> None:

@@ -84,6 +84,10 @@ if qt_available():
             self._worker = None
             self._format_boxes: dict[str, Any] = {}
             self._build_ui(default_output_dir)
+            if not self._selected_entity_ids():
+                full_index = self.scope_combo.findData(ExportScopeKind.FULL_PROJECT.value)
+                if full_index >= 0:
+                    self.scope_combo.setCurrentIndex(full_index)
             self._scope_changed()
 
         def _build_ui(self, default_output_dir: str | Path | None) -> None:
@@ -91,13 +95,10 @@ if qt_available():
             layout.setContentsMargins(8, 8, 8, 8)
             layout.setSpacing(7)
 
-            header = QtWidgets.QLabel("Export Center · T7")
+            header = QtWidgets.QLabel("Exporteren")
             header.setObjectName("cwsPanelTitle")
             layout.addWidget(header)
-            hint = QtWidgets.QLabel(
-                "Scope eerst vastzetten → preflight → canonical release-engine → manifest + checksums. "
-                "Ontbrekende scope-metadata blokkeert; er is geen automatische project-fallback."
-            )
+            hint = QtWidgets.QLabel("Kies wat u wilt exporteren, selecteer de formaten en voer daarna de controle uit.")
             hint.setWordWrap(True)
             layout.addWidget(hint)
 
@@ -119,8 +120,16 @@ if qt_available():
             format_group = QtWidgets.QGroupBox("2. Formaten")
             format_layout = QtWidgets.QGridLayout(format_group)
             for index, (label, fmt, checked) in enumerate(self.FORMAT_ROWS):
-                box = QtWidgets.QCheckBox(label)
+                box = QtWidgets.QToolButton()
+                box.setText(label)
+                box.setCheckable(True)
                 box.setChecked(bool(checked))
+                box.setMinimumHeight(34)
+                box.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
+                box.setStyleSheet(
+                    "QToolButton { text-align: left; padding: 6px 10px; border: 1px solid #b8c4d1; border-radius: 3px; background: white; }"
+                    "QToolButton:checked { color: white; background: #0067c5; border-color: #0056a5; }"
+                )
                 self._format_boxes[fmt] = box
                 format_layout.addWidget(box, index // 3, index % 3)
             layout.addWidget(format_group)
@@ -222,6 +231,11 @@ if qt_available():
                 self.output_edit.setText(selected)
 
         def _preflight(self) -> None:
+            if ExportScopeKind(str(self.scope_combo.currentData())) == ExportScopeKind.CURRENT_SELECTION and not self._selected_entity_ids():
+                full_index = self.scope_combo.findData(ExportScopeKind.FULL_PROJECT.value)
+                if full_index >= 0:
+                    self.scope_combo.setCurrentIndex(full_index)
+                    self.summary.setPlainText("Er was geen selectie. De exportscope is gewijzigd naar Volledig project.")
             try:
                 job = self.service.prepare_job(self._scope(), self._formats())
             except Exception as exc:
