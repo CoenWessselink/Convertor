@@ -333,6 +333,7 @@ if qt_available():
             self._workspace = None
             self._entity_id = ""
             self._last_png: Path | None = None
+            self._manual_dimensions: list[dict[str, Any]] = []
             self._build()
             self.generate_pdf.connect(self.export_pdf)
 
@@ -384,9 +385,13 @@ if qt_available():
             self.title_block_button.setChecked(True)
             self.dimension_mode = QtWidgets.QComboBox()
             self.dimension_mode.addItems(("Hoofdmaten", "Contour + gaten", "Productiematen"))
+            self.add_dimension_button = QtWidgets.QPushButton("Eigen maat toevoegen...")
+            self.clear_dimensions_button = QtWidgets.QPushButton("Eigen maten wissen")
             views.addSpacing(18)
             views.addWidget(self.dimensions_button)
             views.addWidget(self.dimension_mode)
+            views.addWidget(self.add_dimension_button)
+            views.addWidget(self.clear_dimensions_button)
             views.addWidget(self.title_block_button)
             views.addStretch(1)
             root.addLayout(views)
@@ -411,6 +416,59 @@ if qt_available():
             self.dimensions_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
             self.title_block_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
             self.dimension_mode.currentTextChanged.connect(lambda _text: self.refresh_preview())
+            self.add_dimension_button.clicked.connect(self._add_manual_dimension)
+            self.clear_dimensions_button.clicked.connect(self._clear_manual_dimensions)
+
+        def _add_manual_dimension(self) -> None:
+            dialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle("Eigen maat toevoegen")
+            form = QtWidgets.QFormLayout(dialog)
+            view = QtWidgets.QComboBox(dialog)
+            view.addItem("Vooraanzicht", "front")
+            view.addItem("Bovenaanzicht", "top")
+            view.addItem("Zijaanzicht", "side")
+            view.addItem("Isometrisch", "iso")
+            axis = QtWidgets.QComboBox(dialog)
+            axis.addItem("Horizontaal", "horizontal")
+            axis.addItem("Verticaal", "vertical")
+            start = QtWidgets.QDoubleSpinBox(dialog)
+            end = QtWidgets.QDoubleSpinBox(dialog)
+            for control in (start, end):
+                control.setRange(-1000000.0, 1000000.0)
+                control.setDecimals(1)
+                control.setSuffix(" mm")
+            end.setValue(100.0)
+            label = QtWidgets.QLineEdit(dialog)
+            label.setPlaceholderText("Leeg = berekende maat")
+            form.addRow("Aanzicht", view)
+            form.addRow("Richting", axis)
+            form.addRow("Begin vanaf referentierand", start)
+            form.addRow("Einde vanaf referentierand", end)
+            form.addRow("Tekst", label)
+            buttons = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+                parent=dialog,
+            )
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            form.addRow(buttons)
+            if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+                return
+            if abs(end.value() - start.value()) < 1.0e-9:
+                QtWidgets.QMessageBox.information(self, "Eigen maat", "Begin en einde moeten van elkaar verschillen.")
+                return
+            self._manual_dimensions.append({
+                "view": str(view.currentData()), "axis": str(axis.currentData()),
+                "start": float(start.value()), "end": float(end.value()), "label": label.text().strip(),
+            })
+            self.dimensions_button.setChecked(True)
+            self.status.setText(f"Eigen maat toegevoegd ({len(self._manual_dimensions)} totaal)")
+            self.refresh_preview()
+
+        def _clear_manual_dimensions(self) -> None:
+            self._manual_dimensions.clear()
+            self.status.setText("Eigen maatvoering gewist")
+            self.refresh_preview()
 
         def set_context(self, context: object, selection: object | None = None) -> None:
             workspace, entity, entity_id = _workspace_entity(context, selection)
@@ -432,13 +490,29 @@ if qt_available():
             target.mkdir(parents=True, exist_ok=True)
             return target
 
-        def _resolved_part_id(self) -> str:
-            """Resolve assemblies and shop items to one unambiguous make part."""
+        def _resolved_drawing_entity_id(self) -> str:
+            """Accept every selected object with geometry, then fall back to a make part."""
             if self._workspace is None:
                 return ""
             project = self._workspace.project
             current = str(self._entity_id or "")
-            if current in project.parts:
+
+            collections = (project.parts, project.assemblies, project.purchased_items, project.fasteners, project.welds)
+
+            def exists(entity_id: str) -> bool:
+                return any(entity_id in collection for collection in collections)
+
+            def drawable(entity_id: str) -> bool:
+                if not entity_id or not exists(entity_id):
+                    return False
+                try:
+                    node_id = self._workspace.interaction.node_for_entity(entity_id)
+                    node = self._workspace.controller.index.node(node_id)
+                    return node.geometry_id is not None and self._workspace.load_result.repository.get(node.geometry_id) is not None
+                except Exception:
+                    return False
+
+            if drawable(current):
                 return current
 
             candidates: list[str] = []
@@ -468,8 +542,13 @@ if qt_available():
             ordered = tuple(dict.fromkeys(candidates))
             if ordered:
                 return ordered[0]
-            if len(project.parts) == 1:
-                return next(iter(project.parts))
+            for candidate in ordered:
+                if drawable(candidate):
+                    return candidate
+            for collection in collections:
+                for entity_id in collection:
+                    if drawable(str(entity_id)):
+                        return str(entity_id)
             return ""
 
         def _generate(self, *, make_png: bool, make_pdf: bool):
@@ -477,17 +556,25 @@ if qt_available():
                 self.status.setText("Open eerst een project en selecteer daarna een maakdeel.")
                 self.preview.setText("Geen project geopend")
                 return None
-            resolved_part_id = self._resolved_part_id()
+            resolved_part_id = self._resolved_drawing_entity_id()
             if not resolved_part_id:
-                self.status.setText("Selecteer een maakdeel in de Viewer, modelstructuur of BOM.")
+                self.status.setText("Selecteer een geometrisch onderdeel in de Viewer, modelstructuur of BOM.")
                 self.preview.setText(
-                    "Deze selectie is geen maakdeel.\n"
-                    "Selecteer een profiel, plaat of ander maakdeel om een tekening te genereren."
+                    "Deze selectie heeft geen geladen 3D-geometrie.\n"
+                    "Selecteer een profiel, plaat, bevestiger of ander zichtbaar onderdeel."
                 )
                 return None
             if resolved_part_id != self._entity_id:
                 self._entity_id = resolved_part_id
-                part = self._workspace.project.parts[resolved_part_id]
+                part = next(
+                    collection[resolved_part_id]
+                    for collection in (
+                        self._workspace.project.parts, self._workspace.project.assemblies,
+                        self._workspace.project.purchased_items, self._workspace.project.fasteners,
+                        self._workspace.project.welds,
+                    )
+                    if resolved_part_id in collection
+                )
                 name = _value(part, "part_position", "mark", "name", default=resolved_part_id)
                 self.title.setText(f"PDF / Tekening - {name}")
                 self.status.setText(f"Gekoppeld maakdeel geselecteerd: {name}")
@@ -500,6 +587,8 @@ if qt_available():
                     unit=self.unit.currentText(), make_png=make_png, make_pdf=make_pdf,
                     views=selected_views, dimensions=self.dimensions_button.isChecked(),
                     title_block=self.title_block_button.isChecked(),
+                    dimension_mode=self.dimension_mode.currentText(),
+                    manual_dimensions=tuple(self._manual_dimensions),
                 )
                 if result.png_path:
                     self._last_png = Path(result.png_path)

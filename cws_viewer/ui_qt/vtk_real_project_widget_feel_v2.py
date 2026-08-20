@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from cws_viewer.backends.vtk_project_mesh_adaptive import VtkProjectMeshAdaptiveBackend
+from cws_viewer.contracts.enums import SelectionLevel
 from cws_viewer.core.viewer_feel_navigation_v2 import ViewerFeelNavigationV2Service
 from cws_viewer.ui_qt import vtk_real_project_widget_feel as _feel_module
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
@@ -53,6 +54,95 @@ if qt_available():
             self._interaction_idle_timer.setSingleShot(True)
             self._interaction_idle_timer.setInterval(self.INTERACTION_IDLE_MS)
             self._interaction_idle_timer.timeout.connect(self._restore_idle_quality)
+            self._install_viewport_controls()
+
+        RAL_COLOURS = (
+            ("IFC / originele kleuren", None),
+            ("RAL 1003 Signaalgeel", (249, 168, 0)),
+            ("RAL 2004 Zuiver oranje", (228, 94, 15)),
+            ("RAL 3000 Vuurrood", (175, 43, 30)),
+            ("RAL 5010 Gentiaanblauw", (0, 79, 124)),
+            ("RAL 6005 Mosgroen", (15, 67, 54)),
+            ("RAL 6018 Geelgroen", (87, 166, 57)),
+            ("RAL 7016 Antracietgrijs", (56, 62, 66)),
+            ("RAL 7035 Lichtgrijs", (203, 208, 204)),
+            ("RAL 9005 Gitzwart", (10, 10, 13)),
+            ("RAL 9010 Zuiver wit", (241, 236, 225)),
+        )
+
+        def _install_viewport_controls(self) -> None:
+            panel = _QtWidgets.QFrame(self)
+            panel.setObjectName("cwsV15ViewportControls")
+            panel.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+            panel.setStyleSheet(
+                "QFrame#cwsV15ViewportControls { background: rgba(255,255,255,238); "
+                "border: 1px solid #aebdce; border-radius: 4px; }"
+                "QComboBox { min-height: 25px; padding: 2px 7px; background: white; "
+                "border: 1px solid #b8c6d6; border-radius: 3px; }"
+                "QLabel { color: #1b3552; font-weight: 600; }"
+            )
+            layout = _QtWidgets.QHBoxLayout(panel)
+            layout.setContentsMargins(8, 5, 8, 5)
+            layout.setSpacing(6)
+
+            layout.addWidget(_QtWidgets.QLabel("Selecteren"))
+            selection = _QtWidgets.QComboBox(panel)
+            selection.setMinimumWidth(205)
+            selection.addItem("Onderdeel (één maakdeel)", SelectionLevel.PART.value)
+            selection.addItem("Samenstelling / merk", SelectionLevel.ASSEMBLY.value)
+            current = self.controller.session.selection_level.value
+            selection.setCurrentIndex(max(0, selection.findData(current)))
+            selection.setToolTip("Bepaalt of een klik één onderdeel of de bovenliggende samenstelling selecteert")
+            selection.currentIndexChanged.connect(self._viewport_selection_level_changed)
+            layout.addWidget(selection)
+
+            layout.addWidget(_QtWidgets.QLabel("Weergave"))
+            rendering = _QtWidgets.QComboBox(panel)
+            rendering.addItem("Realistisch + schaduw", True)
+            rendering.addItem("Technisch scherp", False)
+            rendering.currentIndexChanged.connect(self._viewport_rendering_changed)
+            layout.addWidget(rendering)
+
+            ral = _QtWidgets.QComboBox(panel)
+            ral.setMinimumWidth(205)
+            for label, rgb in self.RAL_COLOURS:
+                ral.addItem(label, rgb)
+            ral.setToolTip("RAL Classic-kleuren als gekalibreerde sRGB-schermweergave")
+            ral.currentIndexChanged.connect(self._viewport_ral_changed)
+            layout.addWidget(ral)
+
+            panel.adjustSize()
+            panel.move(12, 12)
+            panel.raise_()
+            self._viewport_controls = panel
+            self._viewport_selection_combo = selection
+            self._viewport_render_combo = rendering
+            self._viewport_ral_combo = ral
+
+        def _viewport_selection_level_changed(self, _index: int) -> None:
+            value = str(self._viewport_selection_combo.currentData() or SelectionLevel.PART.value)
+            self.controller.set_selection_level(SelectionLevel(value))
+
+        def _viewport_rendering_changed(self, _index: int) -> None:
+            self.backend.set_realistic_rendering(bool(self._viewport_render_combo.currentData()))
+
+        def _viewport_ral_changed(self, _index: int) -> None:
+            value = self._viewport_ral_combo.currentData()
+            rgb = None if value is None else tuple(int(channel) for channel in value)
+            self.backend.set_ral_colour(rgb)
+
+        def resizeEvent(self, event: Any) -> None:
+            super().resizeEvent(event)
+            controls = getattr(self, "_viewport_controls", None)
+            if controls is not None:
+                controls.move(12, 12)
+                controls.raise_()
+
+        def showEvent(self, event: Any) -> None:
+            super().showEvent(event)
+            controls = getattr(self, "_viewport_controls", None)
+            if controls is not None:
+                controls.raise_()
 
         @property
         def interaction_quality_active(self) -> bool:

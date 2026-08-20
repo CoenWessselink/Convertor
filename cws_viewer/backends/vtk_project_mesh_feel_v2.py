@@ -27,6 +27,10 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         self._measurement_preview_labels: list[tuple[Any, Vector3, tuple[int, int]]] = []
         self._ssao_pass: Any | None = None
         self._light_kit: Any | None = None
+        self._realistic_rendering = True
+        self._ral_override: tuple[int, int, int] | None = None
+        self._ral_refresh_all = False
+        self._active_index: Any | None = None
 
     def capabilities(self) -> ViewerCapabilities:
         base = super().capabilities()
@@ -98,6 +102,64 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         prop.SetSpecular(0.08)
         prop.SetSpecularPower(28.0)
 
+    def set_realistic_rendering(self, enabled: bool) -> None:
+        """Switch between a realistic steel finish and a crisp review finish."""
+        self._realistic_rendering = bool(enabled)
+        renderer = self._renderer
+        if renderer is not None:
+            shadow_method = getattr(
+                renderer,
+                "UseShadowsOn" if self._realistic_rendering else "UseShadowsOff",
+                None,
+            )
+            if callable(shadow_method):
+                try:
+                    shadow_method()
+                except Exception:
+                    pass
+        for group in self._mesh_groups:
+            prop = group.actor.GetProperty()
+            if self._realistic_rendering:
+                pbr = getattr(prop, "SetInterpolationToPBR", None)
+                if callable(pbr):
+                    pbr()
+                    metallic = getattr(prop, "SetMetallic", None)
+                    roughness = getattr(prop, "SetRoughness", None)
+                    if callable(metallic):
+                        metallic(0.12)
+                    if callable(roughness):
+                        roughness(0.34)
+                else:
+                    self._quality_material(prop)
+                prop.SetAmbient(0.28)
+                prop.SetDiffuse(0.68)
+                prop.SetSpecular(0.22)
+                prop.SetSpecularPower(42.0)
+                prop.EdgeVisibilityOff()
+                prop.LightingOn()
+            else:
+                prop.SetInterpolationToPhong()
+                prop.SetAmbient(0.48)
+                prop.SetDiffuse(0.50)
+                prop.SetSpecular(0.04)
+                prop.SetSpecularPower(18.0)
+                prop.SetEdgeColor(0.055, 0.075, 0.095)
+                prop.SetLineWidth(0.8)
+                prop.EdgeVisibilityOn()
+                prop.LightingOn()
+        self.render()
+
+    def set_ral_colour(self, rgb: tuple[int, int, int] | None) -> None:
+        """Apply an sRGB display representation of a RAL colour or restore IFC."""
+        if rgb is None:
+            self._ral_override = None
+        else:
+            self._ral_override = tuple(max(0, min(255, int(value))) for value in rgb)
+        self._ral_refresh_all = True
+        if self._state is not None and self._active_index is not None:
+            self._sync_selection_fill(self._state, self._active_index)
+        self.render()
+
     @staticmethod
     def _blend_selection(rgba: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
         # The reference workflow consistently uses a saturated engineering blue
@@ -130,7 +192,11 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
 
     def _sync_selection_fill(self, state: Any, index: Any) -> None:
         selected = set(state.selected_node_ids)
-        affected = self._highlighted_nodes | selected
+        affected = (
+            set(index.renderable_node_ids)
+            if self._ral_override is not None or self._ral_refresh_all
+            else self._highlighted_nodes | selected
+        )
         changed_groups: set[int] = set()
         for node_id in affected:
             entry = self._node_instance.get(node_id)
@@ -146,6 +212,8 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                 preferences=state.display_preferences,
             )
             rgba = self._rgba_bytes(color)
+            if self._ral_override is not None:
+                rgba = (*self._ral_override, rgba[3])
             if node_id in selected:
                 rgba = self._blend_selection(rgba)
             current = tuple(int(value) for value in group.colors.GetTuple(instance_index))
@@ -158,6 +226,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                 group.polydata.Modified()
                 group.mapper.Modified()
         self._highlighted_nodes = selected
+        self._ral_refresh_all = False
 
     def _update_contact_shadow_scale(self) -> None:
         ssao = self._ssao_pass
@@ -173,6 +242,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
             pass
 
     def apply_state(self, state: Any, index: Any) -> None:
+        self._active_index = index
         super().apply_state(state, index)
         self._update_contact_shadow_scale()
         self._sync_selection_fill(state, index)
@@ -430,6 +500,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         self._measurement_label_bindings.clear()
         self._measurement_preview_labels.clear()
         self._highlighted_nodes.clear()
+        self._active_index = None
         super().clear_scene()
 
 

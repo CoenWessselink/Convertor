@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -37,6 +37,13 @@ class EngineeringDrawingGenerator:
             if Path(name).exists():
                 return ImageFont.truetype(name, size=size)
         return ImageFont.load_default()
+
+    @classmethod
+    def _draw_logo(cls, draw: ImageDraw.ImageDraw, x: int, y: int) -> None:
+        """Draw the product mark as vectors so PNG and PDF never miss an asset."""
+        draw.rounded_rectangle((x, y, x + 122, y + 42), radius=6, fill=(0, 78, 162))
+        draw.text((x + 13, y + 5), "CWS", fill="white", font=cls._font(25, bold=True))
+        draw.text((x + 137, y + 8), "CONVERTOR", fill=(20, 58, 99), font=cls._font(21, bold=True))
 
     def _resolve(self, entity_id: str | None) -> tuple[Any, Any, str, np.ndarray, np.ndarray]:
         project = self.workspace.project
@@ -104,7 +111,11 @@ class EngineeringDrawingGenerator:
         return np.column_stack((vertices @ u, vertices @ v)), vertices @ direction
 
     @staticmethod
-    def _visible_edges(triangles: np.ndarray, depths: np.ndarray, vertices: np.ndarray) -> set[tuple[int, int]]:
+    def _visible_edges(
+        triangles: np.ndarray,
+        vertices: np.ndarray,
+        direction: np.ndarray,
+    ) -> set[tuple[int, int]]:
         adjacency: dict[tuple[int, int], list[int]] = {}
         normals: list[np.ndarray] = []
         for triangle_index, triangle in enumerate(triangles):
@@ -115,19 +126,56 @@ class EngineeringDrawingGenerator:
             for start, end in ((a, b), (b, c), (c, a)):
                 edge = (start, end) if start < end else (end, start)
                 adjacency.setdefault(edge, []).append(triangle_index)
+        front_facing = [float(np.dot(normal, direction)) >= -1.0e-8 for normal in normals]
         result: set[tuple[int, int]] = set()
         for edge, faces in adjacency.items():
             if len(faces) == 1:
-                result.add(edge)
+                if front_facing[faces[0]]:
+                    result.add(edge)
                 continue
             first, second = normals[faces[0]], normals[faces[1]]
-            if float(np.dot(first, second)) < math.cos(math.radians(18.0)):
+            first_front, second_front = front_facing[faces[0]], front_facing[faces[1]]
+            if first_front != second_front:
                 result.add(edge)
                 continue
-            face_depths = [float(depths[triangles[index]].mean()) for index in faces]
-            if max(face_depths) - min(face_depths) > 0.25:
+            if first_front and second_front and float(np.dot(first, second)) < math.cos(math.radians(28.0)):
                 result.add(edge)
         return result
+
+    @classmethod
+    def _draw_dimension(
+        cls,
+        draw: ImageDraw.ImageDraw,
+        *,
+        orientation: str,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        witness_start: tuple[float, float],
+        witness_end: tuple[float, float],
+        label: str,
+    ) -> None:
+        blue = (0, 102, 220)
+        draw.line((*witness_start, *start), fill=blue, width=1)
+        draw.line((*witness_end, *end), fill=blue, width=1)
+        draw.line((*start, *end), fill=blue, width=2)
+        if orientation == "horizontal":
+            draw.line((start[0], start[1], start[0] + 8, start[1] - 5), fill=blue, width=2)
+            draw.line((start[0], start[1], start[0] + 8, start[1] + 5), fill=blue, width=2)
+            draw.line((end[0], end[1], end[0] - 8, end[1] - 5), fill=blue, width=2)
+            draw.line((end[0], end[1], end[0] - 8, end[1] + 5), fill=blue, width=2)
+            box = draw.textbbox((0, 0), label, font=cls._font(14))
+            tx = (start[0] + end[0] - (box[2] - box[0])) * 0.5
+            ty = start[1] - 25
+        else:
+            draw.line((start[0], start[1], start[0] - 5, start[1] + 8), fill=blue, width=2)
+            draw.line((start[0], start[1], start[0] + 5, start[1] + 8), fill=blue, width=2)
+            draw.line((end[0], end[1], end[0] - 5, end[1] - 8), fill=blue, width=2)
+            draw.line((end[0], end[1], end[0] + 5, end[1] - 8), fill=blue, width=2)
+            box = draw.textbbox((0, 0), label, font=cls._font(14))
+            tx = start[0] - (box[2] - box[0]) - 9
+            ty = (start[1] + end[1] - (box[3] - box[1])) * 0.5
+        draw.rounded_rectangle((tx - 3, ty - 2, tx + (box[2] - box[0]) + 3, ty + (box[3] - box[1]) + 3), radius=2, fill="white")
+        draw.text((tx, ty), label, fill=blue, font=cls._font(14))
 
     @staticmethod
     def _rectangles(count: int, area: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]:
@@ -198,11 +246,14 @@ class EngineeringDrawingGenerator:
         denominator: int,
         px_per_mm: float,
         dimensions: bool,
+        dimension_mode: str,
+        manual_dimensions: Sequence[Mapping[str, Any]],
     ) -> None:
         left, top, right, bottom = rectangle
         draw.rounded_rectangle(rectangle, radius=6, outline=(190, 205, 221), width=2, fill=(252, 253, 255))
         draw.text((left + 14, top + 11), label, fill=(28, 68, 112), font=self._font(19, bold=True))
         projected, depths = self._project(vertices, view)
+        _u, _v, direction = self._basis(view)
         center = (projected.min(axis=0) + projected.max(axis=0)) * 0.5
         scale = px_per_mm / float(denominator)
         usable_left, usable_top = left + 32, top + 44
@@ -211,18 +262,63 @@ class EngineeringDrawingGenerator:
         screen = np.empty_like(projected)
         screen[:, 0] = (projected[:, 0] - center[0]) * scale + screen_center[0]
         screen[:, 1] = screen_center[1] - ((projected[:, 1] - center[1]) * scale)
-        for first, second in self._visible_edges(triangles, depths, vertices):
+
+        # Paint back-to-front faces first. This removes the transparent
+        # wireframe appearance while retaining crisp manufacturing edges.
+        face_depths = depths[triangles].mean(axis=1)
+        for triangle_index in np.argsort(face_depths):
+            triangle = triangles[int(triangle_index)]
+            points = [(float(screen[int(index), 0]), float(screen[int(index), 1])) for index in triangle]
+            a, b, c = (vertices[int(index)] for index in triangle)
+            normal = np.cross(b - a, c - a)
+            normal_length = float(np.linalg.norm(normal))
+            facing = abs(float(np.dot(normal / normal_length, direction))) if normal_length > 1.0e-9 else 0.0
+            shade = int(round(242.0 - 35.0 * facing))
+            draw.polygon(points, fill=(shade - 8, shade - 2, min(255, shade + 8)))
+
+        for first, second in self._visible_edges(triangles, vertices, direction):
             draw.line((float(screen[first, 0]), float(screen[first, 1]), float(screen[second, 0]), float(screen[second, 1])), fill=(24, 60, 96), width=2)
         if dimensions:
             minimum, maximum = screen.min(axis=0), screen.max(axis=0)
             model_span = projected.max(axis=0) - projected.min(axis=0)
-            dimension_value = float(np.ptp(vertices[:, 0])) if view == "iso" else float(model_span[0])
-            y = min(bottom - 22, int(maximum[1] + 26))
-            x0, x1 = int(minimum[0]), int(maximum[0])
-            draw.line((x0, y, x1, y), fill=(0, 102, 220), width=2)
-            draw.line((x0, y - 7, x0, y + 7), fill=(0, 102, 220), width=2)
-            draw.line((x1, y - 7, x1, y + 7), fill=(0, 102, 220), width=2)
-            draw.text(((x0 + x1) // 2 - 34, y - 25), f"{dimension_value:,.1f} mm", fill=(0, 102, 220), font=self._font(14))
+            x0, x1 = float(minimum[0]), float(maximum[0])
+            y0, y1 = float(maximum[1]), float(minimum[1])
+            dimension_y = min(float(bottom - 23), float(maximum[1] + 28))
+            self._draw_dimension(
+                draw, orientation="horizontal", start=(x0, dimension_y), end=(x1, dimension_y),
+                witness_start=(x0, float(maximum[1]) + 4), witness_end=(x1, float(maximum[1]) + 4),
+                label=f"{float(model_span[0]):,.1f} mm",
+            )
+            if str(dimension_mode) in {"Contour + gaten", "Productiematen"} or view == "front":
+                dimension_x = max(float(left + 20), float(minimum[0] - 28))
+                self._draw_dimension(
+                    draw, orientation="vertical", start=(dimension_x, y0), end=(dimension_x, y1),
+                    witness_start=(float(minimum[0]) - 4, y0), witness_end=(float(minimum[0]) - 4, y1),
+                    label=f"{float(model_span[1]):,.1f} mm",
+                )
+
+            projected_min = projected.min(axis=0)
+            for level, dimension in enumerate(item for item in manual_dimensions if str(item.get("view", "")) in {view, "3d" if view == "iso" else view}):
+                axis = str(dimension.get("axis", "horizontal"))
+                start_offset = float(dimension.get("start", 0.0))
+                end_offset = float(dimension.get("end", 0.0))
+                custom_label = str(dimension.get("label", "")).strip() or f"{abs(end_offset - start_offset):,.1f} mm"
+                if axis == "vertical":
+                    start_y = screen_center[1] - ((projected_min[1] + start_offset - center[1]) * scale)
+                    end_y = screen_center[1] - ((projected_min[1] + end_offset - center[1]) * scale)
+                    dimension_x = max(float(left + 14), float(minimum[0] - 52 - level * 22))
+                    self._draw_dimension(
+                        draw, orientation="vertical", start=(dimension_x, start_y), end=(dimension_x, end_y),
+                        witness_start=(float(minimum[0]) - 4, start_y), witness_end=(float(minimum[0]) - 4, end_y), label=custom_label,
+                    )
+                else:
+                    start_x = (projected_min[0] + start_offset - center[0]) * scale + screen_center[0]
+                    end_x = (projected_min[0] + end_offset - center[0]) * scale + screen_center[0]
+                    custom_y = min(float(bottom - 14), float(maximum[1] + 50 + level * 22))
+                    self._draw_dimension(
+                        draw, orientation="horizontal", start=(start_x, custom_y), end=(end_x, custom_y),
+                        witness_start=(start_x, float(maximum[1]) + 4), witness_end=(end_x, float(maximum[1]) + 4), label=custom_label,
+                    )
 
     def generate(
         self,
@@ -230,7 +326,8 @@ class EngineeringDrawingGenerator:
         *, entity_id: str | None = None, sheet_format: str = "A3", scale_label: str = "Auto",
         unit: str = "mm", make_png: bool = True, make_pdf: bool = True,
         views: Sequence[str] = ("front", "top", "side", "iso"), dimensions: bool = True,
-        title_block: bool = True,
+        title_block: bool = True, dimension_mode: str = "Hoofdmaten",
+        manual_dimensions: Sequence[Mapping[str, Any]] = (),
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
         selected_views = tuple(view for view in views if view in {"front", "top", "side", "3d", "iso"})
@@ -246,14 +343,17 @@ class EngineeringDrawingGenerator:
         image = Image.new("RGB", (width, height), "white")
         draw = ImageDraw.Draw(image)
         draw.rectangle((12, 12, width - 12, height - 12), outline=(37, 70, 108), width=3)
-        draw.text((36, 28), "CWS CONVERTOR", fill=(0, 68, 136), font=self._font(25, bold=True))
-        draw.text((285, 31), "TECHNISCHE WERKPLAATSTEKENING", fill=(34, 58, 87), font=self._font(18, bold=True))
+        self._draw_logo(draw, 36, 22)
+        draw.text((355, 31), "TECHNISCHE WERKPLAATSTEKENING", fill=(34, 58, 87), font=self._font(18, bold=True))
         rectangles = self._rectangles(len(drawing_views), (34, 76, width - 34, height - title_height - 16))
         px_per_mm = width / paper_width
         requested = self._requested_scale(scale_label)
         denominator, adjusted = self._fit_scale(vertices, drawing_views, rectangles, px_per_mm, requested)
         for source_view, drawing_view, rectangle in zip(selected_views, drawing_views, rectangles):
-            self._draw_view(draw, vertices, triangles, drawing_view, rectangle, labels[source_view], denominator, px_per_mm, dimensions)
+            self._draw_view(
+                draw, vertices, triangles, drawing_view, rectangle, labels[source_view], denominator,
+                px_per_mm, dimensions, dimension_mode, manual_dimensions,
+            )
         warnings: list[str] = []
         if adjusted:
             warnings.append(f"Gevraagde schaal paste niet op {sheet_key}; aangepast naar 1:{denominator}")

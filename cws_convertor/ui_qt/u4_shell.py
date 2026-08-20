@@ -205,7 +205,7 @@ if qt_available():
             ("Camera", (("Weergave", "viewer:fit"), ("Standaard aanzichten", "viewer:iso"))),
             ("Meten / Snijden", (("Meten", "viewer:measure"), ("Doorsnede", "viewer:tools"), ("Clip", "viewer:tools"))),
             ("Hulpmiddelen", (("Raster", "viewer:grid"), ("Snappen", "viewer:snap"), ("Assen", "viewer:axes"))),
-            ("Modus", (("Bewerk modus", "nav:edit"), ("Apart venster", "viewer:detach"), ("Meer", "viewer:tools"))),
+            ("Modus", (("Bewerk modus", "nav:edit"), ("Apart venster", "viewer:detach"), ("Exporteren", "nav:export"), ("Meer", "viewer:tools"))),
         ),
         "edit": (
             ("Bewerken", (("Toevoegen", "viewer:exact"), ("Verwijderen", "viewer:exact"), ("Dupliceren", "viewer:exact"))),

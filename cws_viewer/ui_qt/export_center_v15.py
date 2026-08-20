@@ -101,6 +101,15 @@ if qt_available():
             hint = QtWidgets.QLabel("Kies wat u wilt exporteren, selecteer de formaten en voer daarna de controle uit.")
             hint.setWordWrap(True)
             layout.addWidget(hint)
+            self.quick_export_button = QtWidgets.QPushButton("Controleren en direct exporteren")
+            self.quick_export_button.setMinimumHeight(38)
+            self.quick_export_button.setStyleSheet(
+                "QPushButton { color: white; background: #0067c5; border: 1px solid #0056a5; "
+                "border-radius: 4px; padding: 7px 16px; font-weight: 700; }"
+                "QPushButton:hover { background: #005bab; }"
+            )
+            self.quick_export_button.clicked.connect(self._preflight_and_execute)
+            layout.addWidget(self.quick_export_button)
 
             scope_group = QtWidgets.QGroupBox("1. Exportscope")
             scope_form = QtWidgets.QFormLayout(scope_group)
@@ -274,6 +283,11 @@ if qt_available():
                 "Export-preflight groen" if job.preflight.allowed else "Export-preflight geblokkeerd"
             )
 
+        def _preflight_and_execute(self) -> None:
+            self._preflight()
+            if self.export_button.isEnabled() and self._job_id:
+                self._execute()
+
         def _execute(self) -> None:
             if not self._job_id:
                 return
@@ -284,6 +298,7 @@ if qt_available():
             self.export_button.setEnabled(False)
             self.cancel_button.setEnabled(False)
             self.preflight_button.setEnabled(False)
+            self.quick_export_button.setEnabled(False)
             self.progress.setValue(10)
             self.status_changed.emit("Export gestart; verse releasevalidatie wordt uitgevoerd")
             thread = QtCore.QThread(self)
@@ -307,6 +322,7 @@ if qt_available():
         @QtCore.Slot(object)
         def _finished(self, job: Any) -> None:
             self.preflight_button.setEnabled(True)
+            self.quick_export_button.setEnabled(True)
             self.progress.setValue(int(float(job.progress) * 1000))
             lines = [
                 self.summary.toPlainText(),

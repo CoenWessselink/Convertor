@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from cws_viewer.backends.vtk_project_mesh_feel_v2 import VtkProjectMeshFeelV2Backend
-from cws_viewer.math3d import Vector3
+from cws_viewer.math3d import Matrix4, Vector3
 
 
 @dataclass(slots=True)
@@ -27,13 +27,14 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
 
     INTERACTIVE_MULTISAMPLES = 8
     MIN_IDLE_MULTISAMPLES = 4
-    PICK_FALLBACK_CANDIDATES = 24
+    PICK_FALLBACK_CANDIDATES = 64
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._interaction_quality_active = False
         self._idle_multisamples = 8
         self._pick_locator_cache: dict[int, _PickLocatorEntry] = {}
+        self._surface_distance_cache: dict[str, Any] = {}
         self._pick_explode_signature: Any = None
 
     @property
@@ -74,8 +75,35 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
 
     def load_scene(self, scene: Any, index: Any) -> None:
         self._pick_locator_cache.clear()
+        self._surface_distance_cache.clear()
         self._pick_explode_signature = None
         super().load_scene(scene, index)
+
+    def _surface_distance(
+        self,
+        node_id: str,
+        world_point: Vector3,
+        index: Any,
+    ) -> float:
+        """Measure a pick against the actual local mesh surface, not its box."""
+        vtk = self._vtk
+        node = index.node(node_id)
+        geometry_id = str(node.geometry_id or "")
+        if vtk is None or not geometry_id:
+            return float("inf")
+        evaluator = self._surface_distance_cache.get(geometry_id)
+        if evaluator is None:
+            evaluator = vtk.vtkImplicitPolyDataDistance()
+            evaluator.SetInput(self._mesh_polydata(geometry_id))
+            self._surface_distance_cache[geometry_id] = evaluator
+        offset = (
+            Vector3.zero()
+            if self._state is None
+            else self._state.explode_offsets.get(node_id, Vector3.zero())
+        )
+        transform = Matrix4.translation(offset) @ index.world_transform_by_node[node_id]
+        local_point = transform.inverse_rigid().transform_point(world_point)
+        return abs(float(evaluator.EvaluateFunction(local_point.to_tuple())))
 
     def apply_state(self, state: Any, index: Any) -> None:
         explode_signature = getattr(state, "explode_offsets_by_node", ())
@@ -164,7 +192,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
 
         state = self._state
         best_id: str | None = None
-        best_key = (float("inf"), float("inf"))
+        best_key = (float("inf"), float("inf"), float("inf"))
         for instance_index in self._candidate_instance_indexes(entry, world_point):
             if instance_index < 0 or instance_index >= len(entry.node_ids):
                 continue
@@ -182,13 +210,18 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             distance_sq = self._distance_sq_to_bounds(world_point, minimum, maximum)
             center = (minimum + maximum) * 0.5
             delta = world_point - center
-            candidate_key = (distance_sq, delta.dot(delta))
+            try:
+                surface_distance = self._surface_distance(node_id, world_point, index)
+            except Exception:
+                surface_distance = float("inf")
+            candidate_key = (surface_distance, distance_sq, delta.dot(delta))
             if candidate_key < best_key:
                 best_key = candidate_key
                 best_id = node_id
         return best_id or super()._node_nearest_surface_pick(group, world_point, index)
 
     def clear_scene(self) -> None:
+        self._surface_distance_cache.clear()
         self._interaction_quality_active = False
         self._pick_locator_cache.clear()
         self._pick_explode_signature = None
