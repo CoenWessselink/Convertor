@@ -23,7 +23,7 @@ from cws_convertor.importers.ifc_project import _detect_units
 from cws_convertor.importers.p21 import P21Document, P21Entity
 from cws_viewer.contracts.geometry import CancelCheck, GeometryRequest, MeshData, TessellationSettings
 
-PROVIDER_VERSION='cws-ifc-display-v2'
+PROVIDER_VERSION='cws-ifc-display-v3'
 _EPS=1e-9
 class UnsupportedIfcGeometry(RuntimeError):pass
 
@@ -171,10 +171,19 @@ class IfcShapeBuilder:
             outer=apply([(-x,-y),(x,-y),(x,-y+tf),(wx,-y+tf),(wx,y-tf),(x,y-tf),(x,y),(-x,y),(-x,y-tf),(-wx,y-tf),(-wx,-y+tf),(-x,-y+tf)])
             if float(e.number(7,0) or 0)>0:self.warnings.append('I-profielfillets als scherpe hoeken weergegeven')
         elif kind=='IFCLSHAPEPROFILEDEF':
-            d=float(e.number(3,0) or 0);w=float(e.number(4,d) or d);t=float(e.number(5,0) or 0);outer=apply([(0,0),(w,0),(w,t),(t,t),(t,d),(0,d)])
+            # IFC2x3 and newer define the parameterized profile origin at the
+            # centre of its bounding box. Building the angle from (0, 0)
+            # shifts every occurrence by half its width/depth and makes steel
+            # connections visibly miss their intended product placement.
+            d=float(e.number(3,0) or 0);w=float(e.number(4,d) or d);t=float(e.number(5,0) or 0);x=w/2;y=d/2
+            outer=apply([(-x,-y),(x,-y),(x,-y+t),(-x+t,-y+t),(-x+t,y),(-x,y)])
             self.warnings.append('L-profiel zonder fillets/slopes weergegeven')
         elif kind=='IFCUSHAPEPROFILEDEF':
-            d=float(e.number(3,0) or 0);w=float(e.number(4,0) or 0);tw=float(e.number(5,0) or 0);tf=float(e.number(6,0) or 0);outer=apply([(0,0),(w,0),(w,tf),(tw,tf),(tw,d-tf),(w,d-tf),(w,d),(0,d)])
+            # The U-profile coordinate origin is likewise the centre of the
+            # bounding box. Keep the web on negative X and both flanges
+            # symmetric around Y=0, matching the buildingSMART definition.
+            d=float(e.number(3,0) or 0);w=float(e.number(4,0) or 0);tw=float(e.number(5,0) or 0);tf=float(e.number(6,0) or 0);x=w/2;y=d/2
+            outer=apply([(-x,-y),(x,-y),(x,-y+tf),(-x+tw,-y+tf),(-x+tw,y-tf),(x,y-tf),(x,y),(-x,y)])
             self.warnings.append('U-profiel zonder fillets/slopes weergegeven')
         else:raise UnsupportedIfcGeometry(f'Profieltype {kind} niet ondersteund')
         return outer,holes

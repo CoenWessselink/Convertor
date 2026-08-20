@@ -4,11 +4,12 @@ import json, math
 import numpy as np
 from cws_viewer.contracts.geometry import CancelCheck, GeometryRequest, MeshData, TessellationSettings
 
-PROVIDER_VERSION='cws-explicit-display-proxy-v1'
+PROVIDER_VERSION='cws-explicit-display-proxy-v2'
 
-def _box(x,y,z):
+def _box(x,y,z,origin=(0.,0.,0.)):
     x=max(float(x),1.0);y=max(float(y),1.0);z=max(float(z),1.0)
-    v=np.asarray([[0,0,0],[x,0,0],[x,y,0],[0,y,0],[0,0,z],[x,0,z],[x,y,z],[0,y,z]],dtype=np.float64)
+    ox,oy,oz=(float(value) for value in origin)
+    v=np.asarray([[ox,oy,oz],[ox+x,oy,oz],[ox+x,oy+y,oz],[ox,oy+y,oz],[ox,oy,oz+z],[ox+x,oy,oz+z],[ox+x,oy+y,oz+z],[ox,oy+y,oz+z]],dtype=np.float64)
     t=np.asarray([[0,2,1],[0,3,2],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]],dtype=np.int32)
     return v,t
 
@@ -32,12 +33,12 @@ class ProxyMeshProvider:
         if diam>0:
             v,t=_cylinder(diam/2,max(length,diam),settings.circle_segments)
         else:
-            size=[0.,0.,0.]
+            size=[0.,0.,0.];origin=[0.,0.,0.]
             if isinstance(bounds,dict):
-                lo=bounds.get('minimum',[0,0,0]);hi=bounds.get('maximum',[0,0,0]);size=[max(0,float(hi[i])-float(lo[i])) for i in range(3)]
+                lo=bounds.get('minimum',[0,0,0]);hi=bounds.get('maximum',[0,0,0]);origin=[float(lo[i]) for i in range(3)];size=[max(0,float(hi[i])-origin[i]) for i in range(3)]
             if max(size)<=0:
-                s=max(float(m.get('size_mm') or 0),10.);size=[max(length,s),s,s]
-            v,t=_box(*size)
+                s=max(float(m.get('size_mm') or 0),10.);size=[max(length,s),s,s];origin=[0.,0.,0.]
+            v,t=_box(*size,origin=origin)
         return MeshData(v,t,request.source_geometry_hash,f'ProxyMeshProvider/{PROVIDER_VERSION}','display_proxy',
                         ('Brongeometrie niet ondersteund; zichtbaar begrensde displayproxy gebruikt',),{"source_format":request.source_format,"explicit_proxy":True})
 
