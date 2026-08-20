@@ -9,7 +9,10 @@ import hashlib, json, shutil, zipfile
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from cws_convertor.importers.ifc_project import _GEOMETRY_STOP_TYPES
+from cws_convertor.importers.ifc_project import (
+    _GEOMETRY_STOP_TYPES,
+    _display_representation_ids,
+)
 from cws_convertor.importers.p21 import P21Document
 from cws_viewer.contracts.geometry import GeometryRequest
 from cws_viewer.core.serialization import is_sha256, stable_sha256
@@ -122,7 +125,7 @@ class ProjectGeometryCatalog:
         except (ValueError,KeyError):return '',(),''
         rep_id=entity.ref(6); definition=doc.get(rep_id)
         if definition is None:return str(rep_id or ''),(),''
-        shape_ids=definition.refs(2) if definition.type_name=='IFCPRODUCTDEFINITIONSHAPE' else [definition.entity_id]
+        shape_ids=_display_representation_ids(doc,definition)
         items=[]
         for sid in shape_ids:
             shape=doc.get(sid)

@@ -19,11 +19,11 @@ from OCP.BRepPrimAPI import BRepPrimAPI_MakeHalfSpace
 from OCP.TopoDS import TopoDS_Shell, TopoDS_Solid
 from OCP.gp import gp_Ax3, gp_Dir, gp_Pln, gp_Pnt, gp_Trsf
 
-from cws_convertor.importers.ifc_project import _detect_units
+from cws_convertor.importers.ifc_project import _detect_units, _display_representation_ids
 from cws_convertor.importers.p21 import P21Document, P21Entity
 from cws_viewer.contracts.geometry import CancelCheck, GeometryRequest, MeshData, TessellationSettings
 
-PROVIDER_VERSION='cws-ifc-display-v3'
+PROVIDER_VERSION='cws-ifc-display-v4'
 _EPS=1e-9
 class UnsupportedIfcGeometry(RuntimeError):pass
 
@@ -256,7 +256,13 @@ class IfcShapeBuilder:
             elif kind in {'IFCBOOLEANRESULT','IFCBOOLEANCLIPPINGRESULT'}:shape=self._boolean(e,cancel_check)
             elif kind=='IFCHALFSPACESOLID':shape=self._halfspace(e)
             elif kind=='IFCMAPPEDITEM':shape=self._mapped(e,cancel_check)
-            elif kind in {'IFCSHAPEREPRESENTATION','IFCREPRESENTATION'}:shape=_compound(self.build(i,cancel_check=cancel_check) for i in e.refs(3))
+            elif kind in {'IFCSHAPEREPRESENTATION','IFCREPRESENTATION'}:
+                children=[]
+                for child_id in e.refs(3):
+                    try:children.append(self.build(child_id,cancel_check=cancel_check))
+                    except UnsupportedIfcGeometry as exc:self.warnings.append(f'IFC Body-detail #{child_id} overgeslagen: {exc}')
+                if not children:raise UnsupportedIfcGeometry(f'IFC-representatie #{eid} bevat geen renderbare Body-geometrie')
+                shape=_compound(children)
             else:raise UnsupportedIfcGeometry(f'IFC-geometrietype {kind} niet ondersteund')
             self.shape_cache[eid]=shape
             self.warning_cache[eid]=tuple(dict.fromkeys(self.warnings[warning_start:]))
@@ -281,7 +287,7 @@ class IfcMeshProvider:
         except (ValueError,KeyError):return ()
         d=doc.get(p.ref(6));
         if d is None:return ()
-        shape_ids=d.refs(2) if d.type_name=='IFCPRODUCTDEFINITIONSHAPE' else [d.entity_id];items=[]
+        shape_ids=_display_representation_ids(doc,d);items=[]
         for sid in shape_ids:
             s=doc.get(sid)
             if s:items.extend(s.refs(3))
@@ -300,7 +306,12 @@ class IfcMeshProvider:
         with s.lock:
             items=tuple(int(v) for v in request.source_item_ids if str(v).strip()) or self._product_items(s.document,request.source_entity_id)
             if not items:raise UnsupportedIfcGeometry('IFC-product bevat geen Body-items')
-            before=len(s.builder.warnings);shapes=[s.builder.build(i,cancel_check=cancel_check) for i in items];vertices,triangles=self._tessellate(shapes,settings,s.units_to_mm)
+            before=len(s.builder.warnings);shapes=[]
+            for item_id in items:
+                try:shapes.append(s.builder.build(item_id,cancel_check=cancel_check))
+                except UnsupportedIfcGeometry as exc:s.builder.warnings.append(f'IFC Body-item #{item_id} overgeslagen: {exc}')
+            if not shapes:raise UnsupportedIfcGeometry('IFC-product bevat geen renderbare Body-geometrie')
+            vertices,triangles=self._tessellate(shapes,settings,s.units_to_mm)
             warnings=tuple(dict.fromkeys(s.builder.warnings[before:]));exact='display_approximation' if warnings else 'source_tessellation'
         return MeshData(vertices,triangles,request.source_geometry_hash,f'IfcMeshProvider/{PROVIDER_VERSION}',exact,warnings,
                         {"source_format":"IFC","source_file_id":request.source_file_id,"source_entity_id":request.source_entity_id,"source_item_ids":list(request.source_item_ids),"units_to_mm":s.units_to_mm})

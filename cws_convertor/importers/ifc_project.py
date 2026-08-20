@@ -649,6 +649,44 @@ class IfcPlacementResolver:
         return result
 
 
+def _display_representation_ids(
+    document: P21Document,
+    definition: Any,
+) -> tuple[int, ...]:
+    """Return one coherent, renderable representation set for an IFC product.
+
+    IFC products may expose Body, Axis, FootPrint and other parallel
+    representations. Combining those sets produces duplicate or non-solid
+    display geometry and lets a single unsupported helper representation force
+    an otherwise valid product onto the proxy path. Prefer the authoritative
+    Body representation and only use a non-auxiliary fallback when Body is not
+    present.
+    """
+    if definition is None:
+        return ()
+    if definition.type_name == "IFCPRODUCTDEFINITIONSHAPE":
+        candidate_ids = definition.refs(2)
+    elif definition.type_name in {"IFCSHAPEREPRESENTATION", "IFCREPRESENTATION"}:
+        candidate_ids = [definition.entity_id]
+    else:
+        return ()
+
+    candidates: list[tuple[int, str]] = []
+    for shape_id in candidate_ids:
+        shape = document.get(shape_id)
+        if shape is None:
+            continue
+        candidates.append((shape_id, shape.string(1).strip().upper()))
+
+    for preferred in ("BODY", "FACETATION", "REFERENCE", "BOX"):
+        selected = tuple(shape_id for shape_id, identifier in candidates if identifier == preferred)
+        if selected:
+            return selected
+
+    auxiliary = {"AXIS", "FOOTPRINT", "CLEARANCE"}
+    return tuple(shape_id for shape_id, identifier in candidates if identifier not in auxiliary)
+
+
 def _representation_summary(document: P21Document, representation_id: int | None) -> dict[str, Any]:
     if representation_id is None:
         return {
@@ -667,11 +705,7 @@ def _representation_summary(document: P21Document, representation_id: int | None
             "source_geometry_hash": "",
             "status": "missing_reference",
         }
-    representation_ids: list[int] = []
-    if definition.type_name == "IFCPRODUCTDEFINITIONSHAPE":
-        representation_ids = definition.refs(2)
-    elif definition.type_name in {"IFCSHAPEREPRESENTATION", "IFCREPRESENTATION"}:
-        representation_ids = [definition.entity_id]
+    representation_ids = list(_display_representation_ids(document, definition))
     item_ids: list[int] = []
     representation_records: list[dict[str, Any]] = []
     primitive_counts: Counter[str] = Counter()

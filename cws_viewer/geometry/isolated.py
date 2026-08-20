@@ -24,7 +24,7 @@ from cws_viewer.contracts.geometry import (
     TessellationSettings,
 )
 
-PROVIDER_VERSION = "cws-ifc-isolated-v4"
+PROVIDER_VERSION = "cws-ifc-isolated-v5"
 
 
 class NativeGeometryWorkerError(RuntimeError):
