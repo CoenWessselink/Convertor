@@ -116,10 +116,12 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
     @staticmethod
     def _quality_material(prop: Any) -> None:
         prop.SetInterpolationToPhong()
-        prop.SetAmbient(0.30)
-        prop.SetDiffuse(0.70)
-        prop.SetSpecular(0.16)
-        prop.SetSpecularPower(24.0)
+        # Preserve source colours while giving I/H profiles, plates and bolts
+        # enough face separation to read clearly in dense assemblies.
+        prop.SetAmbient(0.16)
+        prop.SetDiffuse(0.82)
+        prop.SetSpecular(0.24)
+        prop.SetSpecularPower(36.0)
 
     @staticmethod
     def _configure_group_mode(group: Any, mode: RenderMode, edge_width: float) -> None:

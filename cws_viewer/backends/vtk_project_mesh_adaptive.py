@@ -27,7 +27,10 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
 
     INTERACTIVE_MULTISAMPLES = 8
     MIN_IDLE_MULTISAMPLES = 4
-    PICK_FALLBACK_CANDIDATES = 64
+    # A cell pick identifies the shared mesh actor, not the concrete instance.
+    # Dense IFC models can contain hundreds of copies of the same profile. A
+    # broad safety net prevents a nearby plate from displacing a clicked beam.
+    PICK_FALLBACK_CANDIDATES = 256
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -151,7 +154,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             locator=locator,
             data=data,
             node_ids=tuple(valid_node_ids),
-            search_radius=max(max_half_diagonal * 1.05, 1.0),
+            search_radius=max(max_half_diagonal * 1.35, 2.0),
         )
         self._pick_locator_cache[key] = entry
         return entry
@@ -168,16 +171,19 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         entry.locator.FindPointsWithinRadius(
             float(entry.search_radius), point.to_tuple(), ids
         )
-        values = tuple(int(ids.GetId(index)) for index in range(ids.GetNumberOfIds()))
-        if values:
-            return values
-
+        values = [int(ids.GetId(index)) for index in range(ids.GetNumberOfIds())]
         fallback = vtk.vtkIdList()
         count = min(self.PICK_FALLBACK_CANDIDATES, len(entry.node_ids))
-        entry.locator.FindClosestNPoints(count, point.to_tuple(), fallback)
-        return tuple(
-            int(fallback.GetId(index)) for index in range(fallback.GetNumberOfIds())
-        )
+        if count > 0:
+            entry.locator.FindClosestNPoints(count, point.to_tuple(), fallback)
+            values.extend(
+                int(fallback.GetId(index))
+                for index in range(fallback.GetNumberOfIds())
+            )
+        # Surface distance is evaluated after this candidate phase. Preserving
+        # the radius hits first and removing duplicates keeps the exact clicked
+        # profile eligible without changing the eventual geometric ranking.
+        return tuple(dict.fromkeys(values))
 
     def _node_nearest_surface_pick(
         self,
