@@ -660,6 +660,66 @@ def _validate_ifc_preview_against_shape(
         return None, warnings
 
 
+def _load_external_exact_ifc_shapes(
+    source: Path,
+) -> tuple[list[cq.Shape], list[str], list[str], dict[str, Any]]:
+    """Build source-parametric IFC BReps without a triangle-by-triangle STEP path."""
+
+    from cws_convertor.importers.ifc_project import IfcPlacementResolver, _detect_units
+    from cws_convertor.importers.p21 import P21Document
+    from cws_viewer.contracts.geometry import TessellationSettings
+    from cws_viewer.exact.ifc_profiles import ExactIfcShapeBuilder
+    from cws_viewer.geometry.ifc_provider import IfcMeshProvider
+
+    document = P21Document.load(source)
+    units = _detect_units(document)
+    placements = IfcPlacementResolver(document, units)
+    builder = ExactIfcShapeBuilder(document, TessellationSettings())
+    scale = float(units.length_to_mm)
+    shapes: list[cq.Shape] = []
+    failures: list[str] = []
+    products = 0
+    body_items = 0
+    for entity in document.entities.values():
+        if not entity.type_name.startswith("IFC"):
+            continue
+        items = IfcMeshProvider._product_items(document, f"#{entity.entity_id}")
+        if not items:
+            continue
+        products += 1
+        body_items += len(items)
+        try:
+            _relative, global_placement = placements.local_placement(entity.ref(5))
+            combined_matrix = [list(row) for row in global_placement.matrix]
+            for row in range(3):
+                for column in range(3):
+                    combined_matrix[row][column] *= scale
+            placement_matrix = cq.Matrix(combined_matrix)
+        except Exception as exc:
+            failures.append(
+                f"#{entity.entity_id} {entity.type_name}: plaatsing niet opgebouwd ({exc})"
+            )
+            continue
+        for item_id in items:
+            try:
+                shape = builder.build(item_id)
+                shapes.append(shape.transformGeometry(placement_matrix))
+            except Exception as exc:
+                failures.append(
+                    f"#{entity.entity_id}/#{item_id} {entity.type_name}: {exc}"
+                )
+
+    warnings = list(dict.fromkeys(str(value) for value in builder.warnings if str(value)))
+    details = {
+        "route": "external-source-parametric-brep",
+        "products": products,
+        "body_items": body_items,
+        "shape_count": len(shapes),
+        "units_to_mm": scale,
+    }
+    return shapes, warnings, failures, details
+
+
 def ifc_to_step(input_path: str | Path, output_path: str | Path) -> IFCConversionResult:
     source, target = Path(input_path), Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -736,7 +796,33 @@ def ifc_to_step(input_path: str | Path, output_path: str | Path) -> IFCConversio
             + (process.stderr.strip() or process.stdout.strip())
         )
 
+    exact_route_warnings: list[str] = []
+    try:
+        exact_shapes, exact_warnings, exact_failures, exact_details = (
+            _load_external_exact_ifc_shapes(source)
+        )
+        if exact_shapes and not exact_failures:
+            _export_shapes_step(exact_shapes, target)
+            return IFCConversionResult(
+                source=source,
+                outputs=[target],
+                warnings=exact_warnings,
+                failures=[],
+                details=exact_details,
+            )
+        if exact_failures:
+            exact_route_warnings.append(
+                "Exacte IFC-BRep-route niet volledig; facettenfallback gebruikt. "
+                f"{len(exact_failures)} Body-item(s) konden niet exact worden opgebouwd."
+            )
+            exact_route_warnings.extend(exact_failures[:20])
+    except Exception as exc:
+        exact_route_warnings.append(
+            f"Exacte IFC-BRep-route niet beschikbaar; facettenfallback gebruikt: {exc}"
+        )
+
     model = load_ifc_geometry(source)
+    model.warnings[:0] = exact_route_warnings
     shapes: list[cq.Shape] = []
     analytic_items: list[dict[str, Any]] = []
     for item in model.items:

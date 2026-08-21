@@ -1479,6 +1479,8 @@ class ProjectService:
         user: str = "system",
         embed_sources: bool = True,
     ) -> tuple[BOMSnapshot, dict[str, Path]]:
+        from cws_convertor.bom import export_bom_package
+
         with ProjectSession.open(project_path, store=self.store) as session:
             snapshot = session.build_bom(user=user)
             outputs: dict[str, Path] = {}

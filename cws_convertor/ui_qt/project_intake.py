@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -52,7 +53,9 @@ def build_project_from_models(
     missing = [str(path) for path in inputs if not path.is_file()]
     if missing:
         raise FileNotFoundError("Niet gevonden: " + ", ".join(missing))
-    allowed = {".ifc", ".step", ".stp", ".nc", ".nc1"}
+    model_allowed = {".ifc", ".step", ".stp", ".nc", ".nc1"}
+    auxiliary_allowed = {".pdf", ".dxf"}
+    allowed = model_allowed | auxiliary_allowed
     unsupported = [path.name for path in inputs if path.suffix.lower() not in allowed]
     if unsupported:
         raise ValueError("Niet ondersteund: " + ", ".join(unsupported))
@@ -64,10 +67,14 @@ def build_project_from_models(
     target.parent.mkdir(parents=True, exist_ok=True)
 
     import_sources: list[Path] = []
+    auxiliary_sources: list[Path] = []
     nc1_conversions: list[dict[str, object]] = []
     converted_root = target.parent / f"{target.stem}_converted_sources"
     for source in inputs:
         suffix = source.suffix.lower()
+        if suffix in auxiliary_allowed:
+            auxiliary_sources.append(source)
+            continue
         if suffix not in {".nc", ".nc1"}:
             import_sources.append(source)
             continue
@@ -152,6 +159,32 @@ def build_project_from_models(
             target.unlink(missing_ok=True)
         raise
 
+    auxiliary_records: list[dict[str, object]] = []
+    if auxiliary_sources:
+        documents_root = target.parent / f"{target.stem}_documents"
+        documents_root.mkdir(parents=True, exist_ok=True)
+        emit(92, f"Projectdocumenten insluiten ({len(auxiliary_sources)})")
+        for source in auxiliary_sources:
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            destination = documents_root / source.name
+            if destination.exists() and destination.resolve() != source.resolve():
+                destination = documents_root / f"{source.stem}_{digest[:8]}{source.suffix.lower()}"
+            if destination.resolve() != source.resolve():
+                shutil.copy2(source, destination)
+            auxiliary_records.append(
+                {
+                    "source": str(source),
+                    "embedded": str(destination),
+                    "kind": source.suffix.lower().lstrip(".").upper(),
+                    "sha256": digest,
+                    "size": source.stat().st_size,
+                }
+            )
+        (documents_root / "source_manifest.json").write_text(
+            json.dumps(auxiliary_records, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
     emit(100, "Projectcontainer gereed voor Viewer V15")
     return {
         "status": "ok",
@@ -160,6 +193,7 @@ def build_project_from_models(
         "registrations": [asdict(value) if is_dataclass(value) else str(value) for value in registrations],
         "imports": [asdict(value) if is_dataclass(value) else str(value) for value in imports],
         "nc1_conversions": nc1_conversions,
+        "auxiliary_sources": auxiliary_records,
         "summary": summary,
     }
 

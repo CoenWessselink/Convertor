@@ -17,6 +17,9 @@ from OCP.GeomAbs import GeomAbs_Cylinder
 from OCP.TopoDS import TopoDS
 
 BLOCK_RE = re.compile(r"^(ST|EN|BO|SI|AK|IK|PU|KO|SC|TO|UE|PR|KA|IN|E[0-9]|B[0-9]|A[0-9]|I[0-9]|P[0-9]|K[0-9]|S[0-9])$")
+NUMBER_TOKEN_RE = re.compile(
+    r"^([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[Ee][+-]?\d+)?)([A-Za-z]?)$"
+)
 
 
 def _float(text: str, default: float = 0.0) -> float:
@@ -24,6 +27,32 @@ def _float(text: str, default: float = 0.0) -> float:
     if not text:
         return default
     return float(text)
+
+
+def _block_name(line: str) -> str:
+    """Return a DSTV block name only when it starts in column zero.
+
+    Header values are indented and may legitimately equal ``P8`` or ``A1``.
+    Stripping before block detection therefore truncated valid headers.
+    """
+
+    if not line or line[0].isspace():
+        return ""
+    token = line.strip()
+    return token if BLOCK_RE.fullmatch(token) else ""
+
+
+def _number_with_suffix(text: str, allowed_suffixes: str = "") -> tuple[float, str]:
+    """Parse a DSTV number with an optional attached datum/operation code."""
+
+    token = text.strip()
+    match = NUMBER_TOKEN_RE.fullmatch(token)
+    if not match:
+        raise ValueError(f"ongeldig DSTV-getal: {text!r}")
+    suffix = match.group(2).lower()
+    if suffix and suffix not in allowed_suffixes:
+        raise ValueError(f"onbekende DSTV-code '{suffix}' in {text!r}")
+    return float(match.group(1).replace(",", ".")), suffix
 
 
 @dataclass
@@ -124,8 +153,7 @@ def parse_nc1(path: str | Path) -> NC1Part:
 
     header_lines: list[str] = []
     while i < len(lines):
-        token = lines[i].strip()
-        if BLOCK_RE.match(token):
+        if _block_name(lines[i]):
             break
         header_lines.append(lines[i])
         i += 1
@@ -171,20 +199,20 @@ def parse_nc1(path: str | Path) -> NC1Part:
     warnings: list[str] = []
 
     while i < len(lines):
-        block = lines[i].strip()
-        if not block:
+        block = _block_name(lines[i])
+        if not lines[i].strip():
             i += 1
             continue
         if block == "EN":
             break
-        if not BLOCK_RE.match(block):
+        if not block:
             warnings.append(f"Onverwachte regel buiten blok op regel {i + 1}: {lines[i]!r}")
             i += 1
             continue
 
         i += 1
         data: list[str] = []
-        while i < len(lines) and not BLOCK_RE.match(lines[i].strip()):
+        while i < len(lines) and not _block_name(lines[i]):
             if lines[i].strip() and not lines[i].lstrip().startswith("**"):
                 data.append(lines[i])
             i += 1
@@ -193,25 +221,24 @@ def parse_nc1(path: str | Path) -> NC1Part:
             current_face = ""
             pts: list[ContourPoint] = []
             for raw in data:
-                line = raw.ljust(80)
-                face = line[2].lower() if line[2].lower() in "vouh" else current_face
+                fields = raw.split()
+                face = fields[0].lower() if fields and fields[0].lower() in "vouh" else current_face
                 if face:
                     current_face = face
                 if not current_face:
                     warnings.append(f"Contour zonder vlak in {path.name}: {raw!r}")
                     continue
                 try:
-                    x = _float(line[3:14])
-                    datum = line[14].lower() if line[14].lower() in "osu" else ""
-                    q = _float(line[15:25])
-                    notch = line[25].lower() if line[25].lower() in "tw" else ""
-                    radius = _float(line[26:36])
-                    weld = (
-                        _float(line[36:47]),
-                        _float(line[47:58]),
-                        _float(line[58:69]),
-                        _float(line[69:80]),
-                    )
+                    offset = 1 if fields and fields[0].lower() in "vouh" else 0
+                    if len(fields) < offset + 2:
+                        raise ValueError("onvoldoende contourvelden")
+                    x, datum = _number_with_suffix(fields[offset], "osu")
+                    q, notch = _number_with_suffix(fields[offset + 1], "tw")
+                    remainder = fields[offset + 2 :]
+                    radius = _float(remainder[0]) if remainder else 0.0
+                    weld_values = [_float(value) for value in remainder[1:5]]
+                    weld_values.extend([0.0] * (4 - len(weld_values)))
+                    weld = tuple(weld_values[:4])
                     pts.append(ContourPoint(x, q, datum, notch, radius, weld))
                 except ValueError as exc:
                     warnings.append(f"Contourregel niet gelezen in {path.name}: {raw!r} ({exc})")
@@ -219,29 +246,22 @@ def parse_nc1(path: str | Path) -> NC1Part:
                 contours.append(Contour(block, current_face, pts))
         elif block == "BO":
             for raw in data:
-                line = raw.ljust(80)
-                face = line[2].lower() if line[2].lower() in "vouh" else ""
+                fields = raw.split()
+                face = fields[0].lower() if fields and fields[0].lower() in "vouh" else ""
                 if not face:
                     warnings.append(f"Boorgat zonder vlak in {path.name}: {raw!r}")
                     continue
                 try:
-                    x = _float(line[3:14])
-                    datum = line[14].lower() if line[14].lower() in "osu" else ""
-                    q = _float(line[15:25])
-                    # A DSTV special-operation code can be attached directly
-                    # to q, for example ``75.00s 33.60 8.80``.  Do not parse
-                    # that ``s`` as part of the diameter.
-                    op = ""
-                    diameter_start = 25
-                    if line[25:26].lower() in "glms":
-                        op = line[25:26].lower()
-                        diameter_start = 26
-                    diameter = _float(line[diameter_start:36])
-                    if not op and len(line) > 36 and line[36].lower() in "glms":
-                        op = line[36].lower()
-                    depth = _float(line[36:47]) if op else 0.0
-                    slot_length = _float(line[47:57]) if op == "l" and line[47:57].strip() else 0.0
-                    angle_deg = _float(line[67:77]) if op and line[67:77].strip() else 0.0
+                    if len(fields) < 4:
+                        raise ValueError("onvoldoende boorgatvelden")
+                    x, datum = _number_with_suffix(fields[1], "osu")
+                    q, op = _number_with_suffix(fields[2], "glms")
+                    diameter, diameter_op = _number_with_suffix(fields[3], "glms")
+                    op = op or diameter_op
+                    details = fields[4:]
+                    depth = _float(details[0]) if op and details else 0.0
+                    slot_length = _float(details[1]) if op == "l" and len(details) > 1 else 0.0
+                    angle_deg = _float(details[-1]) if op and len(details) >= 4 else 0.0
                     holes.append(Hole(face, x, q, diameter, datum, op, depth, slot_length, angle_deg))
                 except ValueError as exc:
                     warnings.append(f"Boorgatregel niet gelezen in {path.name}: {raw!r} ({exc})")
@@ -439,6 +459,28 @@ def _apply_holes(part: NC1Part, solid: cq.Workplane, profile_type: str, h: float
     # Through holes are cut before countersinks so the latter only removes the
     # annular cone around the already existing bore.
     holes = sorted(part.holes, key=lambda item: bool(item.operation or item.depth > 0))
+    unique_holes = []
+    seen_holes: set[tuple[object, ...]] = set()
+    for hole in holes:
+        hole_key = (
+            hole.face,
+            round(hole.x, 6),
+            round(hole.q, 6),
+            round(hole.diameter, 6),
+            hole.operation,
+            round(hole.depth, 6),
+            round(hole.slot_length, 6),
+            round(hole.angle_deg, 6),
+        )
+        if hole_key in seen_holes:
+            part.warnings.append(
+                f"Dubbele BO-bewerking overgeslagen: Ø{hole.diameter:g} op "
+                f"{hole.face} ({hole.x:g}, {hole.q:g})"
+            )
+            continue
+        seen_holes.add(hole_key)
+        unique_holes.append(hole)
+    holes = unique_holes
     for hole in holes:
         if hole.diameter <= 0:
             raise ValueError(f"Ongeldige gatdiameter: {hole.diameter:g}")

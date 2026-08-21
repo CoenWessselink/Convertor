@@ -129,7 +129,7 @@ if qt_available():
             root.addLayout(footer)
 
         def add_paths(self, values: Iterable[str | Path]) -> None:
-            allowed = {".cwscproj", ".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf"}
+            allowed = {".cwscproj", ".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf", ".dxf"}
             for value in values:
                 path = Path(value).expanduser().resolve()
                 if not path.is_file() or path.suffix.lower() not in allowed or path in self._paths:
@@ -154,7 +154,7 @@ if qt_available():
                 self,
                 "CWS-bestanden kiezen",
                 "",
-                "CWS-bestanden (*.cwscproj *.ifc *.step *.stp *.nc *.nc1 *.pdf)",
+                "CWS-bestanden (*.cwscproj *.ifc *.step *.stp *.nc *.nc1 *.pdf *.dxf)",
             )
             self.add_paths(names)
 
@@ -162,7 +162,7 @@ if qt_available():
             name = QtWidgets.QFileDialog.getExistingDirectory(self, "Map kiezen")
             if not name:
                 return
-            allowed = {".cwscproj", ".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf"}
+            allowed = {".cwscproj", ".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf", ".dxf"}
             self.add_paths(path for path in Path(name).iterdir() if path.suffix.lower() in allowed)
 
         def _route_selected(self) -> None:
@@ -490,6 +490,7 @@ if qt_available():
             "STEP": "STEP modellen (*.step *.stp)",
             "NC / NC1": "DSTV bestanden (*.nc *.nc1)",
             "PDF": "Technische PDF (*.pdf)",
+            "DXF": "Technische DXF (*.dxf)",
             "Pakket (ZIP)": "CWS pakketten (*.zip *.cwscproj)",
         }
 
@@ -656,6 +657,12 @@ if qt_available():
             upper = head.upper()
             if suffix == ".pdf":
                 return "PDF", "PDF-document herkend", head.startswith(b"%PDF-")
+            if suffix == ".dxf":
+                text = head.decode("latin-1", errors="ignore").upper()
+                valid = head.startswith(b"AutoCAD Binary DXF") or (
+                    "SECTION" in text and ("HEADER" in text or "ENTITIES" in text)
+                )
+                return "DXF", "CAD-uitwisselingstekening", valid
             if suffix == ".ifc":
                 valid = b"ISO-10303-21" in upper and b"IFC" in upper
                 edition = "IFC4" if b"IFC4" in upper else "IFC2x3 / IFC"
@@ -673,7 +680,7 @@ if qt_available():
             return suffix.upper().lstrip("."), "Onbekend formaat", False
 
         def add_paths(self, values: Iterable[str | Path]) -> None:
-            allowed = {".ifc", ".step", ".stp", ".nc", ".nc1", ".pdf", ".zip", ".cwscproj"}
+            allowed = {".ifc", ".step", ".stp", ".nc", ".nc1", ".pdf", ".dxf", ".zip", ".cwscproj"}
             for value in values:
                 path = Path(value).expanduser().resolve()
                 if not path.is_file() or path.suffix.lower() not in allowed:
@@ -706,10 +713,10 @@ if qt_available():
             self.files.clear()
             self.create.setEnabled(False)
             self.progress.setValue(0)
-            self.status.setText("Sleep IFC-, STEP-, NC1- of projectbestanden naar dit scherm")
+            self.status.setText("Sleep IFC-, STEP-, NC1-, PDF-, DXF- of projectbestanden naar dit scherm")
 
         def _choose_files(self, _checked: bool = False, *, format_filter: str = "") -> None:
-            file_filter = format_filter or "CWS bestanden (*.cwscproj *.ifc *.step *.stp *.nc *.nc1 *.pdf *.zip)"
+            file_filter = format_filter or "CWS bestanden (*.cwscproj *.ifc *.step *.stp *.nc *.nc1 *.pdf *.dxf *.zip)"
             names, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Bestanden importeren", "", file_filter)
             self.add_paths(names)
 

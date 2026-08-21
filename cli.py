@@ -35,7 +35,7 @@ def _iter_inputs(items: list[str], extensions: set[str]):
     for item in items:
         path = Path(item)
         if path.is_dir():
-            for candidate in sorted(path.iterdir()):
+            for candidate in sorted(path.rglob("*")):
                 if candidate.is_file() and candidate.suffix.lower() in extensions:
                     yield candidate
         elif path.is_file() and (not extensions or path.suffix.lower() in extensions):
