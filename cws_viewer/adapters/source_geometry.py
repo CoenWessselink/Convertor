@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib, json, shutil, zipfile
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 from cws_convertor.importers.ifc_project import (
     _GEOMETRY_STOP_TYPES,
@@ -133,19 +133,41 @@ class ProjectGeometryCatalog:
         if not items:return str(rep_id or ''),(),''
         digest=doc.combined_semantic_hash(items,ignore_types=_GEOMETRY_STOP_TYPES,order_independent=True)
         return str(rep_id or ''),tuple(str(x) for x in items),digest
-    def build(self,project:Any,resolver:ProjectSourceResolver)->'ProjectGeometryCatalog':
+    def build(
+        self,
+        project:Any,
+        resolver:ProjectSourceResolver,
+        *,
+        verify_ifc_source_geometry:bool=True,
+        progress:Callable[[float,str],None]|None=None,
+    )->'ProjectGeometryCatalog':
         records={}; unique={}; warnings=[]; missing=ifc_count=step_count=proxy_count=0; step_index:dict[str,int]={}
         cols=(dict(getattr(project,'parts',{}) or {}),dict(getattr(project,'purchased_items',{}) or {}),dict(getattr(project,'fasteners',{}) or {}),dict(getattr(project,'welds',{}) or {}))
         entities=[e for c in cols for e in c.values()]
-        for entity in sorted(entities,key=lambda e:str(getattr(e,'internal_id',''))):
+        ordered=sorted(entities,key=lambda e:str(getattr(e,'internal_id','')))
+        total=max(1,len(ordered))
+        if progress:progress(0.0,f'Geometriecatalogus voorbereiden · {len(ordered)} objecten')
+        for index,entity in enumerate(ordered,1):
             iid=str(getattr(entity,'internal_id','') or ''); sfid,se_id,fmt=self._entity_source(entity)
             if not iid or not sfid or not se_id:missing+=1;continue
             source=resolver.resolve(sfid); descriptor=dict(getattr(entity,'geometry_descriptor',{}) or {}); recwarn=[]; rep='';items=();solid_index=0;source_hash=''
             if fmt=='IFC':
-                doc=self._documents.get(sfid)
-                if doc is None:doc=P21Document.load(source.path);self._documents[sfid]=doc
-                rep,items,computed=self._ifc_items(doc,se_id); dh=str(descriptor.get('source_geometry_hash') or '').lower();source_hash=computed or dh
-                if dh and computed and dh!=computed:recwarn.append('IFC descriptorhash wijkt af van bron-Merklehash; bronhash gebruikt')
+                dh=str(descriptor.get('source_geometry_hash') or '').lower()
+                if verify_ifc_source_geometry:
+                    doc=self._documents.get(sfid)
+                    if doc is None:doc=P21Document.load(source.path);self._documents[sfid]=doc
+                    rep,items,computed=self._ifc_items(doc,se_id);source_hash=computed or dh
+                    if dh and computed and dh!=computed:recwarn.append('IFC descriptorhash wijkt af van bron-Merklehash; bronhash gebruikt')
+                else:
+                    # Large-project warm start: reuse the hashes and item
+                    # identities established by the canonical IFC importer.
+                    # Rewalking the complete IFC dependency graph for every
+                    # product adds no display value when all cache misses are
+                    # intentionally rendered as explicit proxies.
+                    rep=str(descriptor.get('source_representation_id') or '')
+                    raw_items=descriptor.get('source_item_ids') or descriptor.get('solid_root_entity_ids') or ()
+                    items=tuple(str(value) for value in raw_items)
+                    source_hash=dh
                 ifc_count+=1
             elif fmt=='STEP':
                 source_hash=str(descriptor.get('source_geometry_hash') or '').lower();items=tuple(str(v) for v in descriptor.get('solid_root_entity_ids',()) or ())
@@ -165,6 +187,8 @@ class ProjectGeometryCatalog:
                       ('explicit_proxy','true' if proxy else 'false'))
             rec=EntityGeometryRecord(iid,sfid,se_id,fmt,geometry_id,source_hash,rep,items,solid_index,bounds,tuple(recwarn),metadata)
             records[iid]=rec;unique.setdefault(geometry_id,rec);warnings.extend(f'{iid}: {m}' for m in recwarn)
+            if progress and (index==len(ordered) or index%32==0):
+                progress(index/total,f'Geometriecatalogus · {index}/{len(ordered)} objecten')
         self.records_by_entity=records;self.records_by_geometry=unique
         self.report=GeometryCatalogReport(len(records),len(unique),ifc_count,step_count,proxy_count,missing,len(dict(getattr(project,'sources',{}) or {})),tuple(warnings))
         return self

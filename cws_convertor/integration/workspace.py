@@ -25,6 +25,18 @@ from cws_viewer.backends.memory import MemoryRenderBackend
 from cws_viewer.core.controller import ViewerCoreController
 from cws_viewer.core.project_interaction import ProjectInteractionModel
 from cws_viewer.exact.catalog import load_step_exact
+
+
+def _renderable_entity_count(project: Any) -> int:
+    """Return the amount of entities that can contribute viewer geometry."""
+    return sum(
+        len(getattr(project, name, {}) or {})
+        for name in ("parts", "purchased_items", "fasteners", "welds")
+    )
+
+
+def _full_geometry_entity_limit() -> int:
+    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "750")))
 from cws_viewer.exact.workbench import ExactPartWorkbenchService
 from cws_viewer.properties import GridViewerBridge
 from .selection import (
@@ -185,6 +197,8 @@ class IntegratedProjectWorkspace:
             roots = list(source_search_roots)
             roots.extend(value.parent for value in session.source_paths.values())
             effective_prefer_proxy = bool(prefer_proxy)
+            renderable_entity_count = _renderable_entity_count(session.project)
+            entity_limit = _full_geometry_entity_limit()
             if load_all_geometry and allow_proxy and not effective_prefer_proxy:
                 limit = max(
                     8 * 1024 * 1024,
@@ -202,9 +216,12 @@ class IntegratedProjectWorkspace:
                 effective_prefer_proxy = bool(
                     source_sizes
                     and (max(source_sizes) > limit or sum(source_sizes) > limit * 2)
-                )
+                ) or renderable_entity_count > entity_limit
             if effective_prefer_proxy:
-                notify(31, "Grote IFC/STEP-bron gedetecteerd; responsieve proxyweergave voorbereiden")
+                notify(
+                    31,
+                    f"Groot model ({renderable_entity_count:,} objecten); responsieve 3D-weergave voorbereiden",
+                )
             else:
                 notify(31, "Exacte brongeometrie voorbereiden")
             loader = ProjectSceneLoader(
@@ -213,11 +230,16 @@ class IntegratedProjectWorkspace:
                 provider_factory=(lambda: ()) if effective_prefer_proxy else None,
             )
             notify(38, "Viewer-scene en geometriecatalogus opbouwen")
+            def relay_geometry_progress(ratio: float, message: str) -> None:
+                bounded = max(0.0, min(1.0, float(ratio)))
+                notify(38 + int(round(26 * bounded)), message)
             load_result = loader.load_project(
                 session.project,
                 project_path,
                 load_all=load_all_geometry,
                 allow_proxy=allow_proxy,
+                progress=relay_geometry_progress,
+                fast_proxy_catalog=effective_prefer_proxy,
             )
             notify(64, "Viewer-scene opgebouwd; selectie-index maken")
             if load_result.project is not session.project:

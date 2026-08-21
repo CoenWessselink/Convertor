@@ -79,8 +79,11 @@ if qt_available():
                     prefer_proxy=prefer_proxy,
                     progress_callback=lambda percent, message: self.progress.emit(percent, message),
                 )
-                if workspace.load_result.catalog_report.proxy_geometry_count:
-                    self.progress.emit(70, "Groot project: snelle 3D-proxyweergave opgebouwd")
+                if workspace.load_result.geometry_report.proxy_count:
+                    self.progress.emit(
+                        70,
+                        f"Responsieve 3D-weergave gereed · {workspace.load_result.geometry_report.proxy_count:,} geometrieën",
+                    )
                 self.progress.emit(80, "Viewer-scene en selectiecontext voorbereiden")
                 self.loaded.emit(workspace)
             except Exception as exc:

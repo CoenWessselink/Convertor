@@ -57,7 +57,8 @@ class ProjectSceneLoader:
 
     def load_project(self,project:object,project_path:str|Path,*,geometry_ids:Iterable[str]|None=None,load_all:bool=True,
                      allow_proxy:bool=True,token:CancellationToken|None=None,
-                     progress:ProgressCallback|None=None)->ProjectSceneLoadResult:
+                     progress:ProgressCallback|None=None,
+                     fast_proxy_catalog:bool=False)->ProjectSceneLoadResult:
         """Build a scene from an already-opened Canonical Project Model.
 
         The object is never cloned or re-opened.  This is the V9 integration
@@ -67,7 +68,13 @@ class ProjectSceneLoader:
         """
         start=time.perf_counter();timings=[];path=Path(project_path).expanduser().resolve()
         if token:token.check()
-        t=time.perf_counter();resolver=ProjectSourceResolver(project,project_package_path=path,search_roots=self.source_search_roots);catalog=ProjectGeometryCatalog().build(project,resolver);timings.append(('build_catalog',time.perf_counter()-t))
+        if progress:progress(0.01,'Bronidentiteiten en geometriecatalogus controleren')
+        t=time.perf_counter();resolver=ProjectSourceResolver(project,project_package_path=path,search_roots=self.source_search_roots);catalog=ProjectGeometryCatalog().build(
+            project,
+            resolver,
+            verify_ifc_source_geometry=not fast_proxy_catalog,
+            progress=(lambda ratio,message:progress(0.03+0.27*ratio,message)) if progress else None,
+        );timings.append(('build_catalog',time.perf_counter()-t))
         assert catalog.report is not None
         requests=catalog.unique_requests(resolver)
         if geometry_ids is not None:
@@ -92,16 +99,19 @@ class ProjectSceneLoader:
         ) if prefetch_keys else 0
         timings.append(('prefetch_geometry_cache',time.perf_counter()-t))
         if progress and requests:
-            progress(0.0,f'Cache voorbereid · {prefetch_hits}/{len(requests)} geometrieën')
+            progress(0.34,f'Cache voorbereid · {prefetch_hits}/{len(requests)} geometrieën')
 
         coordinator=GeometryLoadCoordinator(providers,proxy_provider=ProxyMeshProvider(),cache=cache,repository=repository,settings=self.settings,max_workers=1)
         t=time.perf_counter()
-        try:geometry_report=coordinator.load_many(requests,token=token,progress=progress,allow_proxy=allow_proxy)
+        geometry_progress=(lambda ratio,message:progress(0.36+0.52*ratio,message)) if progress else None
+        try:geometry_report=coordinator.load_many(requests,token=token,progress=geometry_progress,allow_proxy=allow_proxy)
         finally:coordinator.close()
         timings.append(('load_geometry',time.perf_counter()-t))
         if token:token.check()
+        if progress:progress(0.91,'Viewer-scene, plaatsingen en selectie-identiteiten opbouwen')
         t=time.perf_counter();adapter=SourceAppearanceProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository);timings.append(('build_scene',time.perf_counter()-t))
         assert adapter.last_report is not None
+        if progress:progress(1.0,'Viewer-scene en geometriecatalogus gereed')
         return ProjectSceneLoadResult(path,project,scene,repository,catalog,catalog.report,geometry_report,adapter.last_report,time.perf_counter()-start,tuple(timings))
 
 __all__=['ProjectSceneLoadResult','ProjectSceneLoader']
