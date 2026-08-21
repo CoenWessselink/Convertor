@@ -208,11 +208,11 @@ if qt_available():
             ("Modus", (("Bewerk modus", "nav:edit"), ("Apart venster", "viewer:detach"), ("Exporteren", "nav:export"), ("Meer", "viewer:tools"))),
         ),
         "edit": (
-            ("Bewerken", (("Toevoegen", "viewer:exact"), ("Verwijderen", "viewer:exact"), ("Dupliceren", "viewer:exact"))),
-            ("Volgorde", (("Omhoog", "viewer:exact"), ("Omlaag", "viewer:exact"))),
-            ("Data", (("Importeren", "convert:add"), ("Acties", "viewer:exact"))),
-            ("Controle", (("Vernieuwen", "scribing:refresh"), ("Validatie", "control:run"), ("Berekenen", "report:refresh"))),
-            ("Wijzigingen", (("Opslaan", "project:save"), ("Annuleren", "viewer:clear"))),
+            ("Bewerken", (("Toevoegen", "edit:add"), ("Verwijderen", "edit:delete"), ("Dupliceren", "edit:duplicate"))),
+            ("Volgorde", (("Omhoog", "edit:move_up"), ("Omlaag", "edit:move_down"))),
+            ("Data", (("Importeren", "edit:import"), ("Acties", "edit:actions"))),
+            ("Controle", (("Vernieuwen", "edit:refresh"), ("Validatie", "edit:validate"), ("Berekenen", "edit:calculate"))),
+            ("Wijzigingen", (("Opslaan", "edit:save"), ("Annuleren", "edit:cancel"))),
         ),
         "converter": (
             ("Acties", (("Converteren", "convert:run"), ("Batch converteren", "convert:run"), ("Validatie", "control:run"), ("Vergelijken", "nav:control"))),
@@ -503,6 +503,8 @@ if qt_available():
             try:
                 if namespace == "viewer":
                     self._viewer_ribbon_action(command)
+                elif namespace == "edit":
+                    self.edit_page.handle_ribbon(command)
                 elif namespace == "project" and command == "open":
                     self._choose_project()
                 elif namespace == "project" and command == "new":

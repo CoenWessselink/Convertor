@@ -3,7 +3,7 @@ setlocal EnableExtensions
 set PYTHONUTF8=1
 cd /d "%~dp0"
 
-set "CWS_VERSION=0.9.0-alpha-dev"
+set "CWS_VERSION=0.10.16-beta-dev"
 set "CWS_DIST=CWS_Convertor"
 set "CWS_RESULTS=%CD%\validation\results\windows-runtime"
 set "CWS_PORTABLE=%TEMP%\CWS_Convertor_Portable_Clean"
@@ -25,6 +25,7 @@ set "PYTHONPATH=%CD%"
 if not exist "%CWS_RESULTS%" mkdir "%CWS_RESULTS%"
 ".venv-build\Scripts\python.exe" -m compileall -q . || goto :error
 ".venv-build\Scripts\python.exe" validation\run_all_smokes_v9.py --headless-windows --output "%CWS_RESULTS%\source-smokes" || goto :error
+".venv-build\Scripts\python.exe" tests\edit_workspace_ui_smoke.py || goto :error
 ".venv-build\Scripts\python.exe" cli.py --version || goto :error
 ".venv-build\Scripts\python.exe" CWS_Convertor_App.py --self-test --output "%CWS_RESULTS%\source-native-selftest.json" || goto :error
 ".venv-build\Scripts\python.exe" CWS_Convertor_App.py --gui-smoke --output "%CWS_RESULTS%\source-gui-smoke.json" || goto :error

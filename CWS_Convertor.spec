@@ -10,6 +10,10 @@ native_packages = [
     "casadi",
     "ifcopenshell",
 ]
+
+# Keep SciPy discoverable by its normal PyInstaller hook without collect_all(),
+# which would otherwise bundle the full upstream test suite and test data.
+scientific_runtime_package = "scipy"
 data_packages = [
     "matplotlib",
     "PIL",

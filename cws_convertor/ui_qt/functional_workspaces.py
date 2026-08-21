@@ -1,6 +1,9 @@
 """Compact project-aware edit and drawing workspaces for the U4 shell."""
 from __future__ import annotations
 
+import copy
+import csv
+import json
 from pathlib import Path
 from typing import Any
 
@@ -38,7 +41,7 @@ if qt_available():
                 return str(value)
         return default
 
-    class EditWorkspacePanel(QtWidgets.QWidget):
+    class _LegacyEditWorkspacePanel(QtWidgets.QWidget):
         """Part-first editing that leaves the shared Viewer V15 readable."""
 
         action_requested = QtCore.Signal(str)
@@ -169,6 +172,7 @@ if qt_available():
             self.save.clicked.connect(self._save)
 
         def set_context(self, context: object, selection: object | None = None) -> None:
+            self._selection = selection
             workspace, entity, entity_id = _workspace_entity(context, selection)
             if workspace is None and type(context).__name__ == "UnifiedUiContextSnapshot":
                 return
@@ -320,6 +324,837 @@ if qt_available():
                 self._update_recognition_state(self._entity)
             except Exception as exc:
                 QtWidgets.QMessageBox.critical(self, "Bewerken", f"{type(exc).__name__}: {exc}")
+
+    class EditWorkspacePanel(QtWidgets.QWidget):
+        """Transactional part editor coupled to the shared Project Model and Viewer V15."""
+
+        action_requested = QtCore.Signal(str)
+
+        _FEATURE_LABELS = {
+            "hole": "Gat",
+            "countersunk_hole": "Verzonken gat",
+            "slot": "Sleufgat",
+            "cutout": "Uitsparing",
+            "end_cut": "Kopse snede",
+            "miter": "Verstek",
+            "scribe": "Markering",
+        }
+        _FEATURE_DEFAULTS = {
+            "hole": {"x_mm": 0.0, "y_mm": 0.0, "diameter_mm": 18.0, "depth": "Doorlopend"},
+            "countersunk_hole": {"x_mm": 0.0, "y_mm": 0.0, "diameter_mm": 18.0, "countersink_mm": 26.0, "depth": "Doorlopend"},
+            "slot": {"x_mm": 0.0, "y_mm": 0.0, "length_mm": 22.0, "width_mm": 14.0, "angle_deg": 0.0, "depth": "Doorlopend"},
+            "cutout": {"x_mm": 0.0, "y_mm": 0.0, "width_mm": 80.0, "height_mm": 35.0, "angle_deg": 0.0},
+            "end_cut": {"angle_deg": 0.0, "reference": "Linker uiteinde"},
+            "miter": {"angle_deg": 45.0, "reference": "Links + rechts"},
+            "scribe": {"x_mm": 0.0, "y_mm": 0.0, "text": "Nieuwe markering"},
+        }
+
+        def __init__(self, parent: Any | None = None) -> None:
+            super().__init__(parent)
+            self.setObjectName("cwsEditFunctionalPanel")
+            self.setMinimumHeight(410)
+            self.setMaximumHeight(650)
+            self._workspace = self._entity = None
+            self._entity_id = ""
+            self._draft_features: list[dict[str, Any]] = []
+            self._dirty = False
+            self._loading = False
+            try:
+                from profile_database import ProfileDatabase
+                from material_database import MaterialDatabase
+
+                self._profile_database = ProfileDatabase()
+                self._material_database = MaterialDatabase()
+            except Exception:
+                self._profile_database = self._material_database = None
+            self._build()
+
+        @staticmethod
+        def _number(value: Any, default: float = 0.0) -> float:
+            try:
+                return float(str(value).replace(",", "."))
+            except (TypeError, ValueError):
+                return default
+
+        @staticmethod
+        def _new_spin(*, maximum: float = 1_000_000_000.0, suffix: str = "") -> Any:
+            spin = QtWidgets.QDoubleSpinBox()
+            spin.setRange(0.0, maximum)
+            spin.setDecimals(3)
+            spin.setSingleStep(1.0)
+            if suffix:
+                spin.setSuffix(suffix)
+            return spin
+
+        def _build(self) -> None:
+            root = QtWidgets.QVBoxLayout(self)
+            root.setContentsMargins(12, 8, 12, 8)
+            root.setSpacing(6)
+
+            heading = QtWidgets.QHBoxLayout()
+            self.title = QtWidgets.QLabel("Bewerken")
+            self.title.setObjectName("workspaceTitle")
+            self.context = QtWidgets.QLabel("Selecteer een onderdeel in Viewer, Project Explorer of BOM")
+            self.context.setObjectName("mutedText")
+            self.live_status = QtWidgets.QLabel("●  Centrale selectie actief")
+            self.live_status.setObjectName("liveStatus")
+            heading.addWidget(self.title)
+            heading.addWidget(self.context, 1)
+            heading.addWidget(self.live_status)
+            root.addLayout(heading)
+
+            self.tabs = QtWidgets.QTabWidget()
+            self.tabs.setDocumentMode(True)
+            root.addWidget(self.tabs, 1)
+            self._build_general_tab()
+            self._build_extra_tab()
+            self._build_operations_tab()
+            self.angle_table = self._build_subset_tab("Hoeken", {"cutout", "end_cut", "miter"})
+            self.hole_table = self._build_subset_tab("Gaten", {"hole", "countersunk_hole", "slot"})
+            self._build_codes_tab()
+            self._build_prices_tab()
+            self._build_times_tab()
+
+            footer = QtWidgets.QHBoxLayout()
+            self.status = QtWidgets.QLabel("Geen onderdeel geselecteerd")
+            self.status.setObjectName("mutedText")
+            self.refresh_button = QtWidgets.QPushButton("Vernieuwen")
+            self.validate = QtWidgets.QPushButton("Valideren")
+            self.calculate = QtWidgets.QPushButton("Berekenen")
+            self.cancel = QtWidgets.QPushButton("Annuleren")
+            self.save = QtWidgets.QPushButton("Opslaan")
+            self.save.setObjectName("primaryButton")
+            for button in (self.refresh_button, self.validate, self.calculate, self.cancel, self.save):
+                button.setEnabled(False)
+            footer.addWidget(self.status, 1)
+            footer.addWidget(self.refresh_button)
+            footer.addWidget(self.validate)
+            footer.addWidget(self.calculate)
+            footer.addWidget(self.cancel)
+            footer.addWidget(self.save)
+            root.addLayout(footer)
+
+            self.refresh_button.clicked.connect(self.refresh_from_project)
+            self.validate.clicked.connect(self.validate_draft)
+            self.calculate.clicked.connect(self.calculate_draft)
+            self.cancel.clicked.connect(self.cancel_changes)
+            self.save.clicked.connect(self.save_changes)
+            self._connect_dirty_signals()
+
+        def _build_general_tab(self) -> None:
+            general = QtWidgets.QWidget()
+            grid = QtWidgets.QGridLayout(general)
+            grid.setContentsMargins(8, 8, 8, 8)
+            grid.setHorizontalSpacing(10)
+            self.part_id = QtWidgets.QLineEdit()
+            self.profile = QtWidgets.QComboBox()
+            self.profile.setEditable(True)
+            profile_names = [profile.designation for profile in getattr(self._profile_database, "profiles", ())]
+            self.profile.addItems(["", *sorted(profile_names)])
+            self.material = QtWidgets.QComboBox()
+            self.material.setEditable(True)
+            material_names = [material.code for material in getattr(self._material_database, "materials", ())]
+            self.material.addItems(["", *sorted(material_names)])
+            self.length = self._new_spin(suffix=" mm")
+            self.description = QtWidgets.QLineEdit()
+            self.coating = QtWidgets.QLineEdit()
+            widgets = (
+                ("Part ID / positie", self.part_id),
+                ("Profiel", self.profile),
+                ("Materiaal", self.material),
+                ("Lengte", self.length),
+                ("Omschrijving", self.description),
+                ("Coating", self.coating),
+            )
+            for index, (label, widget) in enumerate(widgets):
+                row, column = divmod(index, 3)
+                grid.addWidget(QtWidgets.QLabel(label), row * 2, column)
+                grid.addWidget(widget, row * 2 + 1, column)
+            for column in range(3):
+                grid.setColumnStretch(column, 1)
+            self.tabs.addTab(general, "Algemeen")
+
+        def _build_extra_tab(self) -> None:
+            extra = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(extra)
+            layout.setContentsMargins(8, 8, 8, 8)
+            self.recognition_state = QtWidgets.QLabel("Selecteer een onderdeel voor profiel- en materiaalherkenning")
+            self.recognition_state.setWordWrap(True)
+            self.recognition_state.setObjectName("safetyStatus")
+            layout.addWidget(self.recognition_state)
+            tools = QtWidgets.QHBoxLayout()
+            self.profile_search = QtWidgets.QLineEdit()
+            self.profile_search.setPlaceholderText("Zoek profiel, familie of norm")
+            self.profile_search.setClearButtonEnabled(True)
+            self.confirm_profile = QtWidgets.QPushButton("Profiel bevestigen")
+            tools.addWidget(self.profile_search, 1)
+            tools.addWidget(self.confirm_profile)
+            layout.addLayout(tools)
+            self.profile_matches = QtWidgets.QTableWidget(0, 6)
+            self.profile_matches.setHorizontalHeaderLabels(("Profiel", "Type", "Familie", "h", "b", "kg/m"))
+            self.profile_matches.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.profile_matches.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+            self.profile_matches.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.profile_matches.verticalHeader().hide()
+            self.profile_matches.horizontalHeader().setStretchLastSection(True)
+            layout.addWidget(self.profile_matches, 1)
+            self.source_info = QtWidgets.QLabel("Bron: -")
+            self.source_info.setObjectName("mutedText")
+            layout.addWidget(self.source_info)
+            self.tabs.addTab(extra, "Extra info.")
+            self.profile_search.textChanged.connect(self._refresh_profile_suggestions)
+            self.confirm_profile.clicked.connect(self._confirm_profile_selection)
+            self.profile_matches.itemDoubleClicked.connect(lambda _item: self._confirm_profile_selection())
+            self._refresh_profile_suggestions()
+
+        def _build_operations_tab(self) -> None:
+            operations = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(operations)
+            layout.setContentsMargins(8, 8, 8, 8)
+            tools = QtWidgets.QHBoxLayout()
+            self.add_operation = QtWidgets.QToolButton()
+            self.add_operation.setText("Toevoegen")
+            self.add_operation.setObjectName("editAddOperation")
+            self.add_operation.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+            add_menu = QtWidgets.QMenu(self.add_operation)
+            for kind in ("hole", "countersunk_hole", "slot", "cutout", "end_cut", "miter", "scribe"):
+                action = add_menu.addAction(self._FEATURE_LABELS[kind])
+                action.triggered.connect(lambda _checked=False, value=kind: self.add_feature(value))
+            self.add_operation.setMenu(add_menu)
+            self.add_operation.clicked.connect(lambda: self.add_feature("hole"))
+            self.delete_operation = QtWidgets.QPushButton("Verwijderen")
+            self.duplicate_operation = QtWidgets.QPushButton("Dupliceren")
+            self.move_up = QtWidgets.QPushButton("Omhoog")
+            self.move_down = QtWidgets.QPushButton("Omlaag")
+            self.import_button = QtWidgets.QPushButton("Importeren")
+            self.actions_button = QtWidgets.QToolButton()
+            self.actions_button.setText("Acties")
+            self.actions_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+            actions_menu = QtWidgets.QMenu(self.actions_button)
+            actions_menu.addAction("Bewerkingen importeren...", self.choose_import)
+            actions_menu.addAction("Bewerkingen exporteren...", self.choose_export)
+            actions_menu.addSeparator()
+            actions_menu.addAction("Conceptbewerkingen verwijderen", self.remove_concepts)
+            actions_menu.addAction("Opnieuw laden uit Project Model", lambda: self.refresh_from_project(force=True))
+            self.actions_button.setMenu(actions_menu)
+            for button in (
+                self.add_operation,
+                self.delete_operation,
+                self.duplicate_operation,
+                self.move_up,
+                self.move_down,
+                self.import_button,
+                self.actions_button,
+            ):
+                tools.addWidget(button)
+            tools.addStretch(1)
+            layout.addLayout(tools)
+            self.features = QtWidgets.QTableWidget(0, 13)
+            self.features.setHorizontalHeaderLabels((
+                "#", "Type", "Aanzicht", "X (mm)", "Y (mm)", "Referentie", "Maat",
+                "Diepte", "Breedte", "Hoogte", "Hoek", "Omschrijving", "Status",
+            ))
+            self.features.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.features.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+            self.features.setAlternatingRowColors(True)
+            self.features.horizontalHeader().setStretchLastSection(True)
+            self.features.verticalHeader().hide()
+            layout.addWidget(self.features, 1)
+            self.tabs.addTab(operations, "Bewerkingen")
+            self.delete_operation.clicked.connect(self.delete_selected_features)
+            self.duplicate_operation.clicked.connect(self.duplicate_selected_feature)
+            self.move_up.clicked.connect(lambda: self.move_selected_feature(-1))
+            self.move_down.clicked.connect(lambda: self.move_selected_feature(1))
+            self.import_button.clicked.connect(self.choose_import)
+            self.features.itemChanged.connect(self._feature_item_changed)
+
+        def _build_subset_tab(self, title: str, kinds: set[str]) -> Any:
+            page = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(page)
+            layout.setContentsMargins(8, 8, 8, 8)
+            help_text = QtWidgets.QLabel(
+                "Dubbelklik een regel om dezelfde bewerking in de centrale bewerkingstabel te openen."
+            )
+            help_text.setObjectName("mutedText")
+            layout.addWidget(help_text)
+            table = QtWidgets.QTableWidget(0, 6)
+            table.setProperty("featureKinds", tuple(sorted(kinds)))
+            table.setHorizontalHeaderLabels(("#", "Type", "Positie", "Maat", "Omschrijving", "Status"))
+            table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+            table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            table.setAlternatingRowColors(True)
+            table.verticalHeader().hide()
+            table.horizontalHeader().setStretchLastSection(True)
+            table.itemDoubleClicked.connect(lambda item, source=table: self._open_subset_feature(source, item.row()))
+            layout.addWidget(table, 1)
+            self.tabs.addTab(page, title)
+            return table
+
+        def _build_codes_tab(self) -> None:
+            page = QtWidgets.QWidget()
+            form = QtWidgets.QFormLayout(page)
+            form.setContentsMargins(12, 12, 12, 12)
+            self.mark_code = QtWidgets.QLineEdit()
+            self.revision = QtWidgets.QLineEdit()
+            self.phase = QtWidgets.QLineEdit()
+            self.article_code = QtWidgets.QLineEdit()
+            form.addRow("Merk / naam", self.mark_code)
+            form.addRow("Revisie", self.revision)
+            form.addRow("Fase", self.phase)
+            form.addRow("Artikelcode", self.article_code)
+            self.tabs.addTab(page, "Coderingen")
+
+        def _build_prices_tab(self) -> None:
+            page = QtWidgets.QWidget()
+            form = QtWidgets.QFormLayout(page)
+            form.setContentsMargins(12, 12, 12, 12)
+            self.material_cost = self._new_spin(suffix=" EUR")
+            self.hourly_rate = self._new_spin(maximum=100_000.0, suffix=" EUR/u")
+            self.operation_cost = self._new_spin(suffix=" EUR")
+            self.total_cost = self._new_spin(suffix=" EUR")
+            self.total_cost.setReadOnly(True)
+            form.addRow("Materiaalkosten", self.material_cost)
+            form.addRow("Uurtarief", self.hourly_rate)
+            form.addRow("Bewerkingskosten", self.operation_cost)
+            form.addRow("Totaal", self.total_cost)
+            self.tabs.addTab(page, "Prijzen")
+
+        def _build_times_tab(self) -> None:
+            page = QtWidgets.QWidget()
+            form = QtWidgets.QFormLayout(page)
+            form.setContentsMargins(12, 12, 12, 12)
+            self.setup_minutes = self._new_spin(maximum=1_000_000.0, suffix=" min")
+            self.processing_minutes = self._new_spin(maximum=1_000_000.0, suffix=" min")
+            self.total_minutes = self._new_spin(maximum=1_000_000.0, suffix=" min")
+            self.total_minutes.setReadOnly(True)
+            form.addRow("Insteltijd", self.setup_minutes)
+            form.addRow("Bewerkingstijd", self.processing_minutes)
+            form.addRow("Totale tijd", self.total_minutes)
+            self.tabs.addTab(page, "Bewerkingstijden")
+
+        def _connect_dirty_signals(self) -> None:
+            for widget in (
+                self.part_id, self.description, self.coating, self.mark_code,
+                self.revision, self.phase, self.article_code,
+            ):
+                widget.textEdited.connect(self.mark_dirty)
+            for combo in (self.profile, self.material):
+                combo.currentTextChanged.connect(self.mark_dirty)
+            for spin in (
+                self.length, self.material_cost, self.hourly_rate, self.operation_cost,
+                self.setup_minutes, self.processing_minutes,
+            ):
+                spin.valueChanged.connect(self.mark_dirty)
+
+        def set_context(self, context: object, selection: object | None = None) -> None:
+            workspace, entity, entity_id = _workspace_entity(context, selection)
+            if workspace is None and type(context).__name__ == "UnifiedUiContextSnapshot":
+                return
+            if entity_id == self._entity_id and entity is self._entity and self._dirty:
+                self._workspace = workspace
+                self._selection = selection
+                return
+            self._workspace, self._entity, self._entity_id, self._selection = workspace, entity, entity_id, selection
+            self._load_entity_state()
+
+        def _load_entity_state(self) -> None:
+            self._loading = True
+            try:
+                entity = self._entity
+                self.part_id.setText(_value(entity, "part_position", "mark", default=self._entity_id))
+                self.profile.setCurrentText(_value(entity, "normalized_profile", "profile", "profile_name"))
+                self.material.setCurrentText(_value(entity, "normalized_material", "material_grade", "material"))
+                self.length.setValue(self._number(_value(entity, "length_mm", "length")))
+                self.description.setText(_value(entity, "description", "name"))
+                self.coating.setText(_value(entity, "coating"))
+                self.mark_code.setText(_value(entity, "mark", "name", default=self.part_id.text()))
+                self.revision.setText(_value(entity, "revision", default="A"))
+                self.phase.setText(_value(entity, "phase"))
+                self.article_code.setText(_value(entity, "article_code", "article_number"))
+                workbench = getattr(entity, "workbench", {}) if entity is not None else {}
+                workbench = workbench if isinstance(workbench, dict) else {}
+                editor = workbench.get("ui_editor") if isinstance(workbench.get("ui_editor"), dict) else {}
+                if "description" in editor:
+                    self.description.setText(str(editor.get("description") or ""))
+                if "coating" in editor:
+                    self.coating.setText(str(editor.get("coating") or ""))
+                self.material_cost.setValue(self._number(editor.get("material_cost")))
+                self.hourly_rate.setValue(self._number(editor.get("hourly_rate"), 75.0))
+                self.operation_cost.setValue(self._number(editor.get("operation_cost")))
+                self.total_cost.setValue(self._number(editor.get("total_cost")))
+                self.setup_minutes.setValue(self._number(editor.get("setup_minutes")))
+                self.processing_minutes.setValue(self._number(editor.get("processing_minutes")))
+                self.total_minutes.setValue(self._number(editor.get("total_minutes")))
+                revision = workbench.get("current_revision") if isinstance(workbench.get("current_revision"), dict) else {}
+                raw = revision.get("features")
+                if raw is None:
+                    raw = getattr(entity, "features", ()) if entity is not None else ()
+                if isinstance(raw, dict):
+                    raw = list(raw.values())
+                self._draft_features = [self._normalise_feature(item) for item in (raw or ())]
+                self._refresh_feature_views()
+                name = self.part_id.text() or "Geen onderdeel"
+                self.title.setText(f"Bewerken - {name}" if self._entity_id else "Bewerken")
+                self.context.setText(
+                    "Selectie, eigenschappen en Viewer zijn gesynchroniseerd"
+                    if entity is not None else "Selecteer een maakdeel om te bewerken"
+                )
+                source = getattr(entity, "source_identity", None) if entity is not None else None
+                source_format = getattr(source, "source_format", "-") if source is not None else "-"
+                source_id = getattr(source, "source_entity_id", "-") if source is not None else "-"
+                self.source_info.setText(f"Bron: {source_format} | bronobject: {source_id}")
+                self._update_recognition_state(entity)
+                self._set_enabled(entity is not None)
+                self.set_dirty(False)
+                self.status.setText(
+                    f"{len(self._draft_features)} productiebewerking(en) geladen"
+                    if entity is not None else "Geen onderdeel geselecteerd"
+                )
+            finally:
+                self._loading = False
+
+        def _set_enabled(self, enabled: bool) -> None:
+            for button in (
+                self.add_operation, self.delete_operation, self.duplicate_operation,
+                self.move_up, self.move_down, self.import_button, self.actions_button,
+                self.refresh_button, self.validate, self.calculate, self.save,
+            ):
+                button.setEnabled(enabled)
+            self.cancel.setEnabled(enabled and self._dirty)
+
+        def mark_dirty(self, *_: Any) -> None:
+            if not self._loading and self._entity is not None:
+                self.set_dirty(True)
+
+        def set_dirty(self, dirty: bool) -> None:
+            self._dirty = bool(dirty)
+            if hasattr(self, "cancel"):
+                self.cancel.setEnabled(self._entity is not None and self._dirty)
+            if hasattr(self, "save"):
+                self.save.setEnabled(self._entity is not None)
+            if self._entity is not None:
+                self.live_status.setText("●  Niet-opgeslagen wijzigingen" if self._dirty else "●  Centrale selectie actief")
+
+        def _normalise_feature(self, feature: Any) -> dict[str, Any]:
+            if not isinstance(feature, dict):
+                return {
+                    "kind": "scribe", "view": "3D", "parameters": {},
+                    "description": str(feature), "status": "Review", "contract_version": "1.0",
+                }
+            item = copy.deepcopy(feature)
+            kind = str(item.get("kind") or item.get("type") or "scribe").strip().lower().replace(" ", "_")
+            aliases = {"gat": "hole", "sleufgat": "slot", "uitsparing": "cutout", "verstrek": "miter", "verstek": "miter", "markering": "scribe"}
+            kind = aliases.get(kind, kind)
+            parameters = item.get("parameters") if isinstance(item.get("parameters"), dict) else {}
+            parameters = copy.deepcopy(parameters)
+            for key in ("x_mm", "y_mm", "diameter_mm", "length_mm", "width_mm", "height_mm", "angle_deg", "depth", "reference", "text", "countersink_mm"):
+                if key in item and key not in parameters:
+                    parameters[key] = item[key]
+            return {
+                "kind": kind,
+                "view": str(item.get("view") or item.get("side") or "3D"),
+                "parameters": parameters,
+                "description": str(item.get("description") or item.get("name") or self._FEATURE_LABELS.get(kind, kind.title())),
+                "status": str(item.get("status") or "Review"),
+                "contract_version": str(item.get("contract_version") or "1.0"),
+            }
+
+        def add_feature(self, kind: str = "hole") -> None:
+            if self._entity is None:
+                self.status.setText("Selecteer eerst een maakdeel")
+                return
+            kind = kind if kind in self._FEATURE_DEFAULTS else "hole"
+            self._draft_features.append({
+                "kind": kind,
+                "view": "Boven" if kind in {"hole", "countersunk_hole", "slot"} else "3D",
+                "parameters": copy.deepcopy(self._FEATURE_DEFAULTS[kind]),
+                "description": f"Nieuwe {self._FEATURE_LABELS[kind].lower()}",
+                "status": "Concept",
+                "contract_version": "1.0",
+            })
+            index = len(self._draft_features) - 1
+            self._refresh_feature_views(select_index=index)
+            self.set_dirty(True)
+            self.status.setText(f"{self._FEATURE_LABELS[kind]} toegevoegd; valideer voor opslaan")
+
+        def _selected_feature_indices(self) -> list[int]:
+            indices: set[int] = set()
+            for model_index in self.features.selectionModel().selectedRows():
+                item = self.features.item(model_index.row(), 0)
+                if item is not None:
+                    value = item.data(QtCore.Qt.ItemDataRole.UserRole)
+                    if isinstance(value, int) and value >= 0:
+                        indices.add(value)
+            return sorted(indices)
+
+        def delete_selected_features(self) -> None:
+            indices = self._selected_feature_indices()
+            if not indices:
+                self.status.setText("Selecteer eerst een bewerking; het basisprofiel kan niet worden verwijderd")
+                return
+            for index in reversed(indices):
+                del self._draft_features[index]
+            self._refresh_feature_views()
+            self.set_dirty(True)
+            self.status.setText(f"{len(indices)} bewerking(en) verwijderd")
+
+        def duplicate_selected_feature(self) -> None:
+            indices = self._selected_feature_indices()
+            if len(indices) != 1:
+                self.status.setText("Selecteer precies één bewerking om te dupliceren")
+                return
+            source = indices[0]
+            duplicate = copy.deepcopy(self._draft_features[source])
+            duplicate["description"] = f"{duplicate['description']} (kopie)"
+            duplicate["status"] = "Concept"
+            self._draft_features.insert(source + 1, duplicate)
+            self._refresh_feature_views(select_index=source + 1)
+            self.set_dirty(True)
+
+        def move_selected_feature(self, direction: int) -> None:
+            indices = self._selected_feature_indices()
+            if len(indices) != 1:
+                self.status.setText("Selecteer precies één bewerking om te verplaatsen")
+                return
+            source = indices[0]
+            target = max(0, min(len(self._draft_features) - 1, source + (-1 if direction < 0 else 1)))
+            if source == target:
+                return
+            self._draft_features[source], self._draft_features[target] = self._draft_features[target], self._draft_features[source]
+            self._refresh_feature_views(select_index=target)
+            self.set_dirty(True)
+
+        def _feature_values(self, index: int, feature: dict[str, Any]) -> tuple[str, ...]:
+            parameters = feature["parameters"]
+            kind = feature["kind"]
+            size = "-"
+            if kind in {"hole", "countersunk_hole"}:
+                size = f"Ø{self._number(parameters.get('diameter_mm')):g}"
+                if kind == "countersunk_hole":
+                    size += f" / Ø{self._number(parameters.get('countersink_mm')):g}"
+            elif kind == "slot":
+                size = f"{self._number(parameters.get('length_mm')):g}x{self._number(parameters.get('width_mm')):g}"
+            elif kind == "cutout":
+                size = f"{self._number(parameters.get('width_mm')):g}x{self._number(parameters.get('height_mm')):g}"
+            return (
+                str(index + 2), self._FEATURE_LABELS.get(kind, kind.title()), str(feature.get("view") or "3D"),
+                self._display_number(parameters.get("x_mm")), self._display_number(parameters.get("y_mm")),
+                str(parameters.get("reference") or "Bron"), size, str(parameters.get("depth") or "-"),
+                self._display_number(parameters.get("width_mm")), self._display_number(parameters.get("height_mm")),
+                self._display_number(parameters.get("angle_deg")), str(feature.get("description") or ""),
+                str(feature.get("status") or "Review"),
+            )
+
+        def _display_number(self, value: Any) -> str:
+            return "-" if value in (None, "") else f"{self._number(value):g}"
+
+        def _refresh_feature_views(self, select_index: int | None = None) -> None:
+            self._loading = True
+            try:
+                profile = self.profile.currentText().strip() if hasattr(self, "profile") else ""
+                self.features.setRowCount(1 + len(self._draft_features))
+                base = ("1", "Basisprofiel", "3D", "-", "-", profile or "Brongeometrie", "-", "-", "-", "-", "-", profile or "Basisprofiel", "OK")
+                for column, value in enumerate(base):
+                    item = QtWidgets.QTableWidgetItem(value)
+                    item.setData(QtCore.Qt.ItemDataRole.UserRole, -1)
+                    item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+                    self.features.setItem(0, column, item)
+                for index, feature in enumerate(self._draft_features):
+                    for column, value in enumerate(self._feature_values(index, feature)):
+                        item = QtWidgets.QTableWidgetItem(value)
+                        item.setData(QtCore.Qt.ItemDataRole.UserRole, index)
+                        if column in {0, 1}:
+                            item.setFlags(item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+                        self.features.setItem(index + 1, column, item)
+                self._populate_subset(self.angle_table, {"cutout", "end_cut", "miter"})
+                self._populate_subset(self.hole_table, {"hole", "countersunk_hole", "slot"})
+                if select_index is not None and 0 <= select_index < len(self._draft_features):
+                    self.features.selectRow(select_index + 1)
+            finally:
+                self._loading = False
+
+        def _populate_subset(self, table: Any, kinds: set[str]) -> None:
+            rows = [(index, feature) for index, feature in enumerate(self._draft_features) if feature["kind"] in kinds]
+            table.setRowCount(len(rows))
+            for row, (index, feature) in enumerate(rows):
+                parameters = feature["parameters"]
+                position = f"X={self._display_number(parameters.get('x_mm'))}, Y={self._display_number(parameters.get('y_mm'))}"
+                values = (
+                    str(index + 1), self._FEATURE_LABELS.get(feature["kind"], feature["kind"]), position,
+                    self._feature_values(index, feature)[6], feature["description"], feature["status"],
+                )
+                for column, value in enumerate(values):
+                    item = QtWidgets.QTableWidgetItem(value)
+                    item.setData(QtCore.Qt.ItemDataRole.UserRole, index)
+                    table.setItem(row, column, item)
+
+        def _open_subset_feature(self, table: Any, row: int) -> None:
+            item = table.item(row, 0)
+            index = item.data(QtCore.Qt.ItemDataRole.UserRole) if item is not None else None
+            if isinstance(index, int):
+                self.tabs.setCurrentIndex(2)
+                self.features.selectRow(index + 1)
+                self.features.scrollToItem(self.features.item(index + 1, 0))
+
+        def _feature_item_changed(self, item: Any) -> None:
+            if self._loading or item is None:
+                return
+            index = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if not isinstance(index, int) or not (0 <= index < len(self._draft_features)):
+                return
+            feature = self._draft_features[index]
+            parameters = feature["parameters"]
+            column = item.column()
+            if column == 2:
+                feature["view"] = item.text().strip() or "3D"
+            elif column in {3, 4, 8, 9, 10}:
+                key = {3: "x_mm", 4: "y_mm", 8: "width_mm", 9: "height_mm", 10: "angle_deg"}[column]
+                parameters[key] = self._number(item.text())
+            elif column == 5:
+                parameters["reference"] = item.text().strip()
+            elif column == 7:
+                parameters["depth"] = item.text().strip()
+            elif column == 11:
+                feature["description"] = item.text().strip()
+            elif column == 12:
+                feature["status"] = item.text().strip()
+            self.set_dirty(True)
+            self._populate_subset(self.angle_table, {"cutout", "end_cut", "miter"})
+            self._populate_subset(self.hole_table, {"hole", "countersunk_hole", "slot"})
+
+        def validate_draft(self) -> bool:
+            issues: list[str] = []
+            for index, feature in enumerate(self._draft_features, start=1):
+                kind = feature["kind"]
+                parameters = feature["parameters"]
+                valid = True
+                if kind in {"hole", "countersunk_hole"} and self._number(parameters.get("diameter_mm")) <= 0:
+                    valid = False
+                if kind == "slot" and (self._number(parameters.get("length_mm")) <= 0 or self._number(parameters.get("width_mm")) <= 0):
+                    valid = False
+                if kind == "cutout" and (self._number(parameters.get("width_mm")) <= 0 or self._number(parameters.get("height_mm")) <= 0):
+                    valid = False
+                feature["status"] = "OK" if valid else "Review"
+                if not valid:
+                    issues.append(f"Bewerking {index} ({self._FEATURE_LABELS.get(kind, kind)}) heeft ongeldige maatvoering")
+            self._refresh_feature_views()
+            self.set_dirty(True)
+            self.status.setText("Bewerkingen gevalideerd: geen fouten" if not issues else " | ".join(issues))
+            return not issues
+
+        def calculate_draft(self) -> None:
+            factors = {"hole": 0.65, "countersunk_hole": 0.95, "slot": 1.40, "cutout": 2.20, "end_cut": 1.25, "miter": 1.50, "scribe": 0.45}
+            processing = sum(factors.get(feature["kind"], 1.0) for feature in self._draft_features)
+            self._loading = True
+            try:
+                self.processing_minutes.setValue(processing)
+                total_minutes = self.setup_minutes.value() + processing
+                self.total_minutes.setValue(total_minutes)
+                operation_cost = total_minutes / 60.0 * self.hourly_rate.value()
+                self.operation_cost.setValue(operation_cost)
+                self.total_cost.setValue(self.material_cost.value() + operation_cost)
+            finally:
+                self._loading = False
+            self.set_dirty(True)
+            self.status.setText(f"Berekend: {self.total_minutes.value():.2f} min | {self.total_cost.value():.2f} EUR")
+
+        def choose_import(self) -> None:
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Bewerkingen importeren", "", "Bewerkingen (*.json *.csv)")
+            if path:
+                self.import_operations(Path(path))
+
+        def import_operations(self, path: Path) -> int:
+            path = Path(path)
+            if path.suffix.lower() == ".json":
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                rows = payload.get("features", []) if isinstance(payload, dict) else payload
+            elif path.suffix.lower() == ".csv":
+                with path.open("r", encoding="utf-8-sig", newline="") as handle:
+                    rows = list(csv.DictReader(handle))
+            else:
+                raise ValueError("Alleen JSON- en CSV-bewerkingsbestanden worden ondersteund")
+            imported = [self._normalise_feature(row) for row in rows if isinstance(row, dict)]
+            self._draft_features.extend(imported)
+            self._refresh_feature_views(select_index=len(self._draft_features) - 1 if imported else None)
+            if imported:
+                self.set_dirty(True)
+            self.status.setText(f"{len(imported)} bewerking(en) geïmporteerd uit {path.name}")
+            return len(imported)
+
+        def choose_export(self) -> None:
+            default = f"{self.part_id.text() or 'onderdeel'}_bewerkingen.json"
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Bewerkingen exporteren", default, "JSON (*.json)")
+            if path:
+                self.export_operations(Path(path))
+
+        def export_operations(self, path: Path) -> Path:
+            path = Path(path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps({"schema_version": "1.0", "part_id": self.part_id.text(), "features": self._draft_features}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            self.status.setText(f"Bewerkingen geëxporteerd naar {path}")
+            return path
+
+        def remove_concepts(self) -> None:
+            before = len(self._draft_features)
+            self._draft_features = [feature for feature in self._draft_features if str(feature.get("status", "")).lower() != "concept"]
+            removed = before - len(self._draft_features)
+            self._refresh_feature_views()
+            if removed:
+                self.set_dirty(True)
+            self.status.setText(f"{removed} conceptbewerking(en) verwijderd")
+
+        def refresh_from_project(self, _checked: bool = False, *, force: bool = False) -> None:
+            if self._dirty and not force:
+                self.status.setText("Niet-opgeslagen wijzigingen aanwezig; gebruik Annuleren om opnieuw te laden")
+                return
+            self._load_entity_state()
+            self.status.setText("Onderdeel vernieuwd vanuit het centrale Project Model")
+
+        def cancel_changes(self) -> None:
+            self._load_entity_state()
+            self.status.setText("Niet-opgeslagen wijzigingen geannuleerd")
+
+        def save_changes(self) -> bool:
+            if self._workspace is None or self._entity is None:
+                self.status.setText("Selecteer eerst een maakdeel")
+                return False
+            if not self.validate_draft():
+                self.status.setText("Opslaan geblokkeerd: corrigeer eerst de gemarkeerde bewerkingen")
+                return False
+            try:
+                profile_value = self.profile.currentText().strip()
+                material_value = self.material.currentText().strip()
+                profile_match = self._profile_database.find(profile_value) if self._profile_database and profile_value else None
+                if profile_match is not None:
+                    profile_value = profile_match.designation
+                if self._material_database and material_value:
+                    from material_database import normalise_material
+                    key = normalise_material(material_value)
+                    matches = [item for item in self._material_database.materials if key in item.search_names]
+                    if len(matches) == 1:
+                        material_value = matches[0].code
+                values = {
+                    "part_position": self.part_id.text().strip(),
+                    "mark": self.mark_code.text().strip(),
+                    "profile": profile_value,
+                    "normalized_profile": profile_value,
+                    "material": material_value,
+                    "normalized_material": material_value,
+                    "description": self.description.text().strip(),
+                    "coating": self.coating.text().strip(),
+                    "revision": self.revision.text().strip(),
+                    "phase": self.phase.text().strip(),
+                    "article_code": self.article_code.text().strip(),
+                    "length_mm": self.length.value(),
+                    "profile_confidence": 1.0 if profile_match else 0.65,
+                    "material_confidence": 1.0 if material_value else 0.0,
+                }
+                for name, value in values.items():
+                    if hasattr(self._entity, name):
+                        setattr(self._entity, name, value)
+                workbench = copy.deepcopy(getattr(self._entity, "workbench", {}) or {})
+                revision = workbench.setdefault("current_revision", {})
+                revision["features"] = copy.deepcopy(self._draft_features)
+                revision["review_status"] = "review_required" if self._draft_features else "draft"
+                revision["validation_issues"] = []
+                workbench["ui_editor"] = {
+                    "description": self.description.text().strip(),
+                    "coating": self.coating.text().strip(),
+                    "material_cost": self.material_cost.value(),
+                    "hourly_rate": self.hourly_rate.value(),
+                    "operation_cost": self.operation_cost.value(),
+                    "total_cost": self.total_cost.value(),
+                    "setup_minutes": self.setup_minutes.value(),
+                    "processing_minutes": self.processing_minutes.value(),
+                    "total_minutes": self.total_minutes.value(),
+                }
+                if hasattr(self._entity, "workbench"):
+                    self._entity.workbench = workbench
+                recompute = getattr(self._entity, "recompute_hashes", None)
+                if callable(recompute):
+                    recompute()
+                self._workspace.session.save(user="qt-gui", revision_message=f"Onderdeel {self.part_id.text()} bijgewerkt")
+                self.set_dirty(False)
+                self.status.setText("Wijzigingen opgeslagen in het centrale Project Model")
+                self._update_recognition_state(self._entity)
+                return True
+            except Exception as exc:
+                self.status.setText(f"Opslaan mislukt: {type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(self, "Bewerken", f"{type(exc).__name__}: {exc}")
+                return False
+
+        def handle_ribbon(self, command: str) -> None:
+            handlers = {
+                "add": lambda: self.add_feature("hole"),
+                "delete": self.delete_selected_features,
+                "duplicate": self.duplicate_selected_feature,
+                "move_up": lambda: self.move_selected_feature(-1),
+                "move_down": lambda: self.move_selected_feature(1),
+                "import": self.choose_import,
+                "refresh": self.refresh_from_project,
+                "validate": self.validate_draft,
+                "calculate": self.calculate_draft,
+                "save": self.save_changes,
+                "cancel": self.cancel_changes,
+            }
+            if command == "actions":
+                self.actions_button.showMenu()
+                return
+            handler = handlers.get(str(command))
+            if handler is None:
+                raise ValueError(f"Onbekende Bewerken-actie: {command}")
+            handler()
+
+        def _update_recognition_state(self, entity: Any | None) -> None:
+            if entity is None:
+                self.recognition_state.setText("Selecteer een onderdeel voor profiel- en materiaalherkenning")
+                return
+            profile_value = _value(entity, "normalized_profile", "profile")
+            material_value = _value(entity, "normalized_material", "material_grade", "material")
+            profile_match = self._profile_database.find(profile_value) if self._profile_database and profile_value else None
+            material_matches = []
+            if self._material_database and material_value:
+                from material_database import normalise_material
+                key = normalise_material(material_value)
+                material_matches = [item for item in self._material_database.materials if key in item.search_names]
+            profile_confidence = float(getattr(entity, "profile_confidence", 0.0) or 0.0)
+            material_confidence = float(getattr(entity, "material_confidence", 0.0) or 0.0)
+            profile_text = f"catalogus: {profile_match.designation}" if profile_match else "niet exact in profielendatabase"
+            material_text = f"catalogus: {material_matches[0].code}" if len(material_matches) == 1 else "handmatig controleren"
+            self.recognition_state.setText(
+                f"Profiel {profile_value or '-'} ({profile_confidence:.0%}, {profile_text}) | "
+                f"Materiaal {material_value or '-'} ({material_confidence:.0%}, {material_text}). "
+                "Niet-exacte herkenning blijft reviewplichtig."
+            )
+            self.profile_search.setText(profile_value)
+
+        def _refresh_profile_suggestions(self) -> None:
+            database = self._profile_database
+            if database is None or not hasattr(self, "profile_matches"):
+                return
+            rows = database.filtered(text=self.profile_search.text().strip())[:250]
+            self.profile_matches.setRowCount(len(rows))
+            for row, profile in enumerate(rows):
+                values = (profile.designation, profile.profile_type, profile.family, f"{profile.height:g}", f"{profile.width:g}", f"{profile.mass_kg_m:g}")
+                for column, value in enumerate(values):
+                    item = QtWidgets.QTableWidgetItem(value)
+                    item.setData(QtCore.Qt.ItemDataRole.UserRole, profile.designation)
+                    self.profile_matches.setItem(row, column, item)
+
+        def _confirm_profile_selection(self) -> None:
+            row = self.profile_matches.currentRow()
+            if row < 0:
+                self.status.setText("Selecteer eerst een profiel in de catalogus")
+                return
+            item = self.profile_matches.item(row, 0)
+            if item is None:
+                return
+            designation = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or item.text())
+            self.profile.setCurrentText(designation)
+            self.recognition_state.setText(f"{designation} handmatig gekozen; Opslaan registreert de bevestigde cataloguskeuze.")
+            self.set_dirty(True)
+
 
     class DrawingWorkspacePanel(QtWidgets.QWidget):
         """Large live technical drawing sheet with PNG and PDF output."""
