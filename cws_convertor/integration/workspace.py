@@ -36,7 +36,7 @@ def _renderable_entity_count(project: Any) -> int:
 
 
 def _full_geometry_entity_limit() -> int:
-    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "750")))
+    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "150")))
 from cws_viewer.exact.workbench import ExactPartWorkbenchService
 from cws_viewer.properties import GridViewerBridge
 from .selection import (
@@ -205,22 +205,30 @@ class IntegratedProjectWorkspace:
                     int(float(os.environ.get("CWS_FULL_GEOMETRY_MAX_MB", "64")) * 1024 * 1024),
                 )
                 source_sizes: list[int] = []
+                heavy_ifc_source = False
+                ifc_limit = max(
+                    1 * 1024 * 1024,
+                    int(float(os.environ.get("CWS_FULL_IFC_GEOMETRY_MAX_MB", "1")) * 1024 * 1024),
+                )
                 for value in session.source_paths.values():
                     candidate = Path(value)
                     if not candidate.is_absolute():
                         candidate = project_path.parent / candidate
                     try:
-                        source_sizes.append(candidate.stat().st_size)
+                        source_size = candidate.stat().st_size
+                        source_sizes.append(source_size)
+                        if candidate.suffix.lower() in {".ifc", ".ifczip"} and source_size > ifc_limit:
+                            heavy_ifc_source = True
                     except OSError:
                         continue
                 effective_prefer_proxy = bool(
                     source_sizes
                     and (max(source_sizes) > limit or sum(source_sizes) > limit * 2)
-                ) or renderable_entity_count > entity_limit
+                ) or heavy_ifc_source or renderable_entity_count > entity_limit
             if effective_prefer_proxy:
                 notify(
                     31,
-                    f"Groot model ({renderable_entity_count:,} objecten); responsieve 3D-weergave voorbereiden",
+                    f"Complex model ({renderable_entity_count:,} objecten); responsieve 3D-weergave voorbereiden",
                 )
             else:
                 notify(31, "Exacte brongeometrie voorbereiden")
