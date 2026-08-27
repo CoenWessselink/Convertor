@@ -1,4 +1,4 @@
-# SteelConverter - CWS Convertor 0.9.0-alpha-dev implementation snapshot
+# SteelConverter - CWS Convertor 0.10.18-beta-dev implementation snapshot
 
 De V9-hoofdapp gebruikt **Viewer / Project** als centrale cockpit. De elf werkruimtes zijn: Inlezen, Viewer / Project, Bewerken, Converteren, Controleren, PDF / Tekening, Profielen, Tekeningen, Scribing, Hoeveelheden / Excel en Exporteren. Selecties uit tree, 3D-viewer en property grid blijven via canonieke entity-ID's aan de aangesloten bestaande functies gekoppeld.
 
@@ -6,7 +6,7 @@ Start de geintegreerde desktopapp met `CWS_Convertor_App.py`. De klassieke UI bl
 
 **SteelConverter** is de leidende en zichtbare productnaam. De huidige
 compatibele executable-, installer-, project- en registeridentifiers blijven
-voor versie 0.9.0-alpha-dev bewust `CWS_Convertor`, zodat bestaande projecten,
+voor versie 0.10.18-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
 scripts en upgrades blijven werken.
 
 SteelConverter is een local-first productieomgeving voor veilige conversie en
@@ -17,11 +17,11 @@ productievoorbereiding van:
 - hoeveelheden en Excel;
 - complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie **0.9.0-alpha-dev** bouwt verder op de bewezen conversiekern en de
+Versie **0.10.18-beta-dev** bouwt verder op de bewezen conversiekern en de
 semantische IFC-/STEP-projectimport. De actuele projectstructuur gebruikt
-**Project Model 2.5**.
+**Project Model 2.25**.
 
-De huidige ontwikkeling gebruikt **Project Model 2.5** en Part Workbench 1.1.
+De huidige ontwikkeling gebruikt **Project Model 2.25** en Part Workbench 1.1.
 Daarin is de Part Workbench aanwezig met een onveranderlijke
 brongeometrieverwijzing, bewerkbare analytische revisies, rechterhandige
 productie-assen, referentiezijden, contouren en bewerkingen, provenance,
@@ -57,7 +57,7 @@ Compleet IFC / STEP
           ↓
 Geverifieerde Part 21-brongrafiek
           ↓
-Canonical Project Model 2.5
+Canonical Project Model 2.25
           ↓
 Assemblies / parts / fasteners / welds
           ↓
@@ -288,14 +288,14 @@ CWS_Convertor_CLI.exe project-migrate oud.cwscproj -o nieuw.cwscproj
 De bijgewerkte buildstraat gebruikt Python 3.12 x64 op de **buildcomputer** en maakt:
 
 ```text
-CWS_Convertor_Setup_0.8.3-beta-dev_x64.exe
-CWS_Convertor_Portable_0.8.3-beta-dev_x64.zip
+CWS_Convertor_Setup_0.10.18-beta-dev_x64.exe
+CWS_Convertor_Portable_0.10.18-beta-dev_x64.zip
 SHA256SUMS.txt
 WINDOWS_RUNTIME_VALIDATION.md
 ```
 
 De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De Windows
-workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.8.3-beta-dev. Een
+workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.10.18-beta-dev. Een
 artefact geldt pas als gebouwd nadat native selftests en de echte GUI vanuit
 `dist`, een schone portable extractie en de installatiemap zijn geslaagd zonder
 Python op de child-`PATH`. Iedere pakketvorm maakt daarnaast een project en
@@ -316,12 +316,12 @@ cws_convertor/importers/step_project.py     semantische STEP-projectimport
 cws_convertor/importers/semantic.py         gedeeld resultaat-/importcontract
 cws_convertor/project/semantic_import.py    broncontrole, purge, indexes en gate
 cws_convertor/project/source_geometry.py    geverifieerde part-bronselectie
-cws_convertor/project/model.py              Canonical Project Model 2.5
+cws_convertor/project/model.py              Canonical Project Model 2.25
 cws_convertor/project/workbench.py          partrevisies, validatie en undo/redo
 cws_convertor/project/canonical_rebuild.py  canonical solid en bronmeetvergelijking
 cws_convertor/project/roundtrip.py          NC1/STEP/IFC/PDF export-herimportmatrix
 cws_convertor/steel_model/contracts.py      SteelModel 1.0 read-only contract
-cws_convertor/steel_model/adapter.py        Project Model 2.5 compatibility adapter
+cws_convertor/steel_model/adapter.py        Project Model 2.25 compatibility adapter
 cws_convertor/steel_model/tolerances.py     central comparison policy
 cws_convertor/steel_model/viewer_boundary.py controlled GPT-viewer handover contract
 cws_convertor/viewer/workspace.py          verified viewer state and selection
