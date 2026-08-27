@@ -6,6 +6,7 @@ import csv
 import json
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
@@ -289,41 +290,14 @@ if qt_available():
             self.features.selectRow(target)
 
         def _validate(self) -> None:
-            for row in range(self.features.rowCount()):
-                item = self.features.item(row, 9)
-                if item is not None:
-                    item.setText("OK")
-            self.status.setText("Bewerkingen lokaal gevalideerd")
+            self.status.setText("Legacy-validatie is gesloten; gebruik de actieve Part Workbench")
 
         def _save(self) -> None:
-            if self._workspace is None or self._entity is None:
-                return
-            try:
-                profile_value = self.profile.currentText().strip()
-                material_value = self.material.currentText().strip()
-                profile_match = self._profile_database.find(profile_value) if self._profile_database and profile_value else None
-                if profile_match is not None:
-                    profile_value = profile_match.designation
-                if self._material_database and material_value:
-                    from material_database import normalise_material
-                    key = normalise_material(material_value)
-                    matches = [item for item in self._material_database.materials if key in item.search_names]
-                    if len(matches) == 1:
-                        material_value = matches[0].code
-                for name, value in (("profile", profile_value), ("material", material_value), ("description", self.description.text().strip())):
-                    if hasattr(self._entity, name):
-                        setattr(self._entity, name, value)
-                for name, value in (("normalized_profile", profile_value), ("normalized_material", material_value), ("profile_confidence", 1.0 if profile_match else 0.65), ("material_confidence", 1.0 if material_value else 0.0)):
-                    if hasattr(self._entity, name):
-                        setattr(self._entity, name, value)
-                recompute = getattr(self._entity, "recompute_hashes", None)
-                if callable(recompute):
-                    recompute()
-                self._workspace.session.save(user="qt-gui", revision_message=f"Onderdeel {self.part_id.text()} bijgewerkt")
-                self.status.setText("Wijzigingen opgeslagen in het centrale Project Model")
-                self._update_recognition_state(self._entity)
-            except Exception as exc:
-                QtWidgets.QMessageBox.critical(self, "Bewerken", f"{type(exc).__name__}: {exc}")
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Legacy Bewerken gesloten",
+                "Deze diagnostische editor heeft geen write-path. Gebruik de actieve Part Workbench.",
+            )
 
     class EditWorkspacePanel(QtWidgets.QWidget):
         """Transactional part editor coupled to the shared Project Model and Viewer V15."""
@@ -347,6 +321,10 @@ if qt_available():
             "end_cut": {"angle_deg": 0.0, "reference": "Linker uiteinde"},
             "miter": {"angle_deg": 45.0, "reference": "Links + rechts"},
             "scribe": {"x_mm": 0.0, "y_mm": 0.0, "text": "Nieuwe markering"},
+        }
+        _WORKBENCH_FEATURE_KINDS = {
+            "hole", "countersunk_hole", "slot", "cope", "cutout", "pocket", "radius", "arc",
+            "chamfer", "bevel", "end_cut", "scribe",
         }
 
         def __init__(self, parent: Any | None = None) -> None:
@@ -415,6 +393,27 @@ if qt_available():
             self._build_prices_tab()
             self._build_times_tab()
 
+            lifecycle = QtWidgets.QHBoxLayout()
+            self.workbench_status = QtWidgets.QLabel("Part Workbench: niet gestart")
+            self.workbench_status.setObjectName("mutedText")
+            self.start_workbench_button = QtWidgets.QPushButton("Workbench starten")
+            self.undo_workbench_button = QtWidgets.QPushButton("Ongedaan")
+            self.redo_workbench_button = QtWidgets.QPushButton("Opnieuw")
+            self.review_workbench_button = QtWidgets.QPushButton("Review valideren")
+            self.rebuild_workbench_button = QtWidgets.QPushButton("Canonical rebuild")
+            self.roundtrip_workbench_button = QtWidgets.QPushButton("4-formaat roundtrip")
+            self.release_workbench_button = QtWidgets.QPushButton("Vrijgeven")
+            lifecycle.addWidget(self.workbench_status, 1)
+            for button in (
+                self.start_workbench_button, self.undo_workbench_button,
+                self.redo_workbench_button, self.review_workbench_button,
+                self.rebuild_workbench_button, self.roundtrip_workbench_button,
+                self.release_workbench_button,
+            ):
+                button.setEnabled(False)
+                lifecycle.addWidget(button)
+            root.addLayout(lifecycle)
+
             footer = QtWidgets.QHBoxLayout()
             self.status = QtWidgets.QLabel("Geen onderdeel geselecteerd")
             self.status.setObjectName("mutedText")
@@ -439,6 +438,13 @@ if qt_available():
             self.calculate.clicked.connect(self.calculate_draft)
             self.cancel.clicked.connect(self.cancel_changes)
             self.save.clicked.connect(self.save_changes)
+            self.start_workbench_button.clicked.connect(self.start_part_workbench)
+            self.undo_workbench_button.clicked.connect(self.undo_part_workbench)
+            self.redo_workbench_button.clicked.connect(self.redo_part_workbench)
+            self.review_workbench_button.clicked.connect(self.review_part_workbench)
+            self.rebuild_workbench_button.clicked.connect(self.rebuild_part_canonical)
+            self.roundtrip_workbench_button.clicked.connect(self.validate_part_roundtrips)
+            self.release_workbench_button.clicked.connect(self.release_part_workbench)
             self._connect_dirty_signals()
 
         def _build_general_tab(self) -> None:
@@ -674,11 +680,23 @@ if qt_available():
                 self.article_code.setText(_value(entity, "article_code", "article_number"))
                 workbench = getattr(entity, "workbench", {}) if entity is not None else {}
                 workbench = workbench if isinstance(workbench, dict) else {}
-                editor = workbench.get("ui_editor") if isinstance(workbench.get("ui_editor"), dict) else {}
+                properties = getattr(entity, "properties", {}) if entity is not None else {}
+                properties = properties if isinstance(properties, dict) else {}
+                editor = properties.get("ui_editor") if isinstance(properties.get("ui_editor"), dict) else {}
+                if not editor and isinstance(workbench.get("ui_editor"), dict):
+                    editor = workbench["ui_editor"]
                 if "description" in editor:
                     self.description.setText(str(editor.get("description") or ""))
                 if "coating" in editor:
                     self.coating.setText(str(editor.get("coating") or ""))
+                if "mark" in editor:
+                    self.mark_code.setText(str(editor.get("mark") or ""))
+                if "revision" in editor:
+                    self.revision.setText(str(editor.get("revision") or ""))
+                if "phase" in editor:
+                    self.phase.setText(str(editor.get("phase") or ""))
+                if "article_code" in editor:
+                    self.article_code.setText(str(editor.get("article_code") or ""))
                 self.material_cost.setValue(self._number(editor.get("material_cost")))
                 self.hourly_rate.setValue(self._number(editor.get("hourly_rate"), 75.0))
                 self.operation_cost.setValue(self._number(editor.get("operation_cost")))
@@ -706,6 +724,7 @@ if qt_available():
                 self.source_info.setText(f"Bron: {source_format} | bronobject: {source_id}")
                 self._update_recognition_state(entity)
                 self._set_enabled(entity is not None)
+                self._refresh_workbench_controls()
                 self.set_dirty(False)
                 self.status.setText(
                     f"{len(self._draft_features)} productiebewerking(en) geladen"
@@ -723,6 +742,44 @@ if qt_available():
                 button.setEnabled(enabled)
             self.cancel.setEnabled(enabled and self._dirty)
 
+        def _selected_project_part(self) -> tuple[Any | None, Any | None]:
+            session = getattr(self._workspace, "session", None)
+            project = getattr(self._workspace, "project", None)
+            parts = getattr(project, "parts", {}) if project is not None else {}
+            part = parts.get(self._entity_id) if hasattr(parts, "get") else None
+            return session, part
+
+        def _refresh_workbench_controls(self) -> None:
+            _session, part = self._selected_project_part()
+            state = getattr(part, "workbench", {}) if part is not None else {}
+            state = state if isinstance(state, dict) else {}
+            revision = state.get("current_revision") if isinstance(state.get("current_revision"), dict) else {}
+            commands = list(state.get("commands") or [])
+            cursor = int(state.get("command_cursor") or 0)
+            started = bool(revision)
+            clean = not self._dirty
+            rebuild = state.get("canonical_rebuild") if isinstance(state.get("canonical_rebuild"), dict) else {}
+            roundtrip = revision.get("roundtrip_validation") if isinstance(revision.get("roundtrip_validation"), dict) else {}
+            if part is None:
+                text = "Part Workbench: alleen beschikbaar voor maakdelen"
+            elif not started:
+                text = "Part Workbench: niet gestart"
+            else:
+                text = (
+                    f"Part Workbench: {revision.get('review_status', 'review_required')} | "
+                    f"rebuild {rebuild.get('status', 'not_run')} | "
+                    f"roundtrip {roundtrip.get('status', 'not_run')}"
+                )
+            self.workbench_status.setText(text)
+            self.start_workbench_button.setEnabled(part is not None and not started and clean)
+            self.undo_workbench_button.setEnabled(started and clean and cursor > 0)
+            self.redo_workbench_button.setEnabled(started and clean and cursor < len(commands))
+            for button in (
+                self.review_workbench_button, self.rebuild_workbench_button,
+                self.roundtrip_workbench_button, self.release_workbench_button,
+            ):
+                button.setEnabled(started and clean)
+
         def mark_dirty(self, *_: Any) -> None:
             if not self._loading and self._entity is not None:
                 self.set_dirty(True)
@@ -735,12 +792,17 @@ if qt_available():
                 self.save.setEnabled(self._entity is not None)
             if self._entity is not None:
                 self.live_status.setText("●  Niet-opgeslagen wijzigingen" if self._dirty else "●  Centrale selectie actief")
+            if hasattr(self, "workbench_status"):
+                self._refresh_workbench_controls()
 
         def _normalise_feature(self, feature: Any) -> dict[str, Any]:
             if not isinstance(feature, dict):
                 return {
-                    "kind": "scribe", "view": "3D", "parameters": {},
-                    "description": str(feature), "status": "Review", "contract_version": "1.0",
+                    "feature_id": str(uuid4()), "kind": "scribe", "view": "3D",
+                    "reference_side": "", "parameters": {}, "description": str(feature),
+                    "status": "proposed", "confidence": 1.0,
+                    "provenance": {"method": "user", "source": "qt_part_workbench"},
+                    "contract_version": "1.0",
                 }
             item = copy.deepcopy(feature)
             kind = str(item.get("kind") or item.get("type") or "scribe").strip().lower().replace(" ", "_")
@@ -751,14 +813,35 @@ if qt_available():
             for key in ("x_mm", "y_mm", "diameter_mm", "length_mm", "width_mm", "height_mm", "angle_deg", "depth", "reference", "text", "countersink_mm"):
                 if key in item and key not in parameters:
                     parameters[key] = item[key]
+            raw_status = str(item.get("status") or "proposed").strip().lower()
+            status = {
+                "ok": "confirmed", "concept": "proposed", "review": "proposed",
+                "bevestigd": "confirmed", "afgewezen": "rejected",
+            }.get(raw_status, raw_status)
+            if status not in {"proposed", "confirmed", "rejected"}:
+                status = "proposed"
             return {
+                "feature_id": str(item.get("feature_id") or uuid4()),
                 "kind": kind,
                 "view": str(item.get("view") or item.get("side") or "3D"),
+                "reference_side": str(item.get("reference_side") or parameters.get("reference") or "").strip(),
                 "parameters": parameters,
                 "description": str(item.get("description") or item.get("name") or self._FEATURE_LABELS.get(kind, kind.title())),
-                "status": str(item.get("status") or "Review"),
+                "status": status,
+                "confidence": self._number(item.get("confidence"), 1.0),
+                "provenance": copy.deepcopy(item.get("provenance") or {"method": "user", "source": "qt_part_workbench"}),
                 "contract_version": str(item.get("contract_version") or "1.0"),
             }
+
+        def _default_reference_side(self) -> str:
+            workbench = getattr(self._entity, "workbench", {}) if self._entity is not None else {}
+            revision = workbench.get("current_revision") if isinstance(workbench, dict) else {}
+            confirmed = [
+                str(side.get("side_id") or "").strip()
+                for side in list(revision.get("reference_sides") or [])
+                if isinstance(side, dict) and side.get("confirmed") and str(side.get("face_ref") or "").strip()
+            ] if isinstance(revision, dict) else []
+            return confirmed[0] if len(confirmed) == 1 else ""
 
         def add_feature(self, kind: str = "hole") -> None:
             if self._entity is None:
@@ -766,11 +849,15 @@ if qt_available():
                 return
             kind = kind if kind in self._FEATURE_DEFAULTS else "hole"
             self._draft_features.append({
+                "feature_id": str(uuid4()),
                 "kind": kind,
                 "view": "Boven" if kind in {"hole", "countersunk_hole", "slot"} else "3D",
+                "reference_side": self._default_reference_side(),
                 "parameters": copy.deepcopy(self._FEATURE_DEFAULTS[kind]),
                 "description": f"Nieuwe {self._FEATURE_LABELS[kind].lower()}",
-                "status": "Concept",
+                "status": "proposed",
+                "confidence": 1.0,
+                "provenance": {"method": "user", "source": "qt_part_workbench"},
                 "contract_version": "1.0",
             })
             index = len(self._draft_features) - 1
@@ -806,8 +893,9 @@ if qt_available():
                 return
             source = indices[0]
             duplicate = copy.deepcopy(self._draft_features[source])
+            duplicate["feature_id"] = str(uuid4())
             duplicate["description"] = f"{duplicate['description']} (kopie)"
-            duplicate["status"] = "Concept"
+            duplicate["status"] = "proposed"
             self._draft_features.insert(source + 1, duplicate)
             self._refresh_feature_views(select_index=source + 1)
             self.set_dirty(True)
@@ -840,7 +928,7 @@ if qt_available():
             return (
                 str(index + 2), self._FEATURE_LABELS.get(kind, kind.title()), str(feature.get("view") or "3D"),
                 self._display_number(parameters.get("x_mm")), self._display_number(parameters.get("y_mm")),
-                str(parameters.get("reference") or "Bron"), size, str(parameters.get("depth") or "-"),
+                str(feature.get("reference_side") or "Onbevestigd"), size, str(parameters.get("depth") or parameters.get("depth_mm") or "-"),
                 self._display_number(parameters.get("width_mm")), self._display_number(parameters.get("height_mm")),
                 self._display_number(parameters.get("angle_deg")), str(feature.get("description") or ""),
                 str(feature.get("status") or "Review"),
@@ -912,7 +1000,7 @@ if qt_available():
                 key = {3: "x_mm", 4: "y_mm", 8: "width_mm", 9: "height_mm", 10: "angle_deg"}[column]
                 parameters[key] = self._number(item.text())
             elif column == 5:
-                parameters["reference"] = item.text().strip()
+                feature["reference_side"] = item.text().strip()
             elif column == 7:
                 parameters["depth"] = item.text().strip()
             elif column == 11:
@@ -924,24 +1012,39 @@ if qt_available():
             self._populate_subset(self.hole_table, {"hole", "countersunk_hole", "slot"})
 
         def validate_draft(self) -> bool:
-            issues: list[str] = []
-            for index, feature in enumerate(self._draft_features, start=1):
-                kind = feature["kind"]
-                parameters = feature["parameters"]
-                valid = True
-                if kind in {"hole", "countersunk_hole"} and self._number(parameters.get("diameter_mm")) <= 0:
-                    valid = False
-                if kind == "slot" and (self._number(parameters.get("length_mm")) <= 0 or self._number(parameters.get("width_mm")) <= 0):
-                    valid = False
-                if kind == "cutout" and (self._number(parameters.get("width_mm")) <= 0 or self._number(parameters.get("height_mm")) <= 0):
-                    valid = False
-                feature["status"] = "OK" if valid else "Review"
-                if not valid:
-                    issues.append(f"Bewerking {index} ({self._FEATURE_LABELS.get(kind, kind)}) heeft ongeldige maatvoering")
-            self._refresh_feature_views()
-            self.set_dirty(True)
-            self.status.setText("Bewerkingen gevalideerd: geen fouten" if not issues else " | ".join(issues))
-            return not issues
+            _session, part = self._selected_project_part()
+            state = getattr(part, "workbench", {}) if part is not None else {}
+            revision = state.get("current_revision") if isinstance(state, dict) else None
+            if not isinstance(revision, dict):
+                self.status.setText("Start eerst de Part Workbench voor onafhankelijke validatie")
+                return False
+            try:
+                from cws_convertor.project.workbench import evaluate_workbench_revision
+
+                candidate = copy.deepcopy(revision)
+                dimensions = copy.deepcopy(candidate.get("dimensions") or {})
+                dimensions["length_mm"] = self.length.value()
+                properties = copy.deepcopy(candidate.get("production_properties") or {})
+                properties.update({
+                    "profile": self.profile.currentText().strip(),
+                    "material": self.material.currentText().strip(),
+                    "part_position": self.part_id.text().strip(),
+                })
+                candidate.update({
+                    "dimensions": dimensions,
+                    "production_properties": properties,
+                    "features": self._canonical_workbench_features(),
+                })
+                issues = evaluate_workbench_revision(candidate)
+                messages = [str(item.get("message") or item.get("code")) for item in issues]
+                self.status.setText(
+                    "Onafhankelijke workbenchvalidatie: geslaagd"
+                    if not messages else " | ".join(messages[:3])
+                )
+                return not issues
+            except Exception as exc:
+                self.status.setText(f"Validatie geblokkeerd: {type(exc).__name__}: {exc}")
+                return False
 
         def calculate_draft(self) -> None:
             factors = {"hole": 0.65, "countersunk_hole": 0.95, "slot": 1.40, "cutout": 2.20, "end_cut": 1.25, "miter": 1.50, "scribe": 0.45}
@@ -997,7 +1100,7 @@ if qt_available():
 
         def remove_concepts(self) -> None:
             before = len(self._draft_features)
-            self._draft_features = [feature for feature in self._draft_features if str(feature.get("status", "")).lower() != "concept"]
+            self._draft_features = [feature for feature in self._draft_features if str(feature.get("status", "")).lower() not in {"concept", "proposed"}]
             removed = before - len(self._draft_features)
             self._refresh_feature_views()
             if removed:
@@ -1034,33 +1137,38 @@ if qt_available():
                     matches = [item for item in self._material_database.materials if key in item.search_names]
                     if len(matches) == 1:
                         material_value = matches[0].code
-                values = {
-                    "part_position": self.part_id.text().strip(),
-                    "mark": self.mark_code.text().strip(),
-                    "profile": profile_value,
-                    "normalized_profile": profile_value,
-                    "material": material_value,
-                    "normalized_material": material_value,
+                session, part = self._selected_project_part()
+                if part is not None and session is not None:
+                    state = session.start_part_workbench(self._entity_id, user="qt-gui")
+                    revision = copy.deepcopy(state.get("current_revision") or {})
+                    production_properties = copy.deepcopy(revision.get("production_properties") or {})
+                    production_properties.update({
+                        "profile": profile_value,
+                        "material": material_value,
+                        "part_position": self.part_id.text().strip(),
+                    })
+                    dimensions = copy.deepcopy(revision.get("dimensions") or {})
+                    dimensions["length_mm"] = self.length.value()
+                    changes = {
+                        "production_properties": production_properties,
+                        "dimensions": dimensions,
+                        "features": self._canonical_workbench_features(),
+                    }
+                    changes = {key: value for key, value in changes.items() if value != revision.get(key)}
+                    if changes:
+                        session.update_part_workbench(
+                            self._entity_id, changes, user="qt-gui",
+                            reason="Production Editor fase 2 bijgewerkt",
+                        )
+                    self._entity = part
+                properties = copy.deepcopy(getattr(self._entity, "properties", {}) or {})
+                properties["ui_editor"] = {
                     "description": self.description.text().strip(),
                     "coating": self.coating.text().strip(),
+                    "mark": self.mark_code.text().strip(),
                     "revision": self.revision.text().strip(),
                     "phase": self.phase.text().strip(),
                     "article_code": self.article_code.text().strip(),
-                    "length_mm": self.length.value(),
-                    "profile_confidence": 1.0 if profile_match else 0.65,
-                    "material_confidence": 1.0 if material_value else 0.0,
-                }
-                for name, value in values.items():
-                    if hasattr(self._entity, name):
-                        setattr(self._entity, name, value)
-                workbench = copy.deepcopy(getattr(self._entity, "workbench", {}) or {})
-                revision = workbench.setdefault("current_revision", {})
-                revision["features"] = copy.deepcopy(self._draft_features)
-                revision["review_status"] = "review_required" if self._draft_features else "draft"
-                revision["validation_issues"] = []
-                workbench["ui_editor"] = {
-                    "description": self.description.text().strip(),
-                    "coating": self.coating.text().strip(),
                     "material_cost": self.material_cost.value(),
                     "hourly_rate": self.hourly_rate.value(),
                     "operation_cost": self.operation_cost.value(),
@@ -1069,20 +1177,140 @@ if qt_available():
                     "processing_minutes": self.processing_minutes.value(),
                     "total_minutes": self.total_minutes.value(),
                 }
-                if hasattr(self._entity, "workbench"):
-                    self._entity.workbench = workbench
-                recompute = getattr(self._entity, "recompute_hashes", None)
-                if callable(recompute):
-                    recompute()
+                if hasattr(self._entity, "properties"):
+                    self._entity.properties = properties
+                if hasattr(self._entity, "name") and self.description.text().strip():
+                    self._entity.name = self.description.text().strip()
+                if hasattr(self._entity, "coating"):
+                    self._entity.coating = self.coating.text().strip()
+                if hasattr(self._entity, "revision"):
+                    self._entity.revision = self.revision.text().strip()
                 self._workspace.session.save(user="qt-gui", revision_message=f"Onderdeel {self.part_id.text()} bijgewerkt")
                 self.set_dirty(False)
-                self.status.setText("Wijzigingen opgeslagen in het centrale Project Model")
+                self.status.setText("Workbench-revisie en metadata opgeslagen in het centrale Project Model")
                 self._update_recognition_state(self._entity)
+                self._refresh_workbench_controls()
                 return True
             except Exception as exc:
                 self.status.setText(f"Opslaan mislukt: {type(exc).__name__}: {exc}")
                 QtWidgets.QMessageBox.critical(self, "Bewerken", f"{type(exc).__name__}: {exc}")
                 return False
+
+        def _canonical_workbench_features(self) -> list[dict[str, Any]]:
+            result: list[dict[str, Any]] = []
+            for index, feature in enumerate(self._draft_features, start=1):
+                kind = str(feature.get("kind") or "").strip().lower()
+                if kind == "miter":
+                    raise ValueError("Verstek is ambigu; leg iedere kopsnede expliciet als start of end vast")
+                if kind not in self._WORKBENCH_FEATURE_KINDS:
+                    raise ValueError(f"Bewerking {kind or index} wordt niet ondersteund door Part Workbench 1.1")
+                parameters = copy.deepcopy(feature.get("parameters") or {})
+                if kind == "countersunk_hole":
+                    parameters["countersink_diameter_mm"] = parameters.pop(
+                        "countersink_mm",
+                        parameters.get("countersink_diameter_mm"),
+                    )
+                    parameters.setdefault("countersink_angle_deg", 90.0)
+                parameters.pop("reference", None)
+                depth = parameters.pop("depth", None)
+                if depth not in (None, "", "-", "Doorlopend", "doorlopend"):
+                    depth_mm = self._number(depth, -1.0)
+                    if depth_mm <= 0.0:
+                        raise ValueError(f"Bewerking {index} heeft geen expliciete positieve diepte")
+                    parameters["through"] = False
+                    parameters["depth_mm"] = depth_mm
+                elif kind in {"hole", "slot", "cope", "cutout"}:
+                    parameters.setdefault("through", True)
+                if kind in {"slot", "cope", "cutout", "pocket"}:
+                    parameters.setdefault("angle_deg", 0.0)
+                    parameters.setdefault("corner_radius_mm", 0.0)
+                if kind == "end_cut":
+                    reference = str(feature.get("parameters", {}).get("reference") or parameters.get("end") or "").strip().lower()
+                    end_map = {"linker uiteinde": "start", "links": "start", "rechter uiteinde": "end", "rechts": "end"}
+                    parameters["end"] = end_map.get(reference, reference)
+                if kind == "scribe":
+                    if not isinstance(parameters.get("points"), (list, tuple)) or len(parameters["points"]) < 2:
+                        raise ValueError(f"Markering {index} vereist minimaal twee expliciete punten")
+                    parameters.pop("x_mm", None)
+                    parameters.pop("y_mm", None)
+                result.append({
+                    "feature_id": str(feature.get("feature_id") or uuid4()),
+                    "kind": kind,
+                    "reference_side": str(feature.get("reference_side") or "").strip(),
+                    "parameters": parameters,
+                    "operation_class": "marking" if kind == "scribe" else "material_removal",
+                    "status": str(feature.get("status") or "proposed").strip().lower(),
+                    "confidence": self._number(feature.get("confidence"), 1.0),
+                    "provenance": copy.deepcopy(feature.get("provenance") or {"method": "user", "source": "qt_part_workbench"}),
+                })
+            return result
+
+        def _run_clean_workbench_action(self, callback: Any, success: str) -> Any | None:
+            if self._dirty:
+                self.status.setText("Actie geblokkeerd: sla wijzigingen op of annuleer ze eerst")
+                return None
+            session, part = self._selected_project_part()
+            if session is None or part is None:
+                self.status.setText("Selecteer eerst een maakdeel")
+                return None
+            try:
+                result = callback(session, part)
+                session.save(user="qt-gui", revision_message=success)
+                self._entity = self._workspace.project.parts[self._entity_id]
+                self._load_entity_state()
+                self.status.setText(success)
+                return result
+            except Exception as exc:
+                self.status.setText(f"{success} mislukt: {type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(self, "Part Workbench", f"{type(exc).__name__}: {exc}")
+                return None
+
+        def start_part_workbench(self, _checked: bool = False) -> None:
+            self._run_clean_workbench_action(
+                lambda session, _part: session.start_part_workbench(self._entity_id, user="qt-gui"),
+                "Part Workbench gestart",
+            )
+
+        def undo_part_workbench(self, _checked: bool = False) -> None:
+            self._run_clean_workbench_action(
+                lambda session, _part: session.undo_part_workbench(self._entity_id, user="qt-gui"),
+                "Laatste workbench-commando ongedaan gemaakt",
+            )
+
+        def redo_part_workbench(self, _checked: bool = False) -> None:
+            self._run_clean_workbench_action(
+                lambda session, _part: session.redo_part_workbench(self._entity_id, user="qt-gui"),
+                "Workbench-commando opnieuw uitgevoerd",
+            )
+
+        def review_part_workbench(self, _checked: bool = False) -> None:
+            self._run_clean_workbench_action(
+                lambda session, _part: session.review_part_workbench(self._entity_id, user="qt-gui", release=False),
+                "Part Workbench gevalideerd",
+            )
+
+        def rebuild_part_canonical(self, _checked: bool = False) -> None:
+            self._run_clean_workbench_action(
+                lambda session, _part: session.rebuild_part_canonical(self._entity_id, user="qt-gui"),
+                "Canonical rebuild uitgevoerd en opgeslagen",
+            )
+
+        def validate_part_roundtrips(self, _checked: bool = False) -> None:
+            folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Map voor NC1/STEP/IFC/PDF-roundtripartefacten")
+            if not folder:
+                return
+            self._run_clean_workbench_action(
+                lambda session, _part: session.validate_part_roundtrips(
+                    self._entity_id, Path(folder), user="qt-gui", formats=("NC1", "STEP", "IFC", "PDF")
+                ),
+                "NC1/STEP/IFC/PDF-roundtripvalidatie uitgevoerd",
+            )
+
+        def release_part_workbench(self, _checked: bool = False) -> None:
+            self._run_clean_workbench_action(
+                lambda session, _part: session.review_part_workbench(self._entity_id, user="qt-gui", release=True),
+                "Part Workbench vrijgegeven",
+            )
 
         def handle_ribbon(self, command: str) -> None:
             handlers = {
@@ -1177,7 +1405,7 @@ if qt_available():
             root.setContentsMargins(12, 9, 12, 9)
             root.setSpacing(7)
             top = QtWidgets.QHBoxLayout()
-            self.title = QtWidgets.QLabel("PDF / Tekening")
+            self.title = QtWidgets.QLabel("Review-PDF / Tekening")
             self.title.setObjectName("workspaceTitle")
             live = QtWidgets.QLabel("●  Voorbeeld (live)")
             live.setObjectName("liveStatus")
@@ -1190,7 +1418,7 @@ if qt_available():
             self.unit.addItems(["mm", "cm"])
             self.preview_button = QtWidgets.QPushButton("Voorbeeld vernieuwen")
             self.png_button = QtWidgets.QPushButton("PNG exporteren")
-            self.pdf_button = QtWidgets.QPushButton("PDF genereren")
+            self.pdf_button = QtWidgets.QPushButton("Review-PDF genereren")
             self.pdf_button.setObjectName("primaryButton")
             top.addWidget(self.title)
             top.addWidget(live)
@@ -1255,6 +1483,9 @@ if qt_available():
             self.clear_dimensions_button.clicked.connect(self._clear_manual_dimensions)
 
         def _add_manual_dimension(self) -> None:
+            if not self._entity_id:
+                QtWidgets.QMessageBox.information(self, "Eigen maat", "Selecteer eerst een onderdeel.")
+                return
             dialog = QtWidgets.QDialog(self)
             dialog.setWindowTitle("Eigen maat toevoegen")
             form = QtWidgets.QFormLayout(dialog)
@@ -1266,6 +1497,23 @@ if qt_available():
             axis = QtWidgets.QComboBox(dialog)
             axis.addItem("Horizontaal", "horizontal")
             axis.addItem("Verticaal", "vertical")
+            feature = QtWidgets.QComboBox(dialog)
+            feature.addItem("Onderdeelomtrek / stabiele datum", "part-envelope")
+            entity = None
+            if self._workspace is not None:
+                entity = self._workspace.project.parts.get(self._entity_id)
+            workbench = getattr(entity, "workbench", {}) if entity is not None else {}
+            revision = workbench.get("current_revision") if isinstance(workbench, dict) else {}
+            for item in list(revision.get("features") or []) if isinstance(revision, dict) else []:
+                if isinstance(item, dict) and item.get("feature_id"):
+                    feature.addItem(
+                        f"{item.get('kind', 'feature')} · {item['feature_id']}",
+                        str(item["feature_id"]),
+                    )
+            anchor_type = QtWidgets.QComboBox(dialog)
+            anchor_type.addItem("Datum-offset", "datum_offset")
+            anchor_type.addItem("Featurecentrum", "feature_center")
+            anchor_type.addItem("Geprojecteerde rand", "edge_projection")
             start = QtWidgets.QDoubleSpinBox(dialog)
             end = QtWidgets.QDoubleSpinBox(dialog)
             for control in (start, end):
@@ -1275,11 +1523,18 @@ if qt_available():
             end.setValue(100.0)
             label = QtWidgets.QLineEdit(dialog)
             label.setPlaceholderText("Leeg = berekende maat")
+            tolerance = QtWidgets.QDoubleSpinBox(dialog)
+            tolerance.setRange(0.0, 1000.0)
+            tolerance.setDecimals(3)
+            tolerance.setSuffix(" mm")
             form.addRow("Aanzicht", view)
             form.addRow("Richting", axis)
+            form.addRow("Objectanker", feature)
+            form.addRow("Ankertype", anchor_type)
             form.addRow("Begin vanaf referentierand", start)
             form.addRow("Einde vanaf referentierand", end)
             form.addRow("Tekst", label)
+            form.addRow("Tolerantie ±", tolerance)
             buttons = QtWidgets.QDialogButtonBox(
                 QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
                 parent=dialog,
@@ -1295,6 +1550,13 @@ if qt_available():
             self._manual_dimensions.append({
                 "view": str(view.currentData()), "axis": str(axis.currentData()),
                 "start": float(start.value()), "end": float(end.value()), "label": label.text().strip(),
+                "entity_id": self._entity_id,
+                "feature_id": str(feature.currentData()),
+                "subshape_id": "",
+                "anchor_type": str(anchor_type.currentData()),
+                "nominal_value_mm": abs(float(end.value()) - float(start.value())),
+                "tolerance_mm": float(tolerance.value()),
+                "provenance": {"method": "user", "surface": "review_snapshot"},
             })
             self.dimensions_button.setChecked(True)
             self.status.setText(f"Eigen maat toegevoegd ({len(self._manual_dimensions)} totaal)")
@@ -1312,7 +1574,7 @@ if qt_available():
             previous_entity_id = self._entity_id
             self._workspace, self._entity_id = workspace, entity_id
             name = _value(entity, "part_position", "mark", "name", default=self._entity_id)
-            self.title.setText(f"PDF / Tekening - {name}" if name else "PDF / Tekening")
+            self.title.setText(f"Review-PDF / Tekening - {name}" if name else "Review-PDF / Tekening")
             self.status.setText("Gereed voor live tekenvoorbeeld" if self._workspace is not None else "Geen project geopend")
             if self._workspace is not None and self._entity_id and self._entity_id != previous_entity_id:
                 QtCore.QTimer.singleShot(0, self.refresh_preview)
@@ -1413,7 +1675,7 @@ if qt_available():
                     if resolved_part_id in collection
                 )
                 name = _value(part, "part_position", "mark", "name", default=resolved_part_id)
-                self.title.setText(f"PDF / Tekening - {name}")
+                self.title.setText(f"Review-PDF / Tekening - {name}")
                 self.status.setText(f"Gekoppeld maakdeel geselecteerd: {name}")
             try:
                 from cws_convertor.ui_qt.engineering_drawing import EngineeringDrawingGenerator
@@ -1431,11 +1693,14 @@ if qt_available():
                     self._last_png = Path(result.png_path)
                     self._show_pixmap()
                 warning = f" | {result.warnings[0]}" if result.warnings else ""
-                self.status.setText(f"Gegenereerd op schaal {result.scale_label}: {result.pdf_path or result.png_path}{warning}")
+                self.status.setText(
+                    f"Reviewdocument gegenereerd op schaal {result.scale_label}: "
+                    f"{result.pdf_path or result.png_path}{warning} | geen productie-vrijgave"
+                )
                 return result
             except Exception as exc:
                 self.status.setText("Tekening genereren mislukt")
-                QtWidgets.QMessageBox.critical(self, "PDF / Tekening", f"{type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(self, "Review-PDF / Tekening", f"{type(exc).__name__}: {exc}")
                 return None
 
         def refresh_preview(self) -> None:

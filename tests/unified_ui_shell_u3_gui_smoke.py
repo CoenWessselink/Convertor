@@ -68,7 +68,7 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
             self.assertIn("part-v9", window.context_strip.selection.text())
 
             for page, expected_surface in (
-                (window.project_page, "viewer"),
+                (window.viewer_page, "viewer"),
                 (window.edit_page, "workbench"),
                 (window.scribing_page, "scribing"),
                 (window.bom_excel_page, "bom"),

@@ -19,9 +19,21 @@ NEUTRAL_JOB_ALGORITHM = "cws-operation-dag-builder-1.0"
 
 
 class NeutralOperationKind(StrEnum):
-    SAW = "saw"
-    DRILL = "drill"
+    LOAD = "load"
+    CLAMP = "clamp"
+    REORIENT = "reorient"
+    RECLAMP = "reclamp"
     MARK = "mark"
+    SCRIBE = "scribe"
+    POP = "pop"
+    TEXT = "text"
+    DRILL = "drill"
+    PUNCH = "punch"
+    CONTOUR = "contour"
+    SAW = "saw"
+    COMMON_CUT = "common_cut"
+    SEVER = "sever"
+    UNLOAD = "unload"
 
 
 class NeutralOperationStatus(StrEnum):
@@ -168,8 +180,13 @@ class ProcessOperationIntent:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "operation_kind", NeutralOperationKind(self.operation_kind))
-        if self.operation_kind == NeutralOperationKind.MARK:
-            raise ValueError("ProcessOperationIntent is alleen voor expliciete saw/drill-processen")
+        if self.operation_kind in {
+            NeutralOperationKind.MARK,
+            NeutralOperationKind.SCRIBE,
+            NeutralOperationKind.POP,
+            NeutralOperationKind.TEXT,
+        }:
+            raise ValueError("Markeeroperaties worden uitsluitend uit bewezen nesting-markeringen opgebouwd")
         object.__setattr__(self, "geometry_stock_mm", dict(self.geometry_stock_mm or {}))
         object.__setattr__(self, "predecessor_ids", tuple(dict.fromkeys(self.predecessor_ids)))
         for label, value in (

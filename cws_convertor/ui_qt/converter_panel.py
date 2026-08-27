@@ -37,6 +37,8 @@ if qt_available():
             self.entity_id = str(entity_id or "")
             self._cancel_requested = False
             self._process: subprocess.Popen[Any] | None = None
+            self._job_context: Any | None = None
+            self._last_exception: Exception | None = None
 
         def request_cancel(self) -> None:
             self._cancel_requested = True
@@ -68,6 +70,7 @@ if qt_available():
 
         @QtCore.Slot()
         def run(self) -> None:
+            self._last_exception = None
             try:
                 results = []
                 timeout_seconds = max(
@@ -75,6 +78,8 @@ if qt_available():
                     float(os.environ.get("CWS_CONVERSION_TIMEOUT_SECONDS", "300")),
                 )
                 for index, source in enumerate(self.files, start=1):
+                    if self._job_context is not None:
+                        self._job_context.check_cancelled()
                     if self._cancel_requested:
                         raise RuntimeError("Conversie door gebruiker geannuleerd")
                     base_percent = int(((index - 1) / max(1, len(self.files))) * 100)
@@ -107,6 +112,8 @@ if qt_available():
                             )
                             while self._process.poll() is None:
                                 elapsed = time.monotonic() - started
+                                if self._job_context is not None:
+                                    self._job_context.check_cancelled()
                                 if self._cancel_requested:
                                     self._stop_process(self._process)
                                     raise RuntimeError("Conversie door gebruiker geannuleerd")
@@ -143,6 +150,7 @@ if qt_available():
                     )
                 self.finished.emit({"status": "passed", "results": results})
             except Exception as exc:
+                self._last_exception = exc
                 process = self._process
                 if process is not None:
                     try:
@@ -151,6 +159,18 @@ if qt_available():
                         pass
                     self._process = None
                 self.failed.emit(f"{type(exc).__name__}: {exc}")
+
+        def run_job(self, context: Any) -> None:
+            self._job_context = context
+            self.progress.connect(
+                lambda percent, message: context.stage(
+                    "conversion", float(percent) / 100.0, str(message)
+                )
+            )
+            self.run()
+            context.check_cancelled()
+            if self._last_exception is not None:
+                raise self._last_exception
 
     class _ModelPreview(QtWidgets.QFrame):
         def __init__(self, title: str, target: bool = False) -> None:
@@ -185,15 +205,32 @@ if qt_available():
             painter.drawText(self.rect().adjusted(16, 0, -16, -8), QtCore.Qt.AlignmentFlag.AlignBottom | QtCore.Qt.AlignmentFlag.AlignLeft, self.caption)
 
     class ConverterPanel(QtWidgets.QWidget):
+        _DIRECTIONS = (
+            ("NC1 / DSTV → STEP", "nc1-step"),
+            ("STEP → NC1 / DSTV", "step-nc1"),
+            ("IFC → STEP", "ifc-step"),
+            ("STEP → IFC", "step-ifc"),
+            ("IFC → NC1 / DSTV", "ifc-nc1"),
+            ("NC1 / DSTV → IFC", "nc1-ifc"),
+            ("PDF → STEP (Trusted payload)", "pdf-step"),
+            ("PDF → NC1 / DSTV (Trusted payload)", "pdf-nc1"),
+            ("PDF → IFC (Trusted payload)", "pdf-ifc"),
+        )
+
         def __init__(self, parent: Any | None = None) -> None:
             super().__init__(parent)
             self._thread = self._worker = None
+            self._job_manager = None
+            self._job_id: str | None = None
             self._files: list[Path] = []
             self._workspace = self._selection = None
             self._selected_part_id = ""
             self._syncing_compact_bom = False
             self._build_ui()
             self._install_compact_bom()
+
+        def set_job_manager(self, manager: Any) -> None:
+            self._job_manager = manager
 
         def _install_compact_bom(self) -> None:
             """Add a compact view over the canonical BOM used by Converteren."""
@@ -355,7 +392,7 @@ if qt_available():
             grid = QtWidgets.QGridLayout(settings)
             grid.setContentsMargins(10, 8, 10, 8)
             self.direction = QtWidgets.QComboBox()
-            for label, value in (("NC1 / DSTV → STEP", "nc1-step"), ("STEP → NC1 / DSTV", "step-nc1"), ("IFC → STEP", "ifc-step"), ("STEP → IFC", "step-ifc"), ("IFC → NC1 / DSTV", "ifc-nc1"), ("NC1 / DSTV → IFC", "nc1-ifc"), ("PDF → STEP (gecontroleerd)", "pdf-step"), ("PDF → NC1 / DSTV (gecontroleerd)", "pdf-nc1"), ("PDF → IFC (gecontroleerd)", "pdf-ifc")):
+            for label, value in self._DIRECTIONS:
                 self.direction.addItem(label, value)
             self.direction.currentIndexChanged.connect(self._direction_changed)
             self.material = QtWidgets.QComboBox()
@@ -422,6 +459,7 @@ if qt_available():
             if workspace is None:
                 self.selection_context.setText("Bron: losse modelbestanden")
                 self._refresh_compact_bom()
+                self._apply_capabilities(None)
                 return
             entity = workspace.project.parts.get(self._selected_part_id) if self._selected_part_id else None
             name = str(getattr(entity, "part_position", "") or entity_id or "geen object geselecteerd")
@@ -429,6 +467,50 @@ if qt_available():
             self.source_preview.set_caption(name)
             self.target_preview.set_caption("Doelpreview wordt na conversie bijgewerkt")
             self._refresh_compact_bom()
+            self._apply_capabilities(entity)
+
+        def _apply_capabilities(self, part: Any | None) -> None:
+            from cws_convertor.conversion_capabilities import DEFAULT_CAPABILITY_REGISTRY
+
+            current = str(self.direction.currentData() or "")
+            allowed = {value for _label, value in self._DIRECTIONS}
+            blockers: list[str] = []
+            if part is not None:
+                source = getattr(part, "source_identity", None)
+                source_format = str(getattr(source, "source_format", "") or "").upper()
+                workbench = getattr(part, "workbench", {}) or {}
+                revision = workbench.get("current_revision") if isinstance(workbench, dict) else {}
+                part_form = str(revision.get("part_form") or "") if isinstance(revision, dict) else ""
+                features = tuple(
+                    str(item.get("kind") or "")
+                    for item in list(revision.get("features") or [])
+                    if isinstance(item, dict)
+                ) if isinstance(revision, dict) else ()
+                metrics = dict(getattr(part, "geometry_descriptor", {}).get("cad_metrics") or {})
+                exact_source = bool(metrics.get("production_geometry_exact")) or source_format in {"NC1", "STEP"}
+                evaluations = DEFAULT_CAPABILITY_REGISTRY.evaluate(
+                    source_format=source_format,
+                    part_form=part_form,
+                    features=features,
+                    exact_source=exact_source,
+                )
+                allowed = {capability.direction for capability, reasons in evaluations if not reasons}
+                blockers = [
+                    f"{capability.target_format}: {', '.join(reasons)}"
+                    for capability, reasons in evaluations if reasons
+                ]
+            blocker = QtCore.QSignalBlocker(self.direction)
+            self.direction.clear()
+            for label, value in self._DIRECTIONS:
+                if value in allowed:
+                    self.direction.addItem(label, value)
+            del blocker
+            index = self.direction.findData(current)
+            if index >= 0:
+                self.direction.setCurrentIndex(index)
+            self.run_button.setEnabled(self.direction.count() > 0)
+            if part is not None and not allowed:
+                self.status.setText("Geen exact conversiedoel beschikbaar: " + " | ".join(blockers[:3]))
 
         def add_files(self, paths) -> None:
             allowed = {".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf"}
@@ -483,7 +565,7 @@ if qt_available():
             self.source_preview.set_caption("Wacht op selectie")
 
         def _run(self) -> None:
-            if self._thread is not None:
+            if self._job_id is not None:
                 return
             project_path: Path | None = None
             files = tuple(self._files)
@@ -518,7 +600,6 @@ if qt_available():
             self.conversion_progress.setValue(0)
             self.conversion_progress.setFormat("Conversie starten · %p%")
             self.log.appendPlainText("Conversie gestart...")
-            thread = QtCore.QThread(self)
             worker = _ConversionWorker(
                 files,
                 target,
@@ -527,20 +608,22 @@ if qt_available():
                 project_path=project_path,
                 entity_id=self._selected_part_id,
             )
-            worker.moveToThread(thread)
-            thread.started.connect(worker.run)
             worker.progress.connect(self._conversion_progress)
             worker.finished.connect(self._finished)
             worker.failed.connect(self._failed)
-            worker.finished.connect(thread.quit)
-            worker.failed.connect(thread.quit)
-            worker.finished.connect(worker.deleteLater)
-            worker.failed.connect(worker.deleteLater)
-            thread.finished.connect(thread.deleteLater)
-            thread.finished.connect(lambda: setattr(self, "_thread", None))
-            thread.finished.connect(lambda: setattr(self, "_worker", None))
-            self._worker, self._thread = worker, thread
-            thread.start()
+            worker.finished.connect(self._job_finished)
+            worker.failed.connect(lambda _message: self._job_finished())
+            if self._job_manager is None:
+                self._failed("Centrale JobManager is niet beschikbaar")
+                return
+            self._worker = worker
+            self._job_id = self._job_manager.submit(
+                "conversion",
+                worker.run_job,
+                description=f"{direction} · {len(files)} bronbestand(en)",
+                project_id=str(getattr(getattr(self._workspace, "project", None), "project_id", "")),
+                max_retries=1,
+            )
 
         @QtCore.Slot(int, str)
         def _conversion_progress(self, percent: int, message: str) -> None:
@@ -556,6 +639,12 @@ if qt_available():
             self.cancel_button.setEnabled(False)
             self.status.setText("Conversie wordt gecontroleerd gestopt...")
             worker.request_cancel()
+            if self._job_manager is not None and self._job_id is not None:
+                self._job_manager.cancel(self._job_id)
+
+        def _job_finished(self) -> None:
+            self._job_id = None
+            self._worker = None
 
         @QtCore.Slot(dict)
         def _finished(self, payload: dict) -> None:

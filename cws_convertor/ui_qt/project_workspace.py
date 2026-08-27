@@ -17,7 +17,12 @@ if qt_available():
     from cws_viewer.ui_qt.exact_part_workbench import ExactPartWorkbenchPanel
     from cws_viewer.ui_qt.property_grid import ProfessionalPropertyGridPanel
     from cws_viewer.ui_qt.vtk_project_widget import VtkProjectWidget
-    from cws_viewer.ui_qt.vtk_real_project_widget import VtkRealProjectWidget
+    try:
+        from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import (
+            VtkRealProjectWidgetFeelV2 as VtkRealProjectWidget,
+        )
+    except Exception:
+        from cws_viewer.ui_qt.vtk_real_project_widget import VtkRealProjectWidget
     from cws_viewer.properties import GridLayoutIdentity, GridLayoutStore
     from .viewer_tools import IntegratedViewerToolsPanel
 
@@ -106,6 +111,9 @@ if qt_available():
             self.setObjectName("cwsV9IntegratedProjectWorkspace")
             self.workspace: IntegratedProjectWorkspace | None = None
             self._thread: QtCore.QThread | None = None
+            self._job_manager: Any | None = None
+            self._load_job_id: str | None = None
+            self._load_generation = 0
             self._worker: _LoadWorker | None = None
             self._load_elapsed = QtCore.QElapsedTimer()
             self._load_heartbeat = QtCore.QTimer(self)
@@ -117,6 +125,9 @@ if qt_available():
             self._grid_entity_ids: set[str] = set()
             self.viewer: Any | None = None
             self._build_ui()
+
+        def set_job_manager(self, manager: Any) -> None:
+            self._job_manager = manager
 
         def _build_ui(self) -> None:
             root = QtWidgets.QVBoxLayout(self)
@@ -223,29 +234,55 @@ if qt_available():
 
         def open_project(self, path: str | Path, *, load_geometry: bool = True) -> None:
             self.close_project()
+            self._load_generation += 1
+            generation = self._load_generation
             project_path = Path(path).expanduser().resolve()
             self.status.setText(f"Controleren en laden: {project_path.name}")
             self.stack.setCurrentWidget(self.loading)
-            thread = QtCore.QThread(self)
             worker = _LoadWorker(project_path, load_geometry=load_geometry)
-            worker.moveToThread(thread)
-            thread.started.connect(worker.run)
             worker.progress.connect(self._load_progress_changed)
-            worker.loaded.connect(self._project_loaded)
+            worker.loaded.connect(
+                lambda workspace, value=generation: self._project_loaded_guarded(value, workspace)
+            )
             worker.failed.connect(self._project_failed)
-            worker.finished.connect(thread.quit)
             worker.finished.connect(worker.deleteLater)
-            thread.finished.connect(thread.deleteLater)
-            thread.finished.connect(lambda: setattr(self, "_thread", None))
-            thread.finished.connect(lambda: setattr(self, "_worker", None))
+            worker.finished.connect(lambda value=generation: self._load_finished(value))
             self._worker = worker
-            self._thread = thread
             self._load_elapsed.start()
             self._load_heartbeat.start()
-            thread.start()
+            if self._job_manager is None:
+                raise RuntimeError("Project openen vereist de applicatiebrede JobManager")
+            self._load_job_id = self._job_manager.submit(
+                "project_open_import",
+                lambda context: (
+                    context.stage("project_open", 0.01, "Projectcontainer openen"),
+                    worker.run(),
+                )[-1],
+                description=f"Project openen: {project_path.name}",
+                project_id=str(project_path),
+                metadata={"generation_guard": True, "progressive": True},
+                max_retries=1,
+            )
+
+        def _load_finished(self, generation: int) -> None:
+            if generation != self._load_generation:
+                return
+            self._worker = None
+            self._thread = None
+            self._load_job_id = None
+
+        def _project_loaded_guarded(
+            self,
+            generation: int,
+            workspace: IntegratedProjectWorkspace,
+        ) -> None:
+            if generation != self._load_generation:
+                workspace.close()
+                return
+            self._project_loaded(workspace)
 
         def _loading_tick(self) -> None:
-            if self._thread is None or not self._load_elapsed.isValid():
+            if self._load_job_id is None or not self._load_elapsed.isValid():
                 self._load_heartbeat.stop()
                 return
             seconds = max(0, self._load_elapsed.elapsed() // 1000)
@@ -575,6 +612,10 @@ if qt_available():
             )
 
         def close_project(self) -> None:
+            self._load_generation += 1
+            if self._load_job_id is not None and self._job_manager is not None:
+                self._job_manager.cancel(self._load_job_id)
+                self._load_job_id = None
             if self._interaction_unsubscribe is not None:
                 self._interaction_unsubscribe()
                 self._interaction_unsubscribe = None

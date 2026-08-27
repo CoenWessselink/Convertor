@@ -562,6 +562,8 @@ QLabel#cwsPhase1LazyHint {
         # ------------------------------------------------------------------
         # Diagnostics/performance evidence
         def _record_phase1_startup_metrics(self) -> None:
+            from cws_viewer.core.performance_evidence import ViewerPerformanceEvidence
+
             workspace_elapsed = time.perf_counter() - self._phase1_started
             report = getattr(self.load_result, "geometry_report", None)
             requested = int(getattr(report, "requested_count", 0) or 0)
@@ -582,6 +584,17 @@ QLabel#cwsPhase1LazyHint {
                 "timings": {key: round(float(value), 6) for key, value in self.load_result.timings},
                 "lazy_panels": sorted(self._phase1_lazy_loaders),
             }
+            evidence = ViewerPerformanceEvidence(started_monotonic=self._phase1_started)
+            evidence.set_metric("shell_visible_ms", workspace_elapsed * 1000.0)
+            evidence.set_metric("geometry_ready_ms", float(self.load_result.elapsed_seconds) * 1000.0)
+            evidence.metadata.update(
+                {
+                    "phase1_build": PHASE1_BUILD,
+                    "viewer_version": V15_T8_VERSION,
+                    "scene_hash": str(self.load_result.scene.scene_hash),
+                }
+            )
+            payload["performance_evidence"] = evidence.to_dict()
             try:
                 target = Path.home() / ".cws_convertor" / "viewer_startup_metrics.jsonl"
                 target.parent.mkdir(parents=True, exist_ok=True)

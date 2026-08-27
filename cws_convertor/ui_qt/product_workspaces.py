@@ -496,6 +496,29 @@ if qt_available():
             finally:
                 self.finished.emit()
 
+        def run_job(self, context: Any) -> Any:
+            try:
+                from cws_convertor.optimization.profile_nesting import execute_phase5_solve
+
+                def report(value: dict[str, Any]) -> None:
+                    context.check_cancelled()
+                    message = str(value.get("message") or value.get("phase") or "Optimaliseren")
+                    progress = float(value.get("progress", value.get("percentage", 0.0)) or 0.0)
+                    if progress > 1.0:
+                        progress /= 100.0
+                    context.stage("nesting", progress, message)
+                    self.progress.emit(message)
+
+                outcome = execute_phase5_solve(self.prepared, progress_callback=report)
+                context.check_cancelled()
+                self.completed.emit(outcome)
+                return outcome
+            except Exception as exc:
+                self.failed.emit(f"{type(exc).__name__}: {exc}")
+                raise
+            finally:
+                self.finished.emit()
+
 
     class ProfileNestingPanel(QtWidgets.QWidget):
         """Qt integration for frozen Profile Nesting 0.8.12."""
@@ -510,6 +533,8 @@ if qt_available():
             self._demand_report: Any | None = None
             self._thread: Any | None = None
             self._worker: Any | None = None
+            self._job_manager = getattr(window, "job_manager", None)
+            self._job_id: str | None = None
             root = QtWidgets.QVBoxLayout(self)
             root.setContentsMargins(8, 8, 8, 8)
             root.setSpacing(7)
@@ -566,8 +591,8 @@ if qt_available():
             self._workspace = workspace
             self._selection = selection
             self.header.set_context(workspace, selection)
-            self.analyse.setEnabled(workspace is not None and self._thread is None)
-            self.solve.setEnabled(workspace is not None and self._thread is None)
+            self.analyse.setEnabled(workspace is not None and self._job_id is None)
+            self.solve.setEnabled(workspace is not None and self._job_id is None)
             if changed:
                 self._demand_report = None
                 self.demand.clear()
@@ -617,7 +642,7 @@ if qt_available():
                 self.status.setText(f"Nestinganalyse geblokkeerd: {type(exc).__name__}: {exc}")
 
         def _start_solve(self) -> None:
-            if self._workspace is None or self._thread is not None:
+            if self._workspace is None or self._job_id is not None:
                 return
             try:
                 from cws_convertor.optimization.profile_nesting import prepare_phase5_solve
@@ -635,20 +660,23 @@ if qt_available():
             self.solve.setEnabled(False)
             self.analyse.setEnabled(False)
             self.status.setText("Optimalisatie draait buiten de UI-thread...")
-            thread = QtCore.QThread(self)
             worker = _NestingSolveWorker(prepared)
-            worker.moveToThread(thread)
-            thread.started.connect(worker.run)
             worker.progress.connect(self.status.setText)
             worker.completed.connect(self._solve_completed)
             worker.failed.connect(self._solve_failed)
-            worker.finished.connect(thread.quit)
-            worker.finished.connect(worker.deleteLater)
-            thread.finished.connect(thread.deleteLater)
-            thread.finished.connect(self._solve_finished)
-            self._thread = thread
+            worker.finished.connect(self._solve_finished)
+            if self._job_manager is None:
+                self._solve_failed("Centrale JobManager is niet beschikbaar")
+                self._solve_finished()
+                return
             self._worker = worker
-            thread.start()
+            self._job_id = self._job_manager.submit(
+                "nesting",
+                worker.run_job,
+                description="Profile Nesting optimalisatie",
+                project_id=str(self._workspace.project.project_id),
+                max_retries=1,
+            )
 
         def _solve_completed(self, outcome: Any) -> None:
             if self._workspace is None:
@@ -676,6 +704,7 @@ if qt_available():
 
         def _solve_finished(self) -> None:
             self._thread = None
+            self._job_id = None
             self._worker = None
             self.analyse.setEnabled(self._workspace is not None)
             self.solve.setEnabled(self._workspace is not None)

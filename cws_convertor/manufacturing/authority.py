@@ -27,9 +27,10 @@ from cws_convertor.project.unified_schema import m18_store_snapshot
 from .m18_runtime_access import install_m18_runtime_access
 
 M18_RUNTIME_ARCHIVE = "m18_authority_runtime.zip"
-# Canonical frozen ZIP bytes before the historic Windows line-ending expansion.
+# Canonical frozen ZIP bytes restored and independently pinned by Windows CI.
 M18_RUNTIME_SHA256 = "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
-# Exact expanded checkout bytes observed and pinned by Windows CI.
+# Historical transport fingerprint retained for the fail-closed recovery path.
+# The current archive matches the canonical bytes directly.
 M18_WINDOWS_TRANSPORT_SHA256 = "30bcbb5bdd0aa6bac825a31dcbd5eb69586f051dc66c01e3485d4e8a56d7a745"
 M18_ORIGIN_VERSION = "0.8.30-beta-dev"
 M18_ORIGIN_COMMIT = "b04b1c203583295e8c5ed018d75de68b2319c839"

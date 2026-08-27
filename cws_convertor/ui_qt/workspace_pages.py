@@ -362,18 +362,36 @@ if qt_available():
             self.context = QtWidgets.QLabel("Geen project geopend")
             self.context.setObjectName("selectionContext")
             root.addWidget(self.context)
+            contract = QtWidgets.QLabel(
+                "Productievrijgave vereist per onderdeel een vrijgegeven Workbench, een actuele "
+                "canonical rebuild en een verse geslaagde NC1/STEP/IFC/Trusted-PDF-matrix."
+            )
+            contract.setWordWrap(True)
+            contract.setObjectName("mutedText")
+            root.addWidget(contract)
             formats = QtWidgets.QGroupBox("Bestanden")
             format_layout = QtWidgets.QGridLayout(formats)
             self.format_checks: dict[str, Any] = {}
             for index, (key, label) in enumerate((
                 ("nc1", "DSTV / NC1"), ("step", "STEP"), ("ifc", "IFC"),
-                ("production_pdf", "Productie-PDF"), ("review_pdf", "Review-PDF"),
-                ("review_png", "Reviewtekening PNG"), ("json", "JSON"), ("csv", "CSV"),
+                ("production_pdf", "Trusted productie-PDF"), ("dxf", "Plaat-DXF"),
+                ("json", "Part-JSON"), ("csv", "Part-CSV"),
+                ("label_pdf", "QR-label PDF"), ("preview_png", "Part-preview PNG"),
+                ("review_pdf", "Losse review-PDF"), ("review_png", "Losse review-PNG"),
             )):
                 check = QtWidgets.QCheckBox(label)
                 check.setChecked(key in {"review_pdf", "review_png"})
                 self.format_checks[key] = check
                 format_layout.addWidget(check, index // 3, index % 3)
+            preset_row = QtWidgets.QHBoxLayout()
+            self.full_release = QtWidgets.QPushButton("Volledig productiepakket")
+            self.review_only = QtWidgets.QPushButton("Alleen review")
+            self.full_release.clicked.connect(self._select_full_release)
+            self.review_only.clicked.connect(self._select_review_only)
+            preset_row.addStretch(1)
+            preset_row.addWidget(self.full_release)
+            preset_row.addWidget(self.review_only)
+            format_layout.addLayout(preset_row, 4, 0, 1, 3)
             root.addWidget(formats)
             row = QtWidgets.QHBoxLayout()
             self.output = QtWidgets.QLineEdit(str(Path.home() / "CWS_Convertor_Exports"))
@@ -387,6 +405,15 @@ if qt_available():
             row.addWidget(choose)
             row.addWidget(self.selection_only)
             root.addLayout(row)
+            package_options = QtWidgets.QHBoxLayout()
+            self.create_zip = QtWidgets.QCheckBox("Deterministische ZIP maken")
+            self.create_zip.setChecked(True)
+            self.include_blocked_review = QtWidgets.QCheckBox("Reviewbestanden opnemen bij blokkade")
+            self.include_blocked_review.setChecked(True)
+            package_options.addWidget(self.create_zip)
+            package_options.addWidget(self.include_blocked_review)
+            package_options.addStretch(1)
+            root.addLayout(package_options)
             self.log = QtWidgets.QPlainTextEdit()
             self.log.setReadOnly(True)
             root.addWidget(self.log, 1)
@@ -412,6 +439,18 @@ if qt_available():
             if name:
                 self.output.setText(name)
 
+        def _select_full_release(self) -> None:
+            release_formats = {
+                "nc1", "step", "ifc", "production_pdf", "dxf", "json", "csv",
+                "label_pdf", "preview_png",
+            }
+            for key, check in self.format_checks.items():
+                check.setChecked(key in release_formats)
+
+        def _select_review_only(self) -> None:
+            for key, check in self.format_checks.items():
+                check.setChecked(key in {"review_pdf", "review_png"})
+
         def _run(self) -> None:
             if self._workspace is None:
                 return
@@ -421,6 +460,17 @@ if qt_available():
                 return
             selected_ids = tuple(getattr(self._selection, "entity_ids", ()) or ()) if self.selection_only.isChecked() else ()
             part_ids = tuple(value for value in selected_ids if value in self._workspace.project.parts)
+            assembly_marks = tuple(
+                self._workspace.project.assemblies[value].assembly_mark
+                for value in selected_ids
+                if value in self._workspace.project.assemblies
+                and self._workspace.project.assemblies[value].assembly_mark
+            )
+            if self.selection_only.isChecked() and not part_ids and not assembly_marks:
+                QtWidgets.QMessageBox.information(
+                    self, "Exporteren", "De huidige selectie bevat geen maakdeel of assemblymerk."
+                )
+                return
             target = Path(self.output.text()).expanduser()
             target.mkdir(parents=True, exist_ok=True)
             review_formats = {"review_pdf", "review_png"}
@@ -443,12 +493,39 @@ if qt_available():
                         target,
                         formats=production_formats,
                         part_ids=part_ids,
+                        assembly_marks=assembly_marks,
+                        create_zip=self.create_zip.isChecked(),
+                        include_blocked_review_files=self.include_blocked_review.isChecked(),
                         user="qt-gui",
                     )
                     self._workspace.session.save(user="qt-gui", revision_message="Productiepakket geexporteerd")
-                    messages.extend((f"Productie: {manifest.summary}", f"Map: {package_root}", f"ZIP: {zip_path or '-'}", f"Manifest: {manifest.manifest_sha256}"))
+                    from cws_convertor.production_export import verify_export_directory, verify_export_zip
+
+                    directory_verification = verify_export_directory(package_root)
+                    zip_verification = verify_export_zip(zip_path) if zip_path is not None else None
+                    messages.extend((
+                        f"Productie: {manifest.summary}",
+                        f"Scope parts: {', '.join(part_ids) if part_ids else 'project'}",
+                        f"Scope merken: {', '.join(assembly_marks) if assembly_marks else 'project'}",
+                        f"Map: {package_root}",
+                        f"Mapverificatie: geldig ({directory_verification['checked_files']} bestanden)",
+                        f"ZIP: {zip_path or 'niet aangevraagd'}",
+                        f"ZIP-verificatie: {'geldig' if zip_verification else 'niet van toepassing'}",
+                        f"Manifest: {manifest.manifest_sha256}",
+                    ))
                 self.log.setPlainText("\n".join(messages))
-                self.status.setText("Reviewuitvoer gereed" if not production_formats else "Export afgerond")
+                if not production_formats:
+                    self.status.setText("Reviewuitvoer gereed; geen productievrijgave")
+                elif manifest.summary.get("production_ready"):
+                    self.status.setText("Productiepakket geverifieerd en gereed")
+                else:
+                    self.status.setText("Productie geblokkeerd; geverifieerd reviewpakket gemaakt")
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Productievrijgave geblokkeerd",
+                        "Het pakket is technisch geverifieerd, maar niet productie-ready. "
+                        "Bekijk manifest en blokkades in het exportlog.",
+                    )
             except Exception as exc:
                 prefix = "\n".join(messages)
                 self.status.setText("Review gereed; productie geblokkeerd" if review_output else "Export geblokkeerd of mislukt")

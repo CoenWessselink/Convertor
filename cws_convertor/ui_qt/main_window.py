@@ -56,8 +56,15 @@ QLabel#cwsSafety { background:#fff5d9; color:#754c00; border:1px solid #dfbf68; 
 
 if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
+    from cws_convertor.integration.ui_context import UnifiedApplicationContext
     from .converter_panel import ConverterPanel
+    from .functional_workspaces import DrawingWorkspacePanel, EditWorkspacePanel
     from .pdf_panel import PDFPanel
+    from .phase3_workspaces import Phase3ExportCenterPanel, ProfileNestingPanel, ScribingWorkspacePanel
+    from .product_workspaces import (
+        BomWorkspacePanel,
+        ProductionWorkflowPanel,
+    )
     from .project_workspace import IntegratedProjectWorkspaceWidget
     from .workspace_pages import (
         ContextActionPage,
@@ -66,6 +73,57 @@ if qt_available():
         OptimizationPanel,
         ProfilesPanel,
     )
+
+    class WorkspaceRouter(QtCore.QObject):
+        """Single history-aware workspace route; the permanent ViewerHost is never moved."""
+
+        workspace_changed = QtCore.Signal(str)
+
+        def __init__(self, tabs: Any, parent: Any | None = None) -> None:
+            super().__init__(parent)
+            self.tabs = tabs
+            self.pages: dict[str, Any] = {}
+            self.names_by_page: dict[Any, str] = {}
+            self.history: list[str] = []
+            self.history_index = -1
+            self._routing = False
+
+        def register(self, name: str, page: Any) -> None:
+            key = str(name).strip().lower()
+            self.pages[key] = page
+            self.names_by_page[page] = key
+
+        def open_workspace(self, name: str, *, record: bool = True) -> bool:
+            key = str(name).strip().lower()
+            page = self.pages.get(key)
+            if page is None:
+                return False
+            self._routing = True
+            try:
+                self.tabs.setCurrentWidget(page)
+            finally:
+                self._routing = False
+            if record:
+                self.history = self.history[: self.history_index + 1]
+                if not self.history or self.history[-1] != key:
+                    self.history.append(key)
+                self.history_index = len(self.history) - 1
+            self.workspace_changed.emit(key)
+            return True
+
+        def observe_current_page(self, page: Any) -> None:
+            if not self._routing and page in self.names_by_page:
+                self.open_workspace(self.names_by_page[page])
+
+        def back(self) -> None:
+            if self.history_index > 0:
+                self.history_index -= 1
+                self.open_workspace(self.history[self.history_index], record=False)
+
+        def forward(self) -> None:
+            if self.history_index + 1 < len(self.history):
+                self.history_index += 1
+                self.open_workspace(self.history[self.history_index], record=False)
 
     class _StartPage(QtWidgets.QWidget):
         open_project_requested = QtCore.Signal()
@@ -360,70 +418,135 @@ if qt_available():
             except Exception as exc:
                 QtWidgets.QMessageBox.critical(self, "Comparemanifest", f"{type(exc).__name__}: {exc}")
 
+    class _ApplicationContextStrip(QtWidgets.QFrame):
+        """Small read-only projection of the shared application context."""
+
+        def __init__(self, parent: Any | None = None) -> None:
+            super().__init__(parent)
+            layout = QtWidgets.QHBoxLayout(self)
+            layout.setContentsMargins(8, 2, 8, 2)
+            layout.setSpacing(12)
+            self.project = QtWidgets.QLabel("Geen project")
+            self.surface = QtWidgets.QLabel("Werkruimte: intake")
+            self.selection = QtWidgets.QLabel("Selectie: geen")
+            for label in (self.project, self.surface, self.selection):
+                layout.addWidget(label)
+
+        def apply_snapshot(self, snapshot: Any) -> None:
+            project_id = snapshot.project_context.active_project_id or "geen"
+            primary = snapshot.selection.primary_entity_id or "geen"
+            self.project.setText(f"Project: {project_id}")
+            self.surface.setText(f"Werkruimte: {snapshot.workspace_context.active_workspace}")
+            self.selection.setText(f"Selectie: {primary}")
+
+
     class CWSMainWindow(QtWidgets.QMainWindow):
         """One-process CWS Convertor shell with integrated project viewer."""
 
         def __init__(self, initial_paths: Iterable[str | Path] = ()) -> None:
             super().__init__()
-            self.setObjectName("cwsConvertorV9MainWindow")
+            self.setObjectName("cwsConvertorUnifiedU4MainWindow")
             self.setWindowTitle(f"CWS Convertor {APP_VERSION}")
             self.resize(1760, 1040)
             self.setMinimumSize(1280, 760)
             self.setStyleSheet(_QSS)
+            self.application_context = UnifiedApplicationContext(active_surface="intake")
+            self.job_manager = self.application_context.job_manager
+            self._context_unsubscribe = None
             self._selection_unsubscribe = None
             self._intake_thread = None
+            self._intake_job_id = None
             self._intake_worker = None
             self.tabs = QtWidgets.QTabWidget()
             self.tabs.setDocumentMode(True)
             self.tabs.setMovable(False)
             self.tabs.tabBar().setExpanding(False)
-            self.setCentralWidget(self.tabs)
 
             self.import_page = ImportPanel()
             self.project_page = IntegratedProjectWorkspaceWidget()
-            self.edit_page = ContextActionPage(
-                "Bewerken",
-                actions=(("Open Part Workbench", "open_exact"), ("Terug naar Viewer", "viewer")),
+            self.project_page.set_job_manager(self.job_manager)
+            self.viewer_page = ContextActionPage(
+                "Viewer",
+                actions=(("Fit selectie", "properties"), ("Open Part Workbench", "open_exact")),
             )
+            self.edit_page = EditWorkspacePanel()
             self.converter_page = ConverterPanel()
+            self.converter_page.set_job_manager(self.job_manager)
             self.validation_page = _ValidationPage()
             self.revisions_page = _RevisionComparePage(self.project_page)
-            self.optimization_page = OptimizationPanel()
+            self.optimization_page = ProfileNestingPanel(self)
             self.control_page = QtWidgets.QTabWidget()
             self.control_page.addTab(self.validation_page, "Validatie")
             self.control_page.addTab(self.revisions_page, "Revisies / Compare")
             self.control_page.addTab(self.optimization_page, "Optimalisatie")
             self.pdf_page = PDFPanel()
             self.profiles_page = ProfilesPanel()
-            self.drawings_page = ContextActionPage(
-                "Tekeningen",
-                actions=(("PDF / Tekening", "pdf"), ("Open Part Workbench", "open_exact"), ("Exporteren", "export")),
-            )
-            self.scribing_page = ContextActionPage(
-                "Scribing",
-                actions=(("Open scribing in Part Workbench", "open_exact"), ("Terug naar Viewer", "viewer")),
-            )
-            self.bom_excel_page = _BOMExcelPage(self.project_page)
-            self.export_page = ExportPanel()
+            self.drawings_page = DrawingWorkspacePanel()
+            self.scribing_page = ScribingWorkspacePanel(self)
+            self.bom_excel_page = BomWorkspacePanel(self)
+            self.production_workflow_page = ProductionWorkflowPanel(self)
+            self.export_page = Phase3ExportCenterPanel(self.project_page, None, job_manager=self.job_manager)
+
+            self.viewer_host = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            self.viewer_host.setObjectName("cwsPermanentViewerWorkspaceHost")
+            self.viewer_host.addWidget(self.project_page)
+            self.viewer_host.addWidget(self.tabs)
+            self.viewer_host.setStretchFactor(0, 3)
+            self.viewer_host.setStretchFactor(1, 2)
+            self.viewer_host.setSizes((1050, 710))
+            self.setCentralWidget(self.viewer_host)
 
             style = self.style()
             tab_specs = (
                 (self.import_page, "Inlezen", QtWidgets.QStyle.StandardPixmap.SP_DialogOpenButton),
-                (self.project_page, "Viewer / Project", QtWidgets.QStyle.StandardPixmap.SP_ComputerIcon),
+                (self.viewer_page, "Viewer / Project", QtWidgets.QStyle.StandardPixmap.SP_ComputerIcon),
                 (self.edit_page, "Bewerken", QtWidgets.QStyle.StandardPixmap.SP_FileDialogDetailedView),
                 (self.converter_page, "Converteren", QtWidgets.QStyle.StandardPixmap.SP_BrowserReload),
                 (self.control_page, "Controleren", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton),
-                (self.pdf_page, "PDF / Tekening", QtWidgets.QStyle.StandardPixmap.SP_FileIcon),
+                (self.pdf_page, "PDF review", QtWidgets.QStyle.StandardPixmap.SP_FileIcon),
                 (self.profiles_page, "Profielen", QtWidgets.QStyle.StandardPixmap.SP_DirIcon),
                 (self.drawings_page, "Tekeningen", QtWidgets.QStyle.StandardPixmap.SP_FileDialogContentsView),
                 (self.scribing_page, "Scribing", QtWidgets.QStyle.StandardPixmap.SP_CommandLink),
                 (self.bom_excel_page, "Hoeveelheden / Excel", QtWidgets.QStyle.StandardPixmap.SP_FileDialogListView),
+                (self.production_workflow_page, "Rapport", QtWidgets.QStyle.StandardPixmap.SP_DialogApplyButton),
                 (self.export_page, "Exporteren", QtWidgets.QStyle.StandardPixmap.SP_DialogSaveButton),
             )
             for page, title, icon in tab_specs:
                 self.tabs.addTab(page, style.standardIcon(icon), title)
+            for page in (
+                self.project_page,
+                self.edit_page,
+                self.converter_page,
+                self.pdf_page,
+                self.drawings_page,
+                self.scribing_page,
+                self.bom_excel_page,
+                self.production_workflow_page,
+                self.export_page,
+            ):
+                page.setProperty("cwsApplicationContext", "CWS-APPLICATION-CONTEXT-2")
+            self.production_workflow_page.setProperty(
+                "cwsUnifiedProductionWorkflow", "CWS-SINGLE-PRODUCT-SHELL-2"
+            )
+            self.workspace_router = WorkspaceRouter(self.tabs, self)
+            for name, page in (
+                ("intake", self.import_page), ("viewer", self.viewer_page),
+                ("edit", self.edit_page), ("converter", self.converter_page),
+                ("control", self.control_page), ("pdf_review", self.pdf_page),
+                ("profile_nesting", self.optimization_page), ("drawing", self.drawings_page),
+                ("scribing", self.scribing_page), ("bom", self.bom_excel_page),
+                ("report", self.production_workflow_page), ("export", self.export_page),
+            ):
+                self.workspace_router.register(name, page)
             self._create_menu()
             self._create_status()
+            self.context_strip = _ApplicationContextStrip(self)
+            self._u3_bom_context = self.context_strip.selection
+            self.statusBar().addPermanentWidget(self.context_strip, 1)
+            self._context_unsubscribe = self.application_context.subscribe(
+                self._context_snapshot_changed,
+                emit_current=True,
+            )
             self.import_page.project_requested.connect(lambda value: self._open_project(Path(value)))
             self.import_page.models_requested.connect(self._queue_models)
             self.import_page.pdf_requested.connect(self._open_pdf)
@@ -432,18 +555,27 @@ if qt_available():
             self.project_page.project_closed.connect(self._project_closed)
             self.project_page.selection_changed.connect(self._selection_changed)
             self.project_page.action_requested.connect(self._route_action)
+            self.viewer_page.action_requested.connect(self._route_action)
             self.edit_page.action_requested.connect(self._route_action)
             self.drawings_page.action_requested.connect(self._route_action)
             self.scribing_page.action_requested.connect(self._route_action)
             self.profiles_page.action_requested.connect(self._route_action)
+            self.optimization_page.action_requested.connect(self._route_action)
+            self.bom_excel_page.action_requested.connect(self._route_action)
+            self.production_workflow_page.action_requested.connect(self._route_action)
             self.bom_excel_page.show_project_requested.connect(
-                lambda: self.tabs.setCurrentWidget(self.project_page)
+                lambda: self.workspace_router.open_workspace("viewer")
             )
             self.revisions_page.show_project_requested.connect(
-                lambda: self.tabs.setCurrentWidget(self.project_page)
+                lambda: self.workspace_router.open_workspace("viewer")
             )
             self.pdf_page.feature_highlight_requested.connect(self._highlight_pdf_feature)
+            self.tabs.currentChanged.connect(
+                lambda _index: self.workspace_router.observe_current_page(self.tabs.currentWidget())
+            )
+            self.workspace_router.workspace_changed.connect(self._workspace_changed)
             self._selection_changed(None)
+            self.workspace_router.open_workspace("intake")
             initial = tuple(
                 Path(value).expanduser().resolve()
                 for value in initial_paths
@@ -483,9 +615,11 @@ if qt_available():
         def _queue_models(self, values: Iterable[str | Path]) -> None:
             paths = [str(Path(value).resolve()) for value in values]
             self.converter_page.add_files(paths)
-            if self._intake_thread is not None and self._intake_thread.isRunning():
-                self.statusBar().showMessage("Er wordt al een modelproject opgebouwd.", 5000)
-                return
+            if self._intake_job_id is not None:
+                active = self.job_manager.get(self._intake_job_id)
+                if active.status in {"queued", "running"}:
+                    self.statusBar().showMessage("Er wordt al een modelproject opgebouwd.", 5000)
+                    return
 
             from cws_convertor.ui_qt.project_intake import ModelIntakeWorker, suggest_project_path
 
@@ -505,7 +639,6 @@ if qt_available():
             if open_button is not None:
                 open_button.setEnabled(False)
 
-            thread = QtCore.QThread(self)
             worker = ModelIntakeWorker(
                 paths,
                 str(target),
@@ -515,26 +648,28 @@ if qt_available():
                     "material": material,
                 },
             )
-            worker.moveToThread(thread)
-            thread.started.connect(worker.run)
             worker.progress.connect(self.statusBar().showMessage)
             worker.progress_detail.connect(self._model_intake_progress)
             worker.completed.connect(self._model_intake_completed)
             worker.failed.connect(self._model_intake_failed)
-            worker.finished.connect(thread.quit)
             worker.finished.connect(self._model_intake_finished)
             worker.finished.connect(worker.deleteLater)
-            thread.finished.connect(thread.deleteLater)
-            self._intake_thread = thread
             self._intake_worker = worker
-            thread.start()
+            self._intake_job_id = self.job_manager.submit(
+                "project_open_import",
+                lambda context: (context.stage("semantic_import", 0.01, "Modelinname gestart"), worker.run())[1],
+                description=f"Project opbouwen uit {len(paths)} modelbestand(en)",
+                project_id=project_name,
+                metadata={"stage_contract": "semantic_tree_to_progressive_geometry"},
+                max_retries=1,
+            )
 
         @QtCore.Slot(str, object)
         def _model_intake_completed(self, project_path: str, payload: object) -> None:
             del payload
             self._load_progress_changed(72, "Projectcontainer gereed; Viewer V15 wordt geopend")
             self._open_project(Path(project_path), progress_floor=72)
-            self.tabs.setCurrentWidget(self.project_page)
+            self.workspace_router.open_workspace("viewer")
             self.statusBar().showMessage(
                 f"Projectcontainer gereed; Viewer V15 bouwt de scene: {Path(project_path).name}"
             )
@@ -563,6 +698,7 @@ if qt_available():
                 open_button.setEnabled(True)
             self._intake_worker = None
             self._intake_thread = None
+            self._intake_job_id = None
 
         def _open_pdf(self, value: str | Path) -> None:
             if self.pdf_page.load_pdf(value):
@@ -571,6 +707,20 @@ if qt_available():
         @property
         def workspace(self) -> Any | None:
             return self.project_page.workspace
+
+        @property
+        def context_snapshot(self) -> Any:
+            return self.application_context.snapshot
+
+        def _context_snapshot_changed(self, snapshot: Any) -> None:
+            self.context_strip.apply_snapshot(snapshot)
+
+        def _workspace_changed(self, workspace_name: str) -> None:
+            canonical_name = {
+                "edit": "workbench",
+                "report": "production_workflow",
+            }.get(str(workspace_name), str(workspace_name))
+            self.application_context.set_active_surface(canonical_name)
 
         def _project_loaded(self, path: str) -> None:
             self.statusBar().showMessage(f"Project geopend: {path}")
@@ -582,6 +732,7 @@ if qt_available():
                 self._selection_unsubscribe()
                 self._selection_unsubscribe = None
             if self.workspace is not None:
+                self.application_context.attach_workspace(self.workspace)
                 self._selection_unsubscribe = self.workspace.interaction.subscribe(
                     self._selection_changed
                 )
@@ -591,33 +742,36 @@ if qt_available():
             if self._selection_unsubscribe is not None:
                 self._selection_unsubscribe()
                 self._selection_unsubscribe = None
+            self.application_context.detach_workspace()
             self.bom_excel_page.refresh()
             self.revisions_page.refresh()
             self._selection_changed(None)
 
         def _selection_changed(self, selection: Any | None) -> None:
             workspace = self.workspace
+            if workspace is not None:
+                if self.application_context.workspace is not workspace:
+                    self.application_context.attach_workspace(workspace)
+                snapshot = self.application_context.ingest_interaction_selection(selection)
+                selection = snapshot.selection
             self.converter_page.set_project_selection(workspace, selection)
             self.pdf_page.show_project_selection(selection or object())
             self.edit_page.set_context(workspace, selection)
             self.drawings_page.set_context(workspace, selection)
             self.scribing_page.set_context(workspace, selection)
             self.profiles_page.set_context(workspace, selection)
+            self.optimization_page.set_context(workspace, selection)
+            self.bom_excel_page.set_context(workspace, selection)
+            self.production_workflow_page.set_context(workspace, selection)
             self.export_page.set_context(workspace, selection)
 
         def _route_action(self, action: str) -> None:
             routes = {
-                "properties": self.project_page,
-                "viewer": self.project_page,
-                "edit": self.edit_page,
-                "convert": self.converter_page,
-                "validate": self.control_page,
-                "pdf": self.pdf_page,
-                "profiles": self.profiles_page,
-                "drawings": self.drawings_page,
-                "scribing": self.scribing_page,
-                "quantities": self.bom_excel_page,
-                "export": self.export_page,
+                "properties": "viewer", "viewer": "viewer", "edit": "edit",
+                "convert": "converter", "validate": "control", "pdf": "pdf_review",
+                "profiles": "profile_nesting", "drawings": "drawing",
+                "scribing": "scribing", "quantities": "bom", "bom": "bom",
+                "report": "report", "export": "export",
             }
             if action == "open_exact":
                 self.project_page.open_exact_workbench()
@@ -625,9 +779,9 @@ if qt_available():
             if action == "legacy_profiles":
                 self._launch_legacy_ui()
                 return
-            page = routes.get(str(action))
-            if page is not None:
-                self.tabs.setCurrentWidget(page)
+            route = routes.get(str(action))
+            if route is not None:
+                self.workspace_router.open_workspace(route)
 
         def _highlight_pdf_feature(self, entity_id: str, feature_id: str) -> None:
             if self.workspace is None:
@@ -641,7 +795,7 @@ if qt_available():
                 )
                 return
             self.workspace.pdf_bridge.highlight_from_pdf(entity_id, feature_id)
-            self.tabs.setCurrentWidget(self.project_page)
+            self.workspace_router.open_workspace("viewer")
 
         def _create_menu(self) -> None:
             file_menu = self.menuBar().addMenu("Bestand")
@@ -650,8 +804,10 @@ if qt_available():
             open_project.triggered.connect(self._choose_project)
             file_menu.addAction("Bestanden inlezen", lambda: self.tabs.setCurrentWidget(self.import_page))
             file_menu.addSeparator()
-            legacy = file_menu.addAction("Legacy Tk-interface starten")
-            legacy.triggered.connect(self._launch_legacy_ui)
+            import os
+            if os.environ.get("CWS_DIAGNOSTIC_LEGACY_UI") == "1":
+                legacy = file_menu.addAction("Legacy Tk-interface starten (diagnostiek)")
+                legacy.triggered.connect(self._launch_legacy_ui)
             file_menu.addSeparator()
             file_menu.addAction("Afsluiten", self.close, "Ctrl+Q")
             view = self.menuBar().addMenu("Weergave")
@@ -739,11 +895,20 @@ if qt_available():
                 self._project_progress_floor,
                 f"Project openen: {path.name}",
             )
-            self.tabs.setCurrentWidget(self.project_page)
+            self.workspace_router.open_workspace("viewer")
             self.project_page.open_project(path)
 
         def _launch_legacy_ui(self) -> None:
+            import os
             import sys
+
+            if os.environ.get("CWS_DIAGNOSTIC_LEGACY_UI") != "1":
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Diagnostische legacy-interface",
+                    "Legacy fallback is gesloten. Zet CWS_DIAGNOSTIC_LEGACY_UI=1 alleen voor expliciete diagnose.",
+                )
+                return
 
             if getattr(sys, "frozen", False):
                 program = sys.executable
@@ -771,6 +936,10 @@ if qt_available():
 
         def closeEvent(self, event: Any) -> None:
             self.project_page.close_project()
+            if self._context_unsubscribe is not None:
+                self._context_unsubscribe()
+                self._context_unsubscribe = None
+            self.application_context.close()
             super().closeEvent(event)
 
     # Public compatibility names used by the V9 package, tests and transition
