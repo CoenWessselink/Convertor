@@ -41,6 +41,22 @@ class ApplicationSelection:
             "changed_at": self.changed_at,
         }
 
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "ApplicationSelection":
+        source = dict(payload or {})
+        entity_ids = _unique(source.get("entity_ids") or ())
+        primary = str(source.get("primary_entity_id") or "") or None
+        if primary and primary not in entity_ids:
+            entity_ids = (primary, *entity_ids)
+        return cls(
+            entity_ids=entity_ids,
+            primary_entity_id=primary,
+            feature_id=str(source.get("feature_id") or "") or None,
+            subshape_id=str(source.get("subshape_id") or "") or None,
+            origin=str(source.get("origin") or "application"),
+            changed_at=str(source.get("changed_at") or _utc_now()),
+        )
+
 
 class ApplicationSelectionBus:
     """Re-entrancy-safe application selection bus using stable canonical IDs."""

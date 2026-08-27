@@ -97,9 +97,15 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         output.ShallowCopy(normals.GetOutput())
         return output
 
-    def _feature_edges_polydata(self, source: Any):
+    def _feature_edges_polydata(self, source: Any, geometry_hash: str = ""):
         vtk = self._vtk
         assert vtk is not None
+        cache = getattr(self, "_cws_feature_edge_cache", None)
+        if cache is None:
+            cache = {}
+            self._cws_feature_edge_cache = cache
+        if geometry_hash and geometry_hash in cache:
+            return cache[geometry_hash]
         feature = vtk.vtkFeatureEdges()
         feature.SetInputData(source)
         feature.BoundaryEdgesOn()
@@ -111,6 +117,8 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         feature.Update()
         output = vtk.vtkPolyData()
         output.ShallowCopy(feature.GetOutput())
+        if geometry_hash:
+            cache[geometry_hash] = output
         return output
 
     @staticmethod
@@ -176,7 +184,7 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         instances = vtk.vtkPolyData()
         instances.SetPoints(points)
         instances.GetPointData().AddArray(orientations)
-        source = self._feature_edges_polydata(self._mesh_polydata(geometry_id))
+        source = self._feature_edges_polydata(self._mesh_polydata(geometry_id), geometry_id)
         mapper = vtk.vtkGlyph3DMapper()
         mapper.SetInputData(instances)
         mapper.SetSourceData(source)

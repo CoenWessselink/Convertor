@@ -142,12 +142,47 @@ def _exception_payload(exc: Exception) -> dict[str, Any]:
     }
 
 
+def _quick_self_test(report_path: str) -> int:
+    """Run the same bounded packaged-runtime contract as the GUI launcher."""
+    from runtime_diagnostics import run_native_self_test
+    from cws_convertor.integration import run_integration_self_test
+    from cws_viewer.selftest import run_self_test
+
+    native = run_self_test(deep_native=False, scan_root=Path(__file__).resolve().parent)
+    integration = run_integration_self_test(None)
+    payload = run_native_self_test()
+    payload.update(
+        {
+            "schema": "cws-convertor-cli-selftest-1.0",
+            "product": APP_NAME,
+            "version": APP_VERSION,
+            "native": native.to_dict(),
+            "integration": integration.to_dict(),
+            "production_release_allowed": False,
+        }
+    )
+    payload["status"] = (
+        "passed"
+        if payload.get("status") == "passed" and native.passed and integration.passed
+        else "failed"
+    )
+    text = json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True, default=str)
+    if report_path:
+        target = Path(report_path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text + "\n", encoding="utf-8")
+    print(text)
+    return EXIT_OK if payload["status"] == "passed" else EXIT_FAILED
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=f"{APP_NAME}: NC1/DSTV ↔ STEP ↔ IFC ↔ technische PDF + projecten/productie"
     )
     parser.add_argument("--version", action="version", version=f"{APP_NAME} {APP_VERSION}")
-    sub = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("--quick-self-test", action="store_true", help="Voer bounded packaged-runtime diagnostiek uit")
+    parser.add_argument("--report", default="", help="JSON-rapport voor packaged-runtime diagnostiek")
+    sub = parser.add_subparsers(dest="command", required=False)
 
     p = sub.add_parser("nc1-to-step", help="Converteer .nc/.nc1 naar STEP")
     p.add_argument("inputs", nargs="+", help="Bestanden of mappen")
@@ -466,6 +501,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.quick_self_test:
+        return _quick_self_test(args.report)
+    if not args.command:
+        parser.error("een command is verplicht, behalve bij --quick-self-test of --version")
     failures = 0
     review_required = 0
     entries: list[dict[str, Any]] = []

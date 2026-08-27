@@ -25,8 +25,9 @@ class _PickLocatorEntry:
 class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     """V15 renderer with interactive/idle quality states and indexed picking."""
 
-    INTERACTIVE_MULTISAMPLES = 8
+    INTERACTIVE_MULTISAMPLES = 2
     MIN_IDLE_MULTISAMPLES = 4
+    MAX_PICK_CANDIDATES = 64
     # A cell pick identifies the shared mesh actor, not the concrete instance.
     # Dense IFC models can contain hundreds of copies of the same profile. The
     # final surface-distance check must therefore see every instance in that
@@ -69,7 +70,15 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         window = self._render_window
         if window is not None:
             try:
-                window.SetMultiSamples(int(self._idle_multisamples))
+                window.SetMultiSamples(
+                    int(self.INTERACTIVE_MULTISAMPLES if requested else self._idle_multisamples)
+                )
+            except Exception:
+                pass
+        renderer = self._renderer
+        if renderer is not None:
+            try:
+                renderer.SetPass(None if requested else self._ssao_pass)
             except Exception:
                 pass
 
@@ -167,23 +176,14 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         vtk = self._vtk
         if vtk is None:
             return ()
-        ids = vtk.vtkIdList()
-        entry.locator.FindPointsWithinRadius(
-            float(entry.search_radius), point.to_tuple(), ids
+        nearest = vtk.vtkIdList()
+        count = min(len(entry.node_ids), self.MAX_PICK_CANDIDATES)
+        if count <= 0:
+            return ()
+        entry.locator.FindClosestNPoints(count, point.to_tuple(), nearest)
+        return tuple(
+            int(nearest.GetId(index)) for index in range(nearest.GetNumberOfIds())
         )
-        values = [int(ids.GetId(index)) for index in range(ids.GetNumberOfIds())]
-        fallback = vtk.vtkIdList()
-        count = len(entry.node_ids)
-        if count > 0:
-            entry.locator.FindClosestNPoints(count, point.to_tuple(), fallback)
-            values.extend(
-                int(fallback.GetId(index))
-                for index in range(fallback.GetNumberOfIds())
-            )
-        # Surface distance is evaluated after this candidate phase. Preserving
-        # the radius hits first and removing duplicates keeps the exact clicked
-        # profile eligible without changing the eventual geometric ranking.
-        return tuple(dict.fromkeys(values))
 
     def _node_nearest_surface_pick(
         self,
@@ -194,7 +194,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         """Resolve an instanced mesh hit from a spatially bounded candidate set."""
         entry = self._pick_locator(group, index)
         if entry is None:
-            return super()._node_nearest_surface_pick(group, world_point, index)
+            return None
 
         state = self._state
         best_id: str | None = None
@@ -224,7 +224,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             if candidate_key < best_key:
                 best_key = candidate_key
                 best_id = node_id
-        return best_id or super()._node_nearest_surface_pick(group, world_point, index)
+        return best_id
 
     def clear_scene(self) -> None:
         self._surface_distance_cache.clear()

@@ -21,46 +21,50 @@ def _convert_project_selection(
     direction: str,
     material: str,
 ) -> tuple[list[Path], list[str], list[str]]:
-    """Isolate one canonical make-part in the child process before conversion."""
-    from cws_convertor.integration.exact_source import ExactSourceProjectService
+    """Convert the selected canonical Workbench part and re-import the artifact."""
+    from cws_convertor.project import ProjectSession
+    from cws_convertor.project.canonical_rebuild import rebuild_and_compare
+    from cws_convertor.project.roundtrip import validate_roundtrips
 
-    service = ExactSourceProjectService.open(project_path, read_only=True)
-    part, source_path, isolation = service.isolate(entity_id, allow_heavy=True)
-    if not isolation.source_shape_available or isolation.shape is None:
-        evidence = "; ".join(str(value) for value in (isolation.evidence or ()))
-        raise RuntimeError(
-            f"Geselecteerd maakdeel {entity_id} kon niet exact uit {source_path.name} worden geisoleerd"
-            + (f": {evidence}" if evidence else ".")
-        )
+    session = ProjectSession.open(project_path, read_only=True)
+    part = session.project.parts.get(entity_id)
+    if part is None:
+        raise RuntimeError(f"Onbekend maakdeel {entity_id}")
+    if not part.workbench:
+        raise RuntimeError("Conversie vereist een Part Workbench-revisie")
+    rebuild = rebuild_and_compare(part)
+    if rebuild.shape is None or rebuild.report.get("status") != "passed":
+        raise RuntimeError("Conversie vereist een exact geslaagde canonical rebuild")
     raw_name = str(getattr(part, "part_position", "") or entity_id)
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._") or "selected_part"
     target_format = direction.lower().replace("dstv", "nc1").replace("->", "-").split("-")[-1]
+    del material
+    if target_format not in {"nc1", "step", "ifc", "pdf"}:
+        raise ValueError(f"Doelformaat {target_format!r} ondersteunt geen canonical conversie")
     output.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="cws-selected-part-") as temp_dir:
-        isolated_step = Path(temp_dir) / f"{safe_name}.step"
-        import cadquery as cq
-
-        cq.exporters.export(isolation.shape, str(isolated_step), exportType="STEP")
-        warnings = [f"{safe_name}: exact geselecteerd maakdeel uit {source_path.name} geisoleerd."]
-        if target_format == "step":
-            target = output / isolated_step.name
-            target.write_bytes(isolated_step.read_bytes())
-            return [target], warnings, []
-        if target_format in {"nc1", "ifc"}:
-            from conversion import convert_file
-
-            outputs, converted_warnings, failures = convert_file(
-                isolated_step,
-                output,
-                f"step-{target_format}",
-                material=material,
-                preferred_profile=str(
-                    getattr(part, "normalized_profile", "") or getattr(part, "profile", "") or ""
-                ),
-                strict_validation=True,
-            )
-            return outputs, warnings + list(converted_warnings), failures
-    raise ValueError(f"Doelformaat {target_format!r} ondersteunt geen selectieconversie.")
+    signature = str(rebuild.report.get("canonical_signature") or "")
+    report = validate_roundtrips(
+        part,
+        rebuild.shape,
+        output,
+        canonical_signature=signature,
+        formats=(target_format.upper(),),
+    )
+    format_result = dict(report.get("formats", {}).get(target_format) or {})
+    if format_result.get("status") != "passed":
+        blockers = "; ".join(format_result.get("messages") or ())
+        raise RuntimeError(
+            f"{target_format.upper()} re-import/compare is niet geslaagd"
+            + (f": {blockers}" if blockers else "")
+        )
+    report_path = output / f"{safe_name}_{target_format}_compare.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    artifact = Path(str(format_result.get("artifact_path") or ""))
+    warnings = [
+        f"{safe_name}: canonical rebuild, fysieke {target_format.upper()} en re-importcompare geslaagd.",
+        f"Comparemanifest: {report_path.name}",
+    ]
+    return [report_path, artifact], warnings, []
 
 
 def _convert_one(job: dict[str, Any]) -> dict[str, Any]:

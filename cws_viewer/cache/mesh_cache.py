@@ -19,12 +19,14 @@ class MeshCacheStats:
     writes: int = 0
     corrupt_entries: int = 0
     evictions: int = 0
+    memory_bytes: int = 0
     def to_dict(self) -> dict[str,int]: return {k:int(getattr(self,k)) for k in self.__dataclass_fields__}
 
 class MeshCache:
-    def __init__(self, root: str|Path, *, max_memory_items: int=128) -> None:
+    def __init__(self, root: str|Path, *, max_memory_items: int=128, max_memory_bytes: int=512*1024*1024) -> None:
         self.root=Path(root).expanduser().resolve(); self.root.mkdir(parents=True,exist_ok=True)
-        self.max_memory_items=max(0,int(max_memory_items)); self._memory: OrderedDict[str,MeshData]=OrderedDict()
+        self.max_memory_items=max(0,int(max_memory_items)); self.max_memory_bytes=max(0,int(max_memory_bytes)); self._memory: OrderedDict[str,MeshData]=OrderedDict()
+        self._memory_bytes=0
         self._lock=threading.RLock(); self.stats=MeshCacheStats()
     @staticmethod
     def key_for(request: GeometryRequest, settings: TessellationSettings, provider_version: str)->str:
@@ -40,9 +42,16 @@ class MeshCache:
         return d.hexdigest()
     def _remember(self,key:str,mesh:MeshData)->None:
         if self.max_memory_items<=0:return
+        previous=self._memory.get(key)
+        if previous is not None:self._memory_bytes-=self._mesh_bytes(previous)
         self._memory[key]=mesh; self._memory.move_to_end(key)
-        while len(self._memory)>self.max_memory_items:
-            self._memory.popitem(last=False); self.stats.evictions+=1
+        self._memory_bytes+=self._mesh_bytes(mesh)
+        while self._memory and (len(self._memory)>self.max_memory_items or self._memory_bytes>self.max_memory_bytes):
+            _old_key,old_mesh=self._memory.popitem(last=False); self._memory_bytes-=self._mesh_bytes(old_mesh); self.stats.evictions+=1
+        self.stats.memory_bytes=max(0,self._memory_bytes)
+    @staticmethod
+    def _mesh_bytes(mesh:MeshData)->int:
+        return int(mesh.vertices.nbytes+mesh.triangles.nbytes)
     def get(self,key:str)->MeshData|None:
         with self._lock:
             mesh=self._memory.get(key)
@@ -116,8 +125,10 @@ class MeshCache:
             finally: tmp.unlink(missing_ok=True)
     def invalidate(self,key:str)->None:
         with self._lock:
-            self._memory.pop(key,None); p=self._path_for(key); p.unlink(missing_ok=True); p.with_suffix('.sha256').unlink(missing_ok=True)
+            mesh=self._memory.pop(key,None)
+            if mesh is not None:self._memory_bytes=max(0,self._memory_bytes-self._mesh_bytes(mesh));self.stats.memory_bytes=self._memory_bytes
+            p=self._path_for(key); p.unlink(missing_ok=True); p.with_suffix('.sha256').unlink(missing_ok=True)
     def clear_memory(self)->None:
-        with self._lock:self._memory.clear()
+        with self._lock:self._memory.clear();self._memory_bytes=0;self.stats.memory_bytes=0
 
 __all__=['MeshCache','MeshCacheStats']

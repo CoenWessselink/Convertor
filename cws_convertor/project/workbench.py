@@ -28,6 +28,7 @@ WORKBENCH_ISSUE_PREFIX = "CWS-WB-"
 SUPPORTED_PART_FORMS = {"plate", "profile", "round_bar", "custom"}
 SUPPORTED_FEATURE_KINDS = {
     "hole",
+    "countersunk_hole",
     "slot",
     "cope",
     "cutout",
@@ -260,6 +261,10 @@ def _normalise_feature_parameters(kind: str, value: Any) -> dict[str, Any]:
             {"x_mm", "y_mm", "diameter_mm"},
             {"through", "depth_mm", "dstv_face"},
         ),
+        "countersunk_hole": (
+            {"x_mm", "y_mm", "diameter_mm", "countersink_diameter_mm"},
+            {"countersink_depth_mm", "countersink_angle_deg", "through", "dstv_face"},
+        ),
         "slot": (
             {"x_mm", "y_mm", "length_mm", "width_mm"},
             {"angle_deg", "through", "depth_mm", "dstv_face"},
@@ -299,6 +304,9 @@ def _normalise_feature_parameters(kind: str, value: Any) -> dict[str, Any]:
         "x_mm",
         "y_mm",
         "diameter_mm",
+        "countersink_diameter_mm",
+        "countersink_depth_mm",
+        "countersink_angle_deg",
         "length_mm",
         "width_mm",
         "height_mm",
@@ -322,7 +330,7 @@ def _normalise_feature_parameters(kind: str, value: Any) -> dict[str, Any]:
             result[key] = [_point(point, "Scribe-punt") for point in item]
         else:
             result[key] = str(item or "").strip()
-    if kind in {"hole", "slot", "cope", "cutout"}:
+    if kind in {"hole", "countersunk_hole", "slot", "cope", "cutout"}:
         result.setdefault("through", True)
     if kind in {"slot", "cope", "cutout", "pocket"}:
         result.setdefault("angle_deg", 0.0)
@@ -788,7 +796,7 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
             issues.append(_issue("FEATURE-REVIEW", f"Bewerking {feature_id or index} is nog een voorstel en moet worden bevestigd of verwijderd.", f"features.{index}.status"))
         elif status == "rejected":
             issues.append(_issue("FEATURE-REJECTED", f"Afgewezen bewerking {feature_id or index} moet uit de actieve revisie worden verwijderd.", f"features.{index}.status"))
-        if kind == "hole":
+        if kind in {"hole", "countersunk_hole"}:
             x = _finite(parameters.get("x_mm"), "Gat X")
             y = _finite(parameters.get("y_mm"), "Gat Y")
             diameter = _finite(parameters.get("diameter_mm"), "Gatdiameter")
@@ -800,6 +808,33 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
             hole_keys.add(key)
             if outer_polygon is not None and not _point_in_polygon([x, y], outer_polygon):
                 issues.append(_issue("HOLE-OUTSIDE", f"Gat {feature_id or index} ligt buiten of op de plaatcontour.", f"features.{index}"))
+            if kind == "countersunk_hole":
+                outer_diameter = _finite(
+                    parameters.get("countersink_diameter_mm"),
+                    "Verzinkdiameter",
+                )
+                if outer_diameter <= diameter:
+                    issues.append(
+                        _issue(
+                            "COUNTERSINK-DIAMETER",
+                            "Verzinkdiameter moet groter zijn dan de gatdiameter.",
+                            f"features.{index}.parameters.countersink_diameter_mm",
+                        )
+                    )
+                depth = parameters.get("countersink_depth_mm")
+                angle = parameters.get("countersink_angle_deg")
+                if depth is None and angle is None:
+                    issues.append(
+                        _issue(
+                            "COUNTERSINK-GEOMETRY",
+                            "Verzinking vereist een expliciete diepte of tophoek.",
+                            f"features.{index}.parameters",
+                        )
+                    )
+                if depth is not None and _finite(depth, "Verzinkdiepte") <= 0.0:
+                    issues.append(_issue("COUNTERSINK-DEPTH", "Verzinkdiepte moet positief zijn.", f"features.{index}.parameters.countersink_depth_mm"))
+                if angle is not None and not 0.0 < _finite(angle, "Verzinkhoek") < 180.0:
+                    issues.append(_issue("COUNTERSINK-ANGLE", "Verzinkhoek moet tussen 0 en 180 graden liggen.", f"features.{index}.parameters.countersink_angle_deg"))
         elif kind == "slot":
             x = _finite(parameters.get("x_mm"), "Sleuf X")
             y = _finite(parameters.get("y_mm"), "Sleuf Y")

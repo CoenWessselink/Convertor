@@ -221,6 +221,81 @@ def _write_xlsx(path: Path, snapshot: BOMSnapshot) -> None:
     workbook.close()
 
 
+def _scan_xlsx_formula_errors(path: Path) -> None:
+    from xml.etree import ElementTree
+
+    errors: list[str] = []
+    tokens = ("#REF!", "#VALUE!", "#DIV/0!", "#NAME?", "#NUM!", "#N/A")
+    with zipfile.ZipFile(path) as archive:
+        for name in archive.namelist():
+            if not name.startswith("xl/worksheets/") or not name.endswith(".xml"):
+                continue
+            raw = archive.read(name)
+            upper = raw.upper()
+            if not any(token.encode("ascii") in upper for token in tokens) and b't="e"' not in raw:
+                continue
+            root = ElementTree.fromstring(raw)
+            for cell in root.iter("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c"):
+                value = cell.find("{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v")
+                text = str(value.text or "") if value is not None else ""
+                if cell.get("t") == "e" or text.upper().startswith(tokens):
+                    errors.append(f"{name}!{cell.get('r', '?')}={text or 'formula error'}")
+    if errors:
+        raise ValueError("BOM-XLSX bevat formulefouten: " + "; ".join(errors[:20]))
+
+
+def _write_pdf(path: Path, snapshot: BOMSnapshot) -> None:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    styles = getSampleStyleSheet()
+    story: list[Any] = [
+        Paragraph(f"{APP_NAME} - Project BOM", styles["Title"]),
+        Paragraph(f"Project: {snapshot.project_name}", styles["Heading2"]),
+        Paragraph(f"Snapshot SHA-256: {snapshot.snapshot_sha256}", styles["Code"]),
+        Spacer(1, 5 * mm),
+    ]
+    summary_rows = [["Kenmerk", "Waarde"]] + [
+        [str(key), str(value)] for key, value in sorted(snapshot.summary.items())
+    ]
+    story.append(Table(summary_rows, repeatRows=1, colWidths=(95 * mm, 155 * mm)))
+    datasets = (
+        ("Part BOM", snapshot.part_bom),
+        ("Assembly BOM", snapshot.assembly_bom),
+        ("Inkoop", snapshot.purchase_bom),
+        ("Bevestigers", snapshot.fastener_bom),
+        ("Lassen", snapshot.weld_bom),
+        ("Materialen", snapshot.material_bom),
+    )
+    table_style = TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#B8C4D4")),
+        ("FONTSIZE", (0, 0), (-1, -1), 6.5),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ])
+    for title, source_rows in datasets:
+        rows = _flatten_rows(source_rows)
+        story.extend((PageBreak(), Paragraph(title, styles["Heading1"])))
+        if not rows:
+            story.append(Paragraph("Geen gegevens", styles["BodyText"]))
+            continue
+        headers = list(rows[0])
+        values = [headers] + [[str(row.get(header, "")) for header in headers] for row in rows]
+        table = Table(values, repeatRows=1, hAlign="LEFT")
+        table.setStyle(table_style)
+        story.append(table)
+    document = SimpleDocTemplate(
+        str(path), pagesize=landscape(A4),
+        leftMargin=10 * mm, rightMargin=10 * mm, topMargin=10 * mm, bottomMargin=10 * mm,
+        title=f"{snapshot.project_name} BOM", author=APP_NAME,
+    )
+    document.build(story)
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -244,6 +319,8 @@ def export_bom_package(
         json_path.write_text(json.dumps(snapshot.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
         xlsx_path = work / f"{stem}_BOM.xlsx"
         _write_xlsx(xlsx_path, snapshot)
+        _scan_xlsx_formula_errors(xlsx_path)
+        _write_pdf(work / f"{stem}_BOM.pdf", snapshot)
         datasets = {
             "part_bom": snapshot.part_bom,
             "assembly_bom": snapshot.assembly_bom,

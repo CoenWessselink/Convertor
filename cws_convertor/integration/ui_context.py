@@ -13,15 +13,18 @@ selection bus and no surface may use this context to bypass production gates.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
+from hashlib import sha256
+import json
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
 from .selection import ApplicationSelection
 
 
-U3_CONTEXT_SCHEMA = "cws-unified-ui-context-1.0"
+U3_CONTEXT_SCHEMA = "cws-application-context-2.0"
 U3_SAFETY_FLAGS = {
     "machine_observed_by_cws": False,
     "deployment_transport_authorized": False,
@@ -39,6 +42,136 @@ def _unique(values: Iterable[str]) -> tuple[str, ...]:
 
 
 @dataclass(frozen=True, slots=True)
+class ProjectContext:
+    active_project_id: str = ""
+    active_model_id: str = ""
+    active_assembly_id: str = ""
+    active_part_id: str = ""
+    active_feature_id: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SelectionContext:
+    selected_entity_ids: tuple[str, ...] = ()
+    selected_part_ids: tuple[str, ...] = ()
+    selected_assembly_ids: tuple[str, ...] = ()
+    selected_feature_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ViewerContext:
+    camera_state: dict[str, Any] = field(default_factory=dict)
+    camera_target: tuple[float, float, float] | None = None
+    camera_pivot: tuple[float, float, float] | None = None
+    camera_projection: str = "perspective"
+    camera_history: tuple[dict[str, Any], ...] = ()
+    visibility_state: dict[str, str] = field(default_factory=dict)
+    hidden_entities: tuple[str, ...] = ()
+    ghosted_entities: tuple[str, ...] = ()
+    isolated_scope: tuple[str, ...] = ()
+    transparency_overrides: dict[str, float] = field(default_factory=dict)
+    section_planes: tuple[dict[str, Any], ...] = ()
+    clipping_state: dict[str, Any] = field(default_factory=dict)
+    clip_box: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceContext:
+    search_state: dict[str, Any] = field(default_factory=dict)
+    active_filters: tuple[str, ...] = ()
+    active_workspace: str = "start"
+    workspace_history: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewContext:
+    measurement_state: dict[str, Any] = field(default_factory=dict)
+    markup_state: dict[str, Any] = field(default_factory=dict)
+    saved_view_state: dict[str, Any] = field(default_factory=dict)
+    saved_views: tuple[dict[str, Any], ...] = ()
+    active_bom_row: str = ""
+    active_bom_rows: tuple[str, ...] = ()
+    active_scribing_mark: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ManufacturingContext:
+    active_ruleset_id: str = ""
+    active_machine_profile_id: str = ""
+    active_production_instance_id: str = ""
+    active_sequence_id: str = ""
+    overlay_layers: tuple[str, ...] = ()
+    output_eligibility: dict[str, bool] = field(default_factory=dict)
+    active_edit_transaction: str = ""
+    active_nesting_run: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class ExportContext:
+    active_export_scope: tuple[str, ...] = ()
+    active_release_scope: tuple[str, ...] = ()
+    filters: dict[str, str] = field(default_factory=dict)
+    grouping: str = "combined"
+    formats: tuple[str, ...] = ()
+    naming_template: str = "{project}_{scope}_{revision}"
+    preflight_hash: str = ""
+    package_manifest_hash: str = ""
+
+
+def _context_from_dict(context_type: type[Any], value: Any) -> Any:
+    source = dict(value or {}) if isinstance(value, dict) else {}
+    tuple_fields = {
+        "selected_entity_ids", "selected_part_ids", "selected_assembly_ids",
+        "selected_feature_ids", "camera_history", "hidden_entities",
+        "ghosted_entities", "isolated_scope", "section_planes", "active_filters",
+        "workspace_history", "saved_views", "active_bom_rows", "active_export_scope",
+        "active_release_scope", "overlay_layers", "formats",
+    }
+    for name in tuple_fields.intersection(source):
+        source[name] = tuple(source[name] or ())
+    if source.get("camera_target") is not None:
+        source["camera_target"] = tuple(source["camera_target"])
+    if source.get("camera_pivot") is not None:
+        source["camera_pivot"] = tuple(source["camera_pivot"])
+    allowed = set(context_type.__dataclass_fields__)
+    return context_type(**{key: deepcopy(value) for key, value in source.items() if key in allowed})
+
+
+def migrate_context_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Migrate legacy U3 snapshots without treating transient UI state as project data."""
+
+    source = deepcopy(dict(payload or {}))
+    schema = str(source.get("schema") or "cws-unified-ui-context-1.0")
+    if schema == U3_CONTEXT_SCHEMA:
+        return source
+    selection = dict(source.get("selection") or {})
+    entity_ids = tuple(selection.get("entity_ids") or ())
+    feature_id = str(selection.get("feature_id") or "")
+    source.update(
+        {
+            "schema": U3_CONTEXT_SCHEMA,
+            "project_context": {
+                "active_project_id": str(source.get("project_id") or ""),
+                "active_feature_id": feature_id,
+            },
+            "selection_context": {
+                "selected_entity_ids": list(entity_ids),
+                "selected_feature_ids": [feature_id] if feature_id else [],
+            },
+            "viewer_context": {},
+            "workspace_context": {
+                "active_workspace": str(source.get("active_surface") or "start"),
+                "workspace_history": [str(source.get("active_surface") or "start")],
+            },
+            "review_context": {},
+            "manufacturing_context": {},
+            "export_context": {},
+        }
+    )
+    return source
+
+
+@dataclass(frozen=True, slots=True)
 class UnifiedUiContextSnapshot:
     """Immutable status record distributed to all U3 application surfaces."""
 
@@ -51,6 +184,13 @@ class UnifiedUiContextSnapshot:
     project_path: str = ""
     project_schema: str = ""
     integrity_blocking_codes: tuple[str, ...] = ()
+    project_context: ProjectContext = field(default_factory=ProjectContext)
+    selection_context: SelectionContext = field(default_factory=SelectionContext)
+    viewer_context: ViewerContext = field(default_factory=ViewerContext)
+    workspace_context: WorkspaceContext = field(default_factory=WorkspaceContext)
+    review_context: ReviewContext = field(default_factory=ReviewContext)
+    manufacturing_context: ManufacturingContext = field(default_factory=ManufacturingContext)
+    export_context: ExportContext = field(default_factory=ExportContext)
     changed_at: str = field(default_factory=_utc_now)
 
     @property
@@ -58,7 +198,7 @@ class UnifiedUiContextSnapshot:
         return not self.integrity_blocking_codes
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload = {
             "schema": U3_CONTEXT_SCHEMA,
             "generation": self.generation,
             "active_surface": self.active_surface,
@@ -69,10 +209,49 @@ class UnifiedUiContextSnapshot:
             "project_schema": self.project_schema,
             "selection": self.selection.to_dict(),
             "integrity_blocking_codes": list(self.integrity_blocking_codes),
+            "project_context": asdict(self.project_context),
+            "selection_context": asdict(self.selection_context),
+            "viewer_context": asdict(self.viewer_context),
+            "workspace_context": asdict(self.workspace_context),
+            "review_context": asdict(self.review_context),
+            "manufacturing_context": asdict(self.manufacturing_context),
+            "export_context": asdict(self.export_context),
             "consistent": self.consistent,
             "safety": dict(U3_SAFETY_FLAGS),
-            "changed_at": self.changed_at,
         }
+        encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True, default=str).encode(
+            "utf-8"
+        )
+        payload["state_hash"] = sha256(encoded).hexdigest()
+        payload["changed_at"] = self.changed_at
+        return payload
+
+    @property
+    def state_hash(self) -> str:
+        return str(self.to_dict()["state_hash"])
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "UnifiedUiContextSnapshot":
+        source = migrate_context_payload(payload)
+        return cls(
+            generation=int(source.get("generation") or 0),
+            active_surface=str(source.get("active_surface") or "start"),
+            selection=ApplicationSelection.from_dict(dict(source.get("selection") or {})),
+            project_attached=bool(source.get("project_attached")),
+            project_id=str(source.get("project_id") or ""),
+            project_name=str(source.get("project_name") or ""),
+            project_path=str(source.get("project_path") or ""),
+            project_schema=str(source.get("project_schema") or ""),
+            integrity_blocking_codes=tuple(source.get("integrity_blocking_codes") or ()),
+            project_context=_context_from_dict(ProjectContext, source.get("project_context")),
+            selection_context=_context_from_dict(SelectionContext, source.get("selection_context")),
+            viewer_context=_context_from_dict(ViewerContext, source.get("viewer_context")),
+            workspace_context=_context_from_dict(WorkspaceContext, source.get("workspace_context")),
+            review_context=_context_from_dict(ReviewContext, source.get("review_context")),
+            manufacturing_context=_context_from_dict(ManufacturingContext, source.get("manufacturing_context")),
+            export_context=_context_from_dict(ExportContext, source.get("export_context")),
+            changed_at=str(source.get("changed_at") or _utc_now()),
+        )
 
 
 class UnifiedApplicationContext:
@@ -87,11 +266,25 @@ class UnifiedApplicationContext:
     """
 
     def __init__(self, *, active_surface: str = "start") -> None:
+        from cws_convertor.project.jobs import JobManager
+
         self._workspace: Any | None = None
         self._workspace_unsubscribe: Callable[[], None] | None = None
         self._listeners: list[Callable[[UnifiedUiContextSnapshot], None]] = []
         self._selection = ApplicationSelection(origin="u3_context")
         self._active_surface = str(active_surface or "start")
+        self.job_manager = JobManager(max_workers=2)
+        self._project_context = ProjectContext()
+        self._selection_context = SelectionContext()
+        self._viewer_context = ViewerContext()
+        self._workspace_context = WorkspaceContext(
+            active_workspace=self._active_surface,
+            workspace_history=(self._active_surface,),
+        )
+        self._review_context = ReviewContext()
+        self._manufacturing_context = ManufacturingContext()
+        self._export_context = ExportContext()
+        self._user_preferences: dict[str, Any] = {}
         self._generation = 0
         self._syncing_interaction = False
         self._snapshot = self._build_snapshot()
@@ -179,7 +372,60 @@ class UnifiedApplicationContext:
         if value == self._active_surface:
             return self._snapshot
         self._active_surface = value
+        history = (*self._workspace_context.workspace_history, value)
+        self._workspace_context = replace(
+            self._workspace_context,
+            active_workspace=value,
+            workspace_history=history[-100:],
+        )
         return self._publish_snapshot()
+
+    def update_viewer_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
+        self._viewer_context = replace(self._viewer_context, **changes)
+        return self._publish_snapshot()
+
+    def update_workspace_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
+        self._workspace_context = replace(self._workspace_context, **changes)
+        self._active_surface = self._workspace_context.active_workspace
+        return self._publish_snapshot()
+
+    def update_review_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
+        self._review_context = replace(self._review_context, **changes)
+        return self._publish_snapshot()
+
+    def update_manufacturing_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
+        self._manufacturing_context = replace(self._manufacturing_context, **changes)
+        return self._publish_snapshot()
+
+    def update_export_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
+        self._export_context = replace(self._export_context, **changes)
+        return self._publish_snapshot()
+
+    def serialize_state(self) -> dict[str, Any]:
+        return {
+            "schema": U3_CONTEXT_SCHEMA,
+            "snapshot": self._snapshot.to_dict(),
+            "user_preferences": deepcopy(self._user_preferences),
+        }
+
+    def restore_state(self, payload: dict[str, Any]) -> UnifiedUiContextSnapshot:
+        source = dict(payload or {})
+        snapshot = UnifiedUiContextSnapshot.from_dict(
+            dict(source.get("snapshot") or source)
+        )
+        self._active_surface = snapshot.active_surface
+        self._project_context = snapshot.project_context
+        self._selection_context = snapshot.selection_context
+        self._viewer_context = snapshot.viewer_context
+        self._workspace_context = snapshot.workspace_context
+        self._review_context = snapshot.review_context
+        self._manufacturing_context = snapshot.manufacturing_context
+        self._export_context = snapshot.export_context
+        self._user_preferences = deepcopy(dict(source.get("user_preferences") or {}))
+        return self._publish_snapshot()
+
+    def close(self) -> None:
+        self.job_manager.shutdown(wait=False, cancel_pending=True)
 
     def ingest_interaction_selection(self, selection: Any | None) -> UnifiedUiContextSnapshot:
         """Normalize legacy ProjectInteraction signals into the U3 selection bus."""
@@ -334,8 +580,33 @@ class UnifiedApplicationContext:
                 generation=self._generation,
                 active_surface=self._active_surface,
                 selection=self._selection,
+                project_context=self._project_context,
+                selection_context=self._selection_context,
+                viewer_context=self._viewer_context,
+                workspace_context=self._workspace_context,
+                review_context=self._review_context,
+                manufacturing_context=self._manufacturing_context,
+                export_context=self._export_context,
             )
         project = workspace.project
+        entity_ids = tuple(self._selection.entity_ids)
+        part_ids = tuple(value for value in entity_ids if value in project.parts)
+        assembly_ids = tuple(value for value in entity_ids if value in project.assemblies)
+        primary = self._selection.primary_entity_id
+        self._project_context = replace(
+            self._project_context,
+            active_project_id=str(getattr(project, "project_id", "") or ""),
+            active_model_id=str(getattr(project, "project_id", "") or ""),
+            active_assembly_id=primary if primary in project.assemblies else (assembly_ids[0] if assembly_ids else ""),
+            active_part_id=primary if primary in project.parts else (part_ids[0] if part_ids else ""),
+            active_feature_id=str(self._selection.feature_id or ""),
+        )
+        self._selection_context = SelectionContext(
+            selected_entity_ids=entity_ids,
+            selected_part_ids=part_ids,
+            selected_assembly_ids=assembly_ids,
+            selected_feature_ids=(str(self._selection.feature_id),) if self._selection.feature_id else (),
+        )
         project_path = getattr(workspace, "project_path", "")
         return UnifiedUiContextSnapshot(
             generation=self._generation,
@@ -347,6 +618,13 @@ class UnifiedApplicationContext:
             project_path=str(Path(project_path)) if project_path else "",
             project_schema=str(getattr(project, "schema_version", "") or ""),
             integrity_blocking_codes=self.integrity_blocking_codes(),
+            project_context=self._project_context,
+            selection_context=self._selection_context,
+            viewer_context=self._viewer_context,
+            workspace_context=self._workspace_context,
+            review_context=self._review_context,
+            manufacturing_context=self._manufacturing_context,
+            export_context=self._export_context,
         )
 
     def _publish_snapshot(self) -> UnifiedUiContextSnapshot:
@@ -377,8 +655,16 @@ class UnifiedApplicationContext:
 
 
 __all__ = [
+    "ExportContext",
+    "ManufacturingContext",
+    "ProjectContext",
+    "ReviewContext",
+    "SelectionContext",
     "U3_CONTEXT_SCHEMA",
     "U3_SAFETY_FLAGS",
     "UnifiedApplicationContext",
     "UnifiedUiContextSnapshot",
+    "ViewerContext",
+    "WorkspaceContext",
+    "migrate_context_payload",
 ]

@@ -133,11 +133,11 @@ def _cut_plate_feature(
     parameters = dict(feature.get("parameters") or {})
     if kind == "scribe":
         return shape, f"Scribe {feature_id} is als niet-snijdende productie-intentie bewaard"
-    if kind not in {"hole", "slot", "cope", "cutout"}:
+    if kind not in {"hole", "countersunk_hole", "slot", "cope", "cutout", "pocket"}:
         raise CanonicalRebuildError(
             f"Bewerking {feature_id} van type {kind or '?'} kan nog niet exact worden teruggebouwd"
         )
-    if not bool(parameters.get("through", True)):
+    if kind != "pocket" and not bool(parameters.get("through", True)):
         raise CanonicalRebuildError(
             f"Blinde bewerking {feature_id} kan nog niet exact worden teruggebouwd"
         )
@@ -151,7 +151,7 @@ def _cut_plate_feature(
     if not math.isfinite(x) or not math.isfinite(y):
         raise CanonicalRebuildError(f"Bewerking {feature_id} heeft geen eindige positie")
     origin = (0.0, 0.0, -1.0)
-    if kind == "hole":
+    if kind in {"hole", "countersunk_hole"}:
         diameter = _positive(parameters.get("diameter_mm"), "Gatdiameter")
         cutter = cq.Solid.makeCylinder(
             diameter / 2.0,
@@ -159,6 +159,30 @@ def _cut_plate_feature(
             cq.Vector(x, y, -1.0),
             cq.Vector(0.0, 0.0, 1.0),
         )
+        if kind == "countersunk_hole":
+            outer = _positive(
+                parameters.get("countersink_diameter_mm"),
+                "Verzinkdiameter",
+            )
+            if outer <= diameter:
+                raise CanonicalRebuildError("Verzinkdiameter moet groter zijn dan de gatdiameter")
+            if parameters.get("countersink_depth_mm") is not None:
+                depth = _positive(parameters.get("countersink_depth_mm"), "Verzinkdiepte")
+            else:
+                angle = _positive(parameters.get("countersink_angle_deg"), "Verzinkhoek")
+                if angle >= 180.0:
+                    raise CanonicalRebuildError("Verzinkhoek moet kleiner zijn dan 180 graden")
+                depth = ((outer - diameter) / 2.0) / math.tan(math.radians(angle / 2.0))
+            if depth >= thickness:
+                raise CanonicalRebuildError("Verzinkdiepte moet kleiner zijn dan de plaatdikte")
+            countersink = cq.Solid.makeCone(
+                diameter / 2.0,
+                outer / 2.0,
+                depth,
+                cq.Vector(x, y, thickness - depth),
+                cq.Vector(0.0, 0.0, 1.0),
+            )
+            cutter = cutter.fuse(countersink)
     elif kind == "slot":
         length = _positive(parameters.get("length_mm"), "Sleuflengte")
         width = _positive(parameters.get("width_mm"), "Sleufbreedte")
@@ -190,6 +214,25 @@ def _cut_plate_feature(
             .transformed(rotate=(0.0, 0.0, angle))
             .rect(width, height)
             .extrude(thickness + 2.0)
+            .val()
+        )
+    elif kind == "pocket":
+        width = _positive(parameters.get("width_mm"), "Pocketbreedte")
+        height = _positive(parameters.get("height_mm"), "Pockethoogte")
+        depth = _positive(parameters.get("depth_mm"), "Pocketdiepte")
+        if depth >= thickness:
+            raise CanonicalRebuildError("Pocketdiepte moet kleiner zijn dan de plaatdikte")
+        corner_radius = float(parameters.get("corner_radius_mm", 0.0))
+        if corner_radius != 0.0:
+            raise CanonicalRebuildError(
+                f"Pocket {feature_id} met hoekradius vereist handmatige validatie"
+            )
+        angle = float(parameters.get("angle_deg", 0.0))
+        cutter = (
+            cq.Workplane("XY", origin=(x, y, thickness - depth))
+            .transformed(rotate=(0.0, 0.0, angle))
+            .rect(width, height)
+            .extrude(depth + 1.0)
             .val()
         )
     before = float(shape.Volume())
