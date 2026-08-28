@@ -5,7 +5,12 @@ from dataclasses import asdict, replace
 import inspect
 import json
 from pathlib import Path
+import sys
 from tempfile import TemporaryDirectory
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.integration.ui_context import UnifiedApplicationContext
 from cws_convertor.optimization.profile_nesting.bar_visualization import build_bar_scene, scene_to_svg
@@ -19,8 +24,6 @@ from cws_convertor.optimization.profile_nesting.phase4 import solve_and_register
 from cws_convertor.project.storage import ProjectStore
 from cws_convertor.ui_qt.phase3_workspaces import ProfileNestingPanel
 
-
-ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "validation" / "phases" / "PHASE_1_PROFILE_NESTING_COMMAND_EVIDENCE.json"
 
 
