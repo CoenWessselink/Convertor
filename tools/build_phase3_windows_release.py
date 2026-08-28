@@ -213,13 +213,16 @@ def main() -> int:
          "--expect-absent"], timeout=120,
     )
     cleanup_deadline = time.monotonic() + 60.0
-    while time.monotonic() < cleanup_deadline:
-        pending_uninstallers = list(INSTALL_ROOT.glob("unins*.exe"))
-        if not pending_uninstallers:
+    critical_leftovers: list[str] = []
+    while True:
+        critical_leftovers = [
+            str(path)
+            for path in INSTALL_ROOT.rglob("*")
+            if path.is_file() and path.suffix.lower() in {".exe", ".dll", ".pyd"}
+        ]
+        if not critical_leftovers or time.monotonic() >= cleanup_deadline:
             break
         time.sleep(0.25)
-    critical_leftovers = [str(path) for path in INSTALL_ROOT.rglob("*")
-                          if path.is_file() and path.suffix.lower() in {".exe", ".dll", ".pyd"}]
     if critical_leftovers:
         raise RuntimeError(f"Critical installed runtime leftovers: {critical_leftovers[:20]}")
     sbom = RELEASE / "CWS_Convertor_SBOM.cdx.json"
