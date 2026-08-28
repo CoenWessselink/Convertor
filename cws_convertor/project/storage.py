@@ -384,7 +384,13 @@ class ProjectStore:
                 )
         return target
 
-    def open(self, path: str | Path, *, read_only: bool = False) -> ProjectPackage:
+    def open(
+        self,
+        path: str | Path,
+        *,
+        read_only: bool = False,
+        verify_semantic_hashes: bool = True,
+    ) -> ProjectPackage:
         source = Path(path)
         if not source.is_file():
             raise ProjectPackageError(
@@ -408,10 +414,24 @@ class ProjectStore:
 
         manifest_schema = str(manifest.get("project_schema_version", ""))
         migration_performed = project.schema_version != manifest_schema
-        project_hashes = project_hash_bundle_from_snapshot(project.to_dict())
-        project_hash = project_hashes["semantic_sha256"]
-        manufacturing_hash = project.manufacturing_state_sha256()
         manifest_hash = str(manifest.get("project_sha256", ""))
+        fast_verified_manifest = bool(not verify_semantic_hashes and not migration_performed)
+        if fast_verified_manifest:
+            project_hashes = {
+                "semantic_sha256": manifest_hash,
+                "content_sha256": str(manifest.get("content_sha256") or ""),
+                "revision_content_sha256": str(
+                    manifest.get("revision_content_sha256") or ""
+                ),
+            }
+            project_hash = manifest_hash
+            manufacturing_hash = str(
+                manifest.get("manufacturing_state_sha256") or ""
+            )
+        else:
+            project_hashes = project_hash_bundle_from_snapshot(project.to_dict())
+            project_hash = project_hashes["semantic_sha256"]
+            manufacturing_hash = project.manufacturing_state_sha256()
         if migration_performed:
             # Early schema-1 development packages stored the raw canonical
             # snapshot hash.  Verify that immutable source snapshot, then open

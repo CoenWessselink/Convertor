@@ -1,6 +1,9 @@
 #define MyAppName "CWS Convertor"
 #define MyAppVersion "0.10.18-beta-dev"
 #define MyAppNumericVersion "0.10.18.0"
+#ifndef Commit7
+#error Commit7 define is required for a release-bound installer
+#endif
 #define MyAppPublisher "CWS"
 #define MyAppExeName "CWS_Convertor.exe"
 #define MyCliExeName "CWS_Convertor_CLI.exe"
@@ -15,7 +18,7 @@ DefaultDirName={autopf}\CWS Convertor
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=..\dist_installer
-OutputBaseFilename=CWS_Convertor_Setup_{#MyAppVersion}_x64
+OutputBaseFilename=CWS_Convertor_Setup_{#MyAppVersion}_{#Commit7}_x64
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

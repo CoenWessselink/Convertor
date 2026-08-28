@@ -13,8 +13,8 @@ class ViewerV4WindowsConfigTests(unittest.TestCase):
     def test_spec_collects_qt_vtk_and_native_cad_stack(self) -> None:
         spec = (ROOT / "CWS_Convertor.spec").read_text(encoding="utf-8")
         for token in (
-            '"vtkmodules"', '"PySide6"', '"cadquery"', '"OCP"',
-            '"casadi"', '"ifcopenshell"',
+            '"vtkmodules.vtkRenderingOpenGL2"', '"PySide6.QtOpenGLWidgets"',
+            '"cadquery"', '"OCP"', '"casadi"', '"cryptography"', '"ifcopenshell"',
             '"casadi._casadi"',
             'pyi_rth_cws_native_dll_path.py',
             'collect_submodules("cws_viewer")',

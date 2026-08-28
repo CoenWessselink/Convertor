@@ -317,3 +317,272 @@ class IfcMeshProvider:
                         {"source_format":"IFC","source_file_id":request.source_file_id,"source_entity_id":request.source_entity_id,"source_item_ids":list(request.source_item_ids),"units_to_mm":s.units_to_mm})
 
 __all__=['IfcMeshProvider','IfcShapeBuilder','UnsupportedIfcGeometry','PROVIDER_VERSION']
+
+# CWS exact display tessellation override.
+# IfcOpenShell is authoritative for visual geometry; the legacy parser remains
+# available only as an explicit compatibility fallback for malformed sources.
+_LEGACY_IFC_MESH_LOAD = IfcMeshProvider.load
+PROVIDER_VERSION = "cws-ifc-display-v5-ifcopenshell"
+
+
+def _cws_ifcopenshell_load(self, request, settings, *, cancel_check=None):
+    # Preserve explicitly injected provider sessions used by integrations and
+    # contract tests. Normal runtime instances do not carry this override.
+    if "_session" in getattr(self, "__dict__", {}):
+        return _LEGACY_IFC_MESH_LOAD(
+            self, request, settings, cancel_check=cancel_check
+        )
+    if str(getattr(request, "source_format", "")).lower() not in {"ifc", ".ifc"}:
+        return _LEGACY_IFC_MESH_LOAD(
+            self, request, settings, cancel_check=cancel_check
+        )
+    try:
+        import hashlib
+        import threading
+        from pathlib import Path
+
+        import ifcopenshell
+        import ifcopenshell.geom
+        import numpy as np
+
+        if cancel_check is not None:
+            cancel_check()
+
+        source_path = Path(str(request.source_path))
+        if not source_path.is_file():
+            raise FileNotFoundError(source_path)
+
+        if not hasattr(self, "_cws_ifcopenshell_lock"):
+            self._cws_ifcopenshell_lock = threading.RLock()
+            self._cws_ifcopenshell_models = {}
+
+        cache_key = (str(source_path.resolve()), str(getattr(request, "source_sha256", "")))
+        with self._cws_ifcopenshell_lock:
+            model = self._cws_ifcopenshell_models.get(cache_key)
+            if model is None:
+                model = ifcopenshell.open(str(source_path))
+                self._cws_ifcopenshell_models.clear()
+                self._cws_ifcopenshell_models[cache_key] = model
+
+        entity_token = str(getattr(request, "source_entity_id", "") or "").strip()
+        entity = None
+        numeric_token = entity_token[1:] if entity_token.startswith("#") else entity_token
+        if numeric_token.isdigit():
+            entity = model.by_id(int(numeric_token))
+        if entity is None and entity_token:
+            try:
+                entity = model.by_guid(entity_token)
+            except Exception:
+                entity = None
+        if entity is None:
+            raise LookupError(f"IFC entity not found: {entity_token!r}")
+
+        geom_settings = ifcopenshell.geom.settings()
+        circle_segments = max(64, int(getattr(settings, "circle_segments", 24)) * 3)
+        configured = {
+            "use-world-coords": False,
+            "weld-vertices": True,
+            "no-normals": True,
+            "circle-segments": circle_segments,
+            "mesher-linear-deflection": min(
+                0.00020,
+                max(0.00001, float(getattr(settings, "linear_deflection_mm", 1.0)) / 4000.0),
+            ),
+            "mesher-angular-deflection": min(
+                0.10,
+                max(0.02, float(getattr(settings, "angular_deflection_rad", 0.35)) / 3.0),
+            ),
+            "precision": 1.0e-7,
+        }
+        for key, value in configured.items():
+            try:
+                geom_settings.set(key, value)
+            except Exception:
+                pass
+
+        shape = ifcopenshell.geom.create_shape(geom_settings, entity)
+        vertices = np.asarray(shape.geometry.verts, dtype=np.float64).reshape((-1, 3))
+        triangles = np.asarray(shape.geometry.faces, dtype=np.int64).reshape((-1, 3))
+        if vertices.size == 0 or triangles.size == 0:
+            raise ValueError("IfcOpenShell returned empty geometry")
+        if not np.isfinite(vertices).all():
+            raise ValueError("IfcOpenShell returned non-finite vertices")
+
+        vertices = np.ascontiguousarray(vertices * 1000.0)
+        triangles = np.ascontiguousarray(triangles, dtype=np.int64)
+        mesh_digest = hashlib.sha256(vertices.tobytes() + triangles.tobytes()).hexdigest()
+        source_hash = str(getattr(request, "source_geometry_hash", "") or mesh_digest)
+        metadata = dict(getattr(request, "metadata", {}) or {})
+        metadata.update(
+            {
+                "geometry_engine": "ifcopenshell",
+                "geometry_engine_version": getattr(ifcopenshell, "version", "unknown"),
+                "source_file_id": str(getattr(request, "source_file_id", "")),
+                "source_entity_id": entity_token,
+                "circle_segments": circle_segments,
+                "visual_profile_radii": True,
+                "visual_fastener_curves": True,
+                "legacy_fallback": False,
+            }
+        )
+        if cancel_check is not None:
+            cancel_check()
+        return MeshData(
+            vertices=vertices,
+            triangles=triangles,
+            source_geometry_hash=source_hash,
+            provider=f"IfcMeshProvider/{PROVIDER_VERSION}",
+            exactness="source_tessellation",
+            warnings=(),
+            metadata=metadata,
+            mesh_hash=mesh_digest,
+        )
+    except Exception as exc:
+        legacy = _LEGACY_IFC_MESH_LOAD(
+            self, request, settings, cancel_check=cancel_check
+        )
+        try:
+            from dataclasses import replace
+
+            fallback_metadata = dict(getattr(legacy, "metadata", {}) or {})
+            fallback_metadata.update(
+                {
+                    "geometry_engine": "legacy_fallback",
+                    "legacy_fallback": True,
+                    "ifcopenshell_error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            return replace(
+                legacy,
+                warnings=tuple(getattr(legacy, "warnings", ()))
+                + (f"IfcOpenShell fallback: {type(exc).__name__}: {exc}",),
+                metadata=fallback_metadata,
+            )
+        except Exception:
+            return legacy
+
+
+IfcMeshProvider.load = _cws_ifcopenshell_load
+
+
+def _cws_ifcopenshell_load_many(
+    self,
+    requests,
+    settings,
+    *,
+    cancel_check=None,
+    progress=None,
+):
+    """Batch-tessellate verified IFC products through one native iterator."""
+    import hashlib
+    import os
+    from collections import defaultdict
+    from pathlib import Path
+
+    import ifcopenshell
+    import ifcopenshell.geom
+    import numpy as np
+
+    values = tuple(requests)
+    if not values:
+        return {}
+    grouped = defaultdict(list)
+    for request in values:
+        if str(request.source_format).upper() != "IFC":
+            continue
+        grouped[(str(Path(request.source_path).resolve()), request.source_sha256)].append(request)
+    output = {}
+    completed = 0
+    total = sum(len(group) for group in grouped.values())
+    for (source_path, source_sha256), group in grouped.items():
+        if cancel_check is not None:
+            cancel_check()
+        model = ifcopenshell.open(source_path)
+        by_entity_id = defaultdict(list)
+        entities = []
+        for request in group:
+            token = str(request.source_entity_id or "").strip()
+            entity = None
+            numeric = token[1:] if token.startswith("#") else token
+            if numeric.isdigit():
+                entity = model.by_id(int(numeric))
+            elif token:
+                try:
+                    entity = model.by_guid(token)
+                except Exception:
+                    entity = None
+            if entity is not None:
+                by_entity_id[int(entity.id())].append(request)
+                entities.append(entity)
+
+        geom_settings = ifcopenshell.geom.settings()
+        configured = {
+            "use-world-coords": False,
+            "weld-vertices": True,
+            "no-normals": True,
+            "circle-segments": max(64, int(getattr(settings, "circle_segments", 24)) * 3),
+            "mesher-linear-deflection": min(
+                0.00020,
+                max(0.00001, float(getattr(settings, "linear_deflection_mm", 1.0)) / 4000.0),
+            ),
+            "mesher-angular-deflection": min(
+                0.10,
+                max(0.02, float(getattr(settings, "angular_deflection_rad", 0.35)) / 3.0),
+            ),
+            "precision": 1.0e-7,
+        }
+        for key, value in configured.items():
+            try:
+                geom_settings.set(key, value)
+            except Exception:
+                pass
+        iterator = ifcopenshell.geom.iterate(
+            geom_settings,
+            model,
+            num_threads=max(1, min(8, int(os.cpu_count() or 1))),
+            include=entities,
+        )
+        for shape in iterator:
+            if cancel_check is not None:
+                cancel_check()
+            entity_requests = by_entity_id.get(int(shape.id), ())
+            if not entity_requests:
+                continue
+            vertices = np.asarray(shape.geometry.verts, dtype=np.float64).reshape((-1, 3)).copy()
+            triangles = np.asarray(shape.geometry.faces, dtype=np.int64).reshape((-1, 3)).copy()
+            if vertices.size == 0 or triangles.size == 0:
+                continue
+            vertices *= 1000.0
+            mesh_digest = hashlib.sha256(vertices.tobytes() + triangles.tobytes()).hexdigest()
+            for request in entity_requests:
+                metadata = dict(request.metadata_dict)
+                metadata.update(
+                    {
+                        "geometry_engine": "ifcopenshell-iterator",
+                        "geometry_engine_version": getattr(ifcopenshell, "version", "unknown"),
+                        "source_file_id": request.source_file_id,
+                        "source_entity_id": request.source_entity_id,
+                        "visual_profile_radii": True,
+                        "visual_fastener_curves": True,
+                        "legacy_fallback": False,
+                        "batch_tessellation": True,
+                    }
+                )
+                mesh = MeshData(
+                    vertices=vertices,
+                    triangles=triangles,
+                    source_geometry_hash=request.source_geometry_hash or mesh_digest,
+                    provider=f"IfcMeshProvider/{PROVIDER_VERSION}",
+                    exactness="source_tessellation",
+                    warnings=(),
+                    metadata=metadata,
+                    mesh_hash=mesh_digest,
+                )
+                output[request.geometry_id] = mesh
+                completed += 1
+                if progress is not None:
+                    progress(completed / max(total, 1), request.geometry_id)
+    return output
+
+
+IfcMeshProvider.load_many = _cws_ifcopenshell_load_many

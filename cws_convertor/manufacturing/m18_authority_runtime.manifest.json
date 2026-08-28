@@ -1,0 +1,16 @@
+{
+  "base64_sha256": "b33097f067f92365f9ccd567933ce232e6f9a864c79553c6ad572ce5976a6e76",
+  "origin_commit": "b04b1c203583295e8c5ed018d75de68b2319c839",
+  "reconstruction_source": "CWS_Convertor_Scribing_M18_DELIVERY_0.8.30-beta-dev frozen donor",
+  "runtime_bytes": 233402,
+  "runtime_sha256": "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1",
+  "safety": {
+    "deployment_transport_authorized": false,
+    "direct_machine_transfer": false,
+    "machine_observed_by_cws": false,
+    "machine_transfer_allowed": false
+  },
+  "schema": "cws-m18-text-transport-1.1",
+  "source_blob_sha": "0acef19f119bbe19540e19f8e82fb9ac5c97f638",
+  "zip_entries": 43
+}

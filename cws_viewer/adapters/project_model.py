@@ -260,7 +260,11 @@ class CwsProjectSceneAdapter:
                 code=ViewerErrorCode.PROJECT_SCHEMA_UNSUPPORTED,
             )
         project_name = str(getattr(project, "project_name", "") or "CWS-project")
-        revision_id = str(getattr(project, "revision_content_sha256", lambda: "")() or "")
+        revision_id = str(
+            getattr(project, "_verified_revision_content_sha256", "")
+            or getattr(project, "revision_content_sha256", lambda: "")()
+            or ""
+        )
         units = str(getattr(project, "units", "mm") or "mm")
 
         nodes: list[SceneNode] = []

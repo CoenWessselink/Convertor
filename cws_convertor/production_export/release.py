@@ -1108,7 +1108,6 @@ class ProjectProductionExportEngine:
             for name in ("parts", "assemblies", "reports"):
                 (root / name).mkdir(parents=True, exist_ok=True)
             bom = build_bom_snapshot(project, user="production-export", classify_if_needed=False)
-            export_bom_package(bom, root / "reports" / "BOM", package_name=safe_filename(project.project_name))
             items: list[ExportItemResult] = []
             shapes: dict[str, cq.Shape] = {}
             canonicals: dict[str, CanonicalPart] = {}
@@ -1130,6 +1129,15 @@ class ProjectProductionExportEngine:
                     canonicals[part.internal_id] = canonical
 
             assemblies = self._assembly_packages(project, root, request, selected, items, shapes, canonicals, bom)
+            production_ready = all(item.status == ExportStatus.EXPORTED for item in items) and all(
+                item.status == ExportStatus.EXPORTED for item in assemblies
+            )
+            if production_ready or request.include_blocked_review_files:
+                export_bom_package(
+                    bom,
+                    root / "reports" / "BOM",
+                    package_name=safe_filename(project.project_name),
+                )
             status_counter = Counter(item.status.value for item in items)
             artifact_counter = Counter(artifact.status.value for item in items for artifact in item.artifacts)
             manifest = ExportManifest(
@@ -1155,8 +1163,7 @@ class ProjectProductionExportEngine:
                     ),
                     "assemblies": len(assemblies),
                     "bom_snapshot_sha256": bom.snapshot_sha256,
-                    "production_ready": all(item.status == ExportStatus.EXPORTED for item in items)
-                    and all(item.status == ExportStatus.EXPORTED for item in assemblies),
+                    "production_ready": production_ready,
                 },
             )
             without_hash = canonical_json_bytes(manifest.to_dict(include_hash=False))

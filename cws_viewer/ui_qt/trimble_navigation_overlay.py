@@ -1,184 +1,232 @@
+"""Compact, non-blocking navigation controls for the embedded VTK viewer."""
+
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 
-from PySide6 import QtCore, QtGui, QtWidgets
-
-
-def _navigation_icon(name: str) -> QtGui.QIcon:
-    def pixmap(color: str) -> QtGui.QPixmap:
-        image = QtGui.QPixmap(24, 24)
-        image.fill(QtCore.Qt.GlobalColor.transparent)
-        painter = QtGui.QPainter(image)
-        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
-        pen = QtGui.QPen(QtGui.QColor(color), 1.8, QtCore.Qt.PenStyle.SolidLine)
-        pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-
-        if name in {"fit", "fullscreen"}:
-            inset = 4 if name == "fit" else 3
-            length = 5
-            for x, y, sx, sy in (
-                (inset, inset, 1, 1), (24 - inset, inset, -1, 1),
-                (inset, 24 - inset, 1, -1), (24 - inset, 24 - inset, -1, -1),
-            ):
-                painter.drawLine(x, y, x + sx * length, y)
-                painter.drawLine(x, y, x, y + sy * length)
-        elif name == "orbit":
-            painter.drawArc(QtCore.QRectF(4.5, 4.5, 15, 15), 30 * 16, 285 * 16)
-            painter.drawLine(18.5, 5.5, 18.0, 10.0)
-            painter.drawLine(18.5, 5.5, 14.3, 6.7)
-            painter.drawEllipse(QtCore.QPointF(12, 12), 1.7, 1.7)
-        elif name == "pan":
-            painter.drawRoundedRect(QtCore.QRectF(7, 10, 10, 9), 3, 3)
-            for x, top in ((8, 6), (11, 4), (14, 5), (17, 7)):
-                painter.drawLine(x, top, x, 13)
-            painter.drawLine(7, 13, 4.5, 11)
-        elif name == "walk":
-            painter.setBrush(QtGui.QColor(color))
-            painter.drawEllipse(QtCore.QRectF(6, 4, 5, 8))
-            painter.drawEllipse(QtCore.QRectF(13, 12, 5, 8))
-            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        elif name in {"zoom_in", "zoom_out"}:
-            painter.drawEllipse(QtCore.QRectF(4, 4, 12, 12))
-            painter.drawLine(14.5, 14.5, 20, 20)
-            painter.drawLine(7, 10, 13, 10)
-            if name == "zoom_in":
-                painter.drawLine(10, 7, 10, 13)
-        elif name == "detach":
-            painter.drawRoundedRect(QtCore.QRectF(4, 7, 11, 11), 1, 1)
-            painter.drawRoundedRect(QtCore.QRectF(9, 4, 11, 11), 1, 1)
-            painter.drawLine(14, 9, 19, 4)
-            painter.drawLine(15.5, 4, 19, 4)
-            painter.drawLine(19, 4, 19, 7.5)
-        painter.end()
-        return image
-
-    icon = QtGui.QIcon()
-    icon.addPixmap(pixmap("#075fcf"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.Off)
-    icon.addPixmap(pixmap("#ffffff"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.On)
-    return icon
+from PySide6 import QtCore, QtWidgets
 
 
-class TrimbleNavigationOverlay(QtWidgets.QWidget):
-    """Compact vector navigation bar for the integrated V15 viewer."""
+class TrimbleNavigationOverlay(QtWidgets.QFrame):
+    """Small viewport toolbar that never covers the model work area."""
 
-    def __init__(self, viewer: QtWidgets.QWidget, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__(parent or viewer)
-        self.viewer = viewer
-        self.controller = getattr(viewer, "controller", None)
+    def __init__(self, viewer: QtWidgets.QWidget) -> None:
+        super().__init__(viewer)
+        self._viewer = viewer
+        self._select_active = False
         self.setObjectName("trimbleNavigationOverlay")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(
-            "#trimbleNavigationOverlay { background: rgba(255,255,255,248);"
-            " border: 1px solid #cbd6e3; border-radius: 6px; }"
-            "QToolButton { background: transparent; border: 1px solid transparent;"
-            " border-radius: 4px; padding: 4px; }"
-            "QToolButton:hover { background: #eaf3ff; border-color: #a8c7ec; }"
-            "QToolButton:pressed { background: #d8eaff; }"
-            "QToolButton:checked { background: #075fcf; border-color: #0754b8; }"
+            """
+            QFrame#trimbleNavigationOverlay {
+                background: rgba(250, 252, 255, 238);
+                border: 1px solid #9eb4cc;
+                border-radius: 4px;
+            }
+            QToolButton {
+                min-width: 28px;
+                min-height: 26px;
+                padding: 2px 5px;
+                color: #093f79;
+                background: transparent;
+                border: 1px solid transparent;
+                border-radius: 3px;
+                font-weight: 600;
+            }
+            QToolButton:hover { background: #e5f1ff; border-color: #9cc8f5; }
+            QToolButton:checked { color: white; background: #0875d1; border-color: #075fa8; }
+            QSlider::groove:horizontal { height: 4px; background: #c6d5e5; border-radius: 2px; }
+            QSlider::handle:horizontal {
+                width: 12px; margin: -5px 0; border-radius: 6px;
+                background: #0875d1; border: 1px solid #075fa8;
+            }
+            QLabel { color: #24445f; font-size: 10px; }
+            """
         )
-        self.setFixedSize(298, 42)
-        self._build()
 
-    def _button(
-        self,
-        tooltip: str,
-        icon_name: str,
-        callback: Callable[[], None],
-        *,
-        checkable: bool = False,
-    ) -> QtWidgets.QToolButton:
-        button = QtWidgets.QToolButton(self)
-        button.setIcon(_navigation_icon(icon_name))
-        button.setIconSize(QtCore.QSize(20, 20))
-        button.setToolTip(tooltip)
-        button.setAccessibleName(tooltip)
-        button.setCheckable(checkable)
-        button.setFixedSize(34, 32)
-        button.clicked.connect(callback)
-        return button
-
-    def _build(self) -> None:
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(2)
-        layout.addWidget(self._button("Alles passend in beeld", "fit", self._fit))
-        orbit = self._button("Orbit: model draaien", "orbit", lambda: self._mode("orbit"), checkable=True)
-        pan = self._button("Pan: beeld verschuiven", "pan", lambda: self._mode("pan"), checkable=True)
-        walk = self._button("Lopen door model", "walk", lambda: self._mode("walk"), checkable=True)
-        self._mode_buttons = {"orbit": orbit, "pan": pan, "walk": walk}
+        layout.setContentsMargins(5, 4, 5, 4)
+        layout.setSpacing(3)
+
+        self.select_button = self._button("Select", "Onderdeel selecteren", checkable=True)
+        self.orbit_button = self._button("Orbit", "Draaien om de positie onder de muis", checkable=True)
+        self.pan_button = self._button("Slepen", "Model slepen", checkable=True)
+        self.fit_button = self._button("Fit", "Volledig model passend weergeven")
+        self.area_button = self._button("Zoom", "Zoomvenster", checkable=True)
+
         self._mode_group = QtWidgets.QButtonGroup(self)
         self._mode_group.setExclusive(True)
-        for button in self._mode_buttons.values():
+        for button in (self.select_button, self.orbit_button, self.pan_button):
             self._mode_group.addButton(button)
-            layout.addWidget(button)
-        orbit.setChecked(True)
-        layout.addWidget(self._button("Inzoomen", "zoom_in", lambda: self._zoom(1.18)))
-        layout.addWidget(self._button("Uitzoomen", "zoom_out", lambda: self._zoom(1.0 / 1.18)))
-        layout.addWidget(self._button("Viewer in apart venster", "detach", self._open_detached))
-        layout.addWidget(self._button("Volledig scherm", "fullscreen", self._fullscreen))
 
-    def _fit(self) -> None:
-        if self.controller is not None:
-            self.controller.fit_all()
+        layout.addWidget(self.select_button)
+        layout.addWidget(self.orbit_button)
+        layout.addWidget(self.pan_button)
+        layout.addWidget(self.fit_button)
+        layout.addWidget(self.area_button)
 
-    def _orbit(self, dx: float, dy: float) -> None:
-        if self.controller is not None:
-            self.controller.orbit(dx, dy)
+        separator = QtWidgets.QFrame(self)
+        separator.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+        separator.setStyleSheet("color: #b9c7d5;")
+        layout.addWidget(separator)
 
-    def _zoom(self, factor: float) -> None:
-        if self.controller is not None:
-            self.controller.zoom(factor)
+        opacity_label = QtWidgets.QLabel("Doorzichtig")
+        opacity_label.setToolTip("Doorzichtigheid van het volledige model")
+        layout.addWidget(opacity_label)
+        self.opacity_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal, self)
+        self.opacity_slider.setRange(15, 100)
+        self.opacity_slider.setValue(100)
+        self.opacity_slider.setFixedWidth(86)
+        self.opacity_slider.setToolTip("Modeldoorzichtigheid")
+        layout.addWidget(self.opacity_slider)
 
-    def _mode(self, mode: str) -> None:
-        self._mode_buttons[mode].setChecked(True)
-        setter = getattr(self.viewer, "set_navigation_mode", None)
-        if not callable(setter) and self.controller is not None:
-            setter = getattr(self.controller, "set_navigation_mode", None)
+        self.select_button.clicked.connect(self._activate_select)
+        self.orbit_button.clicked.connect(lambda: self._activate_navigation("orbit"))
+        self.pan_button.clicked.connect(lambda: self._activate_navigation("pan"))
+        self.fit_button.clicked.connect(self._fit_model)
+        self.area_button.toggled.connect(self._set_zoom_area)
+        self.opacity_slider.valueChanged.connect(self._set_opacity)
+
+        self.orbit_button.setChecked(True)
+        self._viewer.installEventFilter(self)
+        self._install_filter_on_viewport_children()
+        self.adjustSize()
+        self._reposition()
+        self.show()
+        self.raise_()
+
+    def _button(self, text: str, tooltip: str, *, checkable: bool = False) -> QtWidgets.QToolButton:
+        button = QtWidgets.QToolButton(self)
+        button.setText(text)
+        button.setToolTip(tooltip)
+        button.setCheckable(checkable)
+        button.setAutoRaise(False)
+        return button
+
+    def _install_filter_on_viewport_children(self) -> None:
+        for child in self._viewer.findChildren(QtWidgets.QWidget):
+            if child is not self and not self.isAncestorOf(child):
+                child.installEventFilter(self)
+
+    def _event_position_for_viewer(self, watched: QtCore.QObject, event: Any) -> QtCore.QPointF:
+        pos = event.position()
+        if watched is self._viewer or not isinstance(watched, QtWidgets.QWidget):
+            return pos
+        global_pos = watched.mapToGlobal(pos.toPoint())
+        return QtCore.QPointF(self._viewer.mapFromGlobal(global_pos))
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        event_type = event.type()
+        if watched is self._viewer and event_type in (
+            QtCore.QEvent.Type.Resize,
+            QtCore.QEvent.Type.Show,
+        ):
+            QtCore.QTimer.singleShot(0, self._reposition)
+        if event_type == QtCore.QEvent.Type.ChildAdded:
+            QtCore.QTimer.singleShot(0, self._install_filter_on_viewport_children)
+
+        if (
+            event_type == QtCore.QEvent.Type.MouseButtonPress
+            and hasattr(event, "button")
+            and event.button() == QtCore.Qt.MouseButton.LeftButton
+            and watched is not self
+            and not self.isAncestorOf(watched)
+        ):
+            pos = self._event_position_for_viewer(watched, event)
+            if self._select_active:
+                picker = getattr(self._viewer, "_pick", None)
+                if callable(picker):
+                    picker(pos, event.modifiers(), emit=True)
+                    return True
+            elif self.orbit_button.isChecked():
+                binder = getattr(self._viewer, "_bind_orbit_pivot_from_screen", None)
+                if callable(binder):
+                    binder(pos)
+        return super().eventFilter(watched, event)
+
+    def _activate_select(self) -> None:
+        self._select_active = True
+        self._viewer.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
+        zoom = getattr(self._viewer, "set_zoom_area", None)
+        if callable(zoom):
+            zoom(False)
+        self.area_button.setChecked(False)
+
+    def _activate_navigation(self, mode: str) -> None:
+        self._select_active = False
+        setter = getattr(self._viewer, "set_navigation_mode", None)
         if callable(setter):
             setter(mode)
+        zoom = getattr(self._viewer, "set_zoom_area", None)
+        if callable(zoom):
+            zoom(False)
+        self.area_button.setChecked(False)
 
-    def _open_detached(self) -> None:
-        current: QtWidgets.QWidget | None = self.viewer
-        while current is not None:
-            for name in ("open_detached_viewer", "_open_detached_viewer", "show_detached_viewer"):
-                callback = getattr(current, name, None)
-                if callable(callback):
-                    callback()
-                    return
-            for action in current.findChildren(QtGui.QAction):
-                label = action.text().lower()
-                if "apart venster" in label or "los venster" in label:
-                    action.trigger()
-                    return
-            current = current.parentWidget()
-        QtWidgets.QMessageBox.information(self, "Viewer", "Open de losse Viewer V15 via Meer > Viewer in apart venster.")
+    def _set_zoom_area(self, enabled: bool) -> None:
+        if enabled:
+            self._select_active = False
+            self._mode_group.setExclusive(False)
+            self.select_button.setChecked(False)
+            self.orbit_button.setChecked(False)
+            self.pan_button.setChecked(False)
+            self._mode_group.setExclusive(True)
+        setter = getattr(self._viewer, "set_zoom_area", None)
+        if callable(setter):
+            setter(enabled)
 
-    def _fullscreen(self) -> None:
-        window = self.viewer.window()
-        window.showNormal() if window.isFullScreen() else window.showFullScreen()
+    def _backend(self) -> Any:
+        return getattr(self._viewer, "_backend", None) or getattr(self._viewer, "backend", None)
+
+    def _fit_model(self) -> None:
+        candidates = (
+            (self._viewer, "fit_all"),
+            (self._viewer, "fit_view"),
+            (self._viewer, "reset_camera"),
+            (self._backend(), "fit_all"),
+            (self._backend(), "fit_view"),
+            (self._backend(), "reset_camera"),
+        )
+        for owner, name in candidates:
+            method = getattr(owner, name, None) if owner is not None else None
+            if callable(method):
+                method()
+                return
+        renderer = getattr(self._backend(), "_renderer", None)
+        if renderer is not None:
+            renderer.ResetCamera()
+            renderer.ResetCameraClippingRange()
+            window = renderer.GetRenderWindow()
+            if window is not None:
+                window.Render()
+
+    def _set_opacity(self, percent: int) -> None:
+        backend = self._backend()
+        setter = getattr(backend, "set_global_opacity", None) if backend is not None else None
+        if callable(setter):
+            setter(float(percent) / 100.0)
+
+    def _reposition(self) -> None:
+        if not self._viewer.isVisible():
+            return
+        self.adjustSize()
+        x = max(8, self._viewer.width() - self.width() - 12)
+        self.move(x, 10)
+        self.raise_()
 
     def reposition(self) -> None:
-        self.move(max(0, self.viewer.width() - self.width() - 18), 14)
-        self.raise_()
+        """Reposition the overlay through the stable host-widget API."""
+        self._reposition()
 
 
 def install_trimble_navigation_overlay(viewer: QtWidgets.QWidget) -> TrimbleNavigationOverlay:
+    """Install one compact overlay per viewer and return it."""
+
     existing = getattr(viewer, "_trimble_navigation_overlay", None)
     if isinstance(existing, TrimbleNavigationOverlay):
+        existing.show()
+        existing.raise_()
+        existing._reposition()
         return existing
-    overlay = TrimbleNavigationOverlay(viewer, viewer)
-    overlay.reposition()
-    overlay.show()
-    original_resize = viewer.resizeEvent
-
-    def resize_event(event: Any) -> None:
-        original_resize(event)
-        overlay.reposition()
-
-    viewer.resizeEvent = resize_event  # type: ignore[method-assign]
-    viewer._trimble_navigation_overlay = overlay  # type: ignore[attr-defined]
+    overlay = TrimbleNavigationOverlay(viewer)
+    setattr(viewer, "_trimble_navigation_overlay", overlay)
     return overlay

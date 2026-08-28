@@ -87,6 +87,14 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._mesh_groups: list[_MeshActorGroup] = []
         self._node_instance: dict[str, tuple[_MeshActorGroup, int]] = {}
         self._point_picker: Any | None = None
+        self._geometry_filter: frozenset[str] | None = None
+
+    def set_geometry_filter(self, geometry_ids: tuple[str, ...] | None) -> None:
+        """Temporarily bound first-frame actor construction for huge scenes."""
+        self._geometry_filter = (
+            None if geometry_ids is None else frozenset(str(value) for value in geometry_ids)
+        )
+        self.refresh_geometry(None)
 
     def capabilities(self) -> ViewerCapabilities:
         return ViewerCapabilities(
@@ -128,6 +136,37 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._mesh_groups = []
         self._node_instance = {}
         self._point_picker = None
+
+    def refresh_geometry(self, geometry_ids: tuple[str, ...] | None = None) -> None:
+        """Invalidate mesh actors after progressive repository replacement.
+
+        ProjectScene identities and camera/session state stay unchanged.  Only
+        VTK source polydata and the derived feature-edge cache are rebuilt.
+        """
+        requested = None if geometry_ids is None else {str(value) for value in geometry_ids}
+        polydata_cache = getattr(self, "_cws_polydata_cache", None)
+        if isinstance(polydata_cache, dict):
+            if requested is None:
+                polydata_cache.clear()
+            else:
+                for geometry_id in requested:
+                    polydata_cache.pop(geometry_id, None)
+        feature_cache = getattr(self, "_cws_feature_edge_cache", None)
+        if isinstance(feature_cache, dict):
+            if requested is None:
+                feature_cache.clear()
+            else:
+                for geometry_id in requested:
+                    feature_cache.pop(geometry_id, None)
+        self._remove_groups(self._groups)
+        self._groups = []
+        self._mesh_groups = []
+        self._node_instance = {}
+        self._actor_to_group.clear()
+        self._static_groups_ready = False
+        self._base_signature = ""
+        self._selection_signature = ""
+        self._remove_pick_actor()
 
     def _mesh_polydata(self, geometry_id: str):
         vtk = self._vtk
@@ -250,6 +289,8 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         for node_id in index.renderable_node_ids:
             node = index.node(node_id)
             if not node.geometry_id or self.repository.get(node.geometry_id) is None:
+                continue
+            if self._geometry_filter is not None and node.geometry_id not in self._geometry_filter:
                 continue
             mode, _ = self._style_for_node(
                 node, colors={}, transparency={}, ghosted=frozenset()

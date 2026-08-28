@@ -8,7 +8,7 @@ from .configuration import load_formulas, load_machine_profiles, load_purchase_o
 from .eligibility import extract_demand
 from .machine import build_machine_snapshot, evaluate_machine_capability, evaluate_machine_stock_compatibility
 from .models import EligibilityStatus, NestingMessage
-from .snapshot import create_input_snapshot
+from .snapshot import _storage_canonical, create_input_snapshot
 from .stock import build_stock_snapshot, evaluate_stock_compatibility, stock_snapshot_to_dict
 
 
@@ -82,8 +82,8 @@ def create_phase2_input_snapshot(project, *, mode: str = "production", stock_pol
     )
     report = context["demand_report"]
     snapshot.demand_snapshot_hash = report.demand_snapshot_hash
-    snapshot.demand_lines = [asdict(x) for x in report.demand_lines]
-    snapshot.piece_instances = [asdict(x) for x in report.piece_instances]
+    snapshot.demand_lines = _storage_canonical([asdict(x) for x in report.demand_lines])
+    snapshot.piece_instances = _storage_canonical([asdict(x) for x in report.piece_instances])
     snapshot.refresh_hash()
     return snapshot, report, context
 

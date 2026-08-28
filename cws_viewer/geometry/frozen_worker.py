@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import secrets
 import select
+import shutil
 import socket
 import struct
 import subprocess
@@ -101,6 +102,7 @@ def _request_from_dict(payload: dict[str, Any]) -> GeometryRequest:
         solid_index=int(payload.get("solid_index", 0)),
         units=str(payload.get("units") or "mm"),
         metadata=tuple((str(item[0]), str(item[1])) for item in payload.get("metadata", ())),
+        source_path_verified=True,
     )
 
 
@@ -204,7 +206,7 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
             if command == "shutdown":
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": True, "type": "shutdown"})
                 return 0
-            if command != "load":
+            if command not in {"load", "load_many"}:
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": False, "error": "Onbekende workeropdracht"})
                 continue
             job_id = str(message.get("job_id") or "")
@@ -213,8 +215,31 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": False, "job_id": job_id, "error": "Ongeldig worker resultpad"})
                 continue
             try:
-                request = _request_from_dict(dict(message["request"]))
                 settings = _settings_from_dict(dict(message["settings"]))
+                if command == "load_many":
+                    requests = tuple(_request_from_dict(dict(value)) for value in message.get("requests", ()))
+                    result_path.mkdir(parents=True, exist_ok=True)
+                    meshes = provider.load_many(requests, settings)
+                    results = []
+                    for index, request in enumerate(requests):
+                        mesh = meshes.get(request.geometry_id)
+                        if mesh is None:
+                            continue
+                        mesh_path = result_path / f"{index:06d}.npz"
+                        _write_mesh(mesh_path, mesh)
+                        results.append({"geometry_id": request.geometry_id, "path": str(mesh_path)})
+                    _send_message(
+                        sock,
+                        {
+                            "protocol": _PROTOCOL,
+                            "ok": True,
+                            "job_id": job_id,
+                            "results": results,
+                            "requested": len(requests),
+                        },
+                    )
+                    continue
+                request = _request_from_dict(dict(message["request"]))
                 mesh = provider.load(request, settings)
                 _write_mesh(result_path, mesh)
                 _send_message(
@@ -414,6 +439,85 @@ class FrozenIfcWorkerClient:
             return mesh
         self._terminate_process()
         raise FrozenWorkerProtocolError(f"IFC-worker timeout na {self.timeout_seconds:.1f} s")
+
+    def load_many(
+        self,
+        requests,
+        settings: TessellationSettings,
+        *,
+        cancel_check=None,
+        progress=None,
+        on_mesh=None,
+    ):
+        values = tuple(requests)
+        if not values:
+            return {}
+        sock = self._socket
+        process = self._process
+        if sock is None or process is None or process.poll() is not None:
+            self._terminate_process()
+            self._start()
+            sock = self._socket
+            process = self._process
+        assert sock is not None and process is not None
+        job_id = uuid.uuid4().hex
+        result_root = self._root / job_id
+        _send_message(
+            sock,
+            {
+                "protocol": _PROTOCOL,
+                "command": "load_many",
+                "job_id": job_id,
+                "requests": [_request_to_dict(request) for request in values],
+                "settings": settings.to_dict(),
+                "result_path": str(result_root),
+            },
+        )
+        deadline = time.monotonic() + self.timeout_seconds
+        while time.monotonic() < deadline:
+            if cancel_check is not None:
+                try:
+                    cancel_check()
+                except BaseException:
+                    self._terminate_process()
+                    raise
+            if process.poll() is not None:
+                code = process.returncode
+                detail = self._stderr_tail()
+                self._terminate_process()
+                raise FrozenWorkerProtocolError(
+                    f"IFC-worker crashte tijdens batchtessellatie (exitcode={code})"
+                    + (f": {detail}" if detail else "")
+                )
+            readable, _, _ = select.select([sock], [], [], 0.05)
+            if not readable:
+                continue
+            reply = _recv_message(sock)
+            if str(reply.get("job_id") or "") != job_id:
+                raise FrozenWorkerProtocolError("IFC-worker retourneerde een onbekende batch-job-id")
+            if not bool(reply.get("ok")):
+                raise FrozenWorkerProtocolError(str(reply.get("error") or "Onbekende IFC-batchfout"))
+            meshes = {}
+            results = tuple(reply.get("results") or ())
+            try:
+                for index, item in enumerate(results, start=1):
+                    mesh_path = Path(str(item.get("path") or "")).resolve()
+                    if not _is_within(mesh_path, result_root) or not mesh_path.is_file():
+                        raise FrozenWorkerProtocolError("IFC-worker batchresultaatpad is ongeldig")
+                    mesh = _read_mesh(mesh_path)
+                    geometry_id = str(item.get("geometry_id") or "")
+                    meshes[geometry_id] = mesh
+                    if on_mesh is not None:
+                        on_mesh(geometry_id, mesh)
+                    if progress is not None:
+                        progress(index / max(len(values), 1), geometry_id)
+            finally:
+                shutil.rmtree(result_root, ignore_errors=True)
+            return meshes
+        self._terminate_process()
+        raise FrozenWorkerProtocolError(
+            f"IFC-worker batchtimeout na {self.timeout_seconds:.1f} s"
+        )
 
     def close(self) -> None:
         sock = self._socket

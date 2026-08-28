@@ -145,10 +145,10 @@ class ProjectCLITests(unittest.TestCase):
             self.assertEqual((extract_dir / source.name).read_bytes(), source.read_bytes())
 
     def test_version_identity(self) -> None:
-        self.assertEqual(APP_NAME, "SteelConverter")
-        self.assertEqual(APP_VERSION, "0.9.0-alpha-dev")
+        self.assertEqual(APP_NAME, "CWS Convertor")
+        self.assertEqual(APP_VERSION, "0.10.18-beta-dev")
         parser = cli.build_parser()
-        self.assertIn("SteelConverter", parser.description or "")
+        self.assertIn(APP_NAME, parser.description or "")
 
 
 if __name__ == "__main__":

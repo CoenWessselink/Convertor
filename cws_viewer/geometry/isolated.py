@@ -44,10 +44,14 @@ def _worker_main(connection: Connection) -> None:
         if message is None or message.get("command") == "shutdown":
             return
         try:
-            request = message["request"]
             settings = message["settings"]
-            mesh = provider.load(request, settings)
-            connection.send({"ok": True, "mesh": mesh})
+            if message.get("command") == "load_many":
+                meshes = provider.load_many(tuple(message["requests"]), settings)
+                connection.send({"ok": True, "meshes": meshes})
+            else:
+                request = message["request"]
+                mesh = provider.load(request, settings)
+                connection.send({"ok": True, "mesh": mesh})
         except BaseException as exc:
             connection.send(
                 {
@@ -226,6 +230,70 @@ class IsolatedIfcMeshProvider:
         self._stop_source_worker()
         raise NativeGeometryWorkerError(
             f"IFC-worker timeout na {self.timeout_seconds:.1f} s"
+        )
+
+    def load_many(
+        self,
+        requests,
+        settings: TessellationSettings,
+        *,
+        cancel_check: CancelCheck | None = None,
+        progress=None,
+        on_mesh=None,
+    ):
+        values = tuple(requests)
+        if not values:
+            return {}
+        if self._frozen:
+            client = self._ensure_frozen_worker()
+            try:
+                return client.load_many(
+                    values,
+                    settings,
+                    cancel_check=cancel_check,
+                    progress=progress,
+                    on_mesh=on_mesh,
+                )
+            except BaseException:
+                try:
+                    client.close()
+                except Exception:
+                    pass
+                self._frozen_client = None
+                raise
+        self._ensure_source_worker()
+        assert self._connection is not None and self._process is not None
+        self._connection.send(
+            {"command": "load_many", "requests": values, "settings": settings}
+        )
+        deadline = time.monotonic() + self.timeout_seconds
+        while time.monotonic() < deadline:
+            if cancel_check is not None:
+                try:
+                    cancel_check()
+                except BaseException:
+                    self._stop_source_worker()
+                    raise
+            if self._connection.poll(0.05):
+                reply = self._connection.recv()
+                if not reply.get("ok"):
+                    raise NativeGeometryWorkerError(str(reply.get("error") or "IFC-batchfout"))
+                meshes = dict(reply.get("meshes") or {})
+                for index, (geometry_id, mesh) in enumerate(meshes.items(), start=1):
+                    if on_mesh is not None:
+                        on_mesh(geometry_id, mesh)
+                    if progress is not None:
+                        progress(index / max(len(values), 1), geometry_id)
+                return meshes
+            if not self._process.is_alive():
+                code = self._process.exitcode
+                self._stop_source_worker()
+                raise NativeGeometryWorkerError(
+                    f"IFC-worker crashte tijdens batchtessellatie (exitcode={code})"
+                )
+        self._stop_source_worker()
+        raise NativeGeometryWorkerError(
+            f"IFC-worker batchtimeout na {self.timeout_seconds:.1f} s"
         )
 
     def close(self) -> None:

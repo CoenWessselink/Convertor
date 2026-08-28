@@ -23,7 +23,7 @@ class ViewerV9QtContractTests(unittest.TestCase):
         for token in (
             "Project / Productie",
             "Part Workbench",
-            "PDF / Tekening",
+            "PDF review",
             "BOM / Excel",
             "Revisies / Compare",
             "ProfessionalPropertyGridPanel",
@@ -45,7 +45,7 @@ class ViewerV9QtContractTests(unittest.TestCase):
             "explode",
             "undo_viewer",
             "redo_viewer",
-            "add_measurement",
+            "begin_measurement",
             "save_workspace",
             "export_pdf",
             "display/review-only",

@@ -8,6 +8,10 @@ set "CWS_DIST=CWS_Convertor"
 set "CWS_RESULTS=%CD%\validation\results\windows-runtime"
 set "CWS_PORTABLE=%TEMP%\CWS_Convertor_Portable_Clean"
 set "CWS_INSTALL_DIR=%TEMP%\CWS_Convertor_Installed"
+for /f %%I in ('git rev-parse HEAD') do set "CWS_COMMIT=%%I"
+if not defined CWS_COMMIT goto :error
+set "CWS_COMMIT7=%CWS_COMMIT:~0,7%"
+for /f %%I in ('git status --porcelain=v1') do goto :dirty_tree
 
 echo [1/9] Python 3.12 buildomgeving controleren...
 where py >nul 2>&1 || goto :no_python
@@ -44,9 +48,9 @@ echo [5/9] Dist testen zonder Python op child-PATH...
 ".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "dist\%CWS_DIST%" --label dist --result-dir "%CWS_RESULTS%" || goto :error
 
 echo [6/9] Portable ZIP maken, schoon uitpakken en testen...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%CWS_DIST%' -DestinationPath 'dist\CWS_Convertor_Portable_%CWS_VERSION%_x64.zip' -Force" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%CWS_DIST%' -DestinationPath 'dist\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip' -Force" || goto :error
 if exist "%CWS_PORTABLE%" rmdir /s /q "%CWS_PORTABLE%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive 'dist\CWS_Convertor_Portable_%CWS_VERSION%_x64.zip' -DestinationPath '%CWS_PORTABLE%'" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive 'dist\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip' -DestinationPath '%CWS_PORTABLE%'" || goto :error
 ".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_PORTABLE%\%CWS_DIST%" --label portable --result-dir "%CWS_RESULTS%" || goto :error
 
 echo [7/9] Installer bouwen...
@@ -56,11 +60,11 @@ if not exist "%ISCC%" (
     echo Inno Setup 6 is niet aanwezig op deze buildcomputer.
     exit /b 2
 )
-"%ISCC%" "installer\CWS_Convertor.iss" || goto :error
+"%ISCC%" "/DCommit7=%CWS_COMMIT7%" "installer\CWS_Convertor.iss" || goto :error
 
 echo [8/9] Installeren, volledig testen en verwijderen...
 if exist "%CWS_INSTALL_DIR%" rmdir /s /q "%CWS_INSTALL_DIR%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CD%\dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_x64.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER','/TASKS=fileassoc','/DIR=%CWS_INSTALL_DIR%') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CD%\dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_%CWS_COMMIT7%_x64.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER','/TASKS=fileassoc','/DIR=%CWS_INSTALL_DIR%') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
 ".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" --label installed --result-dir "%CWS_RESULTS%" || goto :error
 ".venv-build\Scripts\python.exe" tests\windows_installer_association_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" || goto :error
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CWS_INSTALL_DIR%\unins000.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
@@ -69,17 +73,21 @@ if exist "%CWS_INSTALL_DIR%\CWS_Convertor_CLI.exe" goto :error
 
 echo [9/9] Checksums en releasebestanden maken...
 if not exist "release" mkdir "release"
-copy /y "dist\CWS_Convertor_Portable_%CWS_VERSION%_x64.zip" "release\" >nul || goto :error
-copy /y "dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_x64.exe" "release\" >nul || goto :error
+copy /y "dist\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip" "release\" >nul || goto :error
+copy /y "dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_%CWS_COMMIT7%_x64.exe" "release\" >nul || goto :error
 copy /y "WINDOWS_RUNTIME_VALIDATION.md" "release\" >nul || goto :error
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$files=@('release\CWS_Convertor_Portable_%CWS_VERSION%_x64.zip','release\CWS_Convertor_Setup_%CWS_VERSION%_x64.exe'); $lines=foreach($f in $files){$h=(Get-FileHash -Algorithm SHA256 $f).Hash.ToLowerInvariant(); \"$h  $([IO.Path]::GetFileName($f))\"}; $lines | Set-Content -Encoding ascii 'release\SHA256SUMS.txt'; Get-Content 'release\SHA256SUMS.txt'" || goto :error
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$files=@('release\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip','release\CWS_Convertor_Setup_%CWS_VERSION%_%CWS_COMMIT7%_x64.exe'); $files|ForEach-Object{$h=Get-FileHash -Algorithm SHA256 $_; ($h.Hash.ToLowerInvariant()+'  '+(Split-Path $_ -Leaf))}|Set-Content -Encoding ascii 'release\SHA256SUMS.txt'" || goto :error
 
 echo.
 echo Gereed:
-echo   %CD%\release\CWS_Convertor_Setup_%CWS_VERSION%_x64.exe
-echo   %CD%\release\CWS_Convertor_Portable_%CWS_VERSION%_x64.zip
+echo   %CD%\release\CWS_Convertor_Setup_%CWS_VERSION%_%CWS_COMMIT7%_x64.exe
+echo   %CD%\release\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip
 echo   %CD%\release\SHA256SUMS.txt
 exit /b 0
+
+:dirty_tree
+echo Releasebuild geweigerd: working tree is niet schoon.
+exit /b 4
 
 :no_python
 echo Python Launcher ontbreekt op de buildcomputer. Dit is alleen een ontwikkelaars-/CI-buildscript.

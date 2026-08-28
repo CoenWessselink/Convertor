@@ -121,7 +121,12 @@ def main(argv: list[str] | None = None) -> int:
 
     from cws_convertor.product import APP_VERSION
 
-    commit7 = str(os.environ.get("GITHUB_SHA") or "uncommitted")[:7]
+    commit = str(os.environ.get("GITHUB_SHA") or "").strip()
+    if not commit:
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    if len(commit) != 40 or any(character not in "0123456789abcdefABCDEF" for character in commit):
+        raise RuntimeError("Phase-1 release vereist een bekende 40-character Git SHA")
+    commit7 = commit[:7]
     portable_name = f"CWS_Convertor_Phase1_{APP_VERSION}_{commit7}_Portable.zip"
     portable = RELEASE / portable_name
     if portable.exists():

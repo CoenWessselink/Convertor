@@ -8,7 +8,9 @@ native_packages = [
     "cadquery",
     "OCP",
     "casadi",
+    "cryptography",
     "ifcopenshell",
+    "vtkmodules",
 ]
 
 # Keep SciPy discoverable by its normal PyInstaller hook without collect_all(),
@@ -32,6 +34,10 @@ datas = [
     (str(ROOT / "cws_viewer" / "schemas"), "cws_viewer/schemas"),
     (
         str(ROOT / "cws_convertor" / "manufacturing" / "m18_authority_runtime.zip"),
+        "cws_convertor/manufacturing",
+    ),
+    (
+        str(ROOT / "cws_convertor" / "manufacturing" / "m18_authority_runtime.manifest.json"),
         "cws_convertor/manufacturing",
     ),
 ]
@@ -72,6 +78,8 @@ for package in data_packages:
     datas += collect_data_files(package)
     binaries += collect_dynamic_libs(package)
 hiddenimports += collect_submodules("ifcopenshell.api")
+hiddenimports += collect_submodules("OCP")
+hiddenimports += collect_submodules("vtkmodules")
 hiddenimports += collect_submodules("scipy._external.array_api_compat")
 hiddenimports += collect_submodules("scipy._lib.array_api_compat")
 hiddenimports += collect_submodules("cws_viewer")
@@ -79,6 +87,9 @@ hiddenimports += collect_submodules("cws_convertor")
 hiddenimports += collect_submodules("reportlab.graphics.barcode")
 hiddenimports += [
     "vtk",
+    "OCP.IVtkOCC",
+    "vtkmodules.vtkInteractionStyle",
+    "vtkmodules.vtkRenderingUI",
     "vtkmodules.qt.QVTKRenderWindowInteractor",
     "PySide6.QtOpenGLWidgets",
     "casadi._casadi",

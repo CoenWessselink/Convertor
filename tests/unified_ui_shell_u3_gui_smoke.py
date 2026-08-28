@@ -35,6 +35,13 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
             project_path = create_synthetic_integration_project(Path(folder) / "u3-gui.cwscproj")
             window = CWSMainWindow()
             window.show()
+            self.assertIs(window.viewer_host, window.centralWidget())
+            self.assertEqual("cwsPermanentViewerWorkspaceHost", window.viewer_host.objectName())
+            self.assertIs(window.viewer_page, window.project_page)
+            self.assertGreaterEqual(window.tabs.indexOf(window.viewer_page), 0)
+            self.assertTrue(
+                any(not window.tabs.tabIcon(index).isNull() for index in range(window.tabs.count()))
+            )
             window.project_page.open_project(project_path, load_geometry=False)
             deadline = time.monotonic() + 30.0
             while time.monotonic() < deadline:

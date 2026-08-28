@@ -38,3 +38,13 @@ tmp/
 /00_START_HERE/
 /CWS_CONVERTOR_COMPLETE_HANDOVER_*
 /CWS_Convertor_Portable_*_x64_*.zip*
+/*.exe
+/validation/results/phase3/
+/validation/results/windows-runtime-phase2/
+/validation/results/windows-runtime-phase3/
+/validation/viewer_repair_diagnostic/
+/validation/full_acceptance/**
+!/validation/full_acceptance/PRE_RELEASE_WORKTREE_AUDIT.json
+!/validation/full_acceptance/PRE_RELEASE_WORKTREE_AUDIT.md
+!/validation/full_acceptance/UNCOMMITTED_ACCEPTANCE_ROOT_CAUSE.json
+!/validation/full_acceptance/UNCOMMITTED_ACCEPTANCE_ROOT_CAUSE.md

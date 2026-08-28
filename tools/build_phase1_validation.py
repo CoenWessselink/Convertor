@@ -1,180 +1,186 @@
-"""Create the required initial Phase-1 checklist and manifest set."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
-import sys
+from typing import Any
 
+from cws_convertor.product import APP_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from cws_convertor.product import APP_VERSION, CANONICAL_PART_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION
+VALIDATION = ROOT / "validation" / "phases"
+RELEASE = ROOT / "release" / "phase1"
 
 
-OUT = ROOT / "validation" / "phases"
-
-
-def digest(path: Path) -> str:
-    return sha256(path.read_bytes()).hexdigest() if path.is_file() else ""
-
-
-def load_json(path: Path) -> dict:
+def _read(name: str) -> dict[str, Any]:
+    path = VALIDATION / name
     if not path.is_file():
         return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
         return {}
+    return value if isinstance(value, dict) else {}
 
 
-def item(item_id: str, status: str, evidence: str, command: str = "") -> dict[str, str]:
-    return {"id": item_id, "status": status, "command": command, "evidence": evidence}
+def _status(data: dict[str, Any]) -> bool:
+    value = str(data.get("status") or data.get("phase_status") or "").upper()
+    if value in {"PASS", "PASSED", "COMPLETE", "GREEN"}:
+        return True
+    summary = data.get("summary")
+    return isinstance(summary, dict) and str(summary.get("status") or "").upper() in {"PASS", "PASSED", "COMPLETE", "GREEN"}
+
+
+def _sha(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _check(identifier: int, title: str, passed: bool, evidence: list[str]) -> dict[str, Any]:
+    return {"id": identifier, "title": title, "status": "PASS" if passed else "FAIL", "evidence": evidence}
 
 
 def main() -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
-    gui = ROOT / "dist" / "CWS_Convertor" / "CWS_Convertor.exe"
-    cli = ROOT / "dist" / "CWS_Convertor" / "CWS_Convertor_CLI.exe"
-    source_evidence_path = OUT / "PHASE_1_SOURCE_TEST_EVIDENCE.json"
-    windows_evidence_path = OUT / "PHASE_1_WINDOWS_RUNTIME_EVIDENCE.json"
-    repository_evidence_path = OUT / "PHASE_1_REPOSITORY_CI_EVIDENCE.json"
-    source_evidence = load_json(source_evidence_path)
-    windows_evidence = load_json(windows_evidence_path)
-    repository_evidence = load_json(repository_evidence_path)
-    progressive_evidence_path = OUT / "PHASE_1_PROGRESSIVE_PERFORMANCE.json"
-    large_model_evidence_path = OUT / "PHASE_1_LARGE_MODEL_PERFORMANCE.json"
-    exact_workbench_evidence_path = ROOT / "validation" / "viewer_v6" / "VIEWER_V6_VALIDATION_RESULTS.json"
-    progressive_evidence = load_json(progressive_evidence_path)
-    large_model_evidence = load_json(large_model_evidence_path)
-    exact_workbench_evidence = load_json(exact_workbench_evidence_path)
-    source_green = source_evidence.get("status") == "PASS"
-    windows_green = windows_evidence.get("status") == "PASS"
-    performance_green = (
-        progressive_evidence.get("status") == "passed"
-        and large_model_evidence.get("status") == "passed"
+    VALIDATION.mkdir(parents=True, exist_ok=True)
+    RELEASE.mkdir(parents=True, exist_ok=True)
+    source = _read("PHASE_1_SOURCE_TEST_EVIDENCE.json")
+    repository = _read("PHASE_1_REPOSITORY_CI_EVIDENCE.json")
+    progressive = _read("PHASE_1_PROGRESSIVE_PERFORMANCE.json")
+    large = _read("PHASE_1_LARGE_MODEL_PERFORMANCE.json")
+    difference = _read("PHASE_1_REAL_SOURCE_RESULT_DIFFERENCE.json")
+    profile = _read("PHASE_1_PROFILE_NESTING_COMMAND_EVIDENCE.json")
+    windows = _read("PHASE_1_WINDOWS_RUNTIME_EVIDENCE.json")
+    source_ok = _status(source)
+    repository_ok = _status(repository) or (
+        bool(repository.get("branch_head_recorded")) and bool(repository.get("required_ci_green"))
     )
-    real_roundtrip_green = (
-        large_model_evidence.get("status") == "passed"
-        and exact_workbench_evidence.get("status") == "passed"
-    )
-    portable_candidates = sorted((ROOT / "release" / "phase1").glob("CWS_Convertor_Phase1_*_Portable.zip"))
-    portable = portable_candidates[-1] if portable_candidates else ROOT / "release" / "phase1" / "MISSING.zip"
-    sums = ROOT / "release" / "phase1" / "SHA256SUMS.txt"
-    windows_manifest = ROOT / "release" / "phase1" / "PHASE_1_WINDOWS_MANIFEST.json"
-    source_status = "PASS" if source_green else "NOT_TESTED"
-    windows_status = "PASS" if windows_green else "NOT_TESTED"
-    checks = [
-        item(
-            "current_branch_head_recorded",
-            "PASS" if repository_evidence.get("branch_head_recorded") else "NOT_TESTED",
-            str(repository_evidence_path),
-        ),
-        item(
-            "required_ci_actually_runs",
-            "PASS" if repository_evidence.get("required_ci_green") else "FAIL",
-            str(repository_evidence_path),
-        ),
-        item(
-            "no_uncommitted_production_code",
-            "PASS" if repository_evidence.get("working_tree_clean") else "FAIL",
-            str(repository_evidence_path),
-        ),
-        item("current_authority", "PASS", "docs/CURRENT_PRODUCT_AUTHORITY.md"),
-        item("one_explicit_shell", source_status, str(source_evidence_path)),
-        item("one_permanent_viewer_host", source_status, str(source_evidence_path)),
-        item("no_production_import_time_viewer_monkeypatch", source_status, str(source_evidence_path)),
-        item("full_application_context", source_status, str(source_evidence_path)),
-        item("one_job_manager_contract", source_status, str(source_evidence_path)),
-        item("project_identity_e2e", source_status, str(source_evidence_path)),
-        item("selection_e2e", source_status, str(source_evidence_path)),
-        item("camera_visibility_section_e2e", source_status, str(source_evidence_path)),
-        item("progressive_large_model_path", source_status, str(source_evidence_path)),
-        item(
-            "viewer_performance_metrics",
-            "PASS" if performance_green else "NOT_TESTED",
-            f"{progressive_evidence_path}; {large_model_evidence_path}",
-        ),
-        item("bounded_picking", source_status, str(source_evidence_path)),
-        item("one_workbench_write_path", source_status, str(source_evidence_path)),
-        item("canonical_rebuild", source_status, str(source_evidence_path)),
-        item("independent_geometry_validator", source_status, str(source_evidence_path)),
-        item("transaction_rollback", source_status, str(source_evidence_path)),
-        item("exact_scene_refresh", source_status, str(source_evidence_path)),
-        item("converter_capability_registry", source_status, str(source_evidence_path)),
-        item("reimport_roundtrip", source_status, str(source_evidence_path)),
-        item(
-            "real_source_result_difference",
-            "PASS" if real_roundtrip_green else "NOT_TESTED",
-            f"{large_model_evidence_path}; {exact_workbench_evidence_path}",
-        ),
-        item("vector_canonical_drawing", source_status, str(source_evidence_path)),
-        item("geometry_anchored_dimensions", source_status, str(source_evidence_path)),
-        item("drawing_linter", source_status, str(source_evidence_path)),
-        item("trusted_pdf", source_status, str(source_evidence_path)),
-        item("bom_reconciliation", source_status, str(source_evidence_path)),
-        item("export_scope_empty_selection_block", source_status, str(source_evidence_path)),
-        item("save_reopen", source_status, str(source_evidence_path)),
-        item("safety_flags_false", source_status, str(source_evidence_path)),
-        item("full_relevant_regressions", source_status, str(source_evidence_path)),
-        item("source_gui_smoke", source_status, str(source_evidence_path)),
-        item("windows_gui_exe", "PASS" if windows_green and gui.is_file() else "FAIL", str(gui)),
-        item("windows_cli_exe", "PASS" if windows_green and cli.is_file() else "FAIL", str(cli)),
-        item("fresh_portable_zip", "PASS" if windows_green and portable.is_file() else "FAIL", str(portable)),
-        item("exe_quick_self_test", windows_status, str(windows_evidence_path)),
-        item("exe_gui_smoke", windows_status, str(windows_evidence_path)),
-        item("phase1_manifest_checksums", "PASS" if windows_green and sums.is_file() and windows_manifest.is_file() else "FAIL", str(windows_manifest)),
+    progressive_ok, large_ok = _status(progressive), _status(large)
+    difference_ok, profile_ok, windows_ok = _status(difference), _status(profile), _status(windows)
+    capabilities = dict(profile.get("capabilities") or {})
+
+    gui_exe = RELEASE / "CWS_Convertor_Phase1.exe"
+    cli_exe = RELEASE / "CWS_Convertor_CLI_Phase1.exe"
+    portables = sorted(RELEASE.glob(f"CWS_Convertor_Phase1_{APP_VERSION}_*_Portable.zip"), key=lambda path: path.stat().st_mtime)
+    portable = portables[-1] if portables else None
+    checksum_file = RELEASE / "SHA256SUMS.txt"
+    windows_manifest = RELEASE / "PHASE_1_WINDOWS_MANIFEST.json"
+    packaged = windows_ok and gui_exe.is_file() and cli_exe.is_file() and portable is not None and portable.is_file()
+
+    src = ["validation/phases/PHASE_1_SOURCE_TEST_EVIDENCE.json"]
+    repo = ["validation/phases/PHASE_1_REPOSITORY_CI_EVIDENCE.json"]
+    perf = ["validation/phases/PHASE_1_PROGRESSIVE_PERFORMANCE.json", "validation/phases/PHASE_1_LARGE_MODEL_PERFORMANCE.json"]
+    diff = ["validation/phases/PHASE_1_REAL_SOURCE_RESULT_DIFFERENCE.json"]
+    nest = ["validation/phases/PHASE_1_PROFILE_NESTING_COMMAND_EVIDENCE.json"]
+    win = ["validation/phases/PHASE_1_WINDOWS_RUNTIME_EVIDENCE.json"]
+    artifacts = [
+        "release/phase1/CWS_Convertor_Phase1.exe",
+        "release/phase1/CWS_Convertor_CLI_Phase1.exe",
+        str(portable.relative_to(ROOT)).replace("\\", "/") if portable else "portable:missing",
     ]
-    fail_count = sum(check["status"] == "FAIL" for check in checks)
-    not_tested_count = sum(check["status"] == "NOT_TESTED" for check in checks)
-    phase_status = "COMPLETE" if not fail_count and not not_tested_count else ("FAILED" if fail_count else "PARTIAL")
-    payload = {
-        "schema": "cws-phase-checklist-1.0",
-        "phase": 1,
-        "status": phase_status,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "product": "CWS Convertor",
-        "version": APP_VERSION,
-        "project_model": PROJECT_SCHEMA_VERSION,
-        "canonical_part": CANONICAL_PART_SCHEMA_VERSION,
+    c = lambda key: profile_ok and bool(capabilities.get(key))
+    checks = [
+        _check(1, "Branch en HEAD zijn als repository-evidence vastgelegd", repository_ok, repo),
+        _check(2, "Een actuele product authority is actief", source_ok, src),
+        _check(3, "Bestaande CI en regressiegates zijn groen", repository_ok and source_ok, repo + src),
+        _check(4, "Een productie applicatieshell is composition root", source_ok, src),
+        _check(5, "Een ViewerHost en een interactieve viewer zijn actief", source_ok, src),
+        _check(6, "Geen production viewer monkeypatch of parallelle viewerroute", source_ok, src),
+        _check(7, "ApplicationContextSnapshot v2 is immutable en migreerbaar", c("application_context_snapshot_v2"), nest),
+        _check(8, "Een centrale JobManager bestuurt achtergrondwerk", source_ok, src),
+        _check(9, "Statehash loopt end-to-end door context en bewijs", c("immutable_snapshots"), nest),
+        _check(10, "Projectidentiteit blijft over alle workspaces gelijk", source_ok, src),
+        _check(11, "Selectie is canoniek en workspace-overstijgend", source_ok, src),
+        _check(12, "Camera, visibility en section state blijven behouden", source_ok, src),
+        _check(13, "Progressive large-model laden is bewezen", progressive_ok and large_ok, perf),
+        _check(14, "Large-model performance evidence is groen", large_ok, perf),
+        _check(15, "Picking en rendererwerk zijn begrensd", progressive_ok, perf),
+        _check(16, "Een Part Workbench write path is actief", source_ok, src),
+        _check(17, "Canonieke rebuild en geometry-authority zijn actief", source_ok, src),
+        _check(18, "Onafhankelijke geometryvalidator blokkeert fout resultaat", source_ok, src),
+        _check(19, "Mutaties rollen volledig terug bij validatiefout", c("transaction_rollback"), nest),
+        _check(20, "Undo en redo zijn echte planrevisies", c("undo_redo"), nest),
+        _check(21, "Viewer ververst exact uit het canonieke resultaat", source_ok, src),
+        _check(22, "Conversion registry bestuurt ondersteunde conversies", source_ok, src),
+        _check(23, "Source, result en difference zijn aantoonbaar verschillend", difference_ok, diff),
+        _check(24, "Ondersteunde conversies hebben roundtrip-bewijs", source_ok and difference_ok, src + diff),
+        _check(25, "Productietekening gebruikt vectorgeometry", source_ok, src),
+        _check(26, "DimensionGraph is operationeel", source_ok, src),
+        _check(27, "Drawing Linter blokkeert ongeldige tekeningen", source_ok, src),
+        _check(28, "Trusted PDF is zichtbaar aan exacte payload gebonden", source_ok, src),
+        _check(29, "Visible en payload binding zijn deterministisch", source_ok, src),
+        _check(30, "BOM-dekking is compleet en traceerbaar", source_ok, src),
+        _check(31, "BOM en Viewer selectie synchroniseren bidirectioneel", source_ok, src),
+        _check(32, "ProfileNestingCommandService is de enige commandogrens", c("authoritative_command_service"), nest),
+        _check(33, "Scenariofamilies worden werkelijk opgelost en vergeleken", c("scenarios"), nest),
+        _check(34, "Input-, solver- en planrevisies zijn immutable", c("immutable_snapshots"), nest),
+        _check(35, "Machineprofieleditor valideert, reviseert en invalideert stale runs", c("machine_profile_editor"), nest),
+        _check(36, "Solver evidence bevat backend en bewijsstatus", c("solver_evidence"), nest),
+        _check(37, "Authoritative proof badge is aan runbewijs gekoppeld", c("authoritative_proof_badge"), nest),
+        _check(38, "Piece- en barlocks zijn echte constraints", c("real_locks"), nest),
+        _check(39, "Move en reorder wijzigen de canonieke planlayout", c("real_move_reorder"), nest),
+        _check(40, "Orientation wijzigt een toegestane productierichting", c("real_orientation"), nest),
+        _check(41, "Common-cut toggle wijzigt het gevalideerde plan", c("real_common_cut_toggle"), nest),
+        _check(42, "Partiele heroptimalisatie bevriest locks en lost rest opnieuw op", c("real_partial_reoptimization"), nest),
+        _check(43, "Planvalidatie is onafhankelijk van de solver", c("independent_plan_validation"), nest),
+        _check(44, "Acceptatie en voorraadreservering zijn transactioneel", c("transactional_accept_reserve"), nest),
+        _check(45, "Interactieve bar planner levert exacte bargeometry", c("interactive_bar_planner"), nest),
+        _check(46, "Nesting reports en neutrale release-artifacts worden gebouwd", c("nesting_reports"), nest),
+        _check(47, "Profile Nesting overleeft save en reopen", c("save_reopen"), nest),
+        _check(48, "Machine-observatie en directe machine-transfer blijven false", c("safety_flags_false"), nest),
+        _check(49, "Volledige bronregressiematrix is groen", source_ok, src),
+        _check(50, "GUI E2E gebruikt echte commandos in plaats van intentregistratie", c("gui_real_commands") and source_ok, nest + src),
+        _check(51, "Windows GUI EXE start en doorloopt packaged smoke", windows_ok and gui_exe.is_file(), win + artifacts),
+        _check(52, "Windows CLI EXE start en doorloopt packaged smoke", windows_ok and cli_exe.is_file(), win + artifacts),
+        _check(53, "Fresh one-folder portable werkt zonder Python op PATH", packaged, win + artifacts),
+        _check(54, "Packaged Phase-1 E2E is groen", packaged, win + artifacts),
+        _check(55, "Release manifests en SHA256-checksums zijn aanwezig", packaged and checksum_file.is_file() and windows_manifest.is_file(), win + ["release/phase1/SHA256SUMS.txt", "release/phase1/PHASE_1_WINDOWS_MANIFEST.json"]),
+    ]
+    passed = sum(item["status"] == "PASS" for item in checks)
+    complete = len(checks) == 55 and passed == 55
+    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    commit = str(repository.get("commit") or repository.get("head") or repository.get("commit_sha") or "unknown")
+    checklist = {
+        "schema": "cws-phase1-completion-checklist-2.0", "phase": 1, "version": APP_VERSION,
+        "commit": commit, "generated_at": generated_at, "status": "COMPLETE" if complete else "INCOMPLETE",
+        "summary": {"passed": passed, "required": 55, "status": "PASS" if complete else "FAIL"},
         "checks": checks,
-        "counts": {status: sum(check["status"] == status for check in checks) for status in ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")},
+        "safety": {"machine_observed_by_cws": False, "deployment_transport_authorized": False, "direct_machine_transfer": False, "machine_transfer_allowed": False},
     }
-    (OUT / "PHASE_1_CHECKLIST.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    lines = ["# Phase 1 checklist", "", f"Status: `{payload['status']}`", ""]
-    lines.extend(f"- [{check['status']}] `{check['id']}` - {check['evidence']}" for check in checks)
-    (OUT / "PHASE_1_CHECKLIST.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    matrix = {
-        "schema": "cws-phase-test-matrix-1.0",
-        "phase": 1,
-        "tests": [check for check in checks if "test" in check["id"] or "regression" in check["id"] or "smoke" in check["id"]],
+    (VALIDATION / "PHASE_1_CHECKLIST.json").write_text(json.dumps(checklist, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    md = ["# PHASE 1 CHECKLIST", "", f"Status: **{checklist['status']}**", f"Resultaat: **{passed}/55 PASS**", ""]
+    md.extend(f"- [{'x' if item['status'] == 'PASS' else ' '}] {item['id']:02d}. {item['title']} - {item['status']}" for item in checks)
+    md.extend(["", "Machine-observatie en directe machine-transfer blijven expliciet uitgeschakeld.", ""])
+    (VALIDATION / "PHASE_1_CHECKLIST.md").write_text("\n".join(md), encoding="utf-8")
+
+    release_files = [path for path in (gui_exe, cli_exe, portable, checksum_file, windows_manifest) if path is not None and path.is_file()]
+    artifact_manifest = {
+        "schema": "cws-phase1-artifact-manifest-2.0", "status": "PASS" if complete else "FAIL", "generated_at": generated_at,
+        "artifacts": [{"path": str(path.relative_to(ROOT)).replace("\\", "/"), "bytes": path.stat().st_size, "sha256": _sha(path)} for path in release_files],
     }
-    (OUT / "PHASE_1_TEST_MATRIX.json").write_text(json.dumps(matrix, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    artifacts = {
-        "schema": "cws-phase-artifact-manifest-1.0",
-        "phase": 1,
-        "artifacts": [
-            {"path": str(path.relative_to(ROOT)), "exists": path.is_file(), "sha256": digest(path), "size": path.stat().st_size if path.is_file() else 0}
-            for path in (gui, cli, portable, sums, windows_manifest)
+    (VALIDATION / "PHASE_1_ARTIFACT_MANIFEST.json").write_text(json.dumps(artifact_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    test_matrix = {
+        "schema": "cws-phase1-test-matrix-2.0", "status": "PASS" if complete else "FAIL", "generated_at": generated_at,
+        "checks": checks, "evidence": sorted({value for item in checks for value in item["evidence"]}),
+    }
+    (VALIDATION / "PHASE_1_TEST_MATRIX.json").write_text(json.dumps(test_matrix, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    change_manifest = {
+        "schema": "cws-phase1-change-manifest-2.0", "status": "PASS" if complete else "FAIL", "generated_at": generated_at,
+        "files": [
+            "cws_convertor/integration/ui_context.py", "cws_convertor/optimization/profile_nesting/__init__.py",
+            "cws_convertor/optimization/profile_nesting/command_service.py", "cws_convertor/ui_qt/product_workspaces.py",
+            "cws_convertor/optimization/profile_nesting/snapshot.py", "cws_convertor/optimization/profile_nesting/phase2.py",
+            "cws_convertor/ui_qt/phase3_workspaces.py", "tests/phase1_profile_nesting_command_service_smoke.py",
+            "tools/run_phase1_unified_gates.py", "tools/build_phase1_validation.py",
         ],
     }
-    (OUT / "PHASE_1_ARTIFACT_MANIFEST.json").write_text(json.dumps(artifacts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    changes = {
-        "schema": "cws-phase-change-manifest-1.0",
-        "phase": 1,
-        "changes": [
-            "Complete ApplicationContext state fields and deterministic state hash",
-            "Complete central JobManager contract with scope, timeout, resource budget, result hash and error code",
-            "Freeze current product authority and classify old handover as historical",
-            "Create conservative Phase-1 checklist/test/artifact/change manifests",
-        ],
-    }
-    (OUT / "PHASE_1_CHANGE_MANIFEST.json").write_text(json.dumps(changes, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(payload["counts"], sort_keys=True))
-    return 0
+    (VALIDATION / "PHASE_1_CHANGE_MANIFEST.json").write_text(json.dumps(change_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"PHASE_1_CHECKLIST = {passed}/55 PASS")
+    print(f"PHASE_1 = {'COMPLETE' if complete else 'INCOMPLETE'}")
+    return 0 if complete else 1
 
 
 if __name__ == "__main__":

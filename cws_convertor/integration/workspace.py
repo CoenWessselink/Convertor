@@ -20,6 +20,7 @@ from cws_convertor.project.model import ProjectModel
 from cws_convertor.project.service import ProjectSession
 from cws_convertor.production_export.readiness import ReadinessGate
 from cws_viewer.adapters.project_scene_loader import ProjectSceneLoadResult, ProjectSceneLoader
+from cws_viewer.geometry.loader import CancellationToken
 from cws_viewer.adapters.source_geometry import ProjectSourceResolver
 from cws_viewer.backends.memory import MemoryRenderBackend
 from cws_viewer.core.controller import ViewerCoreController
@@ -36,7 +37,11 @@ def _renderable_entity_count(project: Any) -> int:
 
 
 def _full_geometry_entity_limit() -> int:
-    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "150")))
+    # A full IFC tessellation is deliberately not part of the first-frame
+    # critical path for a large structural model.  The Qt shell starts with
+    # placed display geometry and upgrades it to exact source meshes in the
+    # background.  Deployments can raise this boundary explicitly.
+    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "750")))
 from cws_viewer.exact.workbench import ExactPartWorkbenchService
 from cws_viewer.properties import GridViewerBridge
 from .selection import (
@@ -184,11 +189,21 @@ class IntegratedProjectWorkspace:
         allow_proxy: bool = True,
         prefer_proxy: bool = False,
         progress_callback: Callable[[int, str], None] | None = None,
+        cancellation_token: CancellationToken | None = None,
+        preview_callback: Callable[[ProjectSceneLoadResult], None] | None = None,
     ) -> "IntegratedProjectWorkspace":
         started = time.perf_counter()
         notify = progress_callback or (lambda _percent, _message: None)
         project_path = Path(path).expanduser().resolve()
-        session = ProjectSession.open(project_path, read_only=read_only)
+        if cancellation_token is not None:
+            cancellation_token.check()
+        session = ProjectSession.open(
+            project_path,
+            read_only=read_only,
+            verify_semantic_hashes=not prefer_proxy,
+        )
+        if cancellation_token is not None:
+            cancellation_token.check()
         notify(24, "Project Model 2.25 en bronverwijzingen geopend")
         temporary_directory: tempfile.TemporaryDirectory[str] | None = None
         controller: ViewerCoreController | None = None
@@ -208,7 +223,7 @@ class IntegratedProjectWorkspace:
                 heavy_ifc_source = False
                 ifc_limit = max(
                     1 * 1024 * 1024,
-                    int(float(os.environ.get("CWS_FULL_IFC_GEOMETRY_MAX_MB", "1")) * 1024 * 1024),
+                    int(float(os.environ.get("CWS_FULL_IFC_GEOMETRY_MAX_MB", "32")) * 1024 * 1024),
                 )
                 for value in session.source_paths.values():
                     candidate = Path(value)
@@ -239,6 +254,8 @@ class IntegratedProjectWorkspace:
             )
             notify(38, "Viewer-scene en geometriecatalogus opbouwen")
             def relay_geometry_progress(ratio: float, message: str) -> None:
+                if cancellation_token is not None:
+                    cancellation_token.check()
                 bounded = max(0.0, min(1.0, float(ratio)))
                 notify(38 + int(round(26 * bounded)), message)
             load_result = loader.load_project(
@@ -246,12 +263,17 @@ class IntegratedProjectWorkspace:
                 project_path,
                 load_all=load_all_geometry,
                 allow_proxy=allow_proxy,
+                token=cancellation_token,
                 progress=relay_geometry_progress,
                 fast_proxy_catalog=effective_prefer_proxy,
             )
+            if cancellation_token is not None:
+                cancellation_token.check()
             notify(64, "Viewer-scene opgebouwd; selectie-index maken")
             if load_result.project is not session.project:
                 raise RuntimeError("Viewer heeft een tweede projectinstantie aangemaakt")
+            if preview_callback is not None:
+                preview_callback(load_result)
 
             backend = MemoryRenderBackend()
             controller = ViewerCoreController(backend)
@@ -276,7 +298,11 @@ class IntegratedProjectWorkspace:
             # so the viewer opening a project can never mutate production state.
             bom_project = ProjectModel.from_dict(session.project.to_dict())
             notify(70, "BOM, classificatie en traceability opbouwen")
+            if cancellation_token is not None:
+                cancellation_token.check()
             bom_snapshot = build_bom_snapshot(bom_project, user="viewer-v9", classify_if_needed=True)
+            if cancellation_token is not None:
+                cancellation_token.check()
             cls._complete_bom_traceability(session.project, bom_snapshot)
 
             bom_index = BomSelectionIndex(bom_snapshot)

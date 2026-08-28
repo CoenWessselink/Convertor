@@ -30,6 +30,7 @@ def main() -> int:
         description="Validate file associations created by a per-user Windows install."
     )
     parser.add_argument("--runtime-dir", type=Path)
+    parser.add_argument("--expect-absent", action="store_true")
     args = parser.parse_args()
 
     if args.runtime_dir is None:
@@ -47,6 +48,26 @@ def main() -> int:
         raise SystemExit("windows_installer_association_smoke requires Windows")
 
     import winreg
+
+    if args.expect_absent:
+        keys = [
+            r"Software\Classes\.cwscproj", r"Software\Classes\.nc", r"Software\Classes\.nc1",
+            r"Software\Classes\.step", r"Software\Classes\.stp", r"Software\Classes\.ifc",
+            r"Software\Classes\CWSConvertor.Project", r"Software\Classes\CWSConvertor.NC1",
+            r"Software\Classes\CWSConvertor.STEP", r"Software\Classes\CWSConvertor.IFC",
+            r"Software\Classes\SystemFileAssociations\.pdf\shell\CWSConvertor",
+        ]
+        remaining = []
+        for subkey in keys:
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, subkey):
+                    remaining.append(subkey)
+            except FileNotFoundError:
+                pass
+        if remaining:
+            raise AssertionError(f"Association keys remained after uninstall: {remaining}")
+        print("windows_installer_association_smoke: uninstall cleanup OK")
+        return 0
 
     runtime_dir = args.runtime_dir.resolve()
     executable = runtime_dir / "CWS_Convertor.exe"

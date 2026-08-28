@@ -28,7 +28,6 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
             "orbit_roll_suppressed",
             "ifc_source_presentation_colours",
             "original_colour_means_imported_colour",
-            "ssao_contact_shading_interactive",
             "balanced_studio_lighting",
             "selected_object_fill_highlight",
             "ctrl_click_multi_selection",
@@ -46,6 +45,7 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
             "measurement_overlay_camera_tracking",
         ):
             self.assertTrue(caps[name], name)
+        self.assertFalse(caps["ssao_contact_shading_interactive"])
 
     def test_ifc_style_resolver_recovers_mapped_source_colour_and_transparency(self) -> None:
         entities = {
@@ -114,7 +114,7 @@ class ViewerV15TrimbleFeelV2Smoke(unittest.TestCase):
         self.assertIn("ControlModifier", widget)
         self.assertIn("orbit_upright", widget)
         self.assertIn("set_measurement_preview", widget)
-        self.assertIn("vtkSSAOPass", renderer)
+        self.assertIn("SSAO is intentionally disabled", renderer)
         self.assertIn("vtkTextActor", renderer)
         self.assertIn('"A"', renderer)
         self.assertIn('"B"', renderer)

@@ -75,7 +75,7 @@ class ViewerDisplayPreferences:
     color_scheme: ColorScheme = ColorScheme.ORIGINAL
     background_theme: BackgroundTheme = BackgroundTheme.LIGHT
     ghost_opacity: float = 0.12
-    selection_color: Rgba = Rgba(0.12, 0.92, 1.0, 1.0)
+    selection_color: Rgba = Rgba(1.0, 0.82, 0.0, 1.0)
     edge_width: float = 0.65
     show_selection_outline: bool = True
     version: int = 1

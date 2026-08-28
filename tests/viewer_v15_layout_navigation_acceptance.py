@@ -53,12 +53,7 @@ class ViewerV15LayoutNavigationAcceptance(unittest.TestCase):
             time.sleep(0.01)
 
     def _show_route(self, route: str) -> VtkRealProjectWidgetFeelV2:
-        page = self.window.workspace_router.pages[route]
-        for stack in self.window.findChildren(QStackedWidget):
-            if stack.indexOf(page) >= 0:
-                stack.setCurrentWidget(page)
-                break
-        self.window._place_shared_viewer(route)
+        self.assertTrue(self.window.workspace_router.open_workspace(route))
         self._settle(10)
         viewer = self.window.findChild(VtkRealProjectWidgetFeelV2, "cwsVtkRealProjectWidget")
         self.assertIsNotNone(viewer)
@@ -70,12 +65,12 @@ class ViewerV15LayoutNavigationAcceptance(unittest.TestCase):
             "edit",
             "converter",
             "control",
-            "pdf",
-            "drawings",
+            "pdf_review",
+            "drawing",
             "scribing",
             "bom",
             "profile_nesting",
-            "production_workflow",
+            "report",
             "export",
         )
         for route in routes:
@@ -91,7 +86,7 @@ class ViewerV15LayoutNavigationAcceptance(unittest.TestCase):
 
     def test_02_navigation_controls_drive_the_v15_contract(self) -> None:
         viewer = self._show_route("viewer")
-        overlay = getattr(viewer, "_cws_trimble_navigation_overlay", None)
+        overlay = getattr(viewer, "_trimble_navigation_overlay", None)
         self.assertIsNotNone(overlay)
         expected = (
             (QToolButton, "trimbleNavFit"),

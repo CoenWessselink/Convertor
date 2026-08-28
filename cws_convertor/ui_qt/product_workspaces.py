@@ -651,7 +651,9 @@ if qt_available():
                     self._workspace.project,
                     mode=str(self.mode.currentData() or "concept"),
                     created_by="qt-gui",
-                    backend="auto",
+                    scenario_id=f"ui-{str(getattr(self, 'phase3_scenario', self.mode).currentData() or 'waste')}",
+                    scenario_family=str(getattr(self, "phase3_scenario", self.mode).currentData() or "waste"),
+                    backend=str(getattr(self, "phase3_backend", self.mode).currentData() or "auto"),
                     timeout_seconds=30.0,
                 )
             except Exception as exc:

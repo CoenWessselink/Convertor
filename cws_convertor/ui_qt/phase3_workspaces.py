@@ -3,6 +3,11 @@ from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
+
+from cws_convertor.optimization.profile_nesting.command_service import (
+    ProfileNestingCommandError,
+    ProfileNestingCommandService,
+)
 import json
 from typing import Any, Iterable, Mapping
 
@@ -338,19 +343,38 @@ class ProfileNestingPanel(_ProfileNestingPanel):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.profile_nesting_commands = ProfileNestingCommandService(user="qt-gui")
         self.setObjectName("phase3ProfileNestingWorkspace")
+        self._phase3_workspace = None
         self._phase3_project = None
         self._phase3_selection: tuple[str, ...] = ()
         self._phase3_tables: dict[str, QTableWidget] = {}
         controls = QGroupBox("Scenario, locks en vrijgave", self)
         controls_layout = QHBoxLayout(controls)
+        self.phase3_scenario = QComboBox(controls)
+        for family in ("waste", "cost", "stock_first", "bars", "fast", "optimal", "custom"):
+            self.phase3_scenario.addItem(family.replace("_", " ").title(), family)
+        self.phase3_scenario.setToolTip("Scenariofamilie wordt als expliciete solver-input opgeslagen.")
+        controls_layout.addWidget(self.phase3_scenario)
+        self.phase3_backend = QComboBox(controls)
+        for backend in ("auto", "exact", "greedy"):
+            self.phase3_backend.addItem(backend.title(), backend)
+        self.phase3_backend.setToolTip("Backendkeuze wordt met het solverbewijs vastgelegd.")
+        controls_layout.addWidget(self.phase3_backend)
         for label, action in (
             ("Vergelijk scenario's", "compare"),
+            ("Valideer", "validate"),
             ("Lock / unlock", "lock"),
             ("Move / reorder", "move"),
             ("Rotate / orientation", "orientation"),
             ("Common cut", "common_cut"),
             ("Partieel heroptimaliseren", "partial_reoptimize"),
+            ("Undo", "undo"),
+            ("Redo", "redo"),
+            ("Layout opslaan", "save_layout"),
+            ("Reset layout", "reset_layout"),
+            ("Annuleren", "cancel"),
+            ("Vernieuwen", "refresh"),
             ("Accepteer + reserveer", "accept_reserve"),
             ("Release neutraal pakket", "release"),
         ):
@@ -358,6 +382,13 @@ class ProfileNestingPanel(_ProfileNestingPanel):
             button.setObjectName(f"nesting_{action}")
             button.clicked.connect(lambda _checked=False, name=action: self._phase3_action(name))
             controls_layout.addWidget(button)
+        self.phase3_proof_badge = QLabel("UNKNOWN", controls)
+        self.phase3_proof_badge.setObjectName("profileNestingProofBadge")
+        self.phase3_proof_badge.setStyleSheet(
+            "QLabel { background: #fff4cf; border: 1px solid #c78b00; color: #5f4200; "
+            "font-weight: 700; padding: 4px 8px; }"
+        )
+        controls_layout.addWidget(self.phase3_proof_badge)
         self.phase3_nesting_status = QLabel("Kies of bereken een run.", controls)
         controls_layout.addWidget(self.phase3_nesting_status, 1)
         self.phase3_nesting_tabs = QTabWidget(self)
@@ -374,6 +405,7 @@ class ProfileNestingPanel(_ProfileNestingPanel):
 
     def set_context(self, workspace: Any, selection: Any) -> None:
         super().set_context(workspace, selection)
+        self._phase3_workspace = workspace
         self._phase3_project = _project_from_workspace(workspace)
         self._phase3_selection = _selection_ids(selection)
         self._refresh_phase3_nesting()
@@ -403,22 +435,128 @@ class ProfileNestingPanel(_ProfileNestingPanel):
                     break
             _fill_table(self._phase3_tables[tab_name], _iter_records(value))
 
-    def _phase3_action(self, action: str) -> None:
-        settings = self._settings()
-        run_id = str(settings.get("active_profile_nesting_run_id", ""))
-        if not run_id:
-            self.phase3_nesting_status.setText("Actie geblokkeerd: selecteer eerst een nesting run.")
+        run_id = self._run_id()
+        if not run_id or self._phase3_project is None:
+            self.phase3_proof_badge.setText("UNKNOWN")
             return
-        settings.setdefault("profile_nesting_ui_actions", []).append(
-            {"action": action, "run_id": run_id, "selection": list(self._phase3_selection)}
+        try:
+            inspection = self.profile_nesting_commands.inspect_run(self._phase3_project, run_id)
+            proof = str(inspection.get("proof_status") or "UNKNOWN")
+            fresh = bool(dict(inspection.get("freshness") or {}).get("fresh"))
+            self.phase3_proof_badge.setText(proof if fresh else f"STALE | {proof}")
+        except ProfileNestingCommandError as exc:
+            self.phase3_proof_badge.setText(f"BLOCKED {exc.code}")
+
+    def _run_id(self) -> str:
+        project = self._phase3_project
+        settings = self._settings()
+        run_id = str(
+            getattr(project, "active_profile_nesting_run_id", "")
+            or settings.get("active_profile_nesting_run_id", "")
         )
-        if action == "release":
-            message = "Release aangevraagd; onafhankelijke validation en authority blijven verplicht."
-        elif action == "accept_reserve":
-            message = "Acceptatie en voorraadreservering atomair aangevraagd."
-        else:
-            message = f"Planningactie '{action}' geregistreerd voor {run_id}."
-        self.phase3_nesting_status.setText(message)
+        if run_id:
+            return run_id
+        records = getattr(project, "profile_nesting_runs", {}) if project is not None else {}
+        return str(next(reversed(records), "")) if isinstance(records, dict) else ""
+
+    def _persist_phase3_project(self) -> None:
+        workspace = self._phase3_workspace
+        session = getattr(workspace, "session", None)
+        save = getattr(session, "save", None)
+        if not callable(save):
+            return
+        try:
+            save()
+        except TypeError:
+            project_path = getattr(workspace, "project_path", None)
+            if project_path:
+                save(project_path)
+
+    def _publish_optimization_context(self, run_id: str, result: Any) -> None:
+        window = self.window()
+        context = getattr(window, "application_context", None) or getattr(window, "app_context", None)
+        update = getattr(context, "update_optimization_context", None)
+        if not callable(update):
+            return
+        record = dict(getattr(self._phase3_project, "profile_nesting_runs", {}).get(run_id) or {})
+        evidence = dict(record.get("solver_evidence") or {})
+        update(
+            active_profile_nesting_run=run_id,
+            active_scenario_id=str(self.phase3_scenario.currentData() or "waste"),
+            active_backend=str(self.phase3_backend.currentData() or "auto"),
+            proof_status=str(getattr(result, "proof_status", self.phase3_proof_badge.text())),
+            plan_revision_hash=str(getattr(result, "after_hash", "")),
+            solver_evidence_hash=str(
+                evidence.get("evidence_hash") or evidence.get("manifest_hash") or evidence.get("input_hash") or ""
+            ),
+        )
+
+    def _phase3_action(self, action: str) -> None:
+        project = self._phase3_project
+        if project is None:
+            self.phase3_nesting_status.setText("BLOCKED: geen actief canoniek project.")
+            return
+        run_id = self._run_id()
+        if action == "cancel":
+            job_id = str(getattr(self, "_job_id", "") or "")
+            manager = getattr(self, "job_manager", None) or getattr(self, "_job_manager", None)
+            if job_id and manager is not None:
+                manager.cancel(job_id)
+                self.phase3_nesting_status.setText(f"Solverjob {job_id} annuleren aangevraagd.")
+            else:
+                self.phase3_nesting_status.setText("Geen actieve solverjob om te annuleren.")
+            return
+        if action == "refresh":
+            self._refresh_phase3_nesting()
+            refresh = getattr(self, "_refresh_runs", None)
+            if callable(refresh):
+                refresh()
+            self.phase3_nesting_status.setText("Project, runs en bewijsstatus vernieuwd.")
+            return
+        if action == "save_layout":
+            self._persist_phase3_project()
+            self.phase3_nesting_status.setText("Canonieke projectlayout opgeslagen.")
+            return
+        if action != "compare" and not run_id:
+            self.phase3_nesting_status.setText("BLOCKED: selecteer of bereken eerst een nestingrun.")
+            return
+        try:
+            service = self.profile_nesting_commands
+            selected = tuple(self._phase3_selection)
+            operations = {
+                "compare": lambda: service.compare_scenarios(project),
+                "validate": lambda: service.validate_plan(project, run_id),
+                "lock": lambda: service.toggle_selected_lock(project, run_id, selected),
+                "move": lambda: service.move_or_reorder_selected(project, run_id, selected),
+                "orientation": lambda: service.cycle_selected_orientation(project, run_id, selected),
+                "common_cut": lambda: service.cycle_selected_common_cut(project, run_id, selected),
+                "partial_reoptimize": lambda: service.partial_reoptimize(
+                    project, run_id, backend=str(self.phase3_backend.currentData() or "auto")
+                ),
+                "undo": lambda: service.undo(project, run_id),
+                "redo": lambda: service.redo(project, run_id),
+                "reset_layout": lambda: service.reset_layout(project, run_id),
+                "accept_reserve": lambda: service.accept_plan(project, run_id, reserve_stock=True),
+                "release": lambda: service.release_neutral_package(
+                    project,
+                    run_id,
+                    Path.home() / "Documents" / "CWS Convertor" / "Profile Nesting Releases",
+                ),
+            }
+            if action not in operations:
+                raise ProfileNestingCommandError("CWS-NEST-UI-001", f"Onbekende UI-actie {action!r}")
+            result = operations[action]()
+            if action not in {"compare", "validate"}:
+                self._persist_phase3_project()
+            self._publish_optimization_context(run_id, result)
+            self._refresh_phase3_nesting()
+            self.phase3_nesting_status.setText(str(result.message or f"{action} voltooid"))
+        except ProfileNestingCommandError as exc:
+            self._refresh_phase3_nesting()
+            self.phase3_nesting_status.setText(f"ROLLBACK / BLOCKED {exc.code}: {exc}")
+        except Exception as exc:
+            self._refresh_phase3_nesting()
+            self.phase3_nesting_status.setText(f"ROLLBACK / BLOCKED {type(exc).__name__}: {exc}")
 
 
 class Phase3ExportCenterPanel(QWidget):

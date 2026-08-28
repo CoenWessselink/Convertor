@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import threading
 from typing import Any
 
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
@@ -12,11 +13,21 @@ if qt_available():
 
     from cws_convertor.bom import export_bom_package
     from cws_convertor.integration import IntegratedProjectWorkspace
+    from cws_viewer.adapters.source_geometry import ProjectSourceResolver
     from cws_viewer.backends.memory import MemoryRenderBackend
+    from cws_viewer.cache import MeshCache
+    from cws_viewer.contracts.geometry import GeometryLoadStatus, TessellationSettings
     from cws_viewer.core.controller import ViewerCoreController
+    from cws_viewer.geometry import IsolatedIfcMeshProvider, StepMeshProvider
+    from cws_viewer.geometry.loader import (
+        CancellationToken,
+        GeometryLoadCancelled,
+        GeometryLoadCoordinator,
+    )
     from cws_viewer.ui_qt.exact_part_workbench import ExactPartWorkbenchPanel
     from cws_viewer.ui_qt.property_grid import ProfessionalPropertyGridPanel
     from cws_viewer.ui_qt.vtk_project_widget import VtkProjectWidget
+    from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
     try:
         from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import (
             VtkRealProjectWidgetFeelV2 as VtkRealProjectWidget,
@@ -53,18 +64,36 @@ if qt_available():
 
     class _LoadWorker(QtCore.QObject):
         loaded = QtCore.Signal(object)
+        preview_ready = QtCore.Signal(object)
         progress = QtCore.Signal(int, str)
         failed = QtCore.Signal(str)
+        cancelled = QtCore.Signal()
         finished = QtCore.Signal()
 
         def __init__(self, path: Path, *, load_geometry: bool) -> None:
             super().__init__()
             self.path = path
             self.load_geometry = load_geometry
+            self.token = CancellationToken()
+            self._preview_ack = threading.Event()
+
+        def request_cancel(self) -> None:
+            self.token.cancel()
+            self._preview_ack.set()
+
+        def acknowledge_preview(self) -> None:
+            self._preview_ack.set()
+
+        def _publish_preview(self, load_result: Any) -> None:
+            self._preview_ack.clear()
+            self.preview_ready.emit(load_result)
+            while not self._preview_ack.wait(0.05):
+                self.token.check()
 
         @QtCore.Slot()
-        def run(self) -> None:
+        def run(self, context: Any | None = None) -> None:
             try:
+                self.token.check()
                 self.progress.emit(5, "Projectbestand en schema controleren")
                 self.progress.emit(18, "Projectmodel, bronnen en geometrie openen")
                 project_size = Path(self.path).stat().st_size
@@ -75,14 +104,29 @@ if qt_available():
                     float(__import__("os").environ.get("CWS_FULL_GEOMETRY_MAX_MB", "64"))
                     * 1024 * 1024
                 )
-                prefer_proxy = bool(self.load_geometry and project_size > full_geometry_limit)
+                # The desktop viewer is progressive by default: show a fully
+                # placed model immediately and replace display meshes with
+                # exact source geometry after the first interactive frame.
+                progressive = os.environ.get("CWS_PROGRESSIVE_PROJECT_LOAD", "1") != "0"
+                prefer_proxy = bool(
+                    self.load_geometry and (progressive or project_size > full_geometry_limit)
+                )
+
+                def report(percent: int, message: str) -> None:
+                    self.token.check()
+                    if context is not None:
+                        context.update(max(0.0, min(1.0, float(percent) / 100.0)), message)
+                    self.progress.emit(percent, message)
+
                 workspace = IntegratedProjectWorkspace.open(
                     self.path,
                     read_only=False,
                     load_all_geometry=self.load_geometry,
                     allow_proxy=True,
                     prefer_proxy=prefer_proxy,
-                    progress_callback=lambda percent, message: self.progress.emit(percent, message),
+                    progress_callback=report,
+                    cancellation_token=self.token,
+                    preview_callback=self._publish_preview,
                 )
                 if workspace.load_result.geometry_report.proxy_count:
                     self.progress.emit(
@@ -91,9 +135,146 @@ if qt_available():
                     )
                 self.progress.emit(80, "Viewer-scene en selectiecontext voorbereiden")
                 self.loaded.emit(workspace)
+            except GeometryLoadCancelled:
+                self.cancelled.emit()
             except Exception as exc:
                 self.failed.emit(f"{type(exc).__name__}: {exc}")
             finally:
+                self.finished.emit()
+
+
+    class _ExactGeometryWorker(QtCore.QObject):
+        batch_ready = QtCore.Signal(object)
+        progress = QtCore.Signal(int, str)
+        completed = QtCore.Signal(object)
+        cancelled = QtCore.Signal()
+        failed = QtCore.Signal(str)
+        finished = QtCore.Signal()
+
+        def __init__(self, workspace: IntegratedProjectWorkspace) -> None:
+            super().__init__()
+            self.workspace = workspace
+            self.token = CancellationToken()
+
+        def request_cancel(self) -> None:
+            self.token.cancel()
+
+        def run(self, context: Any | None = None) -> None:
+            coordinator = None
+            ifc_provider = None
+            try:
+                workspace = self.workspace
+                roots = tuple(Path(value).parent for value in workspace.session.source_paths.values())
+                resolver = ProjectSourceResolver(
+                    workspace.project,
+                    project_package_path=workspace.project_path,
+                    search_roots=roots,
+                )
+                requests = workspace.load_result.catalog.unique_requests(resolver)
+                cache = MeshCache(
+                    Path.home() / ".cws_convertor" / "viewer_mesh_cache",
+                    max_memory_items=max(128, min(len(requests), 2048)),
+                )
+                settings = TessellationSettings()
+                ifc_provider = IsolatedIfcMeshProvider()
+                coordinator = GeometryLoadCoordinator(
+                    (StepMeshProvider(),),
+                    cache=cache,
+                    repository=workspace.load_result.repository,
+                    settings=settings,
+                    max_workers=1,
+                )
+                upgraded: list[str] = []
+                failures: list[str] = []
+                batch: list[str] = []
+                total = len(requests)
+                completed = 0
+                ifc_misses = []
+
+                def publish(request: Any, mesh: Any) -> None:
+                    nonlocal completed
+                    workspace.load_result.repository.put(request.geometry_id, mesh)
+                    cache.put(
+                        request.cache_key(settings, ifc_provider.provider_version),
+                        mesh,
+                        provider_version=ifc_provider.provider_version,
+                        settings=settings,
+                    )
+                    upgraded.append(request.geometry_id)
+                    batch.append(request.geometry_id)
+                    completed += 1
+                    if len(batch) >= 128:
+                        self.batch_ready.emit(tuple(batch))
+                        batch.clear()
+                    message = f"Exacte brongeometrie {completed:,}/{total:,}"
+                    if completed == total or completed % 16 == 0:
+                        self.progress.emit(int(round(completed * 100 / max(total, 1))), message)
+
+                request_by_id = {request.geometry_id: request for request in requests}
+                for request in requests:
+                    self.token.check()
+                    if context is not None:
+                        context.check_cancelled()
+                    provider = ifc_provider if request.source_format.upper() == "IFC" else coordinator._provider(request)
+                    key = request.cache_key(settings, provider.provider_version) if provider is not None else ""
+                    cached = cache.get(key) if key else None
+                    if cached is not None:
+                        publish(request, cached)
+                        continue
+                    if request.source_format.upper() == "IFC":
+                        ifc_misses.append(request)
+                        continue
+                    result = coordinator.load_one(request, token=self.token, allow_proxy=False)
+                    mesh = result.mesh
+                    if (
+                        mesh is not None
+                        and result.status in {GeometryLoadStatus.READY, GeometryLoadStatus.PARTIAL}
+                        and mesh.exactness != "display_proxy"
+                    ):
+                        upgraded.append(request.geometry_id)
+                        batch.append(request.geometry_id)
+                        completed += 1
+                    else:
+                        failures.append(
+                            f"{request.geometry_id}: {result.error or result.status.value}"
+                        )
+                    if batch and len(batch) >= 128:
+                        self.batch_ready.emit(tuple(batch))
+                        batch.clear()
+                    percent = int(round(completed * 100 / max(total, 1)))
+                    message = f"Exacte brongeometrie {completed:,}/{total:,}"
+                    self.progress.emit(percent, message)
+                    if context is not None:
+                        context.update(percent / 100.0, message)
+
+                if ifc_misses:
+                    returned = ifc_provider.load_many(
+                        tuple(ifc_misses),
+                        settings,
+                        cancel_check=self.token.check,
+                        on_mesh=lambda geometry_id, mesh: publish(request_by_id[geometry_id], mesh),
+                    )
+                    missing_ids = {request.geometry_id for request in ifc_misses} - set(returned)
+                    for geometry_id in sorted(missing_ids):
+                        failures.append(f"{geometry_id}: IFC-batch leverde geen mesh")
+                if batch:
+                    self.batch_ready.emit(tuple(batch))
+                self.completed.emit(
+                    {
+                        "requested": total,
+                        "upgraded": len(upgraded),
+                        "failed": tuple(failures),
+                    }
+                )
+            except GeometryLoadCancelled:
+                self.cancelled.emit()
+            except Exception as exc:
+                self.failed.emit(f"{type(exc).__name__}: {exc}")
+            finally:
+                if coordinator is not None:
+                    coordinator.close()
+                if ifc_provider is not None:
+                    ifc_provider.close()
                 self.finished.emit()
 
 
@@ -115,6 +296,9 @@ if qt_available():
             self._load_job_id: str | None = None
             self._load_generation = 0
             self._worker: _LoadWorker | None = None
+            self._exact_worker: _ExactGeometryWorker | None = None
+            self._exact_job_id: str | None = None
+            self._preview_result: Any | None = None
             self._load_elapsed = QtCore.QElapsedTimer()
             self._load_heartbeat = QtCore.QTimer(self)
             self._load_heartbeat.setInterval(1000)
@@ -140,6 +324,10 @@ if qt_available():
             self.close_action = toolbar.addAction("Sluiten")
             toolbar.addSeparator()
             self.fit_action = toolbar.addAction("Fit")
+            self.select_action = toolbar.addAction("Selecteren")
+            self.orbit_action = toolbar.addAction("Draaien")
+            self.pan_action = toolbar.addAction("Slepen")
+            self.zoom_area_action = toolbar.addAction("Zoomvenster")
             self.iso_action = toolbar.addAction("Iso")
             self.top_action = toolbar.addAction("Boven")
             self.front_action = toolbar.addAction("Voor")
@@ -156,6 +344,16 @@ if qt_available():
             toolbar.addWidget(self.actions_button)
             self.exact_action = toolbar.addAction("Exact Part Workbench")
             self.bom_action = toolbar.addAction("BOM exporteren")
+            toolbar.addSeparator()
+            transparency_label = QtWidgets.QLabel("Doorzichtigheid")
+            toolbar.addWidget(transparency_label)
+            self.transparency_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
+            self.transparency_slider.setObjectName("cwsModelTransparencySlider")
+            self.transparency_slider.setRange(0, 90)
+            self.transparency_slider.setValue(0)
+            self.transparency_slider.setFixedWidth(120)
+            self.transparency_slider.setToolTip("Regel de doorzichtigheid van het volledige model")
+            toolbar.addWidget(self.transparency_slider)
             root.addWidget(toolbar)
 
             self.status = QtWidgets.QLabel("Open een .cwscproj-project")
@@ -204,6 +402,10 @@ if qt_available():
             self.open_action.triggered.connect(self.choose_project)
             self.close_action.triggered.connect(self.close_project)
             self.fit_action.triggered.connect(lambda: self._controller_call("fit_all"))
+            self.select_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.ORBIT, "Selecteren"))
+            self.orbit_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.ORBIT, "Draaien rond muispositie"))
+            self.pan_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.PAN, "Slepen"))
+            self.zoom_area_action.triggered.connect(self._activate_zoom_area)
             self.iso_action.triggered.connect(lambda: self._controller_call("set_standard_view", "isometric"))
             self.top_action.triggered.connect(lambda: self._controller_call("set_standard_view", "top"))
             self.front_action.triggered.connect(lambda: self._controller_call("set_standard_view", "front"))
@@ -213,17 +415,20 @@ if qt_available():
             self.show_all_action.triggered.connect(lambda: self._controller_call("show_all"))
             self.exact_action.triggered.connect(self.open_exact_workbench)
             self.bom_action.triggered.connect(self.export_bom)
+            self.transparency_slider.valueChanged.connect(self._set_model_transparency)
             self._set_actions_enabled(False)
 
         def _set_actions_enabled(self, enabled: bool) -> None:
             for action in (
-                self.close_action, self.fit_action, self.iso_action, self.top_action,
+                self.close_action, self.fit_action, self.select_action, self.orbit_action,
+                self.pan_action, self.zoom_area_action, self.iso_action, self.top_action,
                 self.front_action, self.hide_action, self.isolate_action,
                 self.ghost_action, self.show_all_action, self.exact_action,
                 self.bom_action,
             ):
                 action.setEnabled(enabled)
             self.actions_button.setEnabled(enabled)
+            self.transparency_slider.setEnabled(enabled)
 
         def choose_project(self) -> None:
             name, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -241,10 +446,16 @@ if qt_available():
             self.stack.setCurrentWidget(self.loading)
             worker = _LoadWorker(project_path, load_geometry=load_geometry)
             worker.progress.connect(self._load_progress_changed)
+            worker.preview_ready.connect(
+                lambda result, value=generation: self._project_preview_guarded(value, result)
+            )
             worker.loaded.connect(
                 lambda workspace, value=generation: self._project_loaded_guarded(value, workspace)
             )
             worker.failed.connect(self._project_failed)
+            worker.cancelled.connect(
+                lambda value=generation: self._project_cancelled_guarded(value)
+            )
             worker.finished.connect(worker.deleteLater)
             worker.finished.connect(lambda value=generation: self._load_finished(value))
             self._worker = worker
@@ -256,7 +467,7 @@ if qt_available():
                 "project_open_import",
                 lambda context: (
                     context.stage("project_open", 0.01, "Projectcontainer openen"),
-                    worker.run(),
+                    worker.run(context),
                 )[-1],
                 description=f"Project openen: {project_path.name}",
                 project_id=str(project_path),
@@ -271,6 +482,14 @@ if qt_available():
             self._thread = None
             self._load_job_id = None
 
+        def _project_cancelled_guarded(self, generation: int) -> None:
+            if generation != self._load_generation:
+                return
+            self._load_heartbeat.stop()
+            self.stack.setCurrentWidget(self.empty)
+            self.status.setText("Projectladen geannuleerd")
+            self.load_progress.emit(0, "Projectladen geannuleerd")
+
         def _project_loaded_guarded(
             self,
             generation: int,
@@ -280,6 +499,63 @@ if qt_available():
                 workspace.close()
                 return
             self._project_loaded(workspace)
+
+        def _project_preview_guarded(self, generation: int, load_result: Any) -> None:
+            worker = self._worker
+            try:
+                if generation != self._load_generation:
+                    return
+                while self.host_layout.count():
+                    item = self.host_layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        widget.deleteLater()
+                if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
+                    viewer = _HeadlessGuiSmokeViewer()
+                else:
+                    viewer = VtkRealProjectWidget(load_result.repository)
+                    backend = getattr(viewer, "backend", None)
+                    set_filter = getattr(backend, "set_geometry_filter", None)
+                    if callable(set_filter):
+                        render_window = getattr(backend, "_render_window", None)
+                        if render_window is not None:
+                            render_window.SetMultiSamples(0)
+                        first_geometry = tuple(dict.fromkeys(
+                            str(node.geometry_id)
+                            for node in load_result.scene.nodes
+                            if node.geometry_id and load_result.repository.get(node.geometry_id) is not None
+                        ))[:32]
+                        set_filter(first_geometry)
+                viewer.load_scene(load_result.scene)
+                self.viewer = viewer
+                self._preview_result = load_result
+                self.host_layout.addWidget(viewer)
+                self.stack.setCurrentWidget(self.host)
+                viewer.update()
+                QtWidgets.QApplication.processEvents(
+                    QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+                )
+                self._load_progress_changed(66, "Eerste interactieve modelweergave gereed")
+                QtCore.QTimer.singleShot(50, self._complete_preview_geometry)
+            finally:
+                if worker is not None:
+                    worker.acknowledge_preview()
+
+        def _complete_preview_geometry(self) -> None:
+            viewer = self.viewer
+            if viewer is None:
+                return
+            backend = getattr(viewer, "backend", None)
+            set_filter = getattr(backend, "set_geometry_filter", None)
+            if callable(set_filter):
+                render_window = getattr(backend, "_render_window", None)
+                if render_window is not None:
+                    render_window.SetMultiSamples(
+                        int(getattr(backend, "INTERACTIVE_MULTISAMPLES", 8))
+                    )
+                set_filter(None)
+                viewer.controller.refresh_geometry(None)
+                viewer.update()
 
         def _loading_tick(self) -> None:
             if self._load_job_id is None or not self._load_elapsed.isValid():
@@ -302,15 +578,19 @@ if qt_available():
             self._load_heartbeat.stop()
             self._load_progress_changed(84, "Viewer V15-renderer initialiseren")
             self.workspace = workspace
+            preview_viewer = self.viewer if self._preview_result is workspace.load_result else None
             while self.host_layout.count():
                 item = self.host_layout.takeAt(0)
                 widget = item.widget()
-                if widget is not None:
+                if widget is not None and widget is not preview_viewer:
                     widget.deleteLater()
 
             # Use exact source meshes when loaded; otherwise show deterministic
             # project envelopes and keep the evidence limitation visible.
-            if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
+            if preview_viewer is not None:
+                viewer = preview_viewer
+                display_evidence = "progressieve source/proxy meshrepository"
+            elif os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
                 viewer = _HeadlessGuiSmokeViewer()
                 display_evidence = "headless GUI-integratierenderer"
             else:
@@ -320,7 +600,18 @@ if qt_available():
                     if len(workspace.load_result.repository)
                     else "Viewer V15 actief; geometrie wordt later/lazy geladen"
                 )
-            viewer.load_scene(workspace.load_result.scene)
+            if preview_viewer is None:
+                viewer.load_scene(workspace.load_result.scene)
+            # Loading can complete before the native Qt/VTK surface has its
+            # final size. Re-fit on the next event-loop turn so the first
+            # visible frame uses the actual viewport.
+            QtCore.QTimer.singleShot(
+                0,
+                lambda: (
+                    viewer.controller.fit_all(),
+                    viewer.update(),
+                ) if self.workspace is workspace and self.viewer is viewer else None,
+            )
             self._load_progress_changed(90, "Geometrie, camera en selectie koppelen")
             workspace.bind_controller(viewer.controller)
             self.viewer = viewer
@@ -373,6 +664,16 @@ if qt_available():
             splitter.setSizes([650, 1050, 430])
             self.host_layout.addWidget(splitter)
 
+            # Publish the first interactive model frame before populating the
+            # large tree/grid surfaces.  This is the explicit <=5 s contract.
+            self.stack.setCurrentWidget(self.host)
+            self._load_progress_changed(93, "Eerste interactieve modelweergave gereed")
+            viewer.controller.fit_all()
+            viewer.update()
+            QtWidgets.QApplication.processEvents(
+                QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
+            )
+
             self._populate_tree()
             self._populate_bom()
             self._load_progress_changed(97, "Modelstructuur, eigenschappen en BOM vullen")
@@ -387,10 +688,12 @@ if qt_available():
                 f"{len(workspace.interaction.grid_model.rows):,} gridregels · {display_evidence} · "
                 f"identity audit PASS"
             )
-            self.stack.setCurrentWidget(self.host)
             self._set_actions_enabled(True)
             self._load_progress_changed(100, "Project volledig geladen in Viewer V15")
             self.project_loaded.emit(str(workspace.project_path))
+            self._preview_result = None
+            if workspace.load_result.geometry_report.proxy_count:
+                self._start_exact_geometry_upgrade(workspace)
 
         @QtCore.Slot(str)
         def _project_failed(self, message: str) -> None:
@@ -399,6 +702,124 @@ if qt_available():
             self.status.setText(f"Project laden mislukt: {message}")
             self.stack.setCurrentWidget(self.empty)
             QtWidgets.QMessageBox.critical(self, "Project laden", message)
+
+        def cancel_project_load(self) -> bool:
+            active = self._load_job_id is not None or self._exact_job_id is not None
+            if not active:
+                return False
+            self._load_generation += 1
+            if self._worker is not None:
+                self._worker.request_cancel()
+            if self._exact_worker is not None:
+                self._exact_worker.request_cancel()
+            if self._job_manager is not None:
+                if self._load_job_id is not None:
+                    self._job_manager.cancel(self._load_job_id)
+                if self._exact_job_id is not None:
+                    self._job_manager.cancel(self._exact_job_id)
+            self._load_job_id = None
+            self._exact_job_id = None
+            self._load_heartbeat.stop()
+            if self.workspace is None:
+                self.stack.setCurrentWidget(self.empty)
+            self.status.setText("Projectladen geannuleerd")
+            self.load_progress.emit(0, "Projectladen geannuleerd")
+            return True
+
+        def _start_exact_geometry_upgrade(self, workspace: IntegratedProjectWorkspace) -> None:
+            if self._job_manager is None or workspace is not self.workspace:
+                return
+            generation = self._load_generation
+            worker = _ExactGeometryWorker(workspace)
+            worker.batch_ready.connect(
+                lambda values, value=generation: self._exact_geometry_batch(value, values)
+            )
+            worker.progress.connect(
+                lambda percent, message, value=generation: self._exact_geometry_progress(value, percent, message)
+            )
+            worker.completed.connect(
+                lambda report, value=generation: self._exact_geometry_completed(value, report)
+            )
+            worker.cancelled.connect(
+                lambda value=generation: self._exact_geometry_cancelled(value)
+            )
+            worker.failed.connect(
+                lambda message, value=generation: self._exact_geometry_failed(value, message)
+            )
+            worker.finished.connect(worker.deleteLater)
+            self._exact_worker = worker
+            self._exact_job_id = self._job_manager.submit(
+                "project_exact_geometry_upgrade",
+                lambda context: worker.run(context),
+                description=f"Exacte viewergeometrie: {workspace.project_path.name}",
+                project_id=str(workspace.project_path),
+                metadata={"progressive": True, "replaces_proxies": True},
+                max_retries=0,
+            )
+
+        def _exact_geometry_batch(self, generation: int, geometry_ids: Any) -> None:
+            if generation != self._load_generation or self.viewer is None:
+                return
+            self.viewer.controller.refresh_geometry(tuple(geometry_ids))
+            self.viewer.update()
+
+        def _exact_geometry_progress(self, generation: int, percent: int, message: str) -> None:
+            if generation != self._load_generation:
+                return
+            self.status.setText(f"{message} · model blijft interactief")
+            self.load_progress.emit(percent, message)
+
+        def _exact_geometry_completed(self, generation: int, report: Any) -> None:
+            if generation != self._load_generation:
+                return
+            failures = tuple(report.get("failed") or ())
+            upgraded = int(report.get("upgraded") or 0)
+            requested = int(report.get("requested") or 0)
+            self._exact_job_id = None
+            self._exact_worker = None
+            if failures:
+                self.status.setText(
+                    f"Brongeometrie {upgraded:,}/{requested:,} · {len(failures):,} onderdelen behouden veilige proxy"
+                )
+            else:
+                self.status.setText(
+                    f"Brongeometrie compleet · {upgraded:,}/{requested:,} exacte meshes"
+                )
+
+        def _exact_geometry_cancelled(self, generation: int) -> None:
+            if generation == self._load_generation:
+                self._exact_job_id = None
+                self._exact_worker = None
+                self.status.setText("Exacte geometrie-upgrade geannuleerd; interactief model blijft beschikbaar")
+
+        def _exact_geometry_failed(self, generation: int, message: str) -> None:
+            if generation == self._load_generation:
+                self._exact_job_id = None
+                self._exact_worker = None
+                self.status.setText(f"Exacte geometrie-upgrade mislukt: {message}")
+
+        def _set_navigation_mode(self, mode: Any, label: str) -> None:
+            if self.viewer is None:
+                return
+            self.viewer.set_navigation_mode(mode)
+            self.viewer.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+            self.status.setText(label)
+
+        def _activate_zoom_area(self) -> None:
+            if self.viewer is None:
+                return
+            if hasattr(self.viewer, "set_zoom_area"):
+                self.viewer.set_zoom_area(True)
+            elif hasattr(self.viewer, "set_area_selection"):
+                self.viewer.set_area_selection(True)
+            self.viewer.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+            self.status.setText("Zoomvenster: sleep een kader in de viewer")
+
+        def _set_model_transparency(self, value: int) -> None:
+            if self.viewer is None or self.viewer.controller.scene is None:
+                return
+            node_ids = self.viewer.controller.index.renderable_node_ids
+            self.viewer.controller.set_transparency(node_ids, float(value) / 100.0)
 
         def _populate_tree(self) -> None:
             assert self.workspace is not None
@@ -612,10 +1033,20 @@ if qt_available():
             )
 
         def close_project(self) -> None:
+            if self._worker is not None:
+                self._worker.request_cancel()
+            if self._exact_worker is not None:
+                self._exact_worker.request_cancel()
             self._load_generation += 1
             if self._load_job_id is not None and self._job_manager is not None:
                 self._job_manager.cancel(self._load_job_id)
                 self._load_job_id = None
+            if self._exact_job_id is not None and self._job_manager is not None:
+                self._job_manager.cancel(self._exact_job_id)
+                self._exact_job_id = None
+            self._worker = None
+            self._exact_worker = None
+            self._preview_result = None
             if self._interaction_unsubscribe is not None:
                 self._interaction_unsubscribe()
                 self._interaction_unsubscribe = None
@@ -631,6 +1062,9 @@ if qt_available():
             self._tree_items.clear()
             self._grid_entity_ids.clear()
             self._set_actions_enabled(False)
+            self.transparency_slider.blockSignals(True)
+            self.transparency_slider.setValue(0)
+            self.transparency_slider.blockSignals(False)
             self.stack.setCurrentWidget(self.empty)
             self.status.setText("Open een .cwscproj-project")
 

@@ -36,7 +36,7 @@ class ClassificationTests(unittest.TestCase):
             project.add_entity(part)
         report = classify_project(project, user="test")
         self.assertEqual(report.category_counts, {"make_part": 1, "non_steel": 1, "purchased_item": 1, "unknown": 1})
-        self.assertEqual(project.parts["steel"].classification_status, "automatic")
+        self.assertEqual(project.parts["steel"].classification_status, "review_required")
         self.assertEqual(len(project.parts["steel"].production_identity_hash), 64)
         self.assertTrue(project.parts["step"].blocking_issues())
         report2 = set_manual_part_classification(

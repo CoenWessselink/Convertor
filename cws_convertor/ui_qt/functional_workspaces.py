@@ -1221,7 +1221,7 @@ if qt_available():
                     parameters["depth_mm"] = depth_mm
                 elif kind in {"hole", "slot", "cope", "cutout"}:
                     parameters.setdefault("through", True)
-                if kind in {"slot", "cope", "cutout", "pocket"}:
+                if kind in {"cope", "cutout", "pocket"}:
                     parameters.setdefault("angle_deg", 0.0)
                     parameters.setdefault("corner_radius_mm", 0.0)
                 if kind == "end_cut":

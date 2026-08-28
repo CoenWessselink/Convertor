@@ -29,6 +29,11 @@ class EditWorkspaceSmoke(unittest.TestCase):
     def setUp(self) -> None:
         from cws_convertor.ui_qt.functional_workspaces import EditWorkspacePanel
 
+        self._message_box_critical = self.QtWidgets.QMessageBox.critical
+        self.dialog_messages: list[str] = []
+        self.QtWidgets.QMessageBox.critical = (
+            lambda _parent, title, message: self.dialog_messages.append(f"{title}: {message}")
+        )
         self.session = ProjectSession.new("Edit workspace smoke", created_by="tester")
         self.part = Part(
             internal_id="edit-part-1",
@@ -49,9 +54,24 @@ class EditWorkspaceSmoke(unittest.TestCase):
         )
         self.part.recompute_hashes()
         self.session.project.add_entity(self.part, user="tester")
+        self.session.start_part_workbench(self.part.internal_id, user="tester")
+        self.session.update_part_workbench(
+            self.part.internal_id,
+            {
+                "part_form": "profile",
+                "recognition": {"candidate": "HEA300", "confidence": 1.0, "confirmed": True},
+                "reference_sides": [
+                    {"side_id": "top", "label": "Bovenzijde", "face_ref": "face:top", "confirmed": True}
+                ],
+            },
+            user="tester",
+            reason="Prepare canonical profile fixture",
+        )
         self.saved_messages: list[str] = []
         save_proxy = SimpleNamespace(
-            save=lambda **kwargs: self.saved_messages.append(str(kwargs.get("revision_message") or "saved"))
+            start_part_workbench=self.session.start_part_workbench,
+            update_part_workbench=self.session.update_part_workbench,
+            save=lambda **kwargs: self.saved_messages.append(str(kwargs.get("revision_message") or "saved")),
         )
         self.workspace = SimpleNamespace(project=self.session.project, session=save_proxy)
         self.panel = EditWorkspacePanel()
@@ -60,6 +80,7 @@ class EditWorkspaceSmoke(unittest.TestCase):
         self.application.processEvents()
 
     def tearDown(self) -> None:
+        self.QtWidgets.QMessageBox.critical = self._message_box_critical
         self.panel.close()
         self.panel.deleteLater()
         self.application.processEvents()
@@ -92,7 +113,7 @@ class EditWorkspaceSmoke(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="cws-edit-ui-") as folder:
             import_path = Path(folder) / "features.json"
             import_path.write_text(
-                json.dumps({"features": [{"kind": "miter", "parameters": {"angle_deg": 45}, "description": "Verstek 45"}]}),
+                json.dumps({"features": [{"kind": "end_cut", "parameters": {"angle_deg": 45, "end": "start"}, "description": "Verstek 45"}]}),
                 encoding="utf-8",
             )
             self.assertEqual(self.panel.import_operations(import_path), 1)
@@ -105,20 +126,25 @@ class EditWorkspaceSmoke(unittest.TestCase):
         self.panel.mark_code.setText("B-200")
         self.panel.setup_minutes.setValue(10.0)
         self.panel.hourly_rate.setValue(90.0)
+        reference_side = self.panel._default_reference_side()
+        self.assertTrue(reference_side)
+        for feature in self.panel._draft_features:
+            feature["reference_side"] = reference_side
+            feature["status"] = "confirmed"
         self.assertTrue(self.panel.validate_draft())
         self.panel.handle_ribbon("calculate")
         self.assertGreater(self.panel.total_minutes.value(), 10.0)
         self.assertGreater(self.panel.total_cost.value(), 0.0)
-        self.assertTrue(self.panel.save_changes())
+        self.assertTrue(self.panel.save_changes(), self.panel.status.text())
         self.assertTrue(self.saved_messages)
         revision = self.part.workbench["current_revision"]
         self.assertEqual(len(revision["features"]), 4)
-        self.assertTrue(all(feature["status"] == "OK" for feature in revision["features"]))
+        self.assertTrue(all(feature["status"] == "confirmed" for feature in revision["features"]))
         self.assertEqual(
-            self.part.workbench["ui_editor"]["description"],
+            self.part.properties["ui_editor"]["description"],
             "Werkplaatsligger noord",
         )
-        self.assertEqual(self.part.workbench["ui_editor"]["setup_minutes"], 10.0)
+        self.assertEqual(self.part.properties["ui_editor"]["setup_minutes"], 10.0)
 
         self.panel.description.setText("Niet opslaan")
         self.panel.mark_dirty()

@@ -10,10 +10,11 @@ from dataclasses import replace
 import math
 from typing import Any, Iterable
 
+from cws_viewer.backends.vtk_project_mesh import VtkProjectMeshBackend
 from cws_viewer.backends.vtk_project_mesh_feel import VtkProjectMeshFeelBackend
 from cws_viewer.contracts.enums import MeasurementKind
 from cws_viewer.contracts.state import ViewerCapabilities
-from cws_viewer.math3d import Rgba, Vector3
+from cws_viewer.math3d import Matrix4, Rgba, Vector3
 
 
 class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
@@ -22,6 +23,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._highlighted_nodes: set[str] = set()
+        self._selection_fill_groups: list[Any] = []
         self._measurement_label_bindings: list[tuple[Any, Vector3, tuple[int, int]]] = []
         self._measurement_preview_actors: list[Any] = []
         self._measurement_preview_labels: list[tuple[Any, Vector3, tuple[int, int]]] = []
@@ -55,8 +57,21 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         fxaa_off = getattr(renderer, "UseFXAAOff", None)
         if callable(fxaa_off):
             fxaa_off()
-        renderer.SetPass(None)
-        self._ssao_pass = None
+        try:
+            from vtkmodules.vtkRenderingOpenGL2 import vtkRenderStepsPass, vtkSSAOPass
+
+            render_steps = vtkRenderStepsPass()
+            ssao_pass = vtkSSAOPass()
+            ssao_pass.SetDelegatePass(render_steps)
+            ssao_pass.SetRadius(120.0)
+            ssao_pass.SetBias(0.01)
+            ssao_pass.SetKernelSize(64)
+            ssao_pass.BlurOn()
+            renderer.SetPass(ssao_pass)
+            self._ssao_pass = ssao_pass
+        except Exception:
+            renderer.SetPass(None)
+            self._ssao_pass = None
         window = self._render_window
         if window is not None:
             for method_name in ("LineSmoothingOn", "PolygonSmoothingOn"):
@@ -136,6 +151,8 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                 prop.SetSpecular(0.22)
                 prop.SetSpecularPower(42.0)
                 prop.EdgeVisibilityOff()
+                prop.SetEdgeColor(0.035, 0.05, 0.065)
+                prop.SetLineWidth(1.0)
                 prop.LightingOn()
             else:
                 prop.SetInterpolationToPhong()
@@ -145,7 +162,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                 prop.SetSpecularPower(18.0)
                 prop.SetEdgeColor(0.055, 0.075, 0.095)
                 prop.SetLineWidth(0.8)
-                prop.EdgeVisibilityOn()
+                prop.EdgeVisibilityOff()
                 prop.LightingOn()
         self.render()
 
@@ -164,7 +181,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
     def _blend_selection(rgba: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
         # The reference workflow consistently uses a saturated engineering blue
         # for selected steel.  Yellow-on-green was too subtle on IFC models.
-        target = (0, 102, 220)
+        target = (255, 210, 0)
         amount = 0.94
         return (
             int(round(rgba[0] * (1.0 - amount) + target[0] * amount)),
@@ -223,10 +240,57 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         for group in self._mesh_groups:
             if id(group) in changed_groups:
                 group.colors.Modified()
+                group.polydata.GetPointData().Modified()
                 group.polydata.Modified()
                 group.mapper.Modified()
+                group.mapper.Update()
         self._highlighted_nodes = selected
         self._ral_refresh_all = False
+        self._rebuild_selection_fill(state, index)
+
+    def _rebuild_selection_fill(self, state: Any, index: Any) -> None:
+        if self._selection_fill_groups:
+            self._remove_groups(self._selection_fill_groups)
+            self._selection_fill_groups = []
+        if not state.display_preferences.show_selection_outline:
+            return
+        for node_id in sorted(state.selected_node_ids):
+            if node_id not in state.visible_set or node_id not in index.nodes_by_id:
+                continue
+            node = index.node(node_id)
+            base_entry = self._node_instance.get(node_id)
+            if not node.geometry_id or base_entry is None:
+                continue
+            base_group, _instance_index = base_entry
+            offset = state.explode_offsets.get(node_id, Vector3.zero())
+            matrix = Matrix4.translation(offset) @ index.world_transform_by_node[node_id]
+            fill_group = VtkProjectMeshBackend._build_mesh_group(
+                self,
+                node.geometry_id,
+                base_group.mode,
+                [(node_id, matrix, state.display_preferences.selection_color)],
+                selection=True,
+            )
+            mapper = fill_group.actor.GetMapper()
+            try:
+                mapper.SetResolveCoincidentTopologyToPolygonOffset()
+                mapper.SetRelativeCoincidentTopologyPolygonOffsetParameters(-2.0, -2.0)
+            except Exception:
+                pass
+            prop = fill_group.actor.GetProperty()
+            prop.SetRepresentationToSurface()
+            prop.EdgeVisibilityOff()
+            prop.SetColor(1.0, 0.82, 0.0)
+            prop.SetOpacity(0.78)
+            prop.LightingOff()
+            fill_group.actor.PickableOff()
+            self._selection_fill_groups.append(fill_group)
+
+    def refresh_geometry(self, geometry_ids: tuple[str, ...] | None = None) -> None:
+        if self._selection_fill_groups:
+            self._remove_groups(self._selection_fill_groups)
+            self._selection_fill_groups = []
+        super().refresh_geometry(geometry_ids)
 
     def _update_contact_shadow_scale(self) -> None:
         ssao = self._ssao_pass
@@ -496,6 +560,9 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         super().render()
 
     def clear_scene(self) -> None:
+        if self._selection_fill_groups:
+            self._remove_groups(self._selection_fill_groups)
+            self._selection_fill_groups = []
         self._remove_overlay_actors(self._measurement_preview_actors)
         self._measurement_label_bindings.clear()
         self._measurement_preview_labels.clear()
@@ -505,3 +572,59 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
 
 
 __all__ = ["VtkProjectMeshFeelV2Backend"]
+
+
+# CWS visual-quality policy: model transparency and robust camera clipping.
+def _cws_iter_model_actors(backend):
+    renderer = getattr(backend, "_renderer", None)
+    if renderer is None:
+        return
+    actors = renderer.GetActors()
+    actors.InitTraversal()
+    while True:
+        actor = actors.GetNextActor()
+        if actor is None:
+            break
+        yield actor
+
+
+def _cws_set_global_opacity(self, opacity):
+    opacity = max(0.15, min(1.0, float(opacity)))
+    self._cws_global_opacity = opacity
+    for actor in _cws_iter_model_actors(self):
+        prop = actor.GetProperty()
+        if prop is not None:
+            prop.SetOpacity(opacity)
+    renderer = getattr(self, "_renderer", None)
+    if renderer is not None and renderer.GetRenderWindow() is not None:
+        renderer.GetRenderWindow().Render()
+
+
+_ORIGINAL_CWS_V2_RENDER = VtkProjectMeshFeelV2Backend.render
+
+
+def _cws_render_with_safe_clipping(self):
+    _ORIGINAL_CWS_V2_RENDER(self)
+    renderer = getattr(self, "_renderer", None)
+    if renderer is None:
+        return
+    camera = renderer.GetActiveCamera()
+    if camera is None:
+        return
+    near_value, far_value = camera.GetClippingRange()
+    safe_near = max(0.001, float(near_value) * 0.20)
+    safe_far = max(safe_near + 1.0, float(far_value) * 1.75)
+    camera.SetClippingRange(safe_near, safe_far)
+    opacity = float(getattr(self, "_cws_global_opacity", 1.0))
+    if opacity < 0.999:
+        for actor in _cws_iter_model_actors(self):
+            prop = actor.GetProperty()
+            if prop is not None:
+                prop.SetOpacity(opacity)
+    window = renderer.GetRenderWindow()
+    if window is not None:
+        window.Render()
+
+
+VtkProjectMeshFeelV2Backend.set_global_opacity = _cws_set_global_opacity
+VtkProjectMeshFeelV2Backend.render = _cws_render_with_safe_clipping

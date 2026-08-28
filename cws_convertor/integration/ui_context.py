@@ -107,6 +107,18 @@ class ManufacturingContext:
 
 
 @dataclass(frozen=True, slots=True)
+class OptimizationContext:
+    active_profile_nesting_run: str = ""
+    active_plate_nesting_run: str = ""
+    active_scenario_id: str = ""
+    active_backend: str = "auto"
+    active_machine_profile_id: str = ""
+    proof_status: str = "UNKNOWN"
+    plan_revision_hash: str = ""
+    solver_evidence_hash: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class ExportContext:
     active_export_scope: tuple[str, ...] = ()
     active_release_scope: tuple[str, ...] = ()
@@ -165,6 +177,7 @@ def migrate_context_payload(payload: dict[str, Any]) -> dict[str, Any]:
             },
             "review_context": {},
             "manufacturing_context": {},
+            "optimization_context": {},
             "export_context": {},
         }
     )
@@ -190,6 +203,7 @@ class UnifiedUiContextSnapshot:
     workspace_context: WorkspaceContext = field(default_factory=WorkspaceContext)
     review_context: ReviewContext = field(default_factory=ReviewContext)
     manufacturing_context: ManufacturingContext = field(default_factory=ManufacturingContext)
+    optimization_context: OptimizationContext = field(default_factory=OptimizationContext)
     export_context: ExportContext = field(default_factory=ExportContext)
     changed_at: str = field(default_factory=_utc_now)
 
@@ -215,6 +229,7 @@ class UnifiedUiContextSnapshot:
             "workspace_context": asdict(self.workspace_context),
             "review_context": asdict(self.review_context),
             "manufacturing_context": asdict(self.manufacturing_context),
+            "optimization_context": asdict(self.optimization_context),
             "export_context": asdict(self.export_context),
             "consistent": self.consistent,
             "safety": dict(U3_SAFETY_FLAGS),
@@ -249,6 +264,7 @@ class UnifiedUiContextSnapshot:
             workspace_context=_context_from_dict(WorkspaceContext, source.get("workspace_context")),
             review_context=_context_from_dict(ReviewContext, source.get("review_context")),
             manufacturing_context=_context_from_dict(ManufacturingContext, source.get("manufacturing_context")),
+            optimization_context=_context_from_dict(OptimizationContext, source.get("optimization_context")),
             export_context=_context_from_dict(ExportContext, source.get("export_context")),
             changed_at=str(source.get("changed_at") or _utc_now()),
         )
@@ -283,6 +299,7 @@ class UnifiedApplicationContext:
         )
         self._review_context = ReviewContext()
         self._manufacturing_context = ManufacturingContext()
+        self._optimization_context = OptimizationContext()
         self._export_context = ExportContext()
         self._user_preferences: dict[str, Any] = {}
         self._generation = 0
@@ -397,6 +414,10 @@ class UnifiedApplicationContext:
         self._manufacturing_context = replace(self._manufacturing_context, **changes)
         return self._publish_snapshot()
 
+    def update_optimization_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
+        self._optimization_context = replace(self._optimization_context, **changes)
+        return self._publish_snapshot()
+
     def update_export_context(self, **changes: Any) -> UnifiedUiContextSnapshot:
         self._export_context = replace(self._export_context, **changes)
         return self._publish_snapshot()
@@ -420,6 +441,7 @@ class UnifiedApplicationContext:
         self._workspace_context = snapshot.workspace_context
         self._review_context = snapshot.review_context
         self._manufacturing_context = snapshot.manufacturing_context
+        self._optimization_context = snapshot.optimization_context
         self._export_context = snapshot.export_context
         self._user_preferences = deepcopy(dict(source.get("user_preferences") or {}))
         return self._publish_snapshot()
@@ -586,6 +608,7 @@ class UnifiedApplicationContext:
                 workspace_context=self._workspace_context,
                 review_context=self._review_context,
                 manufacturing_context=self._manufacturing_context,
+                optimization_context=self._optimization_context,
                 export_context=self._export_context,
             )
         project = workspace.project
@@ -624,6 +647,7 @@ class UnifiedApplicationContext:
             workspace_context=self._workspace_context,
             review_context=self._review_context,
             manufacturing_context=self._manufacturing_context,
+            optimization_context=self._optimization_context,
             export_context=self._export_context,
         )
 
@@ -657,6 +681,7 @@ class UnifiedApplicationContext:
 __all__ = [
     "ExportContext",
     "ManufacturingContext",
+    "OptimizationContext",
     "ProjectContext",
     "ReviewContext",
     "SelectionContext",

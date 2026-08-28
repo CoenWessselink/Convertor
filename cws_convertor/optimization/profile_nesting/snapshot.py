@@ -11,6 +11,18 @@ from .models import ProfileNestingInputSnapshot, ProfileNestingRun
 from .units import LengthKernel
 
 
+def _storage_canonical(value: Any) -> Any:
+    """Match ProjectStore's stable nine-decimal numeric representation."""
+    if isinstance(value, float):
+        rounded = round(value, 9)
+        return 0.0 if rounded == 0.0 else rounded
+    if isinstance(value, dict):
+        return {str(key): _storage_canonical(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_storage_canonical(item) for item in value]
+    return value
+
+
 def create_input_snapshot(
     project: ProjectModel,
     *,
@@ -33,21 +45,21 @@ def create_input_snapshot(
         project_id=project.project_id,
         project_revision_hash=report.project_revision_hash,
         demand_snapshot_hash=report.demand_snapshot_hash,
-        demand_lines=[asdict(item) for item in report.demand_lines],
-        piece_instances=[asdict(item) for item in report.piece_instances],
+        demand_lines=_storage_canonical([asdict(item) for item in report.demand_lines]),
+        piece_instances=_storage_canonical([asdict(item) for item in report.piece_instances]),
         machine_snapshot_hash=str((machine_snapshot or {}).get("snapshot_hash") or stable_sha256(machine_snapshot or {})),
         tool_snapshot_hash=str((tool_snapshot or {}).get("snapshot_hash") or stable_sha256(tool_snapshot or {})),
         stock_snapshot_hash=str((stock_snapshot or {}).get("snapshot_hash") or stable_sha256(stock_snapshot or {})),
-        machine_snapshot=dict(machine_snapshot or {}),
-        tool_snapshot=dict(tool_snapshot or {}),
-        stock_snapshot=dict(stock_snapshot or {}),
+        machine_snapshot=_storage_canonical(dict(machine_snapshot or {})),
+        tool_snapshot=_storage_canonical(dict(tool_snapshot or {})),
+        stock_snapshot=_storage_canonical(dict(stock_snapshot or {})),
         reservation_version=reservation_version,
-        objective_configuration=dict(objective_configuration or {}),
-        solver_configuration=dict(solver_configuration or {}),
-        units=kernel.snapshot(),
+        objective_configuration=_storage_canonical(dict(objective_configuration or {})),
+        solver_configuration=_storage_canonical(dict(solver_configuration or {})),
+        units=_storage_canonical(kernel.snapshot()),
         tolerances={"source": "project_part_tolerances"},
-        feature_flags=dict(feature_flags or {}),
-        user_locks=list(user_locks or []),
+        feature_flags=_storage_canonical(dict(feature_flags or {})),
+        user_locks=_storage_canonical(list(user_locks or [])),
         created_by=created_by,
     )
     snapshot.refresh_hash()

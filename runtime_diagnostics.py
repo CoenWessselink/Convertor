@@ -532,6 +532,37 @@ def _project_roundtrip_check() -> dict[str, Any]:
         session.close()
 
 
+def _quality_inspection_check() -> dict[str, Any]:
+    from cws_convertor.quality import InspectionCharacteristic, InspectionPlan, QualityLedger
+
+    release_hash = "e" * 64
+    plan = InspectionPlan(
+        plan_id="runtime-quality-plan", project_id="runtime-quality-project", revision="A",
+        characteristics=(InspectionCharacteristic("length", "runtime-plate", "overall-length", 100.0, -0.2, 0.2),),
+        source_release_hash=release_hash, created_by="runtime-self-test",
+        approved_by="runtime-independent-approver", heat_certificate_required=True,
+    )
+    ledger = QualityLedger(project_id=plan.project_id, inspection_plan=plan)
+    measurement = ledger.record_measurement(
+        measurement_id="runtime-measurement", characteristic_id="length", measured_value=100.05,
+        measured_at="2026-08-27T00:00:00Z", operator="runtime-inspector",
+        tool_id="runtime-caliper", tool_calibration_id="calibration-001",
+    )
+    ledger.add_heat_certificate("heat-runtime", "f" * 64)
+    approval_hash = ledger.approve_final_release(
+        source_release_hash=release_hash, approved_by="runtime-quality-manager",
+        approved_at="2026-08-27T00:01:00Z",
+    )
+    reopened = QualityLedger.from_dict(ledger.to_dict())
+    if not measurement.passed or not reopened.final_release_allowed or reopened.quality_sha256 != ledger.quality_sha256:
+        raise AssertionError("Quality/inspection runtime persistence failed")
+    return {
+        "schema": "cws-quality-ledger-1.0", "plan_sha256": plan.plan_sha256,
+        "quality_sha256": ledger.quality_sha256, "approval_sha256": approval_hash,
+        "measurement_passed": True, "heat_certificate_bound": True, "final_release_allowed": True,
+    }
+
+
 def run_native_self_test() -> dict[str, Any]:
     checks = [
         _run_check("casadi", _casadi_check),
@@ -544,6 +575,7 @@ def run_native_self_test() -> dict[str, Any]:
         _run_check("exact_occt_viewer", _exact_occt_viewer_check),
         _run_check("vtk_viewer", _vtk_viewer_check),
         _run_check("project_roundtrips", _project_roundtrip_check),
+        _run_check("quality_inspection", _quality_inspection_check),
     ]
     return {
         "application": APP_NAME,

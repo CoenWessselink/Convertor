@@ -32,7 +32,10 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
 
     def build_scene(self, project: Any, options: Any = None, **kwargs: Any) -> ProjectScene:
         geometry_catalog = kwargs.get("geometry_catalog")
+        enrich_source_appearance = bool(kwargs.pop("enrich_source_appearance", True))
         scene = super().build_scene(project, options, **kwargs)
+        if not enrich_source_appearance:
+            return scene
         report = self.last_report
         if geometry_catalog is None:
             return scene

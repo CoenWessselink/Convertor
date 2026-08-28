@@ -85,9 +85,15 @@ class ProjectSceneLoader:
         # for the current project and checksum-verify/decompress independent
         # entries in parallel.  Native IFC/STEP tessellation itself remains in
         # the proven serial crash-isolated path below.
-        cache=MeshCache(self.cache_root,max_memory_items=max(128,min(len(requests),2048)))
-        repository=MeshRepository()
         providers=tuple(self.provider_factory()) if self.provider_factory is not None else (IsolatedIfcMeshProvider(),StepMeshProvider())
+        # A proxy-only first frame has no primary-provider cache keys. Avoid
+        # opening/indexing the persistent mesh cache on this latency-critical
+        # path; exact background upgrades use the cache normally.
+        cache=(
+            MeshCache(self.cache_root,max_memory_items=max(128,min(len(requests),2048)))
+            if providers else None
+        )
+        repository=MeshRepository()
         t=time.perf_counter();prefetch_keys=[]
         for request in requests:
             provider=next((candidate for candidate in providers if candidate.supports(request)),None)
@@ -96,12 +102,15 @@ class ProjectSceneLoader:
         prefetch_hits=cache.prefetch(
             prefetch_keys,
             max_workers=max(1,min(4,int(os.cpu_count() or 1))),
-        ) if prefetch_keys else 0
+        ) if cache is not None and prefetch_keys else 0
         timings.append(('prefetch_geometry_cache',time.perf_counter()-t))
         if progress and requests:
             progress(0.34,f'Cache voorbereid · {prefetch_hits}/{len(requests)} geometrieën')
 
-        coordinator=GeometryLoadCoordinator(providers,proxy_provider=ProxyMeshProvider(),cache=cache,repository=repository,settings=self.settings,max_workers=1)
+        # Proxy-only first-frame construction is CPU/memory local and safe to
+        # parallelise.  Native IFC/STEP providers stay serial and isolated.
+        worker_count=max(1,min(8,int(os.cpu_count() or 1))) if not providers else 1
+        coordinator=GeometryLoadCoordinator(providers,proxy_provider=ProxyMeshProvider(),cache=cache,repository=repository,settings=self.settings,max_workers=worker_count)
         t=time.perf_counter()
         geometry_progress=(lambda ratio,message:progress(0.36+0.52*ratio,message)) if progress else None
         try:geometry_report=coordinator.load_many(requests,token=token,progress=geometry_progress,allow_proxy=allow_proxy)
@@ -109,7 +118,7 @@ class ProjectSceneLoader:
         timings.append(('load_geometry',time.perf_counter()-t))
         if token:token.check()
         if progress:progress(0.91,'Viewer-scene, plaatsingen en selectie-identiteiten opbouwen')
-        t=time.perf_counter();adapter=SourceAppearanceProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository);timings.append(('build_scene',time.perf_counter()-t))
+        t=time.perf_counter();adapter=SourceAppearanceProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository,enrich_source_appearance=not fast_proxy_catalog);timings.append(('build_scene',time.perf_counter()-t))
         assert adapter.last_report is not None
         if progress:progress(1.0,'Viewer-scene en geometriecatalogus gereed')
         return ProjectSceneLoadResult(path,project,scene,repository,catalog,catalog.report,geometry_report,adapter.last_report,time.perf_counter()-start,tuple(timings))

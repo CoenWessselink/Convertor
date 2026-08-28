@@ -1,0 +1,123 @@
+name: Final release proof
+
+on:
+  push:
+    branches: [agent/cws-product-ui-reintegration-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-sha-windows-release:
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      PYTHONUTF8: "1"
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_VERSION: 0.10.18-beta-dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Assert exact clean source SHA
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne "${{ github.sha }}") { throw "Checkout SHA mismatch" }
+          if (git status --porcelain=v1) { throw "Checkout is unexpectedly dirty" }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements-runtime.lock.txt
+            requirements-build.lock.txt
+
+      - name: Install locked dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.lock.txt
+          python -m pip check
+
+      - name: Restore packaged M18 authority
+        shell: pwsh
+        run: python tools/restore_m18_authority.py
+
+      - name: Compile and run source acceptance
+        shell: pwsh
+        run: |
+          python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py
+          python tools/capture_phase1_repository_ci.py
+          python tools/run_phase1_unified_gates.py
+          python tools/build_phase1_real_evidence.py
+          python tools/run_phase2_unified_gates.py
+          python tools/run_phase3_gates.py
+
+      - name: Build Phase 1 Windows evidence
+        shell: pwsh
+        run: |
+          python tools/build_phase1_windows_release.py
+          python tools/build_phase1_validation.py
+
+      - name: Build Phase 2 Windows evidence
+        shell: pwsh
+        run: |
+          python tools/build_phase2_windows_release.py --skip-build
+          python tools/build_phase2_validation.py
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build and test final Phase 3 runtime
+        shell: pwsh
+        run: |
+          python tools/build_phase3_windows_release.py --skip-build
+          python tools/build_phase3_validation.py
+
+      - name: Full Product Acceptance 51 of 51
+        shell: pwsh
+        run: |
+          python tools/run_full_product_acceptance.py --reuse-fresh-phase3-evidence
+          python tools/build_superprompt_acceptance_report.py
+          $check = Get-Content validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json -Raw | ConvertFrom-Json
+          if ($check.items.Count -ne 51) { throw "Acceptance does not contain 51 checks" }
+          if (@($check.items | Where-Object status -ne PASS).Count -ne 0) { throw "Acceptance contains a non-PASS item" }
+
+      - name: Record fresh checkout evidence
+        shell: pwsh
+        run: |
+          $payload = [ordered]@{
+            status = "PASS"
+            branch = "agent/cws-product-ui-reintegration-v1"
+            commit = (git rev-parse HEAD).Trim()
+            working_tree_clean = -not [bool](git status --porcelain=v1)
+            checkout = "actions/checkout exact github.sha"
+          }
+          $payload | ConvertTo-Json | Set-Content -Encoding utf8 validation/full_acceptance/FRESH_CHECKOUT_EVIDENCE.json
+
+      - name: Bind final release and verify checksums
+        shell: pwsh
+        run: |
+          python tools/finalize_commit_bound_release.py --ci PASS
+          if (Get-ChildItem release/final -File | Where-Object Name -Match uncommitted) { throw "Uncommitted artifact name found" }
+          if (git status --porcelain=v1) { throw "Acceptance left source checkout dirty" }
+
+      - name: Upload exact-SHA final release
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_${{ env.CWS_VERSION }}_${{ github.sha }}_Final
+          path: |
+            release/final/*
+            validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json
+            validation/full_acceptance/FULL_ACCEPTANCE_REPORT.md
+            validation/full_acceptance/FULL_ACCEPTANCE_EVIDENCE_MATRIX.json
+            validation/full_acceptance/RELEASE_BINDING.json
+            validation/full_acceptance/FINAL_RELEASE_PROOF.md
+          if-no-files-found: error
+          retention-days: 90

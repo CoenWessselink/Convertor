@@ -76,6 +76,7 @@ class GeometryRequest:
     solid_index: int = 0
     units: str = "mm"
     metadata: tuple[tuple[str, str], ...] = ()
+    source_path_verified: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "source_format", self.source_format.upper())
@@ -87,7 +88,7 @@ class GeometryRequest:
             raise ValueError("GeometryRequest.source_geometry_hash is geen SHA-256")
         if not self.source_file_id.strip():
             raise ValueError("GeometryRequest.source_file_id ontbreekt")
-        if not Path(self.source_path).is_file():
+        if not self.source_path_verified and not Path(self.source_path).is_file():
             raise ValueError(f"GeometryRequest bronbestand ontbreekt: {self.source_path}")
         if not is_sha256(self.source_sha256):
             raise ValueError("GeometryRequest.source_sha256 is geen SHA-256")

@@ -115,8 +115,8 @@ class SteelModelFoundationTests(unittest.TestCase):
         return project
 
     def test_dual_product_identity_preserves_artifact_contracts(self) -> None:
-        self.assertEqual(APP_NAME, "SteelConverter")
-        self.assertEqual(LEGACY_APP_NAME, "CWS Convertor")
+        self.assertEqual(APP_NAME, "CWS Convertor")
+        self.assertEqual(LEGACY_APP_NAME, "SteelConverter")
         self.assertEqual(GUI_EXE_NAME, "CWS_Convertor.exe")
         self.assertEqual(PROJECT_FILE_EXTENSION, ".cwscproj")
 
@@ -129,8 +129,8 @@ class SteelModelFoundationTests(unittest.TestCase):
         self.assertEqual(project.semantic_sha256(), before)
         self.assertEqual(first.snapshot_sha256, second.snapshot_sha256)
         self.assertEqual(first.schema_version, STEEL_MODEL_SCHEMA_VERSION)
-        self.assertEqual(first.product_name, "SteelConverter")
-        self.assertEqual(first.compatibility_product_name, "CWS Convertor")
+        self.assertEqual(first.product_name, APP_NAME)
+        self.assertEqual(first.compatibility_product_name, LEGACY_APP_NAME)
         restored = SteelModelSnapshot.from_json_bytes(first.to_json_bytes())
         self.assertEqual(restored.snapshot_sha256, first.snapshot_sha256)
         part = next(item for item in restored.entities if item.entity_type == "part")

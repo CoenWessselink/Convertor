@@ -2,6 +2,7 @@
 cadquery==2.8.0
 ezdxf==1.4.4
 casadi==3.7.2
+cryptography==50.0.1
 matplotlib==3.10.8
 numpy==2.3.5
 XlsxWriter==3.2.9

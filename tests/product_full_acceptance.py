@@ -93,7 +93,7 @@ def _project_inputs(nc1: Path, ifc: Path, steps: list[Path], output: Path) -> di
     return result
 
 
-def _non_empty_image(path: Path) -> dict[str, object]:
+def _non_empty_image(path: Path, *, min_foreground_ratio: float = 0.0) -> dict[str, object]:
     from PIL import Image, ImageStat
 
     image = Image.open(path).convert("RGB")
@@ -101,11 +101,27 @@ def _non_empty_image(path: Path) -> dict[str, object]:
     stat = ImageStat.Stat(image)
     if not any(high > low for low, high in extrema):
         raise RuntimeError(f"Controlebeeld bevat geen beeldvariatie: {path}")
+    corners = (
+        image.getpixel((0, 0)), image.getpixel((image.width - 1, 0)),
+        image.getpixel((0, image.height - 1)), image.getpixel((image.width - 1, image.height - 1)),
+    )
+    reference = tuple(sorted(pixel[channel] for pixel in corners)[len(corners) // 2] for channel in range(3))
+    foreground = sum(
+        1 for pixel in image.getdata()
+        if max(abs(int(pixel[channel]) - int(reference[channel])) for channel in range(3)) >= 12
+    )
+    foreground_ratio = foreground / max(1, image.width * image.height)
+    if foreground_ratio < min_foreground_ratio:
+        raise RuntimeError(
+            f"Controlebeeld bevat te weinig zichtbare modelgeometrie: {foreground_ratio:.6f} < "
+            f"{min_foreground_ratio:.6f}: {path}"
+        )
     return {
         "path": str(path),
         "size": list(image.size),
         "extrema": [list(value) for value in extrema],
         "mean": [round(value, 3) for value in stat.mean],
+        "foreground_ratio": round(foreground_ratio, 6),
     }
 
 
@@ -189,7 +205,7 @@ def _ui_acceptance(project_path: Path, output: Path) -> dict[str, object]:
     controller.screenshot_to_file(
         str(framebuffer), ScreenshotOptions(width=1280, height=720)
     )
-    viewer_image = _non_empty_image(framebuffer)
+    viewer_image = _non_empty_image(framebuffer, min_foreground_ratio=0.002)
 
     screenshots: dict[str, object] = {}
     drawing_output: dict[str, object] = {}

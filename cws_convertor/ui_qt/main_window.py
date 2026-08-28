@@ -487,8 +487,13 @@ if qt_available():
             self.production_workflow_page = ProductionWorkflowPanel(self)
             self.export_page = Phase3ExportCenterPanel(self.project_page, None, job_manager=self.job_manager)
 
+            # Keep one permanent project/viewer instance beside the functional
+            # workspaces. This is the established product layout: the live
+            # project context stays available while editing, checking and
+            # producing output, without duplicating or reparenting the VTK view.
             self.viewer_host = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
             self.viewer_host.setObjectName("cwsPermanentViewerWorkspaceHost")
+            self.viewer_host.setChildrenCollapsible(False)
             self.viewer_host.addWidget(self.project_page)
             self.viewer_host.addWidget(self.tabs)
             self.viewer_host.setStretchFactor(0, 3)
@@ -533,6 +538,7 @@ if qt_available():
                 ("intake", self.import_page), ("viewer", self.viewer_page),
                 ("edit", self.edit_page), ("converter", self.converter_page),
                 ("control", self.control_page), ("pdf_review", self.pdf_page),
+                ("profiles", self.profiles_page),
                 ("profile_nesting", self.optimization_page), ("drawing", self.drawings_page),
                 ("scribing", self.scribing_page), ("bom", self.bom_excel_page),
                 ("report", self.production_workflow_page), ("export", self.export_page),
@@ -726,6 +732,24 @@ if qt_available():
             self.statusBar().showMessage(f"Project geopend: {path}")
             self._load_progress_changed(100, "Project, geometrie en Viewer V15 volledig gereed")
             QtCore.QTimer.singleShot(3000, self._hide_load_progress)
+            from cws_viewer.ui_qt.trimble_navigation_overlay import (
+                install_trimble_navigation_overlay,
+            )
+            from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import (
+                VtkRealProjectWidgetFeelV2,
+            )
+
+            def install_navigation() -> None:
+                viewer = self.project_page.findChild(
+                    VtkRealProjectWidgetFeelV2,
+                    "cwsVtkRealProjectWidget",
+                )
+                if viewer is not None:
+                    navigation = install_trimble_navigation_overlay(viewer)
+                    navigation.reposition()
+
+            for delay_ms in (0, 100, 350, 1000):
+                QtCore.QTimer.singleShot(delay_ms, install_navigation)
             self.bom_excel_page.refresh()
             self.revisions_page.refresh()
             if self._selection_unsubscribe is not None:
@@ -760,7 +784,8 @@ if qt_available():
             self.drawings_page.set_context(workspace, selection)
             self.scribing_page.set_context(workspace, selection)
             self.profiles_page.set_context(workspace, selection)
-            self.optimization_page.set_context(workspace, selection)
+            if self.optimization_page is not self.profiles_page:
+                self.optimization_page.set_context(workspace, selection)
             self.bom_excel_page.set_context(workspace, selection)
             self.production_workflow_page.set_context(workspace, selection)
             self.export_page.set_context(workspace, selection)
@@ -769,7 +794,7 @@ if qt_available():
             routes = {
                 "properties": "viewer", "viewer": "viewer", "edit": "edit",
                 "convert": "converter", "validate": "control", "pdf": "pdf_review",
-                "profiles": "profile_nesting", "drawings": "drawing",
+                "profiles": "profiles", "drawings": "drawing",
                 "scribing": "scribing", "quantities": "bom", "bom": "bom",
                 "report": "report", "export": "export",
             }

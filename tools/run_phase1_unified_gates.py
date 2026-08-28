@@ -29,6 +29,7 @@ TESTS = (
     ("export", "tests/production_export_negative_smoke.py"),
     ("bom", "tests/project_bom_smoke.py"),
     ("context_jobs", "tests/phase1_context_job_contract_smoke.py"),
+    ("profile_nesting_commands", "tests/phase1_profile_nesting_command_service_smoke.py"),
     ("phase1_e2e", "tests/phase1_phase2_completion_smoke.py"),
     ("gui", "tests/phase1_phase2_context_e2e_gui_smoke.py"),
     ("gui", "tests/unified_ui_shell_u3_gui_smoke.py"),

@@ -19,4 +19,12 @@ The U2 CI gate must prove:
 5. M11 and M18 execute against a unified empty/synthetic project without opening machine transfer.
 6. M18 stores survive `.cwscproj` save/reopen through the same Project Model 2.25.
 
-Status: **implementation in progress; CI decides completion**.
+## Current evidence
+
+- The canonical runtime was reconstructed from the frozen M18 donor source and surviving ZIP central-directory metadata.
+- Installed canonical runtime: `233402` bytes, SHA-256 `62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1`.
+- The reconstructed ZIP contains 43 checksum-bound `cws_m18_authority` modules.
+- A text-safe Base64 transport and provenance manifest accompany the binary runtime.
+- No fallback runtime was accepted and no expected checksum was relaxed.
+
+Status: **AUTHORITY_RESTORED**. The complete phase-2 and phase-3 gates decide final acceptance.

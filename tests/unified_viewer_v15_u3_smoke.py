@@ -49,7 +49,7 @@ class UnifiedViewerV15U3Tests(unittest.TestCase):
         self.assertTrue(backend.set_interaction_quality(True))
         self.assertTrue(backend.interaction_quality_active)
         self.assertIsNone(backend._renderer.render_pass)
-        self.assertEqual(backend._render_window.samples, 2)
+        self.assertEqual(backend._render_window.samples, 8)
         self.assertFalse(backend.set_interaction_quality(True))
 
         self.assertTrue(backend.set_interaction_quality(False))

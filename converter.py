@@ -123,11 +123,36 @@ class Hole:
 
 
 @dataclass
+class Numbering:
+    """DSTV SI numbering / hardstamp record (7th edition, July 1998)."""
+
+    face: str
+    x: float
+    q: float
+    angle_deg: float
+    text_height_mm: int
+    text: str
+    datum: str = ""
+    turn_behavior: str = ""
+
+
+@dataclass
+class SurfaceMark:
+    """One DSTV PU/KO mark contour in a standard part face."""
+
+    kind: str
+    face: str
+    points: list[ContourPoint]
+
+
+@dataclass
 class NC1Part:
     source: Path
     header: Header
     contours: list[Contour]
     holes: list[Hole]
+    numberings: list[Numbering] = field(default_factory=list)
+    surface_marks: list[SurfaceMark] = field(default_factory=list)
     unsupported_blocks: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -195,6 +220,8 @@ def parse_nc1(path: str | Path) -> NC1Part:
 
     contours: list[Contour] = []
     holes: list[Hole] = []
+    numberings: list[Numbering] = []
+    surface_marks: list[SurfaceMark] = []
     unsupported: list[str] = []
     warnings: list[str] = []
 
@@ -265,6 +292,66 @@ def parse_nc1(path: str | Path) -> NC1Part:
                     holes.append(Hole(face, x, q, diameter, datum, op, depth, slot_length, angle_deg))
                 except ValueError as exc:
                     warnings.append(f"Boorgatregel niet gelezen in {path.name}: {raw!r} ({exc})")
+        elif block == "SI":
+            number_re = re.compile(
+                r"^\s*([vouh])\s*([-+]?\d+(?:[.,]\d+)?)\s*([osu]?)\s*"
+                r"([-+]?\d+(?:[.,]\d+)?)\s+([-+]?\d+(?:[.,]\d+)?)\s+"
+                r"(\d+)\s*(.*)$",
+                re.I,
+            )
+            for raw in data:
+                match = number_re.match(raw)
+                if not match:
+                    warnings.append(f"SI-regel niet gelezen in {path.name}: {raw!r}")
+                    continue
+                face, x, datum, q, angle, height, tail = match.groups()
+                tail = tail.strip()
+                behavior = ""
+                text = tail
+                bits = tail.split(None, 1)
+                if bits and bits[0].lower() in {"r", "z"} and len(bits) > 1:
+                    behavior = bits[0].lower()
+                    text = bits[1]
+                try:
+                    numberings.append(
+                        Numbering(
+                            face.lower(),
+                            _float(x),
+                            _float(q),
+                            _float(angle),
+                            int(height),
+                            text,
+                            datum.lower(),
+                            behavior,
+                        )
+                    )
+                except ValueError as exc:
+                    warnings.append(f"SI-regel niet gelezen in {path.name}: {raw!r} ({exc})")
+        elif block in {"PU", "KO"}:
+            current_face = ""
+            points: list[ContourPoint] = []
+            mark_re = re.compile(
+                r"^\s*([vouh]?)\s*([-+]?\d+(?:[.,]\d+)?)\s*([osu]?)\s*"
+                r"([-+]?\d+(?:[.,]\d+)?)\s+([-+]?\d+(?:[.,]\d+)?)",
+                re.I,
+            )
+            for raw in data:
+                match = mark_re.match(raw)
+                if not match:
+                    warnings.append(f"{block}-regel niet gelezen in {path.name}: {raw!r}")
+                    continue
+                face, x, datum, q, radius = match.groups()
+                face = face.lower() or current_face
+                if not face:
+                    warnings.append(f"{block}-markering zonder vlak in {path.name}: {raw!r}")
+                    continue
+                current_face = face
+                try:
+                    points.append(ContourPoint(_float(x), _float(q), datum.lower(), "", _float(radius)))
+                except ValueError as exc:
+                    warnings.append(f"{block}-regel niet gelezen in {path.name}: {raw!r} ({exc})")
+            if points:
+                surface_marks.append(SurfaceMark(block, current_face, points))
         else:
             unsupported.append(block)
 
@@ -273,7 +360,7 @@ def parse_nc1(path: str | Path) -> NC1Part:
     if any(contour.kind == "IK" for contour in contours):
         warnings.append("IK-binnencontouren worden wel gelezen maar nog niet in de 3D-solid verwerkt")
 
-    return NC1Part(path, header, contours, holes, unsupported, warnings)
+    return NC1Part(path, header, contours, holes, numberings, surface_marks, unsupported, warnings)
 
 
 def _shape_wp(shape: cq.Shape) -> cq.Workplane:

@@ -17,9 +17,10 @@ class ViewerV9PackagingConfigTests(unittest.TestCase):
             '"casadi"',
             '"cadquery"',
             '"OCP"',
+            '"cryptography"',
             '"ifcopenshell"',
-            '"PySide6"',
-            '"vtkmodules"',
+            '"PySide6.QtOpenGLWidgets"',
+            '"vtkmodules.vtkRenderingOpenGL2"',
             "hookspath",
             "cws_native_dll_path.py",
         ):

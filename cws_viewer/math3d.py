@@ -361,5 +361,8 @@ class Rgba:
                 raise ValueError(f"{field_name} moet tussen 0 en 1 liggen")
             object.__setattr__(self, field_name, value)
 
+    def to_tuple(self) -> tuple[float, float, float, float]:
+        return (self.red, self.green, self.blue, self.alpha)
+
 
 __all__ = ["Vector3", "Matrix4", "BoundingBox", "Rgba"]

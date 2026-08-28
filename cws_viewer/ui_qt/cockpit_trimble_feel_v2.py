@@ -26,7 +26,7 @@ def trimble_feel_v2_workspace_contract() -> dict[str, Any]:
         {
             "ifc_source_presentation_colours": True,
             "original_colour_means_imported_colour": True,
-            "ssao_contact_shading_interactive": True,
+            "ssao_contact_shading_interactive": False,
             "balanced_studio_lighting": True,
             "selected_object_fill_highlight": True,
             "selection_feature_edge_outline": True,

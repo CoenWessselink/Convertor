@@ -5,10 +5,13 @@ features and never mutates the Canonical Project Model.
 """
 from __future__ import annotations
 from dataclasses import dataclass
+from functools import lru_cache
 import hashlib, json, shutil, zipfile
 from pathlib import Path
+import re
 from typing import Any, Callable, Iterable, Mapping
 
+from profile_database import ProfileDatabase
 from cws_convertor.importers.ifc_project import (
     _GEOMETRY_STOP_TYPES,
     _display_representation_ids,
@@ -27,6 +30,46 @@ def _sha256_file(path:Path)->str:
 
 def _safe_archive_name(name:str)->bool:
     p=Path(name.replace('\\','/')); return bool(name) and not p.is_absolute() and '..' not in p.parts
+
+_PROFILE_PAIR_RE = re.compile(
+    r"(?:STRIP|FLAT|PLATE|PL|RHS|SHS|RECT|CHS|PIPE|RO|RU|L)?\s*"
+    r"(\d+(?:[.,]\d+)?)\s*[*Xx]\s*(\d+(?:[.,]\d+)?)",
+    re.IGNORECASE,
+)
+
+@lru_cache(maxsize=1)
+def _display_profile_database()->ProfileDatabase|None:
+    try:return ProfileDatabase(writable_copy=False)
+    except Exception:return None
+
+@lru_cache(maxsize=4096)
+def _profile_cross_section(profile_name:str)->tuple[float,float]|None:
+    text=str(profile_name or '').strip()
+    if not text:return None
+    database=_display_profile_database()
+    definition=database.find(text) if database is not None else None
+    if definition is not None:
+        width=max(0.0,float(definition.width or 0.0));height=max(0.0,float(definition.height or 0.0))
+        if width>0 and height>0:return width,height
+    match=_PROFILE_PAIR_RE.search(text.replace('×','x'))
+    if match:
+        first=float(match.group(1).replace(',','.'));second=float(match.group(2).replace(',','.'))
+        if first>0 and second>0:return first,second
+    return None
+
+def _profile_aware_proxy_bounds(entity:Any,dimensions:Iterable[float])->BoundingBox:
+    values=[max(0.0,float(value or 0.0)) for value in dimensions]
+    if len(values)<3:values.extend([0.0]*(3-len(values)))
+    values=values[:3]
+    profile=str(getattr(entity,'normalized_profile','') or getattr(entity,'profile','') or '')
+    cross_section=_profile_cross_section(profile)
+    if cross_section is None:return BoundingBox.from_dimensions(*values)
+    length=max(0.0,float(getattr(entity,'length_mm',0) or 0))
+    axis=max(range(3),key=lambda index:values[index])
+    values[axis]=max(values[axis],length,1.0)
+    cross_axes=[index for index in range(3) if index!=axis]
+    for index,value in zip(cross_axes,cross_section):values[index]=max(values[index],value,1.0)
+    return BoundingBox.from_dimensions(*values)
 
 def _source_dict(source:Any)->dict[str,Any]:
     return {k: (int(getattr(source,k,0) or 0) if k=='size_bytes' else str(getattr(source,k,'') or ''))
@@ -90,7 +133,7 @@ class EntityGeometryRecord:
     fallback_bounds:BoundingBox=BoundingBox.zero(); warnings:tuple[str,...]=(); metadata:tuple[tuple[str,str],...]=()
     def request(self,source:ResolvedSource)->GeometryRequest:
         return GeometryRequest(self.geometry_id,self.source_geometry_hash,self.source_format,self.source_file_id,str(source.path),source.sha256,
-                               self.source_entity_id,self.source_representation_id,self.source_item_ids,self.solid_index,'mm',self.metadata)
+                               self.source_entity_id,self.source_representation_id,self.source_item_ids,self.solid_index,'mm',self.metadata,True)
 
 @dataclass(frozen=True,slots=True)
 class GeometryCatalogReport:
@@ -114,10 +157,10 @@ class ProjectGeometryCatalog:
         d=dict(getattr(entity,'geometry_descriptor',{}) or {}); cad=dict(d.get('cad_metrics') or {})
         bbox=cad.get('bbox_mm') or d.get('bbox_sorted_mm') or d.get('dimensions_mm')
         if isinstance(bbox,(list,tuple)) and len(bbox)>=3:
-            vals=[max(0.0,float(v or 0)) for v in bbox[:3]]; return BoundingBox.from_dimensions(*vals)
+            vals=[max(0.0,float(v or 0)) for v in bbox[:3]]; return _profile_aware_proxy_bounds(entity,vals)
         diameter=max(0.0,float(getattr(entity,'diameter_mm',0) or 0)); length=max(0.0,float(getattr(entity,'length_mm',0) or 0)); size=max(0.0,float(getattr(entity,'size_mm',0) or 0))
         if diameter>0:return BoundingBox.from_dimensions(diameter,diameter,max(length,diameter))
-        if length>0:return BoundingBox.from_dimensions(max(length,size,1),max(size,1),max(size,1))
+        if length>0:return _profile_aware_proxy_bounds(entity,(max(length,size,1),max(size,1),max(size,1)))
         return BoundingBox.zero()
     @staticmethod
     def _ifc_items(doc:P21Document,source_entity_id:str)->tuple[str,tuple[str,...],str]:

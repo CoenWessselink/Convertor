@@ -130,9 +130,14 @@ class ProjectSession:
         *,
         read_only: bool = False,
         store: ProjectStore | None = None,
+        verify_semantic_hashes: bool = True,
     ) -> "ProjectSession":
         actual_store = store or ProjectStore()
-        package = actual_store.open(path, read_only=read_only)
+        package = actual_store.open(
+            path,
+            read_only=read_only,
+            verify_semantic_hashes=verify_semantic_hashes,
+        )
         session = cls(
             store=actual_store,
             project=package.project,

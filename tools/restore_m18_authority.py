@@ -17,6 +17,7 @@ REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "CoenWessselink/Convertor")
 PAYLOAD_SHA256 = "a0919bab74740db04e25b3f2782abb8427fba1a84f06e3b6e3d849b03b3a1c8b"
 RUNTIME_SHA256 = "62c1a043a63dd0628769ad0e10d68afdf890406ca6f001cf354c2d6e84b94ae1"
 RUNTIME_SIZE = 233402
+CURRENT_RUNTIME = Path(__file__).resolve().parents[1] / "cws_convertor/manufacturing/m18_authority_runtime.zip"
 PARTS = (
     ("4021d4e43a6ceee21c959c9123dc634581c164af", 16000),
     ("9c219047ae5a34393f529e812e90d714ff37f047", 8000),
@@ -104,29 +105,130 @@ def _git_credential_token() -> str:
     return str(values.get("password") or "")
 
 
+def _file_evidence(path: Path) -> dict[str, object]:
+    if not path.is_file():
+        return {"path": str(path), "present": False}
+    payload = path.read_bytes()
+    return {
+        "path": str(path),
+        "present": True,
+        "bytes": len(payload),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+    }
+
+
+def _write_report(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=Path("cws_convertor/manufacturing/m18_authority_runtime.zip"))
     parser.add_argument("--report", type=Path, default=Path("build/evidence/m18_authority_restore.json"))
     args = parser.parse_args()
-    chunks = []
-    sources = []
+    chunks: list[bytes | None] = []
+    sources: list[dict[str, object]] = []
     for index, (oid, expected_size) in enumerate(PARTS, 1):
         chunk = _local_blob(oid)
         source = "git-object"
         if chunk is None:
-            chunk = _remote_blob(oid)
             source = "github-blob-api"
+            try:
+                chunk = _remote_blob(oid)
+            except Exception as exc:
+                chunks.append(None)
+                sources.append(
+                    {
+                        "part": index,
+                        "oid": oid,
+                        "expected_bytes": expected_size,
+                        "source": source,
+                        "status": "unavailable",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+                continue
         if len(chunk) != expected_size:
-            raise RuntimeError(f"M18 payload part {index:03d} size mismatch")
+            chunks.append(None)
+            sources.append(
+                {
+                    "part": index,
+                    "oid": oid,
+                    "expected_bytes": expected_size,
+                    "observed_bytes": len(chunk),
+                    "source": source,
+                    "status": "size_mismatch",
+                }
+            )
+            continue
         chunks.append(chunk)
-        sources.append({"part": index, "oid": oid, "bytes": len(chunk), "source": source})
-    payload = b"".join(chunks)
+        sources.append(
+            {
+                "part": index,
+                "oid": oid,
+                "expected_bytes": expected_size,
+                "observed_bytes": len(chunk),
+                "source": source,
+                "status": "available",
+            }
+        )
+    unavailable = [item for item in sources if item["status"] != "available"]
+    report: dict[str, object] = {
+        "schema": "cws-m18-authority-restore-1.1",
+        "repository": REPOSITORY,
+        "status": "blocked_external_evidence" if unavailable else "checking",
+        "expected": {
+            "payload_sha256": PAYLOAD_SHA256,
+            "runtime_sha256": RUNTIME_SHA256,
+            "runtime_bytes": RUNTIME_SIZE,
+            "parts": len(PARTS),
+        },
+        "observed_current_runtime": _file_evidence(CURRENT_RUNTIME),
+        "available_parts": len(PARTS) - len(unavailable),
+        "unavailable_parts": len(unavailable),
+        "parts": sources,
+        "safety": {
+            "machine_observed_by_cws": False,
+            "deployment_transport_authorized": False,
+            "direct_machine_transfer": False,
+            "machine_transfer_allowed": False,
+        },
+    }
+    if unavailable:
+        _write_report(args.report, report)
+        print(
+            json.dumps(
+                {
+                    "status": report["status"],
+                    "available_parts": report["available_parts"],
+                    "unavailable_parts": report["unavailable_parts"],
+                    "report": str(args.report),
+                },
+                sort_keys=True,
+            )
+        )
+        return 2
+    payload = b"".join(chunk for chunk in chunks if chunk is not None)
     if len(payload) != 311204 or hashlib.sha256(payload).hexdigest() != PAYLOAD_SHA256:
-        raise RuntimeError("M18 canonical Base64 payload checksum mismatch")
+        report["status"] = "payload_checksum_mismatch"
+        report["observed_payload"] = {
+            "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        }
+        _write_report(args.report, report)
+        print(json.dumps({"status": report["status"], "report": str(args.report)}, sort_keys=True))
+        return 3
     runtime = base64.b64decode(payload, validate=True)
     if len(runtime) != RUNTIME_SIZE or hashlib.sha256(runtime).hexdigest() != RUNTIME_SHA256:
-        raise RuntimeError("M18 canonical runtime checksum mismatch")
+        report["status"] = "runtime_checksum_mismatch"
+        report["observed_runtime"] = {
+            "bytes": len(runtime),
+            "sha256": hashlib.sha256(runtime).hexdigest(),
+        }
+        _write_report(args.report, report)
+        print(json.dumps({"status": report["status"], "report": str(args.report)}, sort_keys=True))
+        return 4
     required = {
         "cws_m18_authority/__init__.py",
         "cws_m18_authority/release_gate.py",
@@ -139,18 +241,21 @@ def main() -> int:
         raise RuntimeError(f"M18 runtime ZIP validation failed: {bad or sorted(required - names)}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_bytes(runtime)
-    report = {
-        "schema": "cws-m18-authority-restore-1.0",
-        "repository": REPOSITORY,
-        "payload_sha256": PAYLOAD_SHA256,
-        "runtime_sha256": RUNTIME_SHA256,
-        "runtime_bytes": len(runtime),
-        "zip_entries": len(names),
-        "parts": sources,
-    }
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
-    print(json.dumps({key: report[key] for key in ("runtime_sha256", "runtime_bytes", "zip_entries")}, sort_keys=True))
+    report["status"] = "pass"
+    report["output"] = _file_evidence(args.output)
+    report["zip_entries"] = len(names)
+    _write_report(args.report, report)
+    print(
+        json.dumps(
+            {
+                "status": report["status"],
+                "runtime_sha256": RUNTIME_SHA256,
+                "runtime_bytes": len(runtime),
+                "zip_entries": len(names),
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 

@@ -10,12 +10,15 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from cws_viewer.technology.benchmark import run_backend_case
-from cws_viewer.technology.contracts import TechnologyBackendName
+HEADLESS_WINDOWS = os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
+
+if not HEADLESS_WINDOWS:
+    from cws_viewer.technology.benchmark import run_backend_case
+    from cws_viewer.technology.contracts import TechnologyBackendName
 
 
 @unittest.skipIf(
-    os.environ.get("GITHUB_ACTIONS", "").lower() == "true",
+    HEADLESS_WINDOWS,
     "GitHub Windows has no stable native OpenGL window; viewer_ci_headless_smoke covers the native pipeline",
 )
 class ViewerV1VtkTests(unittest.TestCase):

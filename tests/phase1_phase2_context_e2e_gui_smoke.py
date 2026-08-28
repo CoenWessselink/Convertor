@@ -39,6 +39,10 @@ class Phase1Phase2ContextE2E(unittest.TestCase):
             workspace = window.workspace
             project = workspace.project
             viewer_host = window.viewer_host
+            self.assertIs(window.centralWidget(), viewer_host)
+            self.assertEqual("cwsPermanentViewerWorkspaceHost", viewer_host.objectName())
+            self.assertIs(window.viewer_page, window.project_page)
+            self.assertGreaterEqual(window.tabs.indexOf(window.viewer_page), 0)
             viewer_controller = window.project_page.viewer
             self.assertIs(window.job_manager, window.converter_page._job_manager)
             self.assertIs(window.job_manager, window.optimization_page._job_manager)

@@ -50,3 +50,4 @@ from .phase7 import *
 from .postprocessor import *
 from .phase8 import *
 from .benchmark import *
+from .command_service import *

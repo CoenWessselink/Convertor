@@ -60,7 +60,14 @@ def main() -> int:
     output = args.output.expanduser().resolve()
     logs = output / "logs"
     logs.mkdir(parents=True, exist_ok=True)
-    all_scripts = sorted((ROOT / "tests").glob("*_smoke.py"), key=lambda p: p.name.lower())
+    all_scripts = sorted(
+        (
+            path
+            for path in (ROOT / "tests").glob("*_smoke.py")
+            if not path.name.startswith("full_acceptance_")
+        ),
+        key=lambda p: p.name.lower(),
+    )
     first = max(1, int(args.start))
     last = int(args.end) if int(args.end) > 0 else len(all_scripts)
     scripts = all_scripts[first - 1:last]

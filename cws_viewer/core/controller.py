@@ -669,6 +669,19 @@ class ViewerCoreController(ViewerController):
         self._ensure_index()
         self._backend.render()
 
+    def refresh_geometry(self, geometry_ids: Iterable[str] | None = None) -> None:
+        """Refresh replaced mesh resources without resetting viewer state."""
+        self._ensure_index()
+        refresh = getattr(self._backend, "refresh_geometry", None)
+        if not callable(refresh):
+            self._sync_display(render=True)
+            return
+        values = None if geometry_ids is None else tuple(
+            dict.fromkeys(str(value) for value in geometry_ids if str(value))
+        )
+        refresh(values)
+        self._sync_display(render=True)
+
     def resize(self, width: int, height: int) -> None:
         if width <= 0 or height <= 0:
             raise ValueError("Viewerafmetingen moeten positief zijn")
