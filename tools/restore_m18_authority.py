@@ -127,6 +127,61 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=Path("cws_convertor/manufacturing/m18_authority_runtime.zip"))
     parser.add_argument("--report", type=Path, default=Path("build/evidence/m18_authority_restore.json"))
     args = parser.parse_args()
+    current = _file_evidence(CURRENT_RUNTIME)
+    if (
+        current.get("present") is True
+        and current.get("bytes") == RUNTIME_SIZE
+        and current.get("sha256") == RUNTIME_SHA256
+    ):
+        required = {
+            "cws_m18_authority/__init__.py",
+            "cws_m18_authority/release_gate.py",
+            "cws_m18_authority/deployment_assurance.py",
+        }
+        with zipfile.ZipFile(CURRENT_RUNTIME) as archive:
+            bad = archive.testzip()
+            names = set(archive.namelist())
+        if bad is not None or not required.issubset(names):
+            raise RuntimeError(
+                f"Tracked M18 runtime ZIP validation failed: {bad or sorted(required - names)}"
+            )
+        output = args.output.expanduser().resolve()
+        if output != CURRENT_RUNTIME.resolve():
+            output.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(CURRENT_RUNTIME, output)
+        report = {
+            "schema": "cws-m18-authority-restore-1.2",
+            "repository": REPOSITORY,
+            "status": "pass",
+            "source": "tracked_checksum_bound_runtime",
+            "expected": {
+                "runtime_sha256": RUNTIME_SHA256,
+                "runtime_bytes": RUNTIME_SIZE,
+            },
+            "observed_current_runtime": current,
+            "output": _file_evidence(output),
+            "zip_entries": len(names),
+            "safety": {
+                "machine_observed_by_cws": False,
+                "deployment_transport_authorized": False,
+                "direct_machine_transfer": False,
+                "machine_transfer_allowed": False,
+            },
+        }
+        _write_report(args.report, report)
+        print(
+            json.dumps(
+                {
+                    "status": "pass",
+                    "source": report["source"],
+                    "runtime_sha256": RUNTIME_SHA256,
+                    "runtime_bytes": RUNTIME_SIZE,
+                    "zip_entries": len(names),
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
     chunks: list[bytes | None] = []
     sources: list[dict[str, object]] = []
     for index, (oid, expected_size) in enumerate(PARTS, 1):
