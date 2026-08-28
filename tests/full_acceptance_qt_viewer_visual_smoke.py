@@ -59,14 +59,18 @@ def main() -> int:
                 )
             )
             started = started or worker_active
-            if started and not worker_active and window.workspace is not None:
+            if not worker_active and window.workspace is not None:
                 break
             time.sleep(0.01)
         result["load_and_exact_seconds"] = time.monotonic() - load_started_at
+        result["worker_activity_observed"] = started
+        result["workspace_published"] = window.workspace is not None
         result["workers_finished"] = (
             window.project_page._worker is None
             and window.project_page._exact_worker is None
         )
+        if not result["workspace_published"]:
+            raise RuntimeError("Projectworkspace is niet tijdig gepubliceerd")
         if not result["workers_finished"]:
             raise RuntimeError("Exacte geometrieworker is niet tijdig afgerond")
 

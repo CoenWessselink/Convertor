@@ -718,6 +718,31 @@ def main() -> int:
         encoding="utf-8",
     )
     print(json.dumps(summary, indent=2, ensure_ascii=False))
+    if overall != "PASS" and os.environ.get("GITHUB_ACTIONS", "").casefold() == "true":
+        failed_runtime: list[dict[str, Any]] = []
+        for item in runtime_evidence:
+            if item.get("status") == "PASS":
+                continue
+            diagnostic = dict(item)
+            log_path = Path(str(item.get("log", "")))
+            try:
+                diagnostic["log_tail"] = log_path.read_text(
+                    encoding="utf-8", errors="replace"
+                )[-3000:]
+            except OSError:
+                diagnostic["log_tail"] = "unavailable"
+            failed_runtime.append(diagnostic)
+        diagnostic_payload = {
+            "summary": summary,
+            "runtime_inventory": runtime_result,
+            "failed_runtime_evidence": failed_runtime,
+            "geometry": geometry,
+            "phase_gates": [item for item in phases if item.get("status") != "PASS"],
+            "fixture": fixture,
+        }
+        annotation = json.dumps(diagnostic_payload, ensure_ascii=False, default=str)
+        annotation = annotation.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::error title=Full Product Acceptance diagnostics::{annotation}")
     return 0 if overall == "PASS" else 1
 
 
