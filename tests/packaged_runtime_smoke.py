@@ -56,6 +56,8 @@ BO
 EN
 """
 
+WINDOWS_STACK_BUFFER_OVERRUN = 0xC0000409
+
 
 def _clean_runtime_environment() -> dict[str, str]:
     environment = os.environ.copy()
@@ -112,6 +114,71 @@ def _read_passed_result(path: Path, required_checks: set[str]) -> dict[str, Any]
     return result
 
 
+def _run_gui_with_bounded_shutdown_retry(
+    command: list[str],
+    *,
+    environment: dict[str, str],
+    cwd: Path,
+    report_path: Path,
+    timeout: int = 180,
+) -> tuple[subprocess.CompletedProcess[str], dict[str, Any]]:
+    completed = _run(
+        command,
+        environment=environment,
+        cwd=cwd,
+        timeout=timeout,
+        accepted_returncodes={0, WINDOWS_STACK_BUFFER_OVERRUN},
+    )
+    first_status = None
+    if report_path.is_file():
+        try:
+            first_status = json.loads(report_path.read_text(encoding="utf-8")).get("status")
+        except (OSError, json.JSONDecodeError):
+            first_status = "unreadable"
+    attempts = [
+        {
+            "attempt": 1,
+            "returncode": completed.returncode,
+            "returncode_hex": f"0x{completed.returncode & 0xFFFFFFFF:08X}",
+            "report_status": first_status,
+        }
+    ]
+    if completed.returncode == 0:
+        return completed, {"retried": False, "attempts": attempts}
+
+    if os.name != "nt" or (completed.returncode & 0xFFFFFFFF) != WINDOWS_STACK_BUFFER_OVERRUN:
+        raise AssertionError(f"Onverwachte native afsluitcode: {completed.returncode}")
+    if first_status != "passed":
+        raise AssertionError(
+            "Windows 0xC0000409 trad op voordat een duurzaam geslaagd diagnoserapport was geschreven"
+        )
+
+    archived_report = report_path.with_name(f"{report_path.stem}-attempt-1-passed-report{report_path.suffix}")
+    shutil.copy2(report_path, archived_report)
+    report_path.unlink()
+    retried = _run(command, environment=environment, cwd=cwd, timeout=timeout)
+    retry_status = None
+    if report_path.is_file():
+        try:
+            retry_status = json.loads(report_path.read_text(encoding="utf-8")).get("status")
+        except (OSError, json.JSONDecodeError):
+            retry_status = "unreadable"
+    attempts.append(
+        {
+            "attempt": 2,
+            "returncode": retried.returncode,
+            "returncode_hex": f"0x{retried.returncode & 0xFFFFFFFF:08X}",
+            "report_status": retry_status,
+        }
+    )
+    return retried, {
+        "retried": True,
+        "reason": "windows_native_shutdown_0xC0000409_after_passed_report",
+        "archived_first_report": str(archived_report),
+        "attempts": attempts,
+    }
+
+
 def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dict[str, Any]:
     runtime_dir = runtime_dir.resolve()
     result_dir = result_dir.resolve()
@@ -126,7 +193,12 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
         work = Path(temporary_name)
         selftest_path = result_dir / f"{label}-native-selftest.json"
         gui_path = result_dir / f"{label}-gui-smoke.json"
-        _run([str(gui), "--self-test", "--output", str(selftest_path)], environment=environment, cwd=work)
+        _, selftest_process = _run_gui_with_bounded_shutdown_retry(
+            [str(gui), "--self-test", "--output", str(selftest_path)],
+            environment=environment,
+            cwd=work,
+            report_path=selftest_path,
+        )
         native_result = _read_passed_result(
             selftest_path,
             {
@@ -142,7 +214,12 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
                 "project_roundtrips",
             },
         )
-        _run([str(gui), "--gui-smoke", "--output", str(gui_path)], environment=environment, cwd=work)
+        _, gui_process = _run_gui_with_bounded_shutdown_retry(
+            [str(gui), "--gui-smoke", "--output", str(gui_path)],
+            environment=environment,
+            cwd=work,
+            report_path=gui_path,
+        )
         gui_result = _read_passed_result(
             gui_path,
             {"casadi", "cadquery_ocp", "pyside6", "viewer_integration", "exact_occt_viewer", "vtk_viewer", "gui"},
@@ -266,6 +343,10 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             "python_on_child_path": False,
             "native_checks": {check["name"]: check["status"] for check in native_result["checks"]},
             "gui_checks": {check["name"]: check["status"] for check in gui_result["checks"]},
+            "gui_process_attempts": {
+                "native_selftest": selftest_process,
+                "gui_smoke": gui_process,
+            },
             "cli_version": version.stdout.strip(),
             "project_smoke": "passed",
             "steel_model_foundation_smoke": {
