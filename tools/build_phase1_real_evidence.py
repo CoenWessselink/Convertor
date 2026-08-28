@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -45,9 +46,20 @@ def _sha(path: Path) -> str:
 
 
 def main() -> int:
-    large = json.loads(LARGE.read_text(encoding="utf-8"))
-    result = json.loads(RESULT.read_text(encoding="utf-8"))
-    source = _find_source(large)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--large", type=Path, default=LARGE)
+    parser.add_argument("--result", type=Path, default=RESULT)
+    parser.add_argument("--source", type=Path)
+    parser.add_argument("--output", type=Path, default=OUTPUT)
+    args = parser.parse_args()
+    large_path = args.large.expanduser().resolve()
+    result_path = args.result.expanduser().resolve()
+    output_path = args.output.expanduser().resolve()
+    large = json.loads(large_path.read_text(encoding="utf-8"))
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    source = args.source.expanduser().resolve() if args.source else _find_source(large)
+    if source is not None and not source.is_file():
+        source = None
     inspection = dict(result.get("inspection") or {})
     metrics = dict(inspection.get("metrics") or {})
     topology = dict(inspection.get("topology") or {})
@@ -61,28 +73,28 @@ def main() -> int:
         "selection_verified": inspection.get("selection_verified") is True,
         "solid_valid": metrics.get("valid") is True and int(topology.get("solid_count") or 0) > 0,
         "topology_is_non_empty": all(int(topology.get(key) or 0) > 0 for key in ("face_count", "edge_count", "vertex_count")),
-        "source_and_result_are_distinct_artifacts": bool(source and source.resolve() != RESULT.resolve()),
+        "source_and_result_are_distinct_artifacts": bool(source and source.resolve() != result_path),
     }
     payload = {
         "schema": "cws-phase1-real-source-result-difference-evidence-1.0",
         "status": "passed" if all(checks.values()) else "failed",
         "source": {"path": str(source) if source else "", "bytes": source.stat().st_size if source else 0, "sha256": actual_sha, "representation": source.suffix.lower().lstrip(".") if source else ""},
-        "result": {"path": str(RESULT), "bytes": RESULT.stat().st_size, "sha256": _sha(RESULT), "status": inspection.get("status"), "geometry_kind": inspection.get("geometry_kind"), "source_geometry_hash": inspection.get("source_geometry_hash"), "metrics": metrics, "topology": topology},
+        "result": {"path": str(result_path), "bytes": result_path.stat().st_size, "sha256": _sha(result_path), "status": inspection.get("status"), "geometry_kind": inspection.get("geometry_kind"), "source_geometry_hash": inspection.get("source_geometry_hash"), "metrics": metrics, "topology": topology},
         "difference": {
             "representation_changed": True,
             "source_representation": source.suffix.lower().lstrip(".") if source else "",
             "result_representation": "canonical exact-native-BREP inspection JSON",
             "geometry_loss_detected": False if checks["result_is_exact_native_brep"] and checks["solid_valid"] else None,
             "provenance_sha256_equal": actual_sha == expected_sha and bool(actual_sha),
-            "result_bytes_minus_source_bytes": RESULT.stat().st_size - source.stat().st_size if source else None,
+            "result_bytes_minus_source_bytes": result_path.stat().st_size - source.stat().st_size if source else None,
         },
         "checks": checks,
-        "inputs": {"large_model_evidence": str(LARGE), "exact_result_evidence": str(RESULT)},
+        "inputs": {"large_model_evidence": str(large_path), "exact_result_evidence": str(result_path)},
     }
-    PHASES.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
     print(f"PHASE_1_REAL_SOURCE_RESULT_DIFFERENCE = {payload['status'].upper()}")
-    print(OUTPUT)
+    print(output_path)
     return 0 if payload["status"] == "passed" else 1
 
 

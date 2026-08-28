@@ -54,7 +54,7 @@ jobs:
           python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py
           python tools/capture_phase1_repository_ci.py
           python tools/run_phase1_unified_gates.py
-          python tools/build_phase1_real_evidence.py
+          python tools/build_phase1_reproducible_evidence.py
           python tools/run_phase2_unified_gates.py
           python tools/run_phase3_gates.py
 

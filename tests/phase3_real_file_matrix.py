@@ -20,8 +20,14 @@ def digest(path: Path) -> str:
     return value.hexdigest()
 
 
-def smallest(root: Path, suffixes: tuple[str, ...]) -> Path:
-    candidates = [path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in suffixes]
+def smallest(roots: tuple[Path, ...], suffixes: tuple[str, ...]) -> Path:
+    candidates = [
+        path
+        for root in roots
+        if root.is_dir()
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in suffixes
+    ]
     if not candidates:
         raise FileNotFoundError(f"No fixture found for {suffixes}")
     return min(candidates, key=lambda item: (item.stat().st_size, str(item).lower()))
@@ -32,9 +38,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=ROOT / "validation" / "phases" / "PHASE_3_REAL_FILE_MATRIX.json")
     args = parser.parse_args()
     fixtures = ROOT / "reference-models-local"
+    phase_fixtures = ROOT / "validation" / "phases" / "fixtures"
     phase1_diff = json.loads((ROOT / "validation" / "phases" / "PHASE_1_REAL_SOURCE_RESULT_DIFFERENCE.json").read_text(encoding="utf-8"))
     rows = []
-    nc1 = smallest(fixtures, (".nc1", ".nc"))
+    nc1 = smallest((fixtures, ROOT / "validation" / "v0.2_generated_nc1"), (".nc1", ".nc"))
     with tempfile.TemporaryDirectory(prefix="cws-real-nc1-") as folder:
         completed = subprocess.run([sys.executable, str(ROOT / "cli.py"), "nc1-to-step", str(nc1), "-o", folder],
                                    cwd=ROOT, capture_output=True, text=True, timeout=180, check=False)
@@ -52,7 +59,7 @@ def main() -> int:
                  "performance": str(ROOT / "validation" / "phases" / "PHASE_1_LARGE_MODEL_PERFORMANCE.json"),
                  "limitations": [], "passed": digest(step) == phase1_diff["source"]["sha256"] and phase1_diff["status"] == "passed"})
     import ifcopenshell
-    ifc = smallest(fixtures, (".ifc",))
+    ifc = smallest((fixtures, phase_fixtures), (".ifc",))
     model = ifcopenshell.open(str(ifc))
     products = model.by_type("IfcProduct")
     rows.append({"format": "IFC", "source": str(ifc), "sha256": digest(ifc), "bytes": ifc.stat().st_size,
@@ -61,7 +68,7 @@ def main() -> int:
                  "limitations": ["production_exactness_requires_per_part_geometry_proof"], "product_count": len(products),
                  "passed": len(products) > 0 and all(bool(getattr(item, "GlobalId", None)) for item in products[:100])})
     import fitz
-    pdf = smallest(ROOT / "validation" / "viewer_v6" / "roundtrips", (".pdf",))
+    pdf = smallest((ROOT / "validation" / "viewer_v6" / "roundtrips",), (".pdf",))
     document = fitz.open(pdf)
     rows.append({"format": "Trusted PDF", "source": str(pdf), "sha256": digest(pdf), "bytes": pdf.stat().st_size,
                  "expected_identity": pdf.parent.parent.name, "exactness": "trusted_payload_acceptance_covered_by_phase1_gate",
