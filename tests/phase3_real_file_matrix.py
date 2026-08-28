@@ -10,6 +10,10 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pdf_support import canonical_from_nc1, create_trusted_pdf
 
 
 def digest(path: Path) -> str:
@@ -51,6 +55,9 @@ def main() -> int:
                      "outputs": [item.name for item in generated], "roundtrip": "physical_nc1_to_step_generated",
                      "limitations": ["machine_controller_output_not_authorized"],
                      "passed": completed.returncode == 0 and len(generated) == 1 and generated[0].stat().st_size > 1000})
+    trusted_pdf = phase_fixtures / "phase3-trusted-nc1-roundtrip.pdf"
+    trusted_pdf.parent.mkdir(parents=True, exist_ok=True)
+    create_trusted_pdf(canonical_from_nc1(nc1), trusted_pdf)
     step = Path(phase1_diff["source"]["path"])
     rows.append({"format": "STEP", "source": str(step), "sha256": digest(step), "bytes": step.stat().st_size,
                  "expected_identity": phase1_diff["result"]["source_geometry_hash"],
@@ -68,7 +75,10 @@ def main() -> int:
                  "limitations": ["production_exactness_requires_per_part_geometry_proof"], "product_count": len(products),
                  "passed": len(products) > 0 and all(bool(getattr(item, "GlobalId", None)) for item in products[:100])})
     import fitz
-    pdf = smallest((ROOT / "validation" / "viewer_v6" / "roundtrips",), (".pdf",))
+    pdf = smallest(
+        (ROOT / "validation" / "viewer_v6" / "roundtrips", phase_fixtures),
+        (".pdf",),
+    )
     document = fitz.open(pdf)
     rows.append({"format": "Trusted PDF", "source": str(pdf), "sha256": digest(pdf), "bytes": pdf.stat().st_size,
                  "expected_identity": pdf.parent.parent.name, "exactness": "trusted_payload_acceptance_covered_by_phase1_gate",

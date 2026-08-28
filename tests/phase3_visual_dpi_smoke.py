@@ -39,11 +39,14 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
         before_widget = app.focusWidget()
         focus_before = before_widget.objectName() if before_widget else ""
         focus_before_id = id(before_widget) if before_widget else None
-        window.focusNextChild()
-        app.processEvents()
-        after_widget = app.focusWidget()
-        focus_after = after_widget.objectName() if after_widget else ""
-        focus_after_id = id(after_widget) if after_widget else None
+        for _ in range(min(len(focusables), 12)):
+            window.focusNextChild()
+            app.processEvents()
+            after_widget = app.focusWidget()
+            focus_after = after_widget.objectName() if after_widget else ""
+            focus_after_id = id(after_widget) if after_widget else None
+            if focus_after_id is not None and focus_after_id != focus_before_id:
+                break
     pixmap = window.grab()
     screenshot.parent.mkdir(parents=True, exist_ok=True)
     saved = pixmap.save(str(screenshot), "PNG")
@@ -56,7 +59,12 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
         "text_tabs_present": len(tab_labels) >= 10 and all(tab_labels),
         "tab_icons_present": any(not window.tabs.tabIcon(index).isNull() for index in range(window.tabs.count())),
         "viewer_host_split_layout": viewer_host_populated,
-        "keyboard_focus_moves": bool(focus_before_id != focus_after_id and focus_after_id is not None),
+        "keyboard_focus_moves": bool(
+            len(focusables) >= 2
+            and focus_before_id is not None
+            and focus_after_id is not None
+            and focus_before_id != focus_after_id
+        ),
         "screenshot_saved": saved and screenshot.is_file() and screenshot.stat().st_size > 10_000,
         "minimum_workspace_size": window.width() >= 1200 and window.height() >= 700,
     }
