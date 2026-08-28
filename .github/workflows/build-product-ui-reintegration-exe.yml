@@ -47,16 +47,17 @@ jobs:
         shell: pwsh
         run: python tools/run_phase1_unified_gates.py
 
-      - name: Prove bounded progressive loading
+      - name: Build reproducible Phase 1 evidence
         shell: pwsh
-        run: >-
-          python validation/run_phase_b_progressive_loading.py
-          --output validation/phases/PHASE_1_PROGRESSIVE_PERFORMANCE.json
-          --entity-count 5000
+        run: python tools/build_phase1_reproducible_evidence.py
 
       - name: Build and prove Windows one-folder and fresh portable
         shell: pwsh
         run: python tools/build_phase1_windows_release.py
+
+      - name: Capture exact-SHA repository and CI context
+        shell: pwsh
+        run: python tools/capture_phase1_repository_ci.py
 
       - name: Generate Phase 1 manifests
         shell: pwsh
