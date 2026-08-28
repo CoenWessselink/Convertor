@@ -434,6 +434,8 @@ class UnifiedApplicationContext:
         snapshot = UnifiedUiContextSnapshot.from_dict(
             dict(source.get("snapshot") or source)
         )
+        self._generation = snapshot.generation
+        self._selection = snapshot.selection
         self._active_surface = snapshot.active_surface
         self._project_context = snapshot.project_context
         self._selection_context = snapshot.selection_context
@@ -444,7 +446,10 @@ class UnifiedApplicationContext:
         self._optimization_context = snapshot.optimization_context
         self._export_context = snapshot.export_context
         self._user_preferences = deepcopy(dict(source.get("user_preferences") or {}))
-        return self._publish_snapshot()
+        self._snapshot = self._build_snapshot()
+        for listener in tuple(self._listeners):
+            listener(self._snapshot)
+        return self._snapshot
 
     def close(self) -> None:
         self.job_manager.shutdown(wait=False, cancel_pending=True)
