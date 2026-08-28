@@ -374,6 +374,7 @@ def build() -> tuple[dict[str, Any], int]:
         "failed_checks": [row["id"] for row in failed],
         "release": release,
     }
+    write_json("FULL_ACCEPTANCE_CHECKLIST.json", report)
     write_json("FULL_PRODUCT_ACCEPTANCE_CHECKLIST.json", report)
     lines = [
         "# CWS Convertor Full Product Acceptance", "", f"Generated: `{generated}`", f"Overall: **{overall}**",
@@ -382,7 +383,9 @@ def build() -> tuple[dict[str, Any], int]:
     lines.extend(f"| {row['id']} | {row['status']} | {row['title']} |" for row in checks)
     lines.extend(["", "## Release artifacts", ""])
     lines.extend(f"- `{key}`: `{value}`" for key, value in release["artifacts"].items())
-    (OUTPUT / "FULL_PRODUCT_ACCEPTANCE_REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    report_text = "\n".join(lines) + "\n"
+    (OUTPUT / "FULL_ACCEPTANCE_REPORT.md").write_text(report_text, encoding="utf-8")
+    (OUTPUT / "FULL_PRODUCT_ACCEPTANCE_REPORT.md").write_text(report_text, encoding="utf-8")
     print(f"FULL_PRODUCT_SUPERPROMPT_ACCEPTANCE = {overall}")
     print(f"FULL_PRODUCT_ACCEPTANCE_CHECKLIST = {passed_count}/{len(checks)} PASS")
     if failed:
