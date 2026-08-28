@@ -13,9 +13,12 @@ import sys
 from typing import Any
 import zipfile
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from cws_convertor.product import APP_VERSION, CANONICAL_PART_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION
 
-ROOT = Path(__file__).resolve().parents[1]
 ACCEPTANCE = ROOT / "validation" / "full_acceptance"
 FINAL = ROOT / "release" / "final"
 BRANCH = "agent/cws-product-ui-reintegration-v1"

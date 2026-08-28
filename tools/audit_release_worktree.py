@@ -4,11 +4,15 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import subprocess
+import sys
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.product import APP_VERSION, CANONICAL_PART_SCHEMA_VERSION, PROJECT_SCHEMA_VERSION
 
-ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "validation" / "full_acceptance"
 
 
