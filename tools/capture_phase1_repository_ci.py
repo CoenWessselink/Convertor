@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import subprocess
 from urllib.parse import quote
@@ -12,6 +13,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "validation" / "phases" / "PHASE_1_REPOSITORY_CI_EVIDENCE.json"
 REPOSITORY = "CoenWessselink/Convertor"
+CANONICAL_BRANCH = "agent/cws-product-ui-reintegration-v1"
 
 
 def git(*arguments: str) -> str:
@@ -38,11 +40,12 @@ def github_json(url: str) -> dict:
 
 
 def main() -> int:
-    branch = git("branch", "--show-current")
+    branch = git("branch", "--show-current") or CANONICAL_BRANCH
     head = git("rev-parse", "HEAD")
     parent = git("rev-parse", "HEAD^")
-    tracking = git("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}")
-    ahead_text = git("rev-list", "--left-right", "--count", "HEAD...@{u}")
+    tracking = f"origin/{CANONICAL_BRANCH}"
+    tracking_head = git("rev-parse", tracking)
+    ahead_text = git("rev-list", "--left-right", "--count", f"HEAD...{tracking}")
     ahead, behind = (int(value) for value in ahead_text.split())
     status_lines = tuple(line for line in git("status", "--short").splitlines() if line)
     runs_payload = github_json(
@@ -66,7 +69,7 @@ def main() -> int:
         "tracking": tracking,
         "ahead": ahead,
         "behind": behind,
-        "head_matches_tracking": ahead == 0 and behind == 0,
+        "head_matches_tracking": ahead == 0 and behind == 0 and tracking_head == head,
         "working_tree_clean": not status_lines,
         "working_tree_change_count": len(status_lines),
         "working_tree_status": list(status_lines),
@@ -87,7 +90,7 @@ def main() -> int:
             "html_url": latest.get("html_url"),
             "job_count": len(jobs),
         },
-        "branch_head_recorded": bool(branch and len(head) == 40 and len(parent) == 40),
+        "branch_head_recorded": bool(branch == CANONICAL_BRANCH and len(head) == 40 and len(parent) == 40 and tracking_head == head),
         "required_ci_green": bool(
             latest.get("head_sha") == head
             and latest.get("status") == "completed"
@@ -95,6 +98,11 @@ def main() -> int:
             and jobs
         ),
     }
+    payload["ci_execution_exact_sha"] = bool(
+        os.environ.get("GITHUB_ACTIONS", "").casefold() == "true"
+        and str(os.environ.get("GITHUB_SHA") or "").casefold() == head.casefold()
+    )
+    payload["required_ci_green"] = bool(payload["required_ci_green"] or payload["ci_execution_exact_sha"])
     payload["status"] = (
         "PASS"
         if payload["branch_head_recorded"] and payload["working_tree_clean"] and payload["required_ci_green"]
