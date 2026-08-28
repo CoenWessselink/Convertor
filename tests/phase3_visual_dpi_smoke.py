@@ -48,6 +48,18 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
             if focus_after_id is not None and focus_after_id != focus_before_id:
                 break
     pixmap = window.grab()
+    image = pixmap.toImage()
+    sample_image = image.scaled(
+        320,
+        200,
+        QtCore.Qt.AspectRatioMode.IgnoreAspectRatio,
+        QtCore.Qt.TransformationMode.SmoothTransformation,
+    )
+    sampled_colors = {
+        int(sample_image.pixel(x, y))
+        for x in range(sample_image.width())
+        for y in range(sample_image.height())
+    }
     screenshot.parent.mkdir(parents=True, exist_ok=True)
     saved = pixmap.save(str(screenshot), "PNG")
     tab_labels = [window.tabs.tabText(index) for index in range(window.tabs.count())]
@@ -65,13 +77,16 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
             and focus_after_id is not None
             and focus_before_id != focus_after_id
         ),
-        "screenshot_saved": saved and screenshot.is_file() and screenshot.stat().st_size > 10_000,
+        "screenshot_saved": saved and screenshot.is_file() and screenshot.stat().st_size > 1_000,
+        "screenshot_dimensions_valid": pixmap.width() >= 1280 and pixmap.height() >= 800,
+        "visual_content_present": len(sampled_colors) >= 32,
         "minimum_workspace_size": window.width() >= 1200 and window.height() >= 700,
     }
     payload = {
         "schema": "cws-phase3-dpi-child-1.0", "scale_factor": scale,
         "device_pixel_ratio": float(window.devicePixelRatioF()), "logical_size": [window.width(), window.height()],
         "screenshot_size": [pixmap.width(), pixmap.height()], "screenshot": str(screenshot),
+        "sampled_color_count": len(sampled_colors),
         "tab_labels": tab_labels, "focus_before": focus_before, "focus_after": focus_after,
         "checks": checks, "status": "passed" if all(checks.values()) else "failed",
     }
