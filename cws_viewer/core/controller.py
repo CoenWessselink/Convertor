@@ -671,7 +671,7 @@ class ViewerCoreController(ViewerController):
 
     def refresh_geometry(self, geometry_ids: Iterable[str] | None = None) -> None:
         """Refresh replaced mesh resources without resetting viewer state."""
-        self._ensure_index()
+        index = self._ensure_index()
         refresh = getattr(self._backend, "refresh_geometry", None)
         if not callable(refresh):
             self._sync_display(render=True)
@@ -679,7 +679,41 @@ class ViewerCoreController(ViewerController):
         values = None if geometry_ids is None else tuple(
             dict.fromkeys(str(value) for value in geometry_ids if str(value))
         )
-        refresh(values)
+        repository = getattr(self._backend, "repository", None)
+        getter = getattr(repository, "get", None)
+        replacement_index: SceneIndex | None = None
+        if callable(getter):
+            selected = None if values is None else frozenset(values)
+            nodes = []
+            changed = False
+            for node in index.scene.nodes:
+                mesh = (
+                    getter(node.geometry_id)
+                    if node.geometry_id is not None
+                    and (selected is None or node.geometry_id in selected)
+                    else None
+                )
+                bounds = getattr(mesh, "bounds", None)
+                if bounds is not None and bounds != node.local_bounds:
+                    node = replace(node, local_bounds=bounds)
+                    changed = True
+                nodes.append(node)
+            if changed:
+                scene = ProjectScene.create(
+                    project_id=index.scene.project_id,
+                    revision_id=index.scene.revision_id,
+                    models=index.scene.models,
+                    nodes=nodes,
+                    geometry=index.scene.geometry,
+                    styles=index.scene.styles,
+                )
+                replacement_index = SceneIndex.build(scene)
+        if replacement_index is not None:
+            self._index = replacement_index
+            self._backend.load_scene(replacement_index.scene, replacement_index)
+            self._backend.set_camera(self._session.camera)
+        else:
+            refresh(values)
         self._sync_display(render=True)
 
     def resize(self, width: int, height: int) -> None:

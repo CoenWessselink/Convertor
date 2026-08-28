@@ -9,6 +9,10 @@ from pathlib import Path
 from PIL import Image
 from PySide6 import QtWidgets
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from cws_convertor.ui_qt.u4_shell import CWSMainWindow
 from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import (
     VtkRealProjectWidgetFeelV2,

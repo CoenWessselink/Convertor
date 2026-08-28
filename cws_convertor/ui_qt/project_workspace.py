@@ -445,19 +445,27 @@ if qt_available():
             self.status.setText(f"Controleren en laden: {project_path.name}")
             self.stack.setCurrentWidget(self.loading)
             worker = _LoadWorker(project_path, load_geometry=load_geometry)
-            worker.progress.connect(self._load_progress_changed)
+            worker.progress.connect(
+                lambda percent, message, value=generation: self._load_progress_guarded(
+                    value, percent, message
+                )
+            )
             worker.preview_ready.connect(
                 lambda result, value=generation: self._project_preview_guarded(value, result)
             )
             worker.loaded.connect(
                 lambda workspace, value=generation: self._project_loaded_guarded(value, workspace)
             )
-            worker.failed.connect(self._project_failed)
+            worker.failed.connect(
+                lambda message, value=generation: self._project_failed_guarded(value, message)
+            )
             worker.cancelled.connect(
                 lambda value=generation: self._project_cancelled_guarded(value)
             )
             worker.finished.connect(worker.deleteLater)
-            worker.finished.connect(lambda value=generation: self._load_finished(value))
+            worker.finished.connect(
+                lambda value=generation, target=worker: self._load_finished(value, target)
+            )
             self._worker = worker
             self._load_elapsed.start()
             self._load_heartbeat.start()
@@ -475,12 +483,21 @@ if qt_available():
                 max_retries=1,
             )
 
-        def _load_finished(self, generation: int) -> None:
-            if generation != self._load_generation:
+        def _load_finished(self, generation: int, worker: Any) -> None:
+            if self._worker is not worker:
                 return
             self._worker = None
             self._thread = None
-            self._load_job_id = None
+            if generation == self._load_generation:
+                self._load_job_id = None
+
+        def _load_progress_guarded(self, generation: int, percent: int, message: str) -> None:
+            if generation == self._load_generation:
+                self._load_progress_changed(percent, message)
+
+        def _project_failed_guarded(self, generation: int, message: str) -> None:
+            if generation == self._load_generation:
+                self._project_failed(message)
 
         def _project_cancelled_guarded(self, generation: int) -> None:
             if generation != self._load_generation:

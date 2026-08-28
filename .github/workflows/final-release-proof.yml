@@ -86,8 +86,8 @@ jobs:
           python tools/run_full_product_acceptance.py --reuse-fresh-phase3-evidence
           python tools/build_superprompt_acceptance_report.py
           $check = Get-Content validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json -Raw | ConvertFrom-Json
-          if ($check.items.Count -ne 51) { throw "Acceptance does not contain 51 checks" }
-          if (@($check.items | Where-Object status -ne PASS).Count -ne 0) { throw "Acceptance contains a non-PASS item" }
+          if ($check.checks.Count -ne 51) { throw "Acceptance does not contain 51 checks" }
+          if (@($check.checks | Where-Object status -ne PASS).Count -ne 0) { throw "Acceptance contains a non-PASS item" }
 
       - name: Record fresh checkout evidence
         shell: pwsh

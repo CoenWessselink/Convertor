@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "validation" / "phases" / "PHASE_1_REPOSITORY_CI_EVIDENCE.json"
 REPOSITORY = "CoenWessselink/Convertor"
 CANONICAL_BRANCH = "agent/cws-product-ui-reintegration-v1"
+CANONICAL_WORKFLOW = "CWS Convertor Phase 1 Canonical Product Core"
 
 
 def git(*arguments: str) -> str:
@@ -53,7 +54,12 @@ def main() -> int:
     )
     runs = list(runs_payload.get("workflow_runs") or [])
     exact_runs = [run for run in runs if str(run.get("head_sha")) == head]
-    latest = exact_runs[0] if exact_runs else (runs[0] if runs else {})
+    canonical_exact_runs = [
+        run for run in exact_runs if str(run.get("name") or "") == CANONICAL_WORKFLOW
+    ]
+    latest = canonical_exact_runs[0] if canonical_exact_runs else (
+        exact_runs[0] if exact_runs else (runs[0] if runs else {})
+    )
     jobs: list[dict] = []
     if latest.get("jobs_url"):
         jobs = list(github_json(str(latest["jobs_url"])).get("jobs") or [])

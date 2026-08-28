@@ -352,6 +352,9 @@ def runtime_inventory() -> tuple[list[dict[str, Any]], dict[str, Any]]:
 def choose_project(explicit: str | None) -> Path | None:
     if explicit:
         return Path(explicit).expanduser().resolve()
+    generated = OUTPUT / "fixtures" / "CWS_FULL_ACCEPTANCE_1000.cwscproj"
+    if generated.is_file():
+        return generated.resolve()
     for evidence_name in ("QT_PROGRESSIVE_EXACT_RESULTS.json", "IFC_BATCH_RESULTS.json"):
         evidence_path = ROOT / "validation" / "full_acceptance" / evidence_name
         try:
@@ -369,6 +372,129 @@ def choose_project(explicit: str | None) -> Path | None:
         reverse=True,
     )
     return candidates[0] if candidates else None
+
+
+def prepare_acceptance_project(explicit: str | None) -> tuple[Path | None, dict[str, Any]]:
+    if explicit:
+        project = Path(explicit).expanduser().resolve()
+        return project, {
+            "status": "PASS" if project.is_file() else "FAIL",
+            "fixture_class": "explicit_owner_project",
+            "project_path": str(project),
+        }
+    project = OUTPUT / "fixtures" / "CWS_FULL_ACCEPTANCE_1000.cwscproj"
+    report = OUTPUT / "FIXTURE_GENERATION_RESULTS.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "validation" / "generate_full_acceptance_project.py"),
+            "--output-project",
+            str(project),
+            "--product-count",
+            "1000",
+            "--report",
+            str(report),
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=300,
+        check=False,
+    )
+    (OUTPUT / "generate_full_acceptance_project.log").write_text(
+        completed.stdout, encoding="utf-8", errors="replace"
+    )
+    try:
+        payload = json.loads(report.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        payload = {
+            "status": "FAIL",
+            "project_path": str(project),
+            "returncode": completed.returncode,
+        }
+    passed = completed.returncode == 0 and payload.get("status") == "PASS" and project.is_file()
+    payload["status"] = "PASS" if passed else "FAIL"
+    return (project.resolve() if passed else None), payload
+
+
+def run_runtime_acceptance_evidence(project: Path | None) -> list[dict[str, Any]]:
+    if project is None:
+        return [{"name": "runtime_acceptance", "status": "BLOCKED", "reason": "fixture missing"}]
+    screenshots = OUTPUT / "screenshots"
+    commands = (
+        (
+            "ifc_batch",
+            [sys.executable, str(ROOT / "tests" / "full_acceptance_ifc_batch_smoke.py"), str(project), "--output", str(OUTPUT / "IFC_BATCH_RESULTS.json")],
+            300,
+        ),
+        (
+            "qt_progressive_exact",
+            [sys.executable, str(ROOT / "tests" / "full_acceptance_qt_progressive_exact_smoke.py"), str(project), "--output", str(OUTPUT / "QT_PROGRESSIVE_EXACT_RESULTS.json"), "--screenshot", str(screenshots / "qt_progressive_exact.png")],
+            180,
+        ),
+        (
+            "qt_viewer_visual",
+            [sys.executable, str(ROOT / "tests" / "full_acceptance_qt_viewer_visual_smoke.py"), str(project), "--output", str(OUTPUT / "QT_VIEWER_VISUAL_RESULTS.json"), "--screenshot", str(screenshots / "qt_viewer_visual.png"), "--wait-seconds", "120"],
+            180,
+        ),
+        (
+            "project_cancel",
+            [sys.executable, str(ROOT / "tests" / "full_acceptance_project_cancel_smoke.py"), str(project), "--output", str(OUTPUT / "PROJECT_CANCEL_RESULTS.json")],
+            60,
+        ),
+        (
+            "stress_matrix",
+            [sys.executable, str(ROOT / "tests" / "full_acceptance_stress_matrix.py"), "--output", str(OUTPUT / "STRESS_MATRIX_RESULTS.json")],
+            300,
+        ),
+        (
+            "workspace_screenshots",
+            [sys.executable, str(ROOT / "tests" / "full_acceptance_workspace_screenshots.py")],
+            180,
+        ),
+    )
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(ROOT)
+    environment["QT_QPA_PLATFORM"] = "windows" if os.name == "nt" else "offscreen"
+    environment["CWS_PROGRESSIVE_PROJECT_LOAD"] = "1"
+    environment.pop("CWS_HEADLESS_GUI_SMOKE", None)
+    results: list[dict[str, Any]] = []
+    logs = OUTPUT / "logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    for name, command, timeout in commands:
+        started = time.perf_counter()
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=ROOT,
+                env=environment,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=timeout,
+                check=False,
+            )
+            output = completed.stdout
+            returncode = completed.returncode
+            error = ""
+        except subprocess.TimeoutExpired as exc:
+            output = str(exc.stdout or "")
+            returncode = -1
+            error = f"timeout after {timeout} seconds"
+        log = logs / f"{name}.log"
+        log.write_text(output, encoding="utf-8", errors="replace")
+        results.append(
+            {
+                "name": name,
+                "status": "PASS" if returncode == 0 else "FAIL",
+                "returncode": returncode,
+                "elapsed_seconds": round(time.perf_counter() - started, 3),
+                "log": str(log),
+                "error": error,
+            }
+        )
+    return results
 
 
 def geometry_evidence(project: Path | None) -> dict[str, Any]:
@@ -519,7 +645,9 @@ def main() -> int:
     except Exception as exc:
         runtime = []
         runtime_result = {"status": "FAIL", "error": f"{type(exc).__name__}: {exc}"}
-    geometry = geometry_evidence(choose_project(args.project))
+    project, fixture = prepare_acceptance_project(args.project)
+    runtime_evidence = run_runtime_acceptance_evidence(project)
+    geometry = geometry_evidence(project)
     phases = phase_gates(args.inventory_only, args.reuse_fresh_phase3_evidence)
     active_classes = set(runtime_result.get("active_product_classes", ()))
     executed_functions = set(runtime_result.get("executed_product_functions", ()))
@@ -541,11 +669,17 @@ def main() -> int:
         if args.inventory_only
         else "PASS" if phases and all(item["status"] == "PASS" for item in phases) else "FAIL"
     )
+    runtime_evidence_status = (
+        "PASS"
+        if runtime_evidence and all(item["status"] == "PASS" for item in runtime_evidence)
+        else "FAIL"
+    )
     overall = (
         "PASS"
         if inventory_status == "PASS"
         and geometry["status"] == "PASS"
         and phase_status in {"PASS", "SKIPPED"}
+        and runtime_evidence_status == "PASS"
         else "FAIL"
     )
 
@@ -556,12 +690,15 @@ def main() -> int:
     )
     write_json("DYNAMIC_UI_RUNTIME_COVERAGE.json", runtime_result)
     write_json("REAL_GEOMETRY_EVIDENCE.json", geometry)
+    write_json("FULL_ACCEPTANCE_RUNTIME_EVIDENCE.json", runtime_evidence)
+    write_json("FIXTURE_GENERATION_RESULTS.json", fixture)
     write_json("PHASE_GATE_RESULTS.json", phases)
     summary = {
         "FULL_PRODUCT_ACCEPTANCE": overall,
         "UI_AND_FUNCTION_INVENTORY": inventory_status,
         "REAL_GEOMETRY": geometry["status"],
         "PHASE_GATES": phase_status,
+        "RUNTIME_ACCEPTANCE_EVIDENCE": runtime_evidence_status,
         "source_control_count": len(controls),
         "runtime_control_count": len(runtime),
         "function_count": len(functions),

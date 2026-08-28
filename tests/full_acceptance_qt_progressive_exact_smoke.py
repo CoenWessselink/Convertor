@@ -3,9 +3,14 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 import time
 
 from PySide6 import QtCore, QtWidgets
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.ui_qt.u4_shell import CWSMainWindow
 from cws_viewer.contracts.state import ScreenshotOptions

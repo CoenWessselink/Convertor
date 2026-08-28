@@ -6,7 +6,11 @@ import sys
 import time
 from pathlib import Path
 
-from PySide6 import QtCore, QtTest, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from cws_convertor.ui_qt.u4_shell import CWSMainWindow
 
@@ -36,12 +40,22 @@ def main() -> int:
         window.show()
         started = time.monotonic()
         window._open_project(args.project.resolve())
-        pump(app, 0.35)
+        load_active_before_escape = window.project_page._load_job_id is not None
+        if not load_active_before_escape:
+            raise RuntimeError("Projectloadjob was niet actief voor Escape")
         if not callable(window.project_page.cancel_project_load):
             raise RuntimeError("Publieke projectannulering ontbreekt")
-        QtTest.QTest.keyClick(window, QtCore.Qt.Key_Escape)
+        escape_shortcuts = [
+            shortcut
+            for shortcut in window.findChildren(QtGui.QShortcut)
+            if shortcut.key().toString().casefold() in {"esc", "escape"}
+        ]
+        if len(escape_shortcuts) != 1:
+            raise RuntimeError(f"Verwacht exact een Esc-shortcut, gevonden: {len(escape_shortcuts)}")
+        cancel_started = time.monotonic()
+        escape_shortcuts[0].activated.emit()
         pump(app, 0.1)
-        cancel_latency = time.monotonic() - started - 0.35
+        cancel_latency = time.monotonic() - cancel_started
         deadline = time.monotonic() + 8.0
         while time.monotonic() < deadline:
             app.processEvents()
@@ -69,6 +83,8 @@ def main() -> int:
         workers_finished = not thread_running and not jobs_active
         result.update(
             escape_sent=True,
+            load_active_before_escape=load_active_before_escape,
+            escape_shortcut_count=len(escape_shortcuts),
             cancel_latency_seconds=max(0.0, cancel_latency),
             workers_finished=workers_finished,
             workspace_published=window.workspace is not None,
