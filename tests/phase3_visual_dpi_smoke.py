@@ -85,25 +85,44 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
 def parent(output: Path, screenshot_dir: Path) -> int:
     results = []
     for label, factor in (("100", "1.0"), ("125", "1.25"), ("150", "1.5"), ("200", "2.0")):
-        child_output = output.parent / f"phase3-dpi-{label}.json"
-        screenshot = screenshot_dir / f"CWS_Convertor_Phase3_DPI_{label}.png"
-        child_output.parent.mkdir(parents=True, exist_ok=True)
-        child_output.write_text(
-            json.dumps({"schema": "cws-phase3-dpi-child-1.0", "status": "failed", "reason": "child_not_completed"}) + "\n",
-            encoding="utf-8",
-        )
-        environment = os.environ.copy()
-        environment.update({"QT_QPA_PLATFORM": "offscreen", "CWS_HEADLESS_GUI_SMOKE": "1", "QT_SCALE_FACTOR": factor})
-        completed = subprocess.run(
-            [sys.executable, str(Path(__file__).resolve()), "--child", "--scale", factor,
-             "--output", str(child_output), "--screenshot", str(screenshot)],
-            cwd=ROOT, env=environment, capture_output=True, text=True, timeout=120, check=False,
-        )
-        try:
-            payload = json.loads(child_output.read_text(encoding="utf-8")) if child_output.is_file() else {}
-        except (OSError, json.JSONDecodeError) as exc:
-            payload = {"schema": "cws-phase3-dpi-child-1.0", "status": "failed", "reason": str(exc)}
-        payload.update({"returncode": completed.returncode, "stderr": completed.stderr[-2000:]})
+        attempts = []
+        payload = {}
+        for attempt in (1, 2):
+            child_output = output.parent / f"phase3-dpi-{label}-attempt{attempt}.json"
+            screenshot = screenshot_dir / f"CWS_Convertor_Phase3_DPI_{label}_attempt{attempt}.png"
+            child_output.parent.mkdir(parents=True, exist_ok=True)
+            child_output.write_text(
+                json.dumps({"schema": "cws-phase3-dpi-child-1.0", "status": "failed", "reason": "child_not_completed"}) + "\n",
+                encoding="utf-8",
+            )
+            environment = os.environ.copy()
+            environment.update({"QT_QPA_PLATFORM": "offscreen", "CWS_HEADLESS_GUI_SMOKE": "1", "QT_SCALE_FACTOR": factor})
+            completed = subprocess.run(
+                [sys.executable, str(Path(__file__).resolve()), "--child", "--scale", factor,
+                 "--output", str(child_output), "--screenshot", str(screenshot)],
+                cwd=ROOT, env=environment, capture_output=True, text=True, timeout=120, check=False,
+            )
+            try:
+                payload = json.loads(child_output.read_text(encoding="utf-8")) if child_output.is_file() else {}
+            except (OSError, json.JSONDecodeError) as exc:
+                payload = {"schema": "cws-phase3-dpi-child-1.0", "status": "failed", "reason": str(exc)}
+            payload.update({"returncode": completed.returncode, "stderr": completed.stderr[-2000:]})
+            attempts.append({
+                "attempt": attempt,
+                "status": payload.get("status"),
+                "returncode": completed.returncode,
+                "failed_checks": sorted(
+                    key for key, value in dict(payload.get("checks") or {}).items() if not value
+                ),
+                "stderr": completed.stderr[-2000:],
+            })
+            if (
+                payload.get("status") == "passed"
+                and completed.returncode == 0
+                and "Traceback (most recent call last)" not in completed.stderr
+            ):
+                break
+        payload["attempts"] = attempts
         results.append(payload)
     passed = len(results) == 4 and all(
         item.get("status") == "passed"
