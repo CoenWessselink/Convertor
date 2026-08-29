@@ -119,7 +119,7 @@ def main() -> int:
     source_zip = FINAL / f"CWS_Convertor_Source_{APP_VERSION}_{commit7}.zip"
     subprocess.run(["git", "archive", "--format=zip", f"--output={source_zip}", commit], cwd=ROOT, check=True)
     bundle = FINAL / f"CWS_Convertor_{APP_VERSION}_{commit7}.bundle"
-    subprocess.run(["git", "bundle", "create", str(bundle), commit], cwd=ROOT, check=True)
+    subprocess.run(["git", "bundle", "create", str(bundle), "HEAD"], cwd=ROOT, check=True)
     sbom_source = ROOT / "release" / "phase3" / "CWS_Convertor_SBOM.cdx.json"
     sbom = FINAL / "SBOM.json"
     shutil.copy2(sbom_source, sbom)
