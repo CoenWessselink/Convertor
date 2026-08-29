@@ -80,8 +80,18 @@ jobs:
           python tools/build_phase3_windows_release.py --skip-build
           python tools/build_phase3_validation.py
 
+      - name: Install pinned Mesa software OpenGL for headless VTK acceptance
+        uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+
       - name: Full Product Acceptance 51 of 51
         shell: pwsh
+        env:
+          GALLIUM_DRIVER: llvmpipe
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           python tools/run_full_product_acceptance.py --reuse-fresh-phase3-evidence
           python tools/build_superprompt_acceptance_report.py
