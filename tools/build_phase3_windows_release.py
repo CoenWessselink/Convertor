@@ -192,10 +192,11 @@ def main() -> int:
     installer = RELEASE / built_installer.name
     shutil.copy2(built_installer, installer)
     reset_directory(INSTALL_ROOT)
-    commands["silent_install"] = run(
-        [str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
-         "/CURRENTUSER", "/TASKS=fileassoc", f"/DIR={INSTALL_ROOT}"], timeout=900,
-    )
+    install_command = [
+        str(installer), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
+        "/CURRENTUSER", "/TASKS=fileassoc", f"/DIR={INSTALL_ROOT}",
+    ]
+    commands["silent_install"] = run(install_command, timeout=900)
     commands["installed_runtime"] = run(
         [sys.executable, str(ROOT / "tests" / "packaged_runtime_smoke.py"), "--runtime-dir", str(INSTALL_ROOT),
          "--label", "phase3-installed", "--result-dir", str(RESULTS)], timeout=1200,
@@ -206,25 +207,54 @@ def main() -> int:
     )
     uninstaller = INSTALL_ROOT / "unins000.exe"
     commands["uninstall"] = run(
-        [str(uninstaller), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"], timeout=900
+        [str(uninstaller), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+         f"/LOG={RESULTS / 'phase3-uninstall-attempt-1.log'}"], timeout=900,
     )
+
+    def wait_for_critical_cleanup(timeout: float = 60.0) -> list[str]:
+        cleanup_deadline = time.monotonic() + timeout
+        leftovers: list[str] = []
+        while True:
+            leftovers = [
+                str(path)
+                for path in INSTALL_ROOT.rglob("*")
+                if path.is_file() and path.suffix.lower() in {".exe", ".dll", ".pyd"}
+            ]
+            if not leftovers or time.monotonic() >= cleanup_deadline:
+                return leftovers
+            time.sleep(0.25)
+
+    critical_leftovers = wait_for_critical_cleanup()
+    uninstall_cleanup_attempts = [
+        {
+            "attempt": 1,
+            "status": "PASS" if not critical_leftovers else "RETRY_REQUIRED",
+            "critical_leftover_count": len(critical_leftovers),
+            "critical_leftovers": critical_leftovers[:20],
+        }
+    ]
+    if critical_leftovers:
+        commands["uninstall_retry_install"] = run(install_command, timeout=900)
+        retry_uninstaller = INSTALL_ROOT / "unins000.exe"
+        commands["uninstall_retry"] = run(
+            [str(retry_uninstaller), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+             f"/LOG={RESULTS / 'phase3-uninstall-attempt-2.log'}"], timeout=900,
+        )
+        critical_leftovers = wait_for_critical_cleanup()
+        uninstall_cleanup_attempts.append(
+            {
+                "attempt": 2,
+                "status": "PASS" if not critical_leftovers else "FAIL",
+                "critical_leftover_count": len(critical_leftovers),
+                "critical_leftovers": critical_leftovers[:20],
+            }
+        )
+    if critical_leftovers:
+        raise RuntimeError(f"Critical installed runtime leftovers: {critical_leftovers[:20]}")
     commands["association_cleanup"] = run(
         [sys.executable, str(ROOT / "tests" / "windows_installer_association_smoke.py"),
          "--expect-absent"], timeout=120,
     )
-    cleanup_deadline = time.monotonic() + 60.0
-    critical_leftovers: list[str] = []
-    while True:
-        critical_leftovers = [
-            str(path)
-            for path in INSTALL_ROOT.rglob("*")
-            if path.is_file() and path.suffix.lower() in {".exe", ".dll", ".pyd"}
-        ]
-        if not critical_leftovers or time.monotonic() >= cleanup_deadline:
-            break
-        time.sleep(0.25)
-    if critical_leftovers:
-        raise RuntimeError(f"Critical installed runtime leftovers: {critical_leftovers[:20]}")
     sbom = RELEASE / "CWS_Convertor_SBOM.cdx.json"
     commands["sbom"] = run([sys.executable, str(ROOT / "tools" / "generate_sbom.py"), str(sbom)], timeout=300)
     pip_check = run([sys.executable, "-m", "pip", "check"], timeout=300)
@@ -275,6 +305,7 @@ def main() -> int:
             "portable": str(portable), "standalone_gui": str(standalone), "installer": str(installer),
         },
         "critical_leftovers": critical_leftovers,
+        "uninstall_cleanup_attempts": uninstall_cleanup_attempts,
     }
     evidence_path = PHASES / "PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json"
     evidence_path.write_text(json.dumps(evidence, indent=2, sort_keys=True) + "\n", encoding="utf-8")
