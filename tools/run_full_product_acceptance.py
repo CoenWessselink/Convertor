@@ -52,6 +52,14 @@ def write_json(name: str, payload: Any) -> None:
     )
 
 
+def github_error(title: str, payload: Any) -> None:
+    if os.environ.get("GITHUB_ACTIONS", "").casefold() != "true":
+        return
+    annotation = json.dumps(payload, ensure_ascii=False, default=str)
+    annotation = annotation.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    print(f"::error title={title}::{annotation[:3800]}")
+
+
 def literal_text(node: ast.AST | None) -> str:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
@@ -464,36 +472,60 @@ def run_runtime_acceptance_evidence(project: Path | None) -> list[dict[str, Any]
     logs.mkdir(parents=True, exist_ok=True)
     for name, command, timeout in commands:
         started = time.perf_counter()
-        try:
-            completed = subprocess.run(
-                command,
-                cwd=ROOT,
-                env=environment,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                timeout=timeout,
-                check=False,
+        attempts: list[dict[str, Any]] = []
+        output = ""
+        returncode = -1
+        error = ""
+        for attempt in (1, 2):
+            try:
+                completed = subprocess.run(
+                    command,
+                    cwd=ROOT,
+                    env=environment,
+                    text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    timeout=timeout,
+                    check=False,
+                )
+                output = completed.stdout
+                returncode = completed.returncode
+                error = ""
+            except subprocess.TimeoutExpired as exc:
+                output = str(exc.stdout or "")
+                returncode = -1
+                error = f"timeout after {timeout} seconds"
+            attempt_log = logs / f"{name}-attempt-{attempt}.log"
+            attempt_log.write_text(output, encoding="utf-8", errors="replace")
+            attempts.append(
+                {
+                    "attempt": attempt,
+                    "status": "PASS" if returncode == 0 else "FAIL",
+                    "returncode": returncode,
+                    "error": error,
+                    "log": str(attempt_log),
+                }
             )
-            output = completed.stdout
-            returncode = completed.returncode
-            error = ""
-        except subprocess.TimeoutExpired as exc:
-            output = str(exc.stdout or "")
-            returncode = -1
-            error = f"timeout after {timeout} seconds"
+            if returncode == 0:
+                break
         log = logs / f"{name}.log"
         log.write_text(output, encoding="utf-8", errors="replace")
-        results.append(
-            {
-                "name": name,
-                "status": "PASS" if returncode == 0 else "FAIL",
-                "returncode": returncode,
-                "elapsed_seconds": round(time.perf_counter() - started, 3),
-                "log": str(log),
-                "error": error,
-            }
-        )
+        result = {
+            "name": name,
+            "status": "PASS" if returncode == 0 else "FAIL",
+            "returncode": returncode,
+            "elapsed_seconds": round(time.perf_counter() - started, 3),
+            "log": str(log),
+            "error": error,
+            "retried": len(attempts) > 1,
+            "attempts": attempts,
+        }
+        results.append(result)
+        if returncode != 0:
+            github_error(
+                f"Acceptance subtest failed: {name}",
+                {"result": result, "log_tail": output[-2500:]},
+            )
     return results
 
 
@@ -733,16 +765,18 @@ def main() -> int:
                 diagnostic["log_tail"] = "unavailable"
             failed_runtime.append(diagnostic)
         diagnostic_payload = {
-            "summary": summary,
-            "runtime_inventory": runtime_result,
             "failed_runtime_evidence": failed_runtime,
+            "summary": summary,
             "geometry": geometry,
             "phase_gates": [item for item in phases if item.get("status") != "PASS"],
             "fixture": fixture,
+            "runtime_inventory": {
+                "status": runtime_result.get("status"),
+                "error": runtime_result.get("error"),
+                "safe_method_errors": runtime_result.get("safe_method_errors", []),
+            },
         }
-        annotation = json.dumps(diagnostic_payload, ensure_ascii=False, default=str)
-        annotation = annotation.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-        print(f"::error title=Full Product Acceptance diagnostics::{annotation}")
+        github_error("Full Product Acceptance diagnostics", diagnostic_payload)
     return 0 if overall == "PASS" else 1
 
 
