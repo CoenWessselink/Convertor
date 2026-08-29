@@ -210,6 +210,8 @@ def build() -> tuple[dict[str, Any], int]:
     cancel = read_json(cancel_path)
     batch = read_json(batch_path)
     stress = read_json(stress_path)
+    phase3_windows_path = ROOT / "validation" / "phases" / "PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json"
+    phase3_windows = read_json(phase3_windows_path)
     phase1_path, phase1 = evidence("PHASE_1*CHECKLIST*.json")
     phase2_path, phase2 = evidence("PHASE_2*CHECKLIST*.json")
     phase3_path, phase3 = evidence("PHASE_3*CHECKLIST*.json")
@@ -344,6 +346,28 @@ def build() -> tuple[dict[str, Any], int]:
         "python_dll_packaged": release["portable_python_dll"],
         "workflows": "PASS" if p3_ok else "FAIL",
     }
+    phase3_windows_checks = dict(phase3_windows.get("checks") or {})
+    required_installer_checks = (
+        "silent_install",
+        "installed_self_test",
+        "installed_gui_smoke",
+        "file_associations",
+        "uninstall",
+        "no_critical_leftovers",
+    )
+    installer_ok = (
+        release_ok
+        and marked_pass(phase3_windows)
+        and all(bool(phase3_windows_checks.get(name)) for name in required_installer_checks)
+    )
+    installer_result = {
+        "status": "PASS" if installer_ok else "FAIL",
+        "artifact": release["artifacts"]["installer"],
+        "source_revision": phase3_windows.get("source_revision"),
+        "checks": {name: bool(phase3_windows_checks.get(name)) for name in required_installer_checks},
+        "uninstall_cleanup_attempts": phase3_windows.get("uninstall_cleanup_attempts", []),
+        "evidence": relative(phase3_windows_path),
+    }
     generated = datetime.now(timezone.utc).isoformat()
     passed_count = sum(row["status"] == "PASS" for row in checks)
     failed = [row for row in checks if row["status"] != "PASS"]
@@ -360,6 +384,7 @@ def build() -> tuple[dict[str, Any], int]:
         "STRESS_RESULTS.json": stress,
         "WINDOWS_EXE_TEST_RESULTS.json": windows,
         "PORTABLE_TEST_RESULTS.json": portable_result,
+        "INSTALLER_TEST_RESULTS.json": installer_result,
         "SCREENSHOT_MANIFEST.json": screenshot_manifest,
     }.items():
         write_json(name, payload)
