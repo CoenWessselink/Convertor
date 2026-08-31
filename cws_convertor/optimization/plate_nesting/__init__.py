@@ -12,8 +12,9 @@ from .core import (
 )
 from .canonical import (
     PlateCutPlan, PlateGeometryRef, PlateNestDemand, PlateNestRun, PlateOrientationVariant,
-    PlatePurchaseOption, PlateRemnant, PlateSolverEvidence, PlateStock, PlateValidationReport,
-    solve_canonical_plate_nesting, validate_canonical_plate_nesting,
+    PlatePlacementOverride, PlatePurchaseOption, PlateRemnant, PlateSolverEvidence, PlateStock,
+    PlateStockBoundary, PlateValidationReport, apply_manual_plate_placement,
+    reoptimize_canonical_plate_nesting, solve_canonical_plate_nesting, validate_canonical_plate_nesting,
 )
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "solve_plate_nesting",
     "validate_plate_nesting",
     "PlateCutPlan", "PlateGeometryRef", "PlateNestDemand", "PlateNestRun", "PlateOrientationVariant",
-    "PlatePurchaseOption", "PlateRemnant", "PlateSolverEvidence", "PlateStock", "PlateValidationReport",
-    "solve_canonical_plate_nesting", "validate_canonical_plate_nesting",
+    "PlatePlacementOverride", "PlatePurchaseOption", "PlateRemnant", "PlateSolverEvidence", "PlateStock",
+    "PlateStockBoundary", "PlateValidationReport", "apply_manual_plate_placement",
+    "reoptimize_canonical_plate_nesting", "solve_canonical_plate_nesting", "validate_canonical_plate_nesting",
 ]

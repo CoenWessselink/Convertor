@@ -69,6 +69,34 @@ class Shift:
 
 
 @dataclass(frozen=True)
+class MaterialAvailability:
+    availability_id: str
+    material_id: str
+    available_at: str
+    quantity: int = 1
+    order_id: str = ""
+    operation_id: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.availability_id or not self.material_id or int(self.quantity) < 1:
+            raise ValueError("material availability identity/quantity is invalid")
+        _time(self.available_at)
+
+
+@dataclass(frozen=True)
+class MaintenanceWindow:
+    maintenance_id: str
+    resource_id: str
+    starts_at: str
+    ends_at: str
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.maintenance_id or not self.resource_id or _time(self.ends_at) <= _time(self.starts_at):
+            raise ValueError("maintenance window identity/time is invalid")
+
+
+@dataclass(frozen=True)
 class OperationRequirement:
     operation_id: str
     capability: str
@@ -76,6 +104,7 @@ class OperationRequirement:
     setup_code: str = ""
     eligible_resource_ids: tuple[str, ...] = ()
     predecessor_ids: tuple[str, ...] = ()
+    required_material_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.operation_id or not self.capability or int(self.duration_minutes) <= 0:
@@ -136,7 +165,35 @@ class ProductionSchedule:
 
 
 class FiniteCapacityPlanner:
-    def schedule(self, orders: Iterable[ProductionOrder], resources: Iterable[Resource], shifts: Iterable[Shift], *, schedule_id: str = "phase2-schedule") -> ProductionSchedule:
+    @staticmethod
+    def _fit_maintenance(
+        resource_id: str,
+        start: datetime,
+        duration: timedelta,
+        shift_end: datetime,
+        maintenance: dict[str, list[MaintenanceWindow]],
+    ) -> tuple[datetime, datetime] | None:
+        candidate = start
+        for window in maintenance.get(resource_id, []):
+            window_start, window_end = _time(window.starts_at), _time(window.ends_at)
+            end = candidate + duration
+            if end <= window_start:
+                break
+            if candidate < window_end and end > window_start:
+                candidate = window_end
+        end = candidate + duration
+        return (candidate, end) if end <= shift_end else None
+
+    def schedule(
+        self,
+        orders: Iterable[ProductionOrder],
+        resources: Iterable[Resource],
+        shifts: Iterable[Shift],
+        *,
+        schedule_id: str = "phase2-schedule",
+        material_availability: Iterable[MaterialAvailability] = (),
+        maintenance_windows: Iterable[MaintenanceWindow] = (),
+    ) -> ProductionSchedule:
         order_list = tuple(sorted(orders, key=lambda item: (_time(item.due_at), item.order_id)))
         resource_map = {item.resource_id: item for item in resources}
         shift_list = tuple(shifts)
@@ -145,7 +202,14 @@ class FiniteCapacityPlanner:
             shift_map.setdefault(shift.resource_id, []).append(shift)
         for values in shift_map.values():
             values.sort(key=lambda item: _time(item.starts_at))
-        input_hash = _digest({"orders": [asdict(item) for item in order_list], "resources": [asdict(item) for item in resource_map.values()], "shifts": [asdict(item) for item in shift_list], "schedule_id": schedule_id})
+        availability_list = tuple(material_availability)
+        maintenance_list = tuple(maintenance_windows)
+        maintenance_map: dict[str, list[MaintenanceWindow]] = {}
+        for window in maintenance_list:
+            maintenance_map.setdefault(window.resource_id, []).append(window)
+        for values in maintenance_map.values():
+            values.sort(key=lambda item: _time(item.starts_at))
+        input_hash = _digest({"orders": [asdict(item) for item in order_list], "resources": [asdict(item) for item in resource_map.values()], "shifts": [asdict(item) for item in shift_list], "material_availability": [asdict(item) for item in availability_list], "maintenance_windows": [asdict(item) for item in maintenance_list], "schedule_id": schedule_id})
         available: dict[str, datetime] = {}
         previous_setup: dict[str, str] = {}
         scheduled: list[ScheduledOperation] = []
@@ -158,15 +222,22 @@ class FiniteCapacityPlanner:
                     raise PlanningError("CWS.PLAN.PRECEDENCE_CYCLE", order.order_id)
                 for requirement in ready:
                     predecessor_end = max((order_end[key] for key in requirement.predecessor_ids), default=datetime.min.replace(tzinfo=timezone.utc))
+                    material_ready = predecessor_end
+                    for material_id in requirement.required_material_ids:
+                        matches = tuple(item for item in availability_list if item.material_id == material_id and item.quantity >= order.quantity and (not item.order_id or item.order_id == order.order_id) and (not item.operation_id or item.operation_id == requirement.operation_id))
+                        if not matches:
+                            raise PlanningError("CWS.PLAN.MATERIAL_UNAVAILABLE", f"{order.order_id}/{requirement.operation_id}/{material_id}")
+                        material_ready = max(material_ready, min(_time(item.available_at) for item in matches))
                     candidates = []
                     for resource in resource_map.values():
                         if not resource.active or requirement.capability not in resource.capabilities or (requirement.eligible_resource_ids and resource.resource_id not in requirement.eligible_resource_ids):
                             continue
                         setup = int(getattr(resource, "setup_minutes", 0)) if previous_setup.get(resource.resource_id) != requirement.setup_code else 0
                         for shift in shift_map.get(resource.resource_id, []):
-                            start = max(_time(shift.starts_at), available.get(resource.resource_id, _time(shift.starts_at)), predecessor_end)
-                            end = start + timedelta(minutes=setup + requirement.duration_minutes)
-                            if end <= _time(shift.ends_at):
+                            start = max(_time(shift.starts_at), available.get(resource.resource_id, _time(shift.starts_at)), predecessor_end, material_ready)
+                            fitted = self._fit_maintenance(resource.resource_id, start, timedelta(minutes=setup + requirement.duration_minutes), _time(shift.ends_at), maintenance_map)
+                            if fitted is not None:
+                                start, end = fitted
                                 candidates.append((end, start, resource, setup))
                                 break
                     if not candidates:
@@ -176,14 +247,18 @@ class FiniteCapacityPlanner:
                     available[resource.resource_id], previous_setup[resource.resource_id], order_end[requirement.operation_id] = end, requirement.setup_code, end
                     remaining.pop(requirement.operation_id)
         result = ProductionSchedule(schedule_id, tuple(scheduled), input_hash, _digest([asdict(item) for item in scheduled]))
-        return replace(result, blocker_codes=self.validate(result, order_list, tuple(resource_map.values()), shift_list))
+        return replace(result, blocker_codes=self.validate(result, order_list, tuple(resource_map.values()), shift_list, material_availability=availability_list, maintenance_windows=maintenance_list))
 
-    def validate(self, schedule: ProductionSchedule, orders: Iterable[ProductionOrder], resources: Iterable[Resource], shifts: Iterable[Shift]) -> tuple[str, ...]:
+    def validate(self, schedule: ProductionSchedule, orders: Iterable[ProductionOrder], resources: Iterable[Resource], shifts: Iterable[Shift], *, material_availability: Iterable[MaterialAvailability] = (), maintenance_windows: Iterable[MaintenanceWindow] = ()) -> tuple[str, ...]:
         resource_map = {item.resource_id: item for item in resources}
         order_map = {item.order_id: item for item in orders}
         shift_map: dict[str, list[Shift]] = {}
         for shift in shifts:
             shift_map.setdefault(shift.resource_id, []).append(shift)
+        availability_list = tuple(material_availability)
+        maintenance_map: dict[str, list[MaintenanceWindow]] = {}
+        for window in maintenance_windows:
+            maintenance_map.setdefault(window.resource_id, []).append(window)
         codes, by_resource = [], {}
         index = {(item.order_id, item.operation_id): item for item in schedule.operations}
         for item in schedule.operations:
@@ -194,6 +269,12 @@ class FiniteCapacityPlanner:
                 codes.append("CWS.PLAN.INELIGIBLE_RESOURCE")
             if not any(_time(shift.starts_at) <= _time(item.starts_at) and _time(item.ends_at) <= _time(shift.ends_at) for shift in shift_map.get(item.resource_id, [])):
                 codes.append("CWS.PLAN.OUTSIDE_SHIFT")
+            if any(_time(item.starts_at) < _time(window.ends_at) and _time(item.ends_at) > _time(window.starts_at) for window in maintenance_map.get(item.resource_id, [])):
+                codes.append("CWS.PLAN.MAINTENANCE_OVERLAP")
+            if requirement:
+                for material_id in requirement.required_material_ids:
+                    if not any(value.material_id == material_id and value.quantity >= order.quantity and _time(value.available_at) <= _time(item.starts_at) and (not value.order_id or value.order_id == order.order_id) and (not value.operation_id or value.operation_id == requirement.operation_id) for value in availability_list):
+                        codes.append("CWS.PLAN.MATERIAL_UNAVAILABLE")
             for predecessor in item.predecessor_ids:
                 earlier = index.get((item.order_id, predecessor))
                 if earlier is None or _time(earlier.ends_at) > _time(item.starts_at):
@@ -204,12 +285,12 @@ class FiniteCapacityPlanner:
                 codes.append("CWS.PLAN.CAPACITY_OVERLAP")
         return tuple(dict.fromkeys(codes))
 
-    def manual_reschedule(self, schedule: ProductionSchedule, orders: Iterable[ProductionOrder], resources: Iterable[Resource], shifts: Iterable[Shift], *, schedule_operation_id: str, resource_id: str, starts_at: str, ends_at: str) -> ProductionSchedule:
+    def manual_reschedule(self, schedule: ProductionSchedule, orders: Iterable[ProductionOrder], resources: Iterable[Resource], shifts: Iterable[Shift], *, schedule_operation_id: str, resource_id: str, starts_at: str, ends_at: str, material_availability: Iterable[MaterialAvailability] = (), maintenance_windows: Iterable[MaintenanceWindow] = ()) -> ProductionSchedule:
         operations = tuple(replace(item, resource_id=resource_id, starts_at=starts_at, ends_at=ends_at, manually_rescheduled=True) if item.schedule_id == schedule_operation_id else item for item in schedule.operations)
         if operations == schedule.operations:
             raise PlanningError("CWS.PLAN.UNKNOWN_OPERATION", schedule_operation_id)
         candidate = replace(schedule, operations=operations, schedule_sha256=_digest([asdict(item) for item in operations]))
-        blockers = self.validate(candidate, orders, resources, shifts)
+        blockers = self.validate(candidate, orders, resources, shifts, material_availability=material_availability, maintenance_windows=maintenance_windows)
         if blockers:
             raise PlanningError(blockers[0], "manual reschedule is not feasible")
         return replace(candidate, blocker_codes=())
@@ -351,4 +432,4 @@ class Phase2ProductionState:
         return cls.from_dict(value) if value else cls()
 
 
-__all__ = ["FiniteCapacityPlanner", "MachineResource", "OperationExecution", "OperationRequirement", "Phase2ProductionState", "PlanningError", "ProductionOrder", "ProductionSchedule", "Resource", "ScheduledOperation", "Shift", "ShopfloorIssue", "ShopfloorState", "WorkCenter"]
+__all__ = ["FiniteCapacityPlanner", "MachineResource", "MaintenanceWindow", "MaterialAvailability", "OperationExecution", "OperationRequirement", "Phase2ProductionState", "PlanningError", "ProductionOrder", "ProductionSchedule", "Resource", "ScheduledOperation", "Shift", "ShopfloorIssue", "ShopfloorState", "WorkCenter"]

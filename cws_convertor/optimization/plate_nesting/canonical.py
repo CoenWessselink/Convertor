@@ -1,7 +1,7 @@
 """Canonical plate-nesting contracts on the deterministic baseline solver."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import json
 from math import isclose, isfinite
@@ -160,6 +160,23 @@ class PlateOrientationVariant:
 
 
 @dataclass(frozen=True)
+class PlateStockBoundary:
+    stock_id: str
+    geometry: PlateGeometryRef
+
+
+@dataclass(frozen=True)
+class PlatePlacementOverride:
+    instance_id: str
+    stock_instance_id: str
+    x_mm: float
+    y_mm: float
+    rotation_deg: int = 0
+    mirrored: bool = False
+    locked: bool = True
+
+
+@dataclass(frozen=True)
 class PlateSolverEvidence:
     algorithm: str
     deterministic: bool
@@ -198,6 +215,7 @@ class PlateCutPlan:
     predicted_remnants: tuple[PlateRemnant, ...]
     neutral_process_intent: tuple[str, ...]
     report_formats: tuple[str, ...] = ("JSON", "SVG", "PDF", "XLSX", "labels")
+    locked_instance_ids: tuple[str, ...] = ()
 
     @property
     def complete(self) -> bool:
@@ -222,6 +240,7 @@ class PlateCutPlan:
             cut_length_mm=float(value["cut_length_mm"]), pierce_count=int(value["pierce_count"]),
             predicted_remnants=tuple(PlateRemnant(**dict(item)) for item in value.get("predicted_remnants", [])),
             neutral_process_intent=tuple(value.get("neutral_process_intent", [])), report_formats=tuple(value.get("report_formats", ("JSON", "SVG", "PDF", "XLSX", "labels"))),
+            locked_instance_ids=tuple(value.get("locked_instance_ids", [])),
         )
 
 
@@ -299,16 +318,103 @@ def solve_canonical_plate_nesting(demands: Iterable[PlateNestDemand], stock: Ite
     return PlateCutPlan(run_id, evidence.algorithm, float(kerf_mm), float(edge_margin_mm), float(spacing_mm), tuple(layouts), tuple(sorted(unplaced)), input_sha256, plan_hash, evidence, used_area / stock_area if stock_area else 0.0, max(0.0, stock_area - used_area), cut_length, pierces, tuple(predicted), neutral)
 
 
-def validate_canonical_plate_nesting(plan: PlateCutPlan, demands: Iterable[PlateNestDemand], stock: Iterable[PlateStock], *, remnants: Iterable[PlateRemnant] = (), purchase_options: Iterable[PlatePurchaseOption] = ()) -> PlateValidationReport:
+def _placed_polygon(placement: PlatePlacement, geometry: PlateGeometryRef):
+    try:
+        from shapely import affinity
+        from shapely.geometry import Polygon
+    except ImportError:
+        return None
+    polygon = Polygon(geometry.outer_contour, geometry.inner_contours)
+    min_x, min_y, _max_x, _max_y = geometry.bounds
+    polygon = affinity.translate(polygon, xoff=-min_x, yoff=-min_y)
+    if placement.mirrored:
+        polygon = affinity.scale(polygon, xfact=-1.0, yfact=1.0, origin="center")
+    polygon = affinity.rotate(polygon, placement.rotation_deg, origin=(0.0, 0.0))
+    min_x, min_y, _max_x, _max_y = polygon.bounds
+    return affinity.translate(polygon, xoff=placement.x_mm - min_x, yoff=placement.y_mm - min_y)
+
+
+def _rehash_plan(plan: PlateCutPlan, demands: tuple[PlateNestDemand, ...], layouts: tuple[PlateLayout, ...], unplaced: tuple[str, ...], locked: tuple[str, ...], *, algorithm: str) -> PlateCutPlan:
+    demand_map = {item.demand_id: item for item in demands}
+    used_area = sum(demand_map[item.instance_id.rsplit(":", 1)[0]].geometry.area_mm2 for layout in layouts for item in layout.placements)
+    stock_area = sum(layout.width_mm * layout.height_mm for layout in layouts)
+    cut_length = sum(demand_map[item.instance_id.rsplit(":", 1)[0]].geometry.cut_length_mm for layout in layouts for item in layout.placements)
+    pierces = sum(1 + len(demand_map[item.instance_id.rsplit(":", 1)[0]].geometry.inner_contours) for layout in layouts for item in layout.placements)
+    payload = {"algorithm": algorithm, "input_sha256": plan.input_sha256, "layouts": [asdict(item) for item in layouts], "unplaced_instance_ids": sorted(unplaced), "locked_instance_ids": sorted(locked), "neutral_process_intent": plan.neutral_process_intent}
+    evidence = replace(plan.solver_evidence, algorithm=algorithm, exact_small_proven=False, optimality_gap=None, solver_status="manual_or_partial_validated")
+    return replace(plan, algorithm=algorithm, layouts=layouts, unplaced_instance_ids=tuple(sorted(unplaced)), plan_sha256=_digest(payload), solver_evidence=evidence, utilization=used_area / stock_area if stock_area else 0.0, scrap_area_mm2=max(0.0, stock_area - used_area), cut_length_mm=cut_length, pierce_count=pierces, predicted_remnants=(), locked_instance_ids=tuple(sorted(locked)))
+
+
+def apply_manual_plate_placement(plan: PlateCutPlan, demands: Iterable[PlateNestDemand], stock: Iterable[PlateStock], override: PlatePlacementOverride, *, remnants: Iterable[PlateRemnant] = (), purchase_options: Iterable[PlatePurchaseOption] = (), stock_boundaries: Iterable[PlateStockBoundary] = ()) -> PlateCutPlan:
+    demand_list = tuple(demands)
+    demand_map = {item.demand_id: item for item in demand_list}
+    sources = _stock_sources(stock, remnants, purchase_options)
+    source_map = {f"{item.stock_id}:{number:04d}": item for item in sources for number in range(1, item.quantity + 1)}
+    demand_id = override.instance_id.rsplit(":", 1)[0]
+    demand, source = demand_map.get(demand_id), source_map.get(override.stock_instance_id)
+    if demand is None or source is None:
+        raise ValueError("manual placement references unknown demand or stock instance")
+    rotation = int(override.rotation_deg) % 360
+    if rotation not in demand.allowed_rotations_deg or (override.mirrored and not demand.mirror_allowed):
+        raise ValueError("manual placement violates orientation constraints")
+    width = demand.geometry.height_mm if rotation % 180 == 90 else demand.geometry.width_mm
+    height = demand.geometry.width_mm if rotation % 180 == 90 else demand.geometry.height_mm
+    replacement = PlatePlacement(override.instance_id, demand.part_id, override.stock_instance_id, float(override.x_mm), float(override.y_mm), width, height, rotation % 180 == 90, rotation, bool(override.mirrored), demand.geometry.geometry_sha256, demand.production_identity, demand.material, demand.grade, demand.thickness_mm)
+    layouts: list[PlateLayout] = []
+    found = False
+    target_found = False
+    for layout in plan.layouts:
+        retained = tuple(item for item in layout.placements if item.instance_id != override.instance_id)
+        found = found or len(retained) != len(layout.placements)
+        if layout.stock_instance_id == override.stock_instance_id:
+            retained = (*retained, replacement)
+            target_found = True
+        if retained:
+            layouts.append(replace(layout, placements=tuple(retained)))
+    if not target_found:
+        layouts.append(PlateLayout(override.stock_instance_id, source.stock_id, source.width_mm, source.height_mm, (replacement,)))
+    unplaced = tuple(item for item in plan.unplaced_instance_ids if item != override.instance_id)
+    if not found and override.instance_id not in plan.unplaced_instance_ids:
+        raise ValueError("manual placement instance does not belong to this plan")
+    locked = set(plan.locked_instance_ids)
+    if override.locked:
+        locked.add(override.instance_id)
+    else:
+        locked.discard(override.instance_id)
+    candidate = _rehash_plan(plan, demand_list, tuple(layouts), unplaced, tuple(locked), algorithm="canonical_manual_layout_v1")
+    report = validate_canonical_plate_nesting(candidate, demand_list, stock, remnants=remnants, purchase_options=purchase_options, stock_boundaries=stock_boundaries)
+    if not report.passed:
+        raise ValueError(f"manual placement rejected: {','.join(report.blocking_codes)}")
+    return candidate
+
+
+def reoptimize_canonical_plate_nesting(plan: PlateCutPlan, demands: Iterable[PlateNestDemand], stock: Iterable[PlateStock], *, locked_instance_ids: Iterable[str] = (), placement_overrides: Iterable[PlatePlacementOverride] = (), remnants: Iterable[PlateRemnant] = (), purchase_options: Iterable[PlatePurchaseOption] = (), stock_boundaries: Iterable[PlateStockBoundary] = (), run_id: str | None = None) -> PlateCutPlan:
+    demand_list = tuple(demands)
+    locked = tuple(sorted(set(locked_instance_ids) | set(plan.locked_instance_ids)))
+    previous = {item.instance_id: item for layout in plan.layouts for item in layout.placements if item.instance_id in locked}
+    if set(locked) - set(previous):
+        raise ValueError("a locked placement is missing from the source plan")
+    candidate = solve_canonical_plate_nesting(demand_list, stock, remnants=remnants, purchase_options=purchase_options, kerf_mm=plan.kerf_mm, edge_margin_mm=plan.edge_margin_mm, spacing_mm=plan.spacing_mm, run_id=run_id or plan.run_id)
+    for instance_id in locked:
+        item = previous[instance_id]
+        candidate = apply_manual_plate_placement(candidate, demand_list, stock, PlatePlacementOverride(instance_id, item.stock_instance_id, item.x_mm, item.y_mm, item.rotation_deg, item.mirrored, True), remnants=remnants, purchase_options=purchase_options, stock_boundaries=stock_boundaries)
+    for override in placement_overrides:
+        candidate = apply_manual_plate_placement(candidate, demand_list, stock, override, remnants=remnants, purchase_options=purchase_options, stock_boundaries=stock_boundaries)
+    return candidate
+
+
+def validate_canonical_plate_nesting(plan: PlateCutPlan, demands: Iterable[PlateNestDemand], stock: Iterable[PlateStock], *, remnants: Iterable[PlateRemnant] = (), purchase_options: Iterable[PlatePurchaseOption] = (), stock_boundaries: Iterable[PlateStockBoundary] = ()) -> PlateValidationReport:
     demand_list = tuple(demands)
     demand_map = {item.demand_id: item for item in demand_list}
     sources = _stock_sources(stock, remnants, purchase_options)
     source_map = {item.stock_id: item for item in sources}
+    boundary_map = {item.stock_id: item.geometry for item in stock_boundaries}
     legacy = PlateNestingPlan(plan.algorithm, plan.kerf_mm + plan.spacing_mm, plan.edge_margin_mm, plan.layouts, plan.unplaced_instance_ids, plan.input_sha256, plan.plan_sha256)
     legacy_report = validate_plate_nesting(legacy)
     codes = list(legacy_report.blocking_codes)
     expected = {f"{item.demand_id}:{number:04d}" for item in demand_list for number in range(1, item.quantity + 1)}
     actual: set[str] = set()
+    exact_by_layout: dict[str, list[tuple[PlatePlacement, Any]]] = {}
     stock_instances: set[str] = set()
     for layout in plan.layouts:
         if layout.stock_instance_id in stock_instances:
@@ -341,10 +447,29 @@ def validate_canonical_plate_nesting(plan: PlateCutPlan, demands: Iterable[Plate
             if demand.grain_direction_deg is not None and source.grain_direction_deg is not None:
                 if not isclose((float(demand.grain_direction_deg) + placement.rotation_deg) % 180.0, float(source.grain_direction_deg) % 180.0, abs_tol=1e-6):
                     codes.append("CWS.PLATE.GRAIN_VIOLATION")
+            polygon = _placed_polygon(placement, demand.geometry)
+            if polygon is None and (demand.geometry.inner_contours or layout.stock_id in boundary_map):
+                codes.append("CWS.PLATE.EXACT_GEOMETRY_ENGINE_UNAVAILABLE")
+            elif polygon is not None:
+                exact_by_layout.setdefault(layout.stock_instance_id, []).append((placement, polygon))
+                boundary = boundary_map.get(layout.stock_id)
+                if boundary is not None:
+                    stock_polygon = _placed_polygon(PlatePlacement("stock", "stock", layout.stock_instance_id, 0.0, 0.0, boundary.width_mm, boundary.height_mm), boundary)
+                    usable = stock_polygon.buffer(-plan.edge_margin_mm) if stock_polygon is not None else None
+                    if usable is None or usable.is_empty or not usable.covers(polygon):
+                        codes.append("CWS.PLATE.OUTSIDE_STOCK_CONTOUR_OR_IN_HOLE")
+    exact_clearance = plan.kerf_mm + plan.spacing_mm
+    for values in exact_by_layout.values():
+        for index, (_left_item, left) in enumerate(values):
+            for _right_item, right in values[index + 1:]:
+                if left.intersects(right) or left.distance(right) + 1e-7 < exact_clearance:
+                    codes.append("CWS.PLATE.EXACT_CONTOUR_OVERLAP_OR_KERF")
     if actual | set(plan.unplaced_instance_ids) != expected:
         codes.append("CWS.PLATE.DEMAND_IDENTITY_MISMATCH")
+    if set(plan.locked_instance_ids) - actual:
+        codes.append("CWS.PLATE.LOCKED_INSTANCE_MISSING")
     unique = tuple(dict.fromkeys(codes))
     return PlateValidationReport(not unique, unique, legacy_report.checked_placements, plan.plan_sha256)
 
 
-__all__ = ["PlateCutPlan", "PlateGeometryRef", "PlateNestDemand", "PlateNestRun", "PlateOrientationVariant", "PlatePurchaseOption", "PlateRemnant", "PlateSolverEvidence", "PlateStock", "PlateValidationReport", "solve_canonical_plate_nesting", "validate_canonical_plate_nesting"]
+__all__ = ["PlateCutPlan", "PlateGeometryRef", "PlateNestDemand", "PlateNestRun", "PlateOrientationVariant", "PlatePlacementOverride", "PlatePurchaseOption", "PlateRemnant", "PlateSolverEvidence", "PlateStock", "PlateStockBoundary", "PlateValidationReport", "apply_manual_plate_placement", "reoptimize_canonical_plate_nesting", "solve_canonical_plate_nesting", "validate_canonical_plate_nesting"]

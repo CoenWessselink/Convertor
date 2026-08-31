@@ -1,0 +1,26 @@
+{
+  "coverage": {
+    "finite_capacity_planning": true,
+    "gui_cli_same_services": true,
+    "plate_nesting_baseline_solver": true,
+    "plate_nesting_canonical_models": true,
+    "plate_nesting_exact_small": true,
+    "plate_nesting_independent_validator": true,
+    "plate_nesting_reports_neutral": true,
+    "plate_nesting_rotation_grain": true,
+    "plate_nesting_stock_remnants": true,
+    "project_save_reopen": true,
+    "proof_center": true,
+    "quality_inspection": true,
+    "real_synthetic_e2e": true,
+    "safety_flags_false": true,
+    "shopfloor": true
+  },
+  "plate_plan_sha256": "0a9a85c4eafa6ea808d1ef2b96f01ca7e8bf47e33a9eb34a38f3aba8a9a3fc62",
+  "production_state_sha256": "efc72d78aa3508bc4556ea688d1086de9b4822da665d514e7c7b3ebc8a121ea6",
+  "proof_center_sha256": "74c26376faafd28d21ed17e5d71dee99714b938b94f7cab25896b9667e5ba96e",
+  "quality_release_sha256": "07772be8fbe6c1d7f2dfbd68dd47781057517c9a195d9f0ea6a40e9155b1003b",
+  "schedule_sha256": "776dd61e1ba4bb43d2927cae27e4f39945dca5031de58d04add706585a05fe04",
+  "schema": "cws-phase2-completion-scope-evidence-1.0",
+  "status": "passed"
+}
