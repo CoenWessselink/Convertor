@@ -45,7 +45,14 @@ class PersistentGeometryWorkerPool:
         self.failed_requests = 0
         self.restarted_workers = 0
         self.retry_successes = 0
+        self.last_errors: list[str] = []
         self._last_dispatch_worker_count = 0
+
+    def _record_error(self, exc: BaseException) -> None:
+        message = f"{type(exc).__name__}: {exc}"
+        with self._lifecycle_lock:
+            self.last_errors.append(message)
+            del self.last_errors[:-8]
 
     @classmethod
     def shared(
@@ -119,7 +126,8 @@ class PersistentGeometryWorkerPool:
                     settings,
                     cancel_check=cancel_check,
                 )
-            except Exception:
+            except Exception as exc:
+                self._record_error(exc)
                 self.failed_requests += 1
                 self._replace_worker(index)
                 if cancel_check:
@@ -130,7 +138,8 @@ class PersistentGeometryWorkerPool:
                         settings,
                         cancel_check=cancel_check,
                     )
-                except Exception:
+                except Exception as exc:
+                    self._record_error(exc)
                     self.failed_requests += 1
                     raise
                 self.retry_successes += 1
@@ -160,7 +169,8 @@ class PersistentGeometryWorkerPool:
                     }
                 self.completed_requests += len(meshes)
                 return dict(meshes)
-            except Exception:
+            except Exception as exc:
+                self._record_error(exc)
                 self.failed_requests += len(requests)
                 self._replace_worker(index)
                 provider = self._providers[index]
@@ -253,6 +263,7 @@ class PersistentGeometryWorkerPool:
             "failed_requests": self.failed_requests,
             "restarted_workers": self.restarted_workers,
             "retry_successes": self.retry_successes,
+            "last_errors": list(self.last_errors),
             "session_shared": self.persistent_session_provider,
             "closed": self._closed,
         }
