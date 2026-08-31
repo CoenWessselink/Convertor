@@ -32,6 +32,7 @@ VersionInfoProductName={#MyAppName}
 VersionInfoProductVersion={#MyAppNumericVersion}
 VersionInfoCompany={#MyAppPublisher}
 ChangesAssociations=yes
+UsePreviousTasks=no
 
 [Languages]
 Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
