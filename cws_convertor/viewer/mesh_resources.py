@@ -415,15 +415,16 @@ def build_viewer_mesh_resource(
         )
 
     if inspection.status == "resolved_exact" and inspection.geometry_kind == "native_brep":
-        if entity.source.source_format.upper() not in {"STEP", "STP"}:
-            raise ValueError("Native BREP viewer mesh is not bound to a STEP source")
+        if entity.source.source_format.upper() not in {"STEP", "STP", "IFC"}:
+            raise ValueError("Native BREP viewer mesh is not bound to a STEP or IFC source")
         if not inspection.production_geometry_exact:
             raise ValueError("Native BREP inspection is not marked exact")
         vertices, triangles = _tessellate_native_shape(inspection.native_shape, policy)
         geometry_basis = "source_native_brep"
         tessellation = {
             **policy.to_dict(),
-            "method": "cadquery_native_brep_tessellate",
+            "method": "verified_native_brep_tessellate",
+            "source_format": entity.source.source_format.upper(),
         }
     elif (
         inspection.status == "resolved_mesh"

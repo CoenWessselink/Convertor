@@ -69,7 +69,25 @@ def _material_catalog() -> Any:
 
 
 def _catalog_profile(value: Any) -> str:
-    key = re.sub(r"[^A-Z0-9]", "", _text(value).upper())
+    raw = _text(value).upper().replace(",", ".")
+    # Dutch workshop notation: K<side>/<wall> is an SHS and
+    # K<height>x<width>/<wall> is an RHS. Resolve it before querying the
+    # immutable catalogue so the result is an exact, auditable match.
+    rectangular = re.fullmatch(
+        r"K(?:OKER)?\s*(\d+(?:\.\d+)?)\s*[X*]\s*(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)",
+        raw,
+    )
+    square = re.fullmatch(
+        r"K(?:OKER)?\s*(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)",
+        raw,
+    )
+    if rectangular:
+        height, width, wall = rectangular.groups()
+        raw = f"RHS{height}x{width}x{wall}"
+    elif square:
+        side, wall = square.groups()
+        raw = f"SHS{side}x{side}x{wall}"
+    key = re.sub(r"[^A-Z0-9]", "", raw)
     if not key:
         return ""
     try:

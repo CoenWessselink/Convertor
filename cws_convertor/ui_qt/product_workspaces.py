@@ -186,8 +186,8 @@ if qt_available():
                 profile = _text(getattr(part, "normalized_profile", "") or getattr(part, "profile", ""))
                 material = _text(getattr(part, "normalized_material", "") or getattr(part, "material", ""))
                 length = float(getattr(part, "length_mm", 0.0) or 0.0)
-                quantity = int(getattr(part, "quantity", 1) or 1)
-                weight = float(getattr(part, "weight_kg", 0.0) or getattr(part, "mass_kg", 0.0) or 0.0)
+                quantity = int(getattr(part, "quantity_total", 1) or 1)
+                weight = float(getattr(part, "mass_each_kg", 0.0) or 0.0)
                 phase = _text(getattr(part, "phase", "") or getattr(project, "project_phase", ""))
                 status = _text(getattr(part, "status", ""), "review")
                 profiles.add(profile)
@@ -651,9 +651,9 @@ if qt_available():
                     self._workspace.project,
                     mode=str(self.mode.currentData() or "concept"),
                     created_by="qt-gui",
-                    scenario_id=f"ui-{str(getattr(self, 'phase3_scenario', self.mode).currentData() or 'waste')}",
-                    scenario_family=str(getattr(self, "phase3_scenario", self.mode).currentData() or "waste"),
-                    backend=str(getattr(self, "phase3_backend", self.mode).currentData() or "auto"),
+                    scenario_id=f"ui-{str(getattr(getattr(self, 'phase3_scenario', None), 'currentData', lambda: 'waste')() or 'waste')}",
+                    scenario_family=str(getattr(getattr(self, "phase3_scenario", None), "currentData", lambda: "waste")() or "waste"),
+                    backend=str(getattr(getattr(self, "phase3_backend", None), "currentData", lambda: "auto")() or "auto"),
                     timeout_seconds=30.0,
                 )
             except Exception as exc:

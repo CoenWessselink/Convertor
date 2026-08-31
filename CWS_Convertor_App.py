@@ -48,6 +48,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--require-gui-runtime", action="store_true")
     parser.add_argument("--conversion-worker", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--conversion-result", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--geometry-worker-service", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--worker-host", help=argparse.SUPPRESS)
+    parser.add_argument("--worker-port", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--worker-token", help=argparse.SUPPRESS)
+    parser.add_argument("--worker-root", type=Path, help=argparse.SUPPRESS)
     return parser
 
 
@@ -177,6 +182,27 @@ def _run_legacy(initial_files: list[str]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.geometry_worker_service:
+        missing = [
+            name
+            for name, value in (
+                ("--worker-host", args.worker_host),
+                ("--worker-port", args.worker_port),
+                ("--worker-token", args.worker_token),
+                ("--worker-root", args.worker_root),
+            )
+            if value in (None, "")
+        ]
+        if missing:
+            raise ValueError(f"Geometrieworker mist verplichte argumenten: {', '.join(missing)}")
+        from cws_viewer.geometry.frozen_worker import run_geometry_worker_service
+
+        return run_geometry_worker_service(
+            host=str(args.worker_host),
+            port=int(args.worker_port),
+            token=str(args.worker_token),
+            root=Path(args.worker_root),
+        )
     if args.conversion_worker:
         if args.conversion_result is None:
             raise ValueError("--conversion-result ontbreekt voor de conversieworker")
@@ -245,6 +271,7 @@ if __name__ == "__main__":
             "--gui-smoke",
             "--viewer-self-test",
             "--viewer-gui-smoke",
+            "--geometry-worker-service",
         }
         if bool(getattr(sys, "frozen", False)) and diagnostic_flags.intersection(sys.argv[1:]):
             # Native CAD/OpenGL libraries can fault while Python tears down a

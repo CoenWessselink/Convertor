@@ -12,6 +12,7 @@ from PySide6 import QtCore
 
 from conversion import convert_file
 from cws_convertor.project import ProjectService
+from cws_convertor.thumbnails import create_ifc_thumbnail
 
 
 ProgressCallback = Callable[[int, str], None]
@@ -185,6 +186,12 @@ def build_project_from_models(
             encoding="utf-8",
         )
 
+    thumbnail = ""
+    thumbnail_source = next((path for path in inputs if path.suffix.lower() == ".ifc"), None)
+    if thumbnail_source is not None:
+        emit(96, "Miniatuur uit echte IFC-geometrie opbouwen")
+        generated = create_ifc_thumbnail(thumbnail_source, target.with_suffix(".thumbnail.png"))
+        thumbnail = str(generated or "")
     emit(100, "Projectcontainer gereed voor Viewer V15")
     return {
         "status": "ok",
@@ -195,6 +202,8 @@ def build_project_from_models(
         "nc1_conversions": nc1_conversions,
         "auxiliary_sources": auxiliary_records,
         "summary": summary,
+        "thumbnail": thumbnail,
+        "appearance_prepared_during_import": True,
     }
 
 

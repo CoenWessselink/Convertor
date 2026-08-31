@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from build_phase2_completion_validation import build_completion_validation
+
 ROOT = Path(__file__).resolve().parents[1]
 PHASES = ROOT / "validation" / "phases"
 SOURCE = PHASES / "PHASE_2_SOURCE_TEST_EVIDENCE.json"
@@ -76,9 +78,11 @@ def main() -> int:
     lines = ["# PHASE_2_CHECKLIST", "", f"`PHASE_2_CHECKLIST = {passed}/{len(items)} PASS`", "", f"`PHASE_2 = {payload['status'].upper()}`", ""]
     lines.extend(f"- [{item['status']}] `{item['id']}`" for item in items)
     OUTPUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    completion = build_completion_validation()
     print(f"PHASE_2_CHECKLIST = {passed}/{len(items)} PASS")
+    print(f"PHASE_2_COMPLETION_CHECKLIST = {completion['summary']['passed']}/53 PASS")
     print(f"PHASE_2 = {payload['status'].upper()}")
-    return 0 if payload["status"] == "complete" else 1
+    return 0 if payload["status"] == "complete" and completion["status"] == "complete" else 1
 
 
 if __name__ == "__main__":

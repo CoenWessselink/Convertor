@@ -468,6 +468,17 @@ if qt_available():
             self.target_preview.set_caption("Doelpreview wordt na conversie bijgewerkt")
             self._refresh_compact_bom()
             self._apply_capabilities(entity)
+            if entity is not None:
+                source = getattr(entity, "source_identity", None)
+                source_format = str(getattr(source, "source_format", "") or "").lower()
+                preferred = {
+                    "ifc": "ifc-step", "step": "step-nc1", "stp": "step-nc1",
+                    "nc": "nc1-step", "nc1": "nc1-step", "dstv": "nc1-step",
+                    "pdf": "pdf-step",
+                }.get(source_format)
+                index = self.direction.findData(preferred) if preferred else -1
+                if index >= 0:
+                    self.direction.setCurrentIndex(index)
 
         def _apply_capabilities(self, part: Any | None) -> None:
             from cws_convertor.conversion_capabilities import DEFAULT_CAPABILITY_REGISTRY
@@ -499,6 +510,20 @@ if qt_available():
                     f"{capability.target_format}: {', '.join(reasons)}"
                     for capability, reasons in evaluations if reasons
                 ]
+            if part is not None:
+                source = getattr(part, "source_identity", None)
+                source_format = str(getattr(source, "source_format", "") or "").upper()
+                source_prefix = {
+                    "IFC": "ifc-", "STEP": "step-", "STP": "step-",
+                    "NC": "nc1-", "NC1": "nc1-", "DSTV": "nc1-", "PDF": "pdf-",
+                }.get(source_format, "")
+                source_directions = {
+                    value for _label, value in self._DIRECTIONS
+                    if not source_prefix or value.startswith(source_prefix)
+                }
+                # A release gate may block production output, but it must not
+                # erase the source/target selector itself.
+                allowed = allowed or source_directions
             blocker = QtCore.QSignalBlocker(self.direction)
             self.direction.clear()
             for label, value in self._DIRECTIONS:
@@ -583,7 +608,14 @@ if qt_available():
                 return
             target = Path(self.output.text()).expanduser()
             target.mkdir(parents=True, exist_ok=True)
-            direction = str(self.direction.currentData())
+            direction = str(self.direction.currentData() or "")
+            if not direction:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Converteren",
+                    "Kies eerst een bron- en doelformaat. De lijst volgt automatisch uit het geselecteerde onderdeel.",
+                )
+                return
             expected = {
                 "nc1-step": {".nc", ".nc1"}, "nc1-ifc": {".nc", ".nc1"},
                 "step-nc1": {".step", ".stp"}, "step-ifc": {".step", ".stp"},

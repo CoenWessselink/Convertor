@@ -54,9 +54,9 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         vtk = self._vtk
         if renderer is None or vtk is None:
             return
-        fxaa_off = getattr(renderer, "UseFXAAOff", None)
-        if callable(fxaa_off):
-            fxaa_off()
+        fxaa_on = getattr(renderer, "UseFXAAOn", None)
+        if callable(fxaa_on):
+            fxaa_on()
         try:
             from vtkmodules.vtkRenderingOpenGL2 import vtkRenderStepsPass, vtkSSAOPass
 
@@ -190,6 +190,19 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
             rgba[3],
         )
 
+    @staticmethod
+    def _renderable_selection(state: Any, index: Any) -> set[str]:
+        selected = tuple(state.selected_node_ids)
+        if not selected:
+            return set()
+        return set(
+            index.descendants(
+                selected,
+                include_self=True,
+                renderable_only=True,
+            )
+        )
+
     def _apply_background_theme(self, state: Any) -> None:
         if self._renderer is None:
             return
@@ -208,7 +221,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         self._renderer.GradientBackgroundOn()
 
     def _sync_selection_fill(self, state: Any, index: Any) -> None:
-        selected = set(state.selected_node_ids)
+        selected = self._renderable_selection(state, index)
         affected = (
             set(index.renderable_node_ids)
             if self._ral_override is not None or self._ral_refresh_all
@@ -252,9 +265,10 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         if self._selection_fill_groups:
             self._remove_groups(self._selection_fill_groups)
             self._selection_fill_groups = []
-        if not state.display_preferences.show_selection_outline:
-            return
-        for node_id in sorted(state.selected_node_ids):
+        # A selected production object must always remain visibly selected.
+        # Legacy projects may persist show_selection_outline=False; that flag
+        # may suppress the optional old wire outline, never the V2 yellow fill.
+        for node_id in sorted(self._renderable_selection(state, index)):
             if node_id not in state.visible_set or node_id not in index.nodes_by_id:
                 continue
             node = index.node(node_id)
@@ -307,9 +321,17 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
 
     def apply_state(self, state: Any, index: Any) -> None:
         self._active_index = index
-        super().apply_state(state, index)
+        effective_state = state
+        if state.selected_node_ids:
+            preferences = replace(
+                state.display_preferences,
+                show_selection_outline=True,
+                selection_color=Rgba(1.0, 0.82, 0.0, 1.0),
+            )
+            effective_state = replace(state, display_preferences=preferences)
+        super().apply_state(effective_state, index)
         self._update_contact_shadow_scale()
-        self._sync_selection_fill(state, index)
+        self._sync_selection_fill(effective_state, index)
 
     # ------------------------------------------------------------------
     # Measurement presentation

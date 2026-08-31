@@ -196,7 +196,8 @@ if qt_available():
             if entity is None:
                 self.recognition_state.setText("Selecteer een onderdeel voor profiel- en materiaalherkenning")
                 return
-            profile_value = _value(entity, "normalized_profile", "profile")
+            from cws_convertor.project.classification import normalize_profile
+            profile_value = normalize_profile(_value(entity, "normalized_profile", "profile"))
             material_value = _value(entity, "normalized_material", "material_grade", "material")
             profile_match = self._profile_database.find(profile_value) if self._profile_database and profile_value else None
             material_matches = []
@@ -204,7 +205,8 @@ if qt_available():
                 from material_database import normalise_material
                 key = normalise_material(material_value)
                 material_matches = [item for item in self._material_database.materials if key in item.search_names]
-            profile_confidence = float(getattr(entity, "profile_confidence", 0.0) or 0.0)
+            profile_confidence = 1.0 if profile_match is not None else float(getattr(entity, "profile_confidence", 0.0) or 0.0)
+            material_confidence = 1.0 if material_matches else float(getattr(entity, "material_confidence", 0.0) or 0.0)
             material_confidence = float(getattr(entity, "material_confidence", 0.0) or 0.0)
             profile_text = f"catalogus: {profile_match.designation}" if profile_match else "niet exact in profielendatabase"
             material_text = f"catalogus: {material_matches[0].code}" if len(material_matches) == 1 else "handmatig controleren"
@@ -706,6 +708,8 @@ if qt_available():
                 self.total_minutes.setValue(self._number(editor.get("total_minutes")))
                 revision = workbench.get("current_revision") if isinstance(workbench.get("current_revision"), dict) else {}
                 raw = revision.get("features")
+                if raw is None:
+                    raw = getattr(entity, "production_features", None) if entity is not None else None
                 if raw is None:
                     raw = getattr(entity, "features", ()) if entity is not None else ()
                 if isinstance(raw, dict):
@@ -1338,7 +1342,8 @@ if qt_available():
             if entity is None:
                 self.recognition_state.setText("Selecteer een onderdeel voor profiel- en materiaalherkenning")
                 return
-            profile_value = _value(entity, "normalized_profile", "profile")
+            from cws_convertor.project.classification import normalize_profile
+            profile_value = normalize_profile(_value(entity, "normalized_profile", "profile"))
             material_value = _value(entity, "normalized_material", "material_grade", "material")
             profile_match = self._profile_database.find(profile_value) if self._profile_database and profile_value else None
             material_matches = []
@@ -1346,7 +1351,7 @@ if qt_available():
                 from material_database import normalise_material
                 key = normalise_material(material_value)
                 material_matches = [item for item in self._material_database.materials if key in item.search_names]
-            profile_confidence = float(getattr(entity, "profile_confidence", 0.0) or 0.0)
+            profile_confidence = 1.0 if profile_match is not None else float(getattr(entity, "profile_confidence", 0.0) or 0.0)
             material_confidence = float(getattr(entity, "material_confidence", 0.0) or 0.0)
             profile_text = f"catalogus: {profile_match.designation}" if profile_match else "niet exact in profielendatabase"
             material_text = f"catalogus: {material_matches[0].code}" if len(material_matches) == 1 else "handmatig controleren"
@@ -1436,7 +1441,7 @@ if qt_available():
             for key, label in (("front", "Voor"), ("top", "Boven"), ("side", "Zij"), ("3d", "3D"), ("iso", "Iso")):
                 button = QtWidgets.QPushButton(label)
                 button.setCheckable(True)
-                button.setChecked(key in {"front", "top", "side", "iso"})
+                button.setChecked(key in {"front", "top", "side"})
                 button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
                 self.view_buttons[key] = button
                 views.addWidget(button)

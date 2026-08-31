@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import hashlib
+import json
 from typing import Any, Iterable, Mapping
 
 from cws_viewer.core.serialization import is_sha256, parse_semver, stable_sha256
@@ -423,7 +425,11 @@ class ProjectScene:
             scene_hash="",
         )
         hashed = replace(scene, scene_hash=scene.calculate_hash())
-        hashed.validate()
+        # The digest above was calculated from this exact immutable instance.
+        # Keep all structural/reference validation, but do not serialize the
+        # full scene a second time on the first-frame critical path.  Scenes
+        # loaded from external payloads still use the default hash verification.
+        hashed.validate(verify_hash=False)
         return hashed
 
     def _validate_schema(self) -> None:
@@ -457,13 +463,24 @@ class ProjectScene:
         }
 
     def calculate_hash(self) -> str:
-        return stable_sha256(self.payload_dict())
+        # ``payload_dict`` is already a primitive JSON contract.  Sending its
+        # ~10 MB large-model payload through ``to_primitive`` again creates a
+        # second complete object graph.  Direct canonical JSON is byte-for-byte
+        # identical for scene contracts and removes that first-frame copy.
+        payload = json.dumps(
+            self.payload_dict(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
 
-    def validate(self) -> None:
+    def validate(self, *, verify_hash: bool = True) -> None:
         self._validate_schema()
         from cws_viewer.core.validation import validate_project_scene
 
-        validate_project_scene(self)
+        validate_project_scene(self, verify_hash=verify_hash)
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.payload_dict()

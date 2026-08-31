@@ -102,7 +102,7 @@ CWS_DARK = ThemeTokens(
 THEMES: dict[str, ThemeTokens] = {
     item.key: item for item in (ENGINEERING_LIGHT, CWS_LIGHT, CWS_DARK)
 }
-DEFAULT_THEME = ENGINEERING_LIGHT.key
+DEFAULT_THEME = CWS_DARK.key
 
 # Backward-compatible token names used by startup/loading code.
 CWS_BLUE = CWS_LIGHT.accent
@@ -128,7 +128,7 @@ def theme_qss(key: str | None = None) -> str:
 QMainWindow, QWidget#cwsCockpitRoot, QWidget#cwsViewerRoot {{
     background: {t.app_bg};
     color: {t.text};
-    font-family: "Segoe UI", Arial, sans-serif;
+        font-family: "Bahnschrift", "Segoe UI", sans-serif;
     font-size: 9.5pt;
 }}
 QFrame#cwsHeader, QFrame#cwsRibbon, QFrame#cwsPanel, QFrame#cwsViewerCard,

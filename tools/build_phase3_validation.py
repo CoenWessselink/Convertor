@@ -58,10 +58,11 @@ def artifact(path: Path) -> dict[str, Any]:
 def ensure_phase2_required_manifests() -> None:
     source = load(PHASES / "PHASE_2_SOURCE_TEST_EVIDENCE.json")
     windows = load(PHASES / "PHASE_2_WINDOWS_RUNTIME_EVIDENCE.json")
+    source_rows = list(source.get("tests") or source.get("results") or [])
     tests = [
-        {"id": item.get("script", f"source-{index}"),
-         "status": "PASS" if item.get("passed") else "FAIL", "evidence": item}
-        for index, item in enumerate(source.get("tests", []))
+        {"id": item.get("script") or item.get("label") or f"source-{index}",
+         "status": "PASS" if item.get("passed") is True or str(item.get("status", "")).casefold() in {"pass", "passed", "green"} else "FAIL", "evidence": item}
+        for index, item in enumerate(source_rows)
     ]
     tests.append({"id": "phase2_windows_runtime", "status": "PASS" if windows.get("status") == "PASS" else "FAIL",
                   "evidence": str(PHASES / "PHASE_2_WINDOWS_RUNTIME_EVIDENCE.json")})
@@ -78,7 +79,7 @@ def ensure_phase2_required_manifests() -> None:
                   "tools/build_phase2_validation.py", "cws_convertor/optimization/plate_nesting.py",
                   "cws_convertor/manufacturing/export_scope_matrix.py"],
     })
-    p2_green = all(item.get("passed") for item in source.get("tests", [])) and windows.get("status") == "PASS"
+    p2_green = bool(source_rows) and all(item.get("passed") is True or str(item.get("status", "")).casefold() in {"pass", "passed", "green"} for item in source_rows) and str(windows.get("status", "")).casefold() in {"pass", "passed", "green"}
     write_json(PHASES / "PHASE_2_PROMPT_TRACEABILITY.json", {
         "schema": "cws-prompt-traceability-1.0", "phase": 2, "required_count": len(PHASE2_REQUIRED),
         "requirements": [

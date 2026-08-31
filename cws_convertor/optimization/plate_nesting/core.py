@@ -70,6 +70,13 @@ class PlatePlacement:
     width_mm: float
     height_mm: float
     rotated: bool = False
+    rotation_deg: int = 0
+    mirrored: bool = False
+    geometry_sha256: str = ""
+    production_identity: str = ""
+    material: str = ""
+    grade: str = ""
+    thickness_mm: float = 0.0
 
 
 @dataclass(frozen=True)

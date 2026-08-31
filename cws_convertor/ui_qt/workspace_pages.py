@@ -671,12 +671,23 @@ if qt_available():
             for path in paths:
                 kind = "project" if path.suffix.lower() in {".ifc", ".cwscproj", ".zip"} else "part"
                 item = QtWidgets.QListWidgetItem(f"{path.stem}\n{path.suffix.upper().lstrip('.')}")
-                item.setIcon(self._preview_icon(kind, path.stem))
+                item.setIcon(self._preview_icon(kind, path.stem, path))
                 item.setToolTip(str(path))
                 item.setData(QtCore.Qt.ItemDataRole.UserRole, str(path))
                 self.recent.addItem(item)
 
-        def _preview_icon(self, kind: str, seed: str) -> QtGui.QIcon:
+        def _preview_icon(self, kind: str, seed: str, source_path: Path | None = None) -> QtGui.QIcon:
+            if source_path is not None:
+                try:
+                    from cws_convertor.thumbnails import thumbnail_for_recent
+
+                    thumbnail = thumbnail_for_recent(source_path)
+                    if thumbnail is not None:
+                        actual = QtGui.QPixmap(str(thumbnail))
+                        if not actual.isNull():
+                            return QtGui.QIcon(actual.scaled(420, 224, QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation))
+                except Exception:
+                    pass
             pixmap = QtGui.QPixmap(420, 224)
             pixmap.fill(QtGui.QColor("#f7faff"))
             painter = QtGui.QPainter(pixmap)

@@ -60,29 +60,38 @@ class ViewerV15LayoutNavigationAcceptance(unittest.TestCase):
         return viewer
 
     def test_01_all_intended_routes_have_a_real_non_overflowing_viewer(self) -> None:
+        self.assertEqual(
+            ["Project", "Viewer", "Productie", "Controle", "Uitvoer"],
+            [self.window.tabs.tabText(index) for index in range(self.window.tabs.count())],
+        )
         routes = (
             "viewer",
             "edit",
             "converter",
             "control",
-            "pdf_review",
-            "drawing",
+            "pdf",
             "scribing",
             "bom",
             "profile_nesting",
-            "report",
+            "production_workflow",
             "export",
         )
+        authoritative_viewer = self.window.findChild(
+            VtkRealProjectWidgetFeelV2, "cwsVtkRealProjectWidget"
+        )
+        self.assertIsNotNone(authoritative_viewer)
         for route in routes:
             with self.subTest(route=route):
                 viewer = self._show_route(route)
-                parent = viewer.parentWidget()
-                self.assertTrue(viewer.isVisibleTo(self.window))
-                self.assertGreaterEqual(viewer.width(), 300)
-                self.assertGreaterEqual(viewer.height(), 120)
-                self.assertLessEqual(viewer.width(), parent.contentsRect().width() + 2)
-                self.assertLessEqual(viewer.height(), parent.contentsRect().height() + 2)
+                self.assertIs(authoritative_viewer, viewer)
                 self.assertFalse(any(w.isVisibleTo(self.window) for w in self.window.findChildren(QFrame, "module3dViewerPreview")))
+        viewer = self._show_route("viewer")
+        parent = viewer.parentWidget()
+        self.assertTrue(viewer.isVisibleTo(self.window))
+        self.assertGreaterEqual(viewer.width(), 300)
+        self.assertGreaterEqual(viewer.height(), 120)
+        self.assertLessEqual(viewer.width(), parent.contentsRect().width() + 2)
+        self.assertLessEqual(viewer.height(), parent.contentsRect().height() + 2)
 
     def test_02_navigation_controls_drive_the_v15_contract(self) -> None:
         viewer = self._show_route("viewer")
@@ -91,39 +100,24 @@ class ViewerV15LayoutNavigationAcceptance(unittest.TestCase):
         expected = (
             (QToolButton, "trimbleNavFit"),
             (QToolButton, "trimbleNavPan"),
-            (QToolButton, "trimbleNavWalk"),
             (QToolButton, "trimbleNavOrbit"),
-            (QToolButton, "trimbleNavFullscreen"),
-            (QPushButton, "trimbleOrbitUp"),
-            (QPushButton, "trimbleOrbitDown"),
-            (QPushButton, "trimbleOrbitLeft"),
-            (QPushButton, "trimbleOrbitRight"),
-            (QPushButton, "trimbleOrbitCenter"),
-            (QPushButton, "trimbleZoomIn"),
-            (QPushButton, "trimbleZoomOut"),
-            (QSlider, "trimbleZoomSlider"),
+            (QToolButton, "trimbleNavSelect"),
+            (QToolButton, "trimbleNavZoom"),
+            (QSlider, "trimbleOpacitySlider"),
         )
         for widget_type, name in expected:
             self.assertIsNotNone(viewer.findChild(widget_type, name), name)
 
         viewer.findChild(QToolButton, "trimbleNavPan").click()
         self.assertEqual(viewer.navigation_mode, NavigationMode.PAN)
-        viewer.findChild(QToolButton, "trimbleNavWalk").click()
-        self.assertEqual(viewer.navigation_mode, NavigationMode.WALK)
         viewer.findChild(QToolButton, "trimbleNavOrbit").click()
         self.assertEqual(viewer.navigation_mode, NavigationMode.ORBIT)
 
-        camera_before = repr(viewer._controller.get_camera())
-        viewer.findChild(QPushButton, "trimbleOrbitRight").click()
+        controls = getattr(viewer, "_viewport_controls", None)
+        self.assertIsNotNone(controls)
+        overlay.reposition()
         self._settle(3)
-        camera_after = repr(viewer._controller.get_camera())
-        self.assertNotEqual(camera_before, camera_after)
-
-        camera_before = camera_after
-        viewer.findChild(QPushButton, "trimbleZoomIn").click()
-        self._settle(3)
-        camera_after = repr(viewer._controller.get_camera())
-        self.assertNotEqual(camera_before, camera_after)
+        self.assertFalse(overlay.geometry().intersects(controls.geometry()))
 
     def test_03_camera_interaction_has_no_stall(self) -> None:
         viewer = self._show_route("viewer")

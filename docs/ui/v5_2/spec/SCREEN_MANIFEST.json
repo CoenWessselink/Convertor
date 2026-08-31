@@ -1,0 +1,3097 @@
+{
+  "schema": "cws-ui-screen-manifest-v1",
+  "product": "CWS Convertor",
+  "ui_master": "V5.1 FINAL",
+  "date": "2026-08-31",
+  "visual_ssot": {
+    "primary_directory": "01_UI_REFERENTIES_V5",
+    "binding_rule": "V5 PNG is bindend voor layout/hiërarchie per scherm; functionele correctheid en DPI/accessibility gaan voor decoratieve pixelgelijkheid.",
+    "v4_role": "alleen algemene stijl/informatiedichtheid fallback",
+    "screen_count_with_v5_png": 25,
+    "support_surfaces_without_png": [
+      "26",
+      "27",
+      "28",
+      "29",
+      "30",
+      "31"
+    ]
+  },
+  "global_controls": [
+    {
+      "test_id": "nav_project",
+      "type": "QToolButton/QTab",
+      "label": "Project",
+      "action": "Open PROJECT-hoofdworkspace",
+      "required": true
+    },
+    {
+      "test_id": "nav_viewer",
+      "type": "QToolButton/QTab",
+      "label": "Viewer",
+      "action": "Open permanente Viewer-workspace zonder ViewerHost te recreëren",
+      "required": true
+    },
+    {
+      "test_id": "nav_productie",
+      "type": "QToolButton/QTab",
+      "label": "Productie",
+      "action": "Open PRODUCTIE, standaard BOM & Machines",
+      "required": true
+    },
+    {
+      "test_id": "nav_controle",
+      "type": "QToolButton/QTab",
+      "label": "Controle",
+      "action": "Open CONTROLE, standaard Validatie",
+      "required": true
+    },
+    {
+      "test_id": "nav_uitvoer",
+      "type": "QToolButton/QTab",
+      "label": "Uitvoer",
+      "action": "Open UITVOER, standaard Afdrukken of laatst gebruikte subworkspace",
+      "required": true
+    },
+    {
+      "test_id": "global_undo",
+      "type": "QToolButton",
+      "label": "Ongedaan maken",
+      "action": "Undo via authoritative transaction/context route",
+      "required": true
+    },
+    {
+      "test_id": "global_redo",
+      "type": "QToolButton",
+      "label": "Opnieuw",
+      "action": "Redo via authoritative transaction/context route",
+      "required": true
+    },
+    {
+      "test_id": "global_activity",
+      "type": "QToolButton",
+      "label": "Activiteit",
+      "action": "Open Activity Center met actieve/voltooide jobs",
+      "required": true
+    },
+    {
+      "test_id": "global_problems",
+      "type": "QToolButton",
+      "label": "Problemen",
+      "action": "Open Problem/Status Center",
+      "required": true
+    },
+    {
+      "test_id": "global_settings",
+      "type": "QToolButton",
+      "label": "Instellingen",
+      "action": "Open bedrijfs-/gebruikersinstellingen",
+      "required": true
+    },
+    {
+      "test_id": "global_command",
+      "type": "QShortcut/QToolButton",
+      "label": "Snelactie",
+      "shortcut": "Ctrl+K",
+      "action": "Open command palette / snelactie",
+      "required": true
+    },
+    {
+      "test_id": "global_print",
+      "type": "QShortcut",
+      "label": "Afdrukken",
+      "shortcut": "Ctrl+P",
+      "action": "Open contextuele Print Center",
+      "required": true
+    }
+  ],
+  "screens": [
+    {
+      "screen_id": "01",
+      "reference_png": "01_PROJECT_Start_Inlezen.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Project",
+      "title": "Start / Inlezen",
+      "purpose": "Bronbestanden zo eenvoudig mogelijk inladen en direct een project opbouwen.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: vaste hoofdnav",
+        "midden: drag/drop + bestandstypen",
+        "links/onder: recente projecten",
+        "rechts: import/projectinformatie",
+        "onder: status"
+      ],
+      "required_controls": [
+        {
+          "test_id": "import_dropzone",
+          "type": "DropZone",
+          "label": "Sleep bestanden hierheen",
+          "action": "Importeer ondersteunde bronbestanden via drag/drop",
+          "service_contract": "ProjectImportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_open_file",
+          "type": "QPushButton",
+          "label": "Bestand openen",
+          "action": "Open file picker voor IFC/STEP/NC1/PDF/CWS Project",
+          "service_contract": "ProjectImportService",
+          "enabled_condition": "context-valid",
+          "required": true,
+          "shortcut": "Ctrl+O"
+        },
+        {
+          "test_id": "btn_open_folder",
+          "type": "QPushButton",
+          "label": "Map openen",
+          "action": "Selecteer map/batchbron",
+          "service_contract": "ProjectImportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_open_multiple",
+          "type": "QPushButton",
+          "label": "Meerdere bestanden",
+          "action": "Selecteer meerdere bronbestanden",
+          "service_contract": "ProjectImportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_import_load",
+          "type": "QPushButton",
+          "label": "Inladen",
+          "action": "Start gevalideerde importjob",
+          "service_contract": "ProjectImportService",
+          "enabled_condition": "valid source selection",
+          "required": true
+        },
+        {
+          "test_id": "btn_import_cancel",
+          "type": "QPushButton",
+          "label": "Annuleren",
+          "action": "Annuleer actieve import",
+          "service_contract": "JobManager",
+          "enabled_condition": "active import",
+          "required": true
+        },
+        {
+          "test_id": "recent_projects",
+          "type": "QListView",
+          "label": "Recente projecten",
+          "action": "Open geselecteerd recent project",
+          "service_contract": "ProjectService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "import_options",
+          "type": "QToolButton",
+          "label": "Importopties",
+          "action": "Open alleen relevante geavanceerde importinstellingen",
+          "service_contract": "ProjectImportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "empty",
+        "source_selected",
+        "loading",
+        "partial",
+        "success",
+        "warning",
+        "error",
+        "cancelled"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "drag/drop == open-menu result",
+        "cancel stale results",
+        "unsupported format gives explicit error",
+        "first metadata visible before full geometry"
+      ]
+    },
+    {
+      "screen_id": "02",
+      "reference_png": "02_PROJECT_Projectoverzicht.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Project",
+      "title": "Projectoverzicht",
+      "purpose": "Compact overzicht van projectidentiteit, aantallen, revisie en productiestatus.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: projectidentiteit",
+        "midden: kernstatistieken/statuscards",
+        "rechts: snelle acties/preview",
+        "onder: blockers/warnings"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_project_open_viewer",
+          "type": "QPushButton",
+          "label": "Open Viewer",
+          "action": "Open permanente Viewer op huidig project",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_project_properties",
+          "type": "QPushButton",
+          "label": "Projectgegevens",
+          "action": "Open/edit projectmetadata via transaction",
+          "service_contract": "ProjectService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_project_save",
+          "type": "QPushButton",
+          "label": "Opslaan",
+          "action": "Sla project + projectstate op",
+          "service_contract": "ProjectPersistence",
+          "enabled_condition": "context-valid",
+          "required": true,
+          "shortcut": "Ctrl+S"
+        },
+        {
+          "test_id": "btn_project_save_as",
+          "type": "QPushButton",
+          "label": "Opslaan als",
+          "action": "Maak nieuwe projectcontainer",
+          "service_contract": "ProjectPersistence",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_project_revisions",
+          "type": "QPushButton",
+          "label": "Revisies",
+          "action": "Open revision history/compare",
+          "service_contract": "RevisionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_project_validate",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Start projectvalidatie",
+          "service_contract": "ValidationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "cards derived from canonical truth",
+        "status links open exact source domain",
+        "no decorative fake metrics"
+      ]
+    },
+    {
+      "screen_id": "03",
+      "reference_png": "03_PROJECT_Projectstructuur.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Project",
+      "title": "Projectstructuur",
+      "purpose": "Volledige project-/assembly-/part-hiërarchie doorzoekbaar en gekoppeld aan Viewer.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: tree",
+        "boven: zoeken/filter",
+        "midden/rechts: selectiegegevens",
+        "onder: contextacties"
+      ],
+      "required_controls": [
+        {
+          "test_id": "tree_project",
+          "type": "QTreeView",
+          "label": "Projectstructuur",
+          "action": "Selecteer canonical occurrence/assembly/part",
+          "service_contract": "SelectionAuthority",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "txt_tree_search",
+          "type": "QLineEdit",
+          "label": "Zoeken",
+          "action": "Filter boom zonder identity te wijzigen",
+          "service_contract": "ProjectTreeModel",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_tree_expand",
+          "type": "QToolButton",
+          "label": "Alles uitklappen",
+          "action": "Expand tree",
+          "service_contract": "ProjectTreeModel",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_tree_collapse",
+          "type": "QToolButton",
+          "label": "Alles inklappen",
+          "action": "Collapse tree",
+          "service_contract": "ProjectTreeModel",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_tree_show_viewer",
+          "type": "QPushButton",
+          "label": "Toon in Viewer",
+          "action": "Selecteer + fit geselecteerde entity",
+          "service_contract": "ViewerHost",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_tree_isolate",
+          "type": "QPushButton",
+          "label": "Isoleren",
+          "action": "Isolate selectie",
+          "service_contract": "ViewerStateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_tree_properties",
+          "type": "QPushButton",
+          "label": "Eigenschappen",
+          "action": "Open inspector/details voor selectie",
+          "service_contract": "PropertiesService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "loaded",
+        "search_filtered",
+        "selection",
+        "multi_selection",
+        "empty_filter",
+        "warning"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "tree↔viewer selection exact",
+        "expanded state stable within session",
+        "wrong instance picks=0"
+      ]
+    },
+    {
+      "screen_id": "04",
+      "reference_png": "04_PROJECT_Profielen_Materialen.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Project",
+      "title": "Profielen & Materialen",
+      "purpose": "Samenvatting en controle van profielen/materialen vanuit canonical projectdata.",
+      "subtabs": [
+        "Profielen",
+        "Materialen"
+      ],
+      "layout_zones": [
+        "boven: subtabs",
+        "midden: tabellen",
+        "rechts: samenvatting",
+        "onder: selectieacties"
+      ],
+      "required_controls": [
+        {
+          "test_id": "tab_profiles",
+          "type": "QTab",
+          "label": "Profielen",
+          "action": "Toon profieloverzicht",
+          "service_contract": "ProjectQuantitiesService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "tab_materials",
+          "type": "QTab",
+          "label": "Materialen",
+          "action": "Toon materiaaloverzicht",
+          "service_contract": "ProjectQuantitiesService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "txt_pm_search",
+          "type": "QLineEdit",
+          "label": "Zoeken",
+          "action": "Filter huidige tabel",
+          "service_contract": "ProjectQuantitiesService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_pm_select_viewer",
+          "type": "QPushButton",
+          "label": "Selecteer in Viewer",
+          "action": "Selecteer alle bijbehorende occurrences",
+          "service_contract": "SelectionAuthority",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_pm_export",
+          "type": "QPushButton",
+          "label": "Exporteren",
+          "action": "Export huidig overzicht via document output",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [
+        "Profiel/Materiaal",
+        "Aantal",
+        "Totale lengte",
+        "Totaalgewicht",
+        "Status"
+      ],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "totals reconcile with canonical BOM",
+        "selection highlights all matching occurrences"
+      ]
+    },
+    {
+      "screen_id": "05",
+      "reference_png": "05_VIEWER_3D_Cockpit.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Viewer",
+      "title": "3D Viewer",
+      "purpose": "Primaire 3D-cockpit met permanente ViewerHost en Trimble-achtige bediening.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: projectboom",
+        "midden: dominante 3D viewport",
+        "rechts: Inspector",
+        "boven viewport: compacte viewer toolbar",
+        "onder: contextactiebalk/status"
+      ],
+      "required_controls": [
+        {
+          "test_id": "viewer_canvas",
+          "type": "QVTK/OpenGLWidget",
+          "label": "3D Viewer",
+          "action": "Render persistent projectscene",
+          "service_contract": "ViewerHost",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_selection_level",
+          "type": "QComboBox",
+          "label": "Selecteren",
+          "action": "Kies Onderdeel/Samenstelling",
+          "service_contract": "SelectionAuthority",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_fit_all",
+          "type": "QToolButton",
+          "label": "Alles passend",
+          "action": "Fit all",
+          "service_contract": "ViewerNavigationService",
+          "enabled_condition": "context-valid",
+          "required": true,
+          "shortcut": "F"
+        },
+        {
+          "test_id": "btn_fit_selected",
+          "type": "QToolButton",
+          "label": "Selectie passend",
+          "action": "Fit selected",
+          "service_contract": "ViewerNavigationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_view_front",
+          "type": "QToolButton",
+          "label": "Voor",
+          "action": "Front view",
+          "service_contract": "ViewerNavigationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_view_top",
+          "type": "QToolButton",
+          "label": "Boven",
+          "action": "Top view",
+          "service_contract": "ViewerNavigationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_view_iso",
+          "type": "QToolButton",
+          "label": "ISO",
+          "action": "Isometric view",
+          "service_contract": "ViewerNavigationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_hide",
+          "type": "QToolButton",
+          "label": "Verbergen",
+          "action": "Hide selection",
+          "service_contract": "ViewerStateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_show_all",
+          "type": "QToolButton",
+          "label": "Alles tonen",
+          "action": "Show all",
+          "service_contract": "ViewerStateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_isolate",
+          "type": "QToolButton",
+          "label": "Isoleren",
+          "action": "Isolate selection",
+          "service_contract": "ViewerStateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_ghost",
+          "type": "QToolButton",
+          "label": "Ghost",
+          "action": "Ghost surroundings",
+          "service_contract": "ViewerStateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_measure",
+          "type": "QToolButton",
+          "label": "Meten",
+          "action": "Open/activate measurement tools",
+          "service_contract": "MeasurementService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_section",
+          "type": "QToolButton",
+          "label": "Doorsnede",
+          "action": "Open section tools",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_detach_viewer",
+          "type": "QToolButton",
+          "label": "Los venster",
+          "action": "Open detached view on same Viewer/context",
+          "service_contract": "ViewerWindowService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "loading_lod",
+        "loading_exact",
+        "idle",
+        "selection",
+        "multi_selection",
+        "interactive_quality",
+        "section",
+        "measure",
+        "ghost",
+        "warning"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "same ViewerHost across workspaces",
+        "complete-object selection",
+        "Trimble observable navigation parity",
+        "no raw-event duplicate renders"
+      ]
+    },
+    {
+      "screen_id": "06",
+      "reference_png": "06_VIEWER_Selectie_Context.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Viewer",
+      "title": "Selectie & Context",
+      "purpose": "Contextgestuurde acties voor geselecteerd onderdeel of samenstelling.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: tree",
+        "midden: Viewer",
+        "rechts: selection inspector",
+        "onder: context action bar"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_ctx_edit",
+          "type": "QPushButton",
+          "label": "Bewerken",
+          "action": "Open Workbench met dezelfde selectie/context",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_ctx_drawing",
+          "type": "QPushButton",
+          "label": "Tekening",
+          "action": "Open Tekeningen voor selectie",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_ctx_machine",
+          "type": "QPushButton",
+          "label": "Machine",
+          "action": "Open machine-indeling voor selectie",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_ctx_optimize",
+          "type": "QPushButton",
+          "label": "Optimaliseren",
+          "action": "Open juiste nestingroute",
+          "service_contract": "OptimizationRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_ctx_print",
+          "type": "QPushButton",
+          "label": "Afdrukken",
+          "action": "Open Print Center met selectie als scope",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_ctx_more",
+          "type": "QToolButton",
+          "label": "Meer",
+          "action": "Open extra contextacties zonder kernflow te vervuilen",
+          "service_contract": "ContextActionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "context is preserved",
+        "same selected canonical IDs across workspace switch"
+      ]
+    },
+    {
+      "screen_id": "07",
+      "reference_png": "07_VIEWER_Weergave_Meten.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Viewer",
+      "title": "Weergave & Meten",
+      "purpose": "Renderinstellingen en meettools zonder zware technische UI.",
+      "subtabs": [],
+      "layout_zones": [
+        "midden: Viewer",
+        "links/rechts: compact display/measure panel",
+        "onder: metingresultaten"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_render_mode",
+          "type": "QComboBox",
+          "label": "Weergave",
+          "action": "Shaded / Shaded+Edges / Wireframe waar ondersteund",
+          "service_contract": "ViewerDisplayService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_color_mode",
+          "type": "QComboBox",
+          "label": "Kleuren",
+          "action": "Bronkleur/RAL/statuskleur",
+          "service_contract": "ViewerDisplayService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "sld_transparency",
+          "type": "QSlider",
+          "label": "Transparantie",
+          "action": "Pas display transparency toe",
+          "service_contract": "ViewerDisplayService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_measure_distance",
+          "type": "QToolButton",
+          "label": "Afstand",
+          "action": "Meet afstand",
+          "service_contract": "MeasurementService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_measure_angle",
+          "type": "QToolButton",
+          "label": "Hoek",
+          "action": "Meet hoek",
+          "service_contract": "MeasurementService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_measure_radius",
+          "type": "QToolButton",
+          "label": "Radius",
+          "action": "Meet radius indien ondersteund",
+          "service_contract": "MeasurementService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_measure_coordinates",
+          "type": "QToolButton",
+          "label": "Coördinaten",
+          "action": "Meet/coördinaat pick",
+          "service_contract": "MeasurementService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_measure_clear",
+          "type": "QPushButton",
+          "label": "Metingen wissen",
+          "action": "Verwijder reviewmetingen",
+          "service_contract": "MeasurementService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "measurement does not mutate manufacturing truth",
+        "snap feedback is clear",
+        "render mode switch preserves camera/selection"
+      ]
+    },
+    {
+      "screen_id": "08",
+      "reference_png": "08_VIEWER_Doorsnede_Isoleren.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Viewer",
+      "title": "Doorsnede & Isoleren",
+      "purpose": "Sections/clipping en visibility snel bedienen.",
+      "subtabs": [],
+      "layout_zones": [
+        "midden: Viewer",
+        "rechts: section plane list/settings",
+        "onder: visibility context actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_section_new",
+          "type": "QPushButton",
+          "label": "Nieuwe doorsnede",
+          "action": "Maak section plane",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_section_from_face",
+          "type": "QPushButton",
+          "label": "Vanaf vlak",
+          "action": "Maak plane vanuit picked face",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_section_flip",
+          "type": "QPushButton",
+          "label": "Omkeren",
+          "action": "Flip active section plane",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_section_toggle",
+          "type": "QToolButton",
+          "label": "Aan/uit",
+          "action": "Enable/disable active plane",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_section_remove",
+          "type": "QPushButton",
+          "label": "Verwijderen",
+          "action": "Remove active plane",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_clip_box",
+          "type": "QPushButton",
+          "label": "Clipbox",
+          "action": "Toggle/configure clip box",
+          "service_contract": "SectionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_visibility_restore",
+          "type": "QPushButton",
+          "label": "Weergave herstellen",
+          "action": "Restore previous visibility state",
+          "service_contract": "ViewerStateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "multiple planes where supported",
+        "plane state persists",
+        "selection actors obey clipping"
+      ]
+    },
+    {
+      "screen_id": "09",
+      "reference_png": "09_VIEWER_Laadstatus_Performance.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Viewer",
+      "title": "Laadstatus & Prestaties",
+      "purpose": "Transparante, rustige voortgang en optionele performance diagnostics.",
+      "subtabs": [],
+      "layout_zones": [
+        "midden: Viewer",
+        "onder/rechts: loader status",
+        "optioneel dev HUD"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_performance_preset",
+          "type": "QComboBox",
+          "label": "Prestaties",
+          "action": "AUTO/Kwaliteit/Gebalanceerd/Prestaties",
+          "service_contract": "ViewerPerformanceGovernor",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_load_cancel",
+          "type": "QPushButton",
+          "label": "Laden annuleren",
+          "action": "Cancel active geometry job",
+          "service_contract": "JobManager",
+          "enabled_condition": "active job",
+          "required": true
+        },
+        {
+          "test_id": "btn_load_retry",
+          "type": "QPushButton",
+          "label": "Opnieuw proberen",
+          "action": "Retry failed geometry",
+          "service_contract": "GeometryLoadCoordinator",
+          "enabled_condition": "failed geometry exists",
+          "required": true
+        },
+        {
+          "test_id": "btn_perf_details",
+          "type": "QToolButton",
+          "label": "Details",
+          "action": "Toggle diagnostics HUD",
+          "service_contract": "ViewerDiagnostics",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "progress_geometry",
+          "type": "QProgressBar",
+          "label": "Geometrie",
+          "action": "Toon exact/proxy/load completion",
+          "service_contract": "GeometryLoadCoordinator",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "first pixels before full exact",
+        "cancel feedback<100ms target",
+        "LOD/exact state truthfully shown"
+      ]
+    },
+    {
+      "screen_id": "10",
+      "reference_png": "10_PROJECT_Projectreviews.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Project",
+      "title": "Projectreviews",
+      "purpose": "Saved views, reviewpunten en issues in dezelfde projectcontext.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: saved views/issues",
+        "midden: Viewer",
+        "rechts: review details/comments"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_view_create",
+          "type": "QPushButton",
+          "label": "View opslaan",
+          "action": "Create saved view",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_view_update",
+          "type": "QPushButton",
+          "label": "View bijwerken",
+          "action": "Update active saved view",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_view_rename",
+          "type": "QPushButton",
+          "label": "Naam wijzigen",
+          "action": "Rename saved view",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_view_delete",
+          "type": "QPushButton",
+          "label": "Verwijderen",
+          "action": "Delete saved view",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_issue_new",
+          "type": "QPushButton",
+          "label": "Nieuw reviewpunt",
+          "action": "Create issue/review item",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_issue_open",
+          "type": "QPushButton",
+          "label": "Openen",
+          "action": "Activate issue viewpoint/state",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "view restores camera/visibility/section",
+        "review data revision-aware"
+      ]
+    },
+    {
+      "screen_id": "11",
+      "reference_png": "11_PRODUCTIE_BOM_Machines_BOM.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "BOM & Machines — BOM",
+      "purpose": "Centrale productiehub: hoeveelheden, selectie, machine, optimalisatie, tekening, print en export.",
+      "subtabs": [
+        "BOM",
+        "Machine-indeling",
+        "Optimalisatie"
+      ],
+      "layout_zones": [
+        "boven: Productie-subtabs",
+        "midden: dominante BOM tabel",
+        "rechts: gekoppelde Viewer preview/Inspector",
+        "onder: contextactiebalk"
+      ],
+      "required_controls": [
+        {
+          "test_id": "tab_bom",
+          "type": "QTab",
+          "label": "BOM",
+          "action": "Open BOM tabel",
+          "service_contract": "BomWorkspaceService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "tab_machine_assignment",
+          "type": "QTab",
+          "label": "Machine-indeling",
+          "action": "Open machine-routing",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "tab_optimization",
+          "type": "QTab",
+          "label": "Optimalisatie",
+          "action": "Open optimization hub",
+          "service_contract": "OptimizationRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "txt_bom_search",
+          "type": "QLineEdit",
+          "label": "Zoeken",
+          "action": "Filter BOM",
+          "service_contract": "BomWorkspaceService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_filter",
+          "type": "QToolButton",
+          "label": "Filter",
+          "action": "Open BOM filters",
+          "service_contract": "BomWorkspaceService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_group",
+          "type": "QToolButton",
+          "label": "Groeperen",
+          "action": "Groepeer BOM",
+          "service_contract": "BomWorkspaceService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_columns",
+          "type": "QToolButton",
+          "label": "Kolommen",
+          "action": "Toon/verberg/ordeneer kolommen",
+          "service_contract": "BomWorkspaceService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_edit",
+          "type": "QPushButton",
+          "label": "Bewerken",
+          "action": "Open Workbench voor selectie",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_drawing",
+          "type": "QPushButton",
+          "label": "Tekening",
+          "action": "Open/generate drawing voor selectie",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_machine",
+          "type": "QPushButton",
+          "label": "Machine",
+          "action": "Open machine assignment voor selectie",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_optimize",
+          "type": "QPushButton",
+          "label": "Optimaliseren",
+          "action": "Route selectie naar Profile/Plate Nesting",
+          "service_contract": "OptimizationRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_print",
+          "type": "QPushButton",
+          "label": "Afdrukken",
+          "action": "Open contextueel Print Center",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_more",
+          "type": "QToolButton",
+          "label": "Meer",
+          "action": "Extra selectieacties",
+          "service_contract": "ContextActionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_bom_export",
+          "type": "QPushButton",
+          "label": "Exporteren",
+          "action": "Export BOM XLSX/CSV/PDF/JSON",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [
+        "Merk / Part ID",
+        "Samenstelling",
+        "Profiel",
+        "Materiaal",
+        "Lengte",
+        "Aantal",
+        "Gewicht",
+        "Voorgestelde machine",
+        "Toegewezen machine",
+        "Auto/Handmatig",
+        "Machinegeschiktheid",
+        "Nestingstatus",
+        "Tekeningstatus",
+        "Scribingstatus",
+        "Exportstatus",
+        "Status"
+      ],
+      "required_states": [
+        "loaded",
+        "selection",
+        "multi_selection",
+        "filtered",
+        "grouped",
+        "routing_warning",
+        "not_ready",
+        "ready"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "100% canonical reconciliation",
+        "viewer↔BOM selection exact",
+        "column layout persistent user preference"
+      ]
+    },
+    {
+      "screen_id": "12",
+      "reference_png": "12_PRODUCTIE_Machineindeling_Automatisch.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Machine-indeling — Automatisch",
+      "purpose": "Automatische machinevoorstellen inzichtelijk, uitlegbaar en in bulk te accepteren.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: BOM/Machine/Optimalisatie subtabs",
+        "midden: routing table",
+        "rechts: reden/capability details",
+        "onder: accept/recompute actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_route_recompute",
+          "type": "QPushButton",
+          "label": "Opnieuw indelen",
+          "action": "Bereken machinevoorstellen opnieuw",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_route_accept_all",
+          "type": "QPushButton",
+          "label": "Voorstellen toepassen",
+          "action": "Pas geldige voorstellen transactioneel toe",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_route_show_reason",
+          "type": "QPushButton",
+          "label": "Toon reden",
+          "action": "Toon capability/routing-evidence",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_route_machine_filter",
+          "type": "QComboBox",
+          "label": "Machine",
+          "action": "Filter op machine",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_route_status_filter",
+          "type": "QComboBox",
+          "label": "Status",
+          "action": "Filter op geschikt/waarschuwing/ongeschikt",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_route_manual",
+          "type": "QPushButton",
+          "label": "Handmatig wijzigen",
+          "action": "Open handmatige override voor selectie",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [
+        "Part ID",
+        "Profiel",
+        "Materiaal",
+        "Lengte",
+        "Bewerkingen",
+        "Voorgestelde machine",
+        "Geschiktheid",
+        "Reden",
+        "Status"
+      ],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "routing based on capabilities not just profile text",
+        "unqualified machine never silently READY"
+      ]
+    },
+    {
+      "screen_id": "13",
+      "reference_png": "13_PRODUCTIE_Machineindeling_Handmatige_Override.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Machine-indeling — Handmatig",
+      "purpose": "Eenvoudig één of veel BOM-regels naar een andere machine zetten met directe validatie.",
+      "subtabs": [],
+      "layout_zones": [
+        "midden: selected BOM rows + machine chooser",
+        "rechts: capability warning/reason",
+        "onder: apply/reset"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_manual_machine",
+          "type": "QComboBox",
+          "label": "Machine",
+          "action": "Kies machine uit actieve machinebibliotheek",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_manual_assign",
+          "type": "QPushButton",
+          "label": "Toewijzen",
+          "action": "Assign selected rows manually",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "selection and machine selected",
+          "required": true
+        },
+        {
+          "test_id": "btn_manual_reset_auto",
+          "type": "QPushButton",
+          "label": "Terug naar automatisch",
+          "action": "Remove override and recalc route",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_manual_validate",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Validate selected assignment against capability",
+          "service_contract": "MachineCapabilityService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_allow_review_override",
+          "type": "QCheckBox",
+          "label": "Alleen als reviewoverride opslaan",
+          "action": "Laat ongeschikte keuze niet production-ready worden",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "manual override audited",
+        "unsafe assignment visibly blocked from release"
+      ]
+    },
+    {
+      "screen_id": "14",
+      "reference_png": "14_PRODUCTIE_Optimalisatie_Profile_Nesting.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Optimalisatie — Profile Nesting",
+      "purpose": "Profiel-/staafoptimalisatie met scenarios, voorraad/reststukken, manual corrections en solver-evidence.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: machine/scenario/stock",
+        "links: parts/stock",
+        "midden: grafische bars",
+        "rechts: metrics/proof",
+        "onder: planner actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_profile_optimize",
+          "type": "QPushButton",
+          "label": "Optimaliseren",
+          "action": "Run Profile Nesting solver",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_compare",
+          "type": "QPushButton",
+          "label": "Scenario's vergelijken",
+          "action": "Compare scenarios",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_validate",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Independent validate plan",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_accept",
+          "type": "QPushButton",
+          "label": "Accepteren",
+          "action": "Accept valid plan revision",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_reserve",
+          "type": "QPushButton",
+          "label": "Reserveren",
+          "action": "Reserve accepted stock/remnants",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_release",
+          "type": "QPushButton",
+          "label": "Reservering vrijgeven",
+          "action": "Release reservation",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_lock",
+          "type": "QToolButton",
+          "label": "Vergrendelen",
+          "action": "Lock selected piece/bar",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_unlock",
+          "type": "QToolButton",
+          "label": "Ontgrendelen",
+          "action": "Unlock selected piece/bar",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_partial",
+          "type": "QPushButton",
+          "label": "Gedeeltelijk heroptimaliseren",
+          "action": "Partial reoptimize unlocked scope",
+          "service_contract": "ProfileNestingCommandService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_profile_report",
+          "type": "QPushButton",
+          "label": "Rapport",
+          "action": "Open/print nesting report",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [
+        "Staaf",
+        "Handelslengte",
+        "Benut",
+        "Afval",
+        "Reststuk",
+        "Machine",
+        "Status"
+      ],
+      "required_states": [
+        "unplanned",
+        "solving",
+        "feasible",
+        "proven_optimal",
+        "manual_edit",
+        "invalid",
+        "accepted",
+        "reserved"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "proof enum exact",
+        "no false OPTIMAAL BEWEZEN",
+        "manual changes transactionally validated"
+      ]
+    },
+    {
+      "screen_id": "15",
+      "reference_png": "15_PRODUCTIE_Optimalisatie_Plate_Nesting.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Optimalisatie — Plate Nesting",
+      "purpose": "2D plaatoptimalisatie met exact contourgebruik en independent validation.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: material/thickness/machine/plate stock",
+        "links: parts",
+        "midden: plate layout",
+        "rechts: utilisation/constraints",
+        "onder: edit/validate/accept"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_plate_optimize",
+          "type": "QPushButton",
+          "label": "Optimaliseren",
+          "action": "Run Plate Nesting solver",
+          "service_contract": "PlateNestingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_plate_rotate",
+          "type": "QToolButton",
+          "label": "Roteren",
+          "action": "Rotate selected placement within policy",
+          "service_contract": "PlateNestingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_plate_lock",
+          "type": "QToolButton",
+          "label": "Vergrendelen",
+          "action": "Lock placement",
+          "service_contract": "PlateNestingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_plate_unlock",
+          "type": "QToolButton",
+          "label": "Ontgrendelen",
+          "action": "Unlock placement",
+          "service_contract": "PlateNestingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_plate_validate",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Independent polygon/constraint validation",
+          "service_contract": "PlateNestingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_plate_accept",
+          "type": "QPushButton",
+          "label": "Accepteren",
+          "action": "Accept valid plate plan",
+          "service_contract": "PlateNestingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_plate_report",
+          "type": "QPushButton",
+          "label": "Rapport",
+          "action": "Generate/print plate report",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "canonical part geometry unchanged",
+        "grain/kerf/margins/spacing enforced",
+        "exact overlap validation"
+      ]
+    },
+    {
+      "screen_id": "16",
+      "reference_png": "16_PRODUCTIE_Bewerken_Workbench.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Bewerken — Workbench",
+      "purpose": "Veilig onderdelen bewerken via één transactionele write-path terwijl Viewercontext behouden blijft.",
+      "subtabs": [],
+      "layout_zones": [
+        "midden: permanente Viewer",
+        "links/rechts: feature/edit tools + parameters",
+        "onder: validation/apply"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_wb_apply",
+          "type": "QPushButton",
+          "label": "Toepassen",
+          "action": "Apply edit via sole Workbench transaction route",
+          "service_contract": "WorkbenchService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_wb_validate",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Independent validate edited canonical part",
+          "service_contract": "WorkbenchService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_wb_cancel",
+          "type": "QPushButton",
+          "label": "Annuleren",
+          "action": "Rollback uncommitted edit",
+          "service_contract": "WorkbenchService",
+          "enabled_condition": "context-valid",
+          "required": true,
+          "shortcut": "Esc"
+        },
+        {
+          "test_id": "btn_wb_undo",
+          "type": "QToolButton",
+          "label": "Ongedaan maken",
+          "action": "Undo edit transaction",
+          "service_contract": "UnifiedApplicationContext",
+          "enabled_condition": "context-valid",
+          "required": true,
+          "shortcut": "Ctrl+Z"
+        },
+        {
+          "test_id": "btn_wb_redo",
+          "type": "QToolButton",
+          "label": "Opnieuw",
+          "action": "Redo edit transaction",
+          "service_contract": "UnifiedApplicationContext",
+          "enabled_condition": "context-valid",
+          "required": true,
+          "shortcut": "Ctrl+Y"
+        },
+        {
+          "test_id": "btn_wb_rebuild",
+          "type": "QPushButton",
+          "label": "Opnieuw opbouwen",
+          "action": "Rebuild exact part and dependent display resources",
+          "service_contract": "WorkbenchService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "sole write path",
+        "rollback on failure",
+        "hash/revision/invalidation correct",
+        "viewer refresh without context loss"
+      ]
+    },
+    {
+      "screen_id": "17",
+      "reference_png": "17_PRODUCTIE_Scribing.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Scribing",
+      "purpose": "Scribing/marking/hole references/identification beheren met manufacturing-face context.",
+      "subtabs": [],
+      "layout_zones": [
+        "midden: Viewer",
+        "links: face/mark tree",
+        "rechts: rules/properties",
+        "onder: validate/apply"
+      ],
+      "required_controls": [
+        {
+          "test_id": "tab_scribe_marks",
+          "type": "QTab",
+          "label": "Markeringen",
+          "action": "Show scribe marks",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "tab_scribe_holes",
+          "type": "QTab",
+          "label": "Gatreferenties",
+          "action": "Show hole references",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "tab_scribe_id",
+          "type": "QTab",
+          "label": "Identificatie",
+          "action": "Show identification marks",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_scribe_generate",
+          "type": "QPushButton",
+          "label": "Genereren",
+          "action": "Generate marks from authoritative rules",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_scribe_validate",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Validate reachability/exclusions/transforms",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_scribe_apply",
+          "type": "QPushButton",
+          "label": "Toepassen",
+          "action": "Commit valid scribing revision",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_scribe_clear",
+          "type": "QPushButton",
+          "label": "Wissen",
+          "action": "Remove selected/draft marks safely",
+          "service_contract": "ScribingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "nesting-aware transforms",
+        "no geometry mutation",
+        "stale protection"
+      ]
+    },
+    {
+      "screen_id": "18",
+      "reference_png": "18_PRODUCTIE_Converteren.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Converteren",
+      "purpose": "Scope-first conversie tussen ondersteunde formaten met preflight en roundtripcheck.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: bron/doel/scope",
+        "midden: capability/preflight table",
+        "onder: output + actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_convert_source",
+          "type": "QComboBox",
+          "label": "Bron",
+          "action": "Choose source format/context",
+          "service_contract": "ConversionCapabilityRegistry",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_convert_target",
+          "type": "QComboBox",
+          "label": "Doel",
+          "action": "Choose target format",
+          "service_contract": "ConversionCapabilityRegistry",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_convert_scope",
+          "type": "QComboBox",
+          "label": "Scope",
+          "action": "Geselecteerd/assembly/project volgens format",
+          "service_contract": "ExportScopeService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_convert_check",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Run conversion preflight",
+          "service_contract": "ConversionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_convert_run",
+          "type": "QPushButton",
+          "label": "Converteren",
+          "action": "Execute conversion",
+          "service_contract": "ConversionService",
+          "enabled_condition": "preflight passed",
+          "required": true
+        },
+        {
+          "test_id": "chk_convert_reimport",
+          "type": "QCheckBox",
+          "label": "Resultaat opnieuw inlezen en vergelijken",
+          "action": "Enable roundtrip comparison",
+          "service_contract": "ConversionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_convert_output",
+          "type": "QPushButton",
+          "label": "Doelmap",
+          "action": "Choose output directory",
+          "service_contract": "ConversionService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "empty scope hard-block",
+        "unsupported feature explicit",
+        "roundtrip compares bbox/length/profile/material/features"
+      ]
+    },
+    {
+      "screen_id": "19",
+      "reference_png": "19_PRODUCTIE_Tekeningen_PDF.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Productie",
+      "title": "Tekeningen / PDF",
+      "purpose": "Hoogwaardige vectorproductietekeningen eenvoudig automatisch genereren, bewerken, previewen en afdrukken.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: drawing settings",
+        "midden: large PDF/drawing preview",
+        "rechts: pages/details",
+        "onder: primary actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_drawing_type",
+          "type": "QComboBox",
+          "label": "Type",
+          "action": "Onderdeel/Samenstelling/Overzicht volgens supported scope",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_paper_size",
+          "type": "QComboBox",
+          "label": "Papier",
+          "action": "A4/A3/A2/A1/A0",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_orientation",
+          "type": "QComboBox",
+          "label": "Oriëntatie",
+          "action": "Automatisch/Liggend/Staand",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_scale",
+          "type": "QComboBox",
+          "label": "Schaal",
+          "action": "Automatisch of gekozen schaal",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_view_front",
+          "type": "QCheckBox",
+          "label": "Voor",
+          "action": "Include front view",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_view_top",
+          "type": "QCheckBox",
+          "label": "Boven",
+          "action": "Include top view",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_view_right",
+          "type": "QCheckBox",
+          "label": "Rechts",
+          "action": "Include right view",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_view_iso",
+          "type": "QCheckBox",
+          "label": "ISO",
+          "action": "Include ISO view",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_drawing_auto_layout",
+          "type": "QPushButton",
+          "label": "Auto indelen",
+          "action": "Run deterministic layout",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_drawing_generate",
+          "type": "QPushButton",
+          "label": "Genereren",
+          "action": "Generate vector drawing/PDF",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_drawing_edit",
+          "type": "QPushButton",
+          "label": "Bewerken",
+          "action": "Open supported drawing edit/layout controls",
+          "service_contract": "DrawingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_drawing_print",
+          "type": "QPushButton",
+          "label": "Afdrukken",
+          "action": "Open Print Center with drawing scope",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_drawing_export_pdf",
+          "type": "QPushButton",
+          "label": "PDF opslaan",
+          "action": "Save vector PDF",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "technical lines/text vector",
+        "Drawing Linter before production-ready",
+        "sharp at high zoom",
+        "no screenshot-as-production-PDF"
+      ]
+    },
+    {
+      "screen_id": "20",
+      "reference_png": "20_UITVOER_Afdrukken_Print_Center.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Uitvoer",
+      "title": "Afdrukken / Print Center",
+      "purpose": "Eén centrale afdrukservice vanuit Viewer, BOM, Tekeningen, Rapport en Export.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: content/scope",
+        "midden: print preview",
+        "rechts: printer/paper/options",
+        "onder: output actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_print_content",
+          "type": "QComboBox",
+          "label": "Inhoud",
+          "action": "Productietekeningen/BOM/Machinewerklijst/Zaaglijst/Labels/Nestingrapport/Compleet pakket",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_print_scope",
+          "type": "QComboBox",
+          "label": "Scope",
+          "action": "Contextuele selectie/projectscope",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_printer",
+          "type": "QComboBox",
+          "label": "Printer",
+          "action": "Select system printer",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_print_paper",
+          "type": "QComboBox",
+          "label": "Papier",
+          "action": "Printer/preset paper size",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_print_orientation",
+          "type": "QComboBox",
+          "label": "Oriëntatie",
+          "action": "Auto/Liggend/Staand",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "spin_print_copies",
+          "type": "QSpinBox",
+          "label": "Aantal",
+          "action": "Number of copies",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_print_preview",
+          "type": "QPushButton",
+          "label": "Voorbeeld",
+          "action": "Render print preview",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_print_run",
+          "type": "QPushButton",
+          "label": "Afdrukken",
+          "action": "Send verified document to printer",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_print_pdf",
+          "type": "QPushButton",
+          "label": "PDF opslaan",
+          "action": "Write PDF output",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_print_batch",
+          "type": "QPushButton",
+          "label": "Batch",
+          "action": "Configure/run batch output",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "same print service from all entry points",
+        "BOM multi-selection batch print",
+        "paper/scale predictable"
+      ]
+    },
+    {
+      "screen_id": "21",
+      "reference_png": "21_CONTROLE_Validatie.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Controle",
+      "title": "Validatie",
+      "purpose": "Alle relevante project-/productieproblemen centraal vinden en naar bronobject navigeren.",
+      "subtabs": [],
+      "layout_zones": [
+        "links/boven: filters",
+        "midden: issue table",
+        "rechts: details/evidence",
+        "onder: fix/open/rerun"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_validation_run",
+          "type": "QPushButton",
+          "label": "Opnieuw controleren",
+          "action": "Run full/current-scope validators",
+          "service_contract": "ValidationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_validation_severity",
+          "type": "QComboBox",
+          "label": "Ernst",
+          "action": "Filter Blocker/Fout/Waarschuwing/Info",
+          "service_contract": "ValidationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_validation_domain",
+          "type": "QComboBox",
+          "label": "Onderdeel",
+          "action": "Filter validation domain",
+          "service_contract": "ValidationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_validation_show",
+          "type": "QPushButton",
+          "label": "Toon object",
+          "action": "Select/focus source object",
+          "service_contract": "SelectionAuthority",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_validation_open",
+          "type": "QPushButton",
+          "label": "Open oplossen",
+          "action": "Open owning workspace/action",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_validation_evidence",
+          "type": "QPushButton",
+          "label": "Evidence",
+          "action": "Open supporting validation evidence",
+          "service_contract": "ProofCenterService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [
+        "Ernst",
+        "Domein",
+        "Object",
+        "Melding",
+        "Status",
+        "Bron"
+      ],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "every blocker has source/evidence",
+        "click issue navigates exact object",
+        "no fake green Project Ready"
+      ]
+    },
+    {
+      "screen_id": "22",
+      "reference_png": "22_CONTROLE_Revisies_Compare.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Controle",
+      "title": "Revisies / Compare",
+      "purpose": "Revisies visueel en semantisch vergelijken.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: revision A/B selectors",
+        "links: change filters/tree",
+        "midden: Viewer compare",
+        "rechts: properties/diff",
+        "onder: actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_compare_a",
+          "type": "QComboBox",
+          "label": "Revisie A",
+          "action": "Choose baseline revision",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "cmb_compare_b",
+          "type": "QComboBox",
+          "label": "Revisie B",
+          "action": "Choose target revision",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_compare_run",
+          "type": "QPushButton",
+          "label": "Vergelijken",
+          "action": "Compute semantic/geometry differences",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_compare_added",
+          "type": "QCheckBox",
+          "label": "Toegevoegd",
+          "action": "Show added",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_compare_removed",
+          "type": "QCheckBox",
+          "label": "Verwijderd",
+          "action": "Show removed",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_compare_changed",
+          "type": "QCheckBox",
+          "label": "Gewijzigd",
+          "action": "Show changed",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "chk_compare_same",
+          "type": "QCheckBox",
+          "label": "Ongewijzigd",
+          "action": "Show unchanged",
+          "service_contract": "RevisionCompareService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_compare_issue",
+          "type": "QPushButton",
+          "label": "Reviewpunt maken",
+          "action": "Create review issue from difference",
+          "service_contract": "ReviewService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "added/removed/changed/same deterministic",
+        "camera/context preserved",
+        "properties diff traceable"
+      ]
+    },
+    {
+      "screen_id": "23",
+      "reference_png": "23_CONTROLE_Maakbaarheid.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Controle",
+      "title": "Maakbaarheid",
+      "purpose": "DFM/machine-capability, manufacturing geometry en reachability eenvoudig beoordelen.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: checks/categories",
+        "midden: Viewer",
+        "rechts: machine/check details",
+        "onder: resolve/navigation"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_dfm_machine",
+          "type": "QComboBox",
+          "label": "Machine",
+          "action": "Choose machine context",
+          "service_contract": "MachineCapabilityService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_dfm_run",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Run manufacturability/DFM checks",
+          "service_contract": "DfmService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_dfm_show",
+          "type": "QPushButton",
+          "label": "Toon probleem",
+          "action": "Select/focus affected geometry/part",
+          "service_contract": "SelectionAuthority",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_dfm_machine_route",
+          "type": "QPushButton",
+          "label": "Andere machine",
+          "action": "Open machine routing for selection",
+          "service_contract": "MachineRoutingService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_dfm_evidence",
+          "type": "QPushButton",
+          "label": "Details",
+          "action": "Open manufacturing geometry/evidence details",
+          "service_contract": "ProofCenterService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "machine-specific capability checks",
+        "no machine-ready claim without qualification"
+      ]
+    },
+    {
+      "screen_id": "24",
+      "reference_png": "24_UITVOER_Export_Center.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Uitvoer",
+      "title": "Export Center",
+      "purpose": "Scope-first, gecontroleerde productie-export en pakketgeneratie.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: scope",
+        "midden: format/preflight",
+        "rechts: destination/package",
+        "onder: generate/verify/package"
+      ],
+      "required_controls": [
+        {
+          "test_id": "cmb_export_scope",
+          "type": "QComboBox",
+          "label": "Scope",
+          "action": "Geselecteerd/assembly/project/filtered scope",
+          "service_contract": "ExportScopeService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_export_formats",
+          "type": "QToolButton",
+          "label": "Formaten",
+          "action": "Choose supported output formats",
+          "service_contract": "ExportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_export_preflight",
+          "type": "QPushButton",
+          "label": "Controleren",
+          "action": "Run export preflight",
+          "service_contract": "ExportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_export_generate",
+          "type": "QPushButton",
+          "label": "Genereren",
+          "action": "Generate files for valid scope",
+          "service_contract": "ExportService",
+          "enabled_condition": "preflight passed",
+          "required": true
+        },
+        {
+          "test_id": "btn_export_verify",
+          "type": "QPushButton",
+          "label": "Verifiëren",
+          "action": "Verify generated outputs",
+          "service_contract": "ExportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_export_package",
+          "type": "QPushButton",
+          "label": "Pakket maken",
+          "action": "Create deterministic output package",
+          "service_contract": "ExportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_export_folder",
+          "type": "QPushButton",
+          "label": "Doelmap",
+          "action": "Choose/open destination folder",
+          "service_contract": "ExportService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "empty selection hard-block",
+        "scope explicit before formats",
+        "generated outputs verified/reimported where applicable"
+      ]
+    },
+    {
+      "screen_id": "25",
+      "reference_png": "25_UITVOER_Rapport_Pakket.png",
+      "visual_reference_status": "V5_PNG_BINDING",
+      "main_navigation": "Uitvoer",
+      "title": "Rapport / Pakket",
+      "purpose": "Projectready-status, blockers en uiteindelijke rapport-/productiepakket-output.",
+      "subtabs": [],
+      "layout_zones": [
+        "boven: readiness state",
+        "midden: domain status cards",
+        "rechts: blockers/warnings",
+        "onder: report/package actions"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_report_refresh",
+          "type": "QPushButton",
+          "label": "Status vernieuwen",
+          "action": "Recalculate readiness from authoritative validators",
+          "service_contract": "ProofCenterService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_report_open_blocker",
+          "type": "QPushButton",
+          "label": "Open blokkade",
+          "action": "Navigate to owning problem",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_report_print",
+          "type": "QPushButton",
+          "label": "Rapport afdrukken",
+          "action": "Open Print Center for project report",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_report_export",
+          "type": "QPushButton",
+          "label": "Rapport opslaan",
+          "action": "Export verified report",
+          "service_contract": "DocumentOutputService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_report_package",
+          "type": "QPushButton",
+          "label": "Productiepakket",
+          "action": "Open/generate final project package",
+          "service_contract": "ExportService",
+          "enabled_condition": "all required internal gates passed",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "PROJECT READY derived, never manually green",
+        "machine external qualification separately visible"
+      ]
+    },
+    {
+      "screen_id": "26",
+      "reference_png": null,
+      "visual_reference_status": "SPEC_REQUIRED_PNG_TO_BE_ADDED",
+      "main_navigation": "Instellingen",
+      "title": "Machinebibliotheek",
+      "purpose": "Bedrijfsconfiguratie voor machinecapaciteiten en routingvoorkeuren.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: machine list/groups",
+        "midden: capabilities table",
+        "rechts: selected machine details",
+        "onder: save/test/cancel"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_machine_new",
+          "type": "QPushButton",
+          "label": "Nieuwe machine",
+          "action": "Create machine definition",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_machine_duplicate",
+          "type": "QPushButton",
+          "label": "Dupliceren",
+          "action": "Duplicate selected machine config",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_machine_import",
+          "type": "QPushButton",
+          "label": "Importeren",
+          "action": "Import machine configuration",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_machine_export",
+          "type": "QPushButton",
+          "label": "Exporteren",
+          "action": "Export machine configuration",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_machine_test",
+          "type": "QPushButton",
+          "label": "Configuratie testen",
+          "action": "Run internal capability/config validation",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_machine_save",
+          "type": "QPushButton",
+          "label": "Opslaan",
+          "action": "Persist valid machine library change",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_machine_cancel",
+          "type": "QPushButton",
+          "label": "Annuleren",
+          "action": "Discard uncommitted settings changes",
+          "service_contract": "MachineLibraryService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [
+        "Machine",
+        "Type",
+        "Profielgroepen",
+        "Min lengte",
+        "Max lengte",
+        "Tools",
+        "Bewerkingen",
+        "Scribing",
+        "Prioriteit",
+        "Actief"
+      ],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "routing library versioned/audited",
+        "unsafe machine cannot become release-ready"
+      ]
+    },
+    {
+      "screen_id": "27",
+      "reference_png": null,
+      "visual_reference_status": "SPEC_REQUIRED_PNG_TO_BE_ADDED",
+      "main_navigation": "Instellingen",
+      "title": "PDF/Print & Tekeningtemplates",
+      "purpose": "Bedrijfsbrede templates voor tekeningen, titleblocks, PDF en print.",
+      "subtabs": [],
+      "layout_zones": [
+        "links: template categories",
+        "midden: template editor/preview",
+        "rechts: defaults",
+        "onder: save/test"
+      ],
+      "required_controls": [
+        {
+          "test_id": "btn_template_new",
+          "type": "QPushButton",
+          "label": "Nieuw",
+          "action": "Create drawing/print template",
+          "service_contract": "DocumentTemplateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_template_duplicate",
+          "type": "QPushButton",
+          "label": "Dupliceren",
+          "action": "Duplicate template",
+          "service_contract": "DocumentTemplateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_template_logo",
+          "type": "QPushButton",
+          "label": "Logo kiezen",
+          "action": "Select company logo asset",
+          "service_contract": "DocumentTemplateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_template_preview",
+          "type": "QPushButton",
+          "label": "Voorbeeld",
+          "action": "Render template preview",
+          "service_contract": "DocumentTemplateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_template_save",
+          "type": "QPushButton",
+          "label": "Opslaan",
+          "action": "Persist template",
+          "service_contract": "DocumentTemplateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_template_reset",
+          "type": "QPushButton",
+          "label": "Standaard herstellen",
+          "action": "Restore safe defaults",
+          "service_contract": "DocumentTemplateService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": []
+    },
+    {
+      "screen_id": "28",
+      "reference_png": null,
+      "visual_reference_status": "SPEC_REQUIRED_PNG_TO_BE_ADDED",
+      "main_navigation": "Globaal",
+      "title": "Activity Center",
+      "purpose": "Niet-modale voortgang voor import, geometry, nesting, conversion, drawings, PDF en export.",
+      "subtabs": [],
+      "layout_zones": [
+        "popover/dock: active jobs",
+        "per row: type/progress/status/action"
+      ],
+      "required_controls": [
+        {
+          "test_id": "activity_jobs",
+          "type": "QListView",
+          "label": "Activiteiten",
+          "action": "Show authoritative JobManager jobs",
+          "service_contract": "JobManager",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_activity_cancel",
+          "type": "QPushButton",
+          "label": "Annuleren",
+          "action": "Cancel selected cancellable job",
+          "service_contract": "JobManager",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_activity_open",
+          "type": "QPushButton",
+          "label": "Openen",
+          "action": "Open job owning workspace/result",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_activity_clear_done",
+          "type": "QPushButton",
+          "label": "Gereed wissen",
+          "action": "Clear completed UI history, not audit truth",
+          "service_contract": "JobManager",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "no fake progress",
+        "UI remains responsive",
+        "cancel generation-safe"
+      ]
+    },
+    {
+      "screen_id": "29",
+      "reference_png": null,
+      "visual_reference_status": "SPEC_REQUIRED_PNG_TO_BE_ADDED",
+      "main_navigation": "Globaal",
+      "title": "Problem / Status Center",
+      "purpose": "Eén globale ingang voor blockers, fouten en waarschuwingen.",
+      "subtabs": [],
+      "layout_zones": [
+        "popover/dock: severity counters",
+        "list: issues",
+        "details/action"
+      ],
+      "required_controls": [
+        {
+          "test_id": "problem_list",
+          "type": "QListView",
+          "label": "Problemen",
+          "action": "Aggregate authoritative validation/problem records",
+          "service_contract": "ProblemCenterService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_problem_open",
+          "type": "QPushButton",
+          "label": "Openen",
+          "action": "Navigate to exact owning workspace/object",
+          "service_contract": "WorkspaceRouter",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_problem_show",
+          "type": "QPushButton",
+          "label": "Toon object",
+          "action": "Select/focus canonical object",
+          "service_contract": "SelectionAuthority",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_problem_rerun",
+          "type": "QPushButton",
+          "label": "Opnieuw controleren",
+          "action": "Rerun owning validator",
+          "service_contract": "ValidationService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": []
+    },
+    {
+      "screen_id": "30",
+      "reference_png": null,
+      "visual_reference_status": "SPEC_REQUIRED_PNG_TO_BE_ADDED",
+      "main_navigation": "Viewer",
+      "title": "Los Viewer-venster",
+      "purpose": "Optioneel tweede/detached venster op dezelfde Viewercontext, zonder tweede waarheid.",
+      "subtabs": [],
+      "layout_zones": [
+        "full viewer + compact toolbar",
+        "status/context synced with main window"
+      ],
+      "required_controls": [
+        {
+          "test_id": "detached_viewer_canvas",
+          "type": "QVTK/OpenGLWidget",
+          "label": "Viewer",
+          "action": "Render same project context in detached window",
+          "service_contract": "ViewerWindowService",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_detached_attach",
+          "type": "QToolButton",
+          "label": "Terugplaatsen",
+          "action": "Close/reattach detached presentation",
+          "service_contract": "ViewerWindowService",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "same project IDs/context",
+        "no duplicate JobManager/selection authority"
+      ]
+    },
+    {
+      "screen_id": "31",
+      "reference_png": null,
+      "visual_reference_status": "SPEC_REQUIRED_PNG_TO_BE_ADDED",
+      "main_navigation": "Globaal",
+      "title": "Snelactie / Command Palette",
+      "purpose": "Ctrl+K voor snelle, zoekbare contextacties zonder de UI vol te zetten.",
+      "subtabs": [],
+      "layout_zones": [
+        "overlay center: search",
+        "results grouped by action/workspace"
+      ],
+      "required_controls": [
+        {
+          "test_id": "txt_command_search",
+          "type": "QLineEdit",
+          "label": "Zoek actie",
+          "action": "Search registered safe commands",
+          "service_contract": "CommandRegistry",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "list_commands",
+          "type": "QListView",
+          "label": "Acties",
+          "action": "Show context-valid commands",
+          "service_contract": "CommandRegistry",
+          "enabled_condition": "context-valid",
+          "required": true
+        },
+        {
+          "test_id": "btn_command_execute",
+          "type": "QPushButton",
+          "label": "Uitvoeren",
+          "action": "Execute selected registered command",
+          "service_contract": "CommandRegistry",
+          "enabled_condition": "context-valid",
+          "required": true
+        }
+      ],
+      "required_table_columns": [],
+      "required_states": [
+        "default",
+        "loading",
+        "empty",
+        "selection",
+        "warning",
+        "error"
+      ],
+      "visual_rules": [],
+      "acceptance": [
+        "only registered commands",
+        "disabled reason for invalid context",
+        "same handlers as visible UI"
+      ]
+    }
+  ],
+  "hard_gates": [
+    "25/25 V5 visual screens implemented",
+    "required controls missing = 0",
+    "visible interactive controls without test_id = 0",
+    "required controls without real handler/service = 0",
+    "NotImplemented/no-op visible controls = 0",
+    "required visual screen FAIL = 0",
+    "required DPI clipped/overlapping controls = 0"
+  ]
+}

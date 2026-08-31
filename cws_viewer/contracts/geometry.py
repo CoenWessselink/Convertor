@@ -119,6 +119,9 @@ class MeshData:
     metadata: Mapping[str, Any] = field(default_factory=dict)
     mesh_hash: str = ""
     bounds: BoundingBox | None = None
+    normals: np.ndarray | None = None
+    feature_edges: np.ndarray | None = None
+    lod_triangles: tuple[np.ndarray, ...] = ()
 
     def __post_init__(self) -> None:
         vertices = np.asarray(self.vertices, dtype=np.float64)
@@ -143,6 +146,26 @@ class MeshData:
         object.__setattr__(self, "triangles", triangles)
         object.__setattr__(self, "warnings", tuple(str(v) for v in self.warnings))
         object.__setattr__(self, "metadata", dict(self.metadata))
+        if self.normals is not None:
+            normals = np.ascontiguousarray(np.asarray(self.normals, dtype=np.float32))
+            if normals.shape != vertices.shape:
+                raise ValueError("MeshData.normals moet dezelfde vorm als vertices hebben")
+            normals.setflags(write=False)
+            object.__setattr__(self, "normals", normals)
+        if self.feature_edges is not None:
+            feature_edges = np.ascontiguousarray(np.asarray(self.feature_edges, dtype=np.int32))
+            if feature_edges.ndim != 2 or feature_edges.shape[1] != 2:
+                raise ValueError("MeshData.feature_edges moet Kx2 zijn")
+            feature_edges.setflags(write=False)
+            object.__setattr__(self, "feature_edges", feature_edges)
+        lods: list[np.ndarray] = []
+        for lod in self.lod_triangles:
+            value = np.ascontiguousarray(np.asarray(lod, dtype=np.int32))
+            if value.ndim != 2 or value.shape[1] != 3:
+                raise ValueError("MeshData.lod_triangles moet uit Mx3-arrays bestaan")
+            value.setflags(write=False)
+            lods.append(value)
+        object.__setattr__(self, "lod_triangles", tuple(lods))
         if self.bounds is None:
             lo, hi = vertices.min(axis=0), vertices.max(axis=0)
             object.__setattr__(self, "bounds", BoundingBox(Vector3(*lo.tolist()), Vector3(*hi.tolist())))
@@ -171,7 +194,13 @@ class MeshData:
 
     @property
     def byte_length(self) -> int:
-        return int(self.vertices.nbytes + self.triangles.nbytes)
+        return int(
+            self.vertices.nbytes
+            + self.triangles.nbytes
+            + (self.normals.nbytes if self.normals is not None else 0)
+            + (self.feature_edges.nbytes if self.feature_edges is not None else 0)
+            + sum(item.nbytes for item in self.lod_triangles)
+        )
 
     def to_summary(self) -> dict[str, Any]:
         assert self.bounds is not None
@@ -190,6 +219,11 @@ class MeshData:
                 "size": self.bounds.size.to_tuple(),
             },
             "metadata": dict(self.metadata),
+            "cached_render_resources": {
+                "normals": self.normals is not None,
+                "feature_edge_count": int(self.feature_edges.shape[0]) if self.feature_edges is not None else 0,
+                "lod_triangle_counts": [int(item.shape[0]) for item in self.lod_triangles],
+            },
         }
 
 

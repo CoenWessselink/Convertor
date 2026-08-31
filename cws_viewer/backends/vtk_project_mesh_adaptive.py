@@ -25,8 +25,8 @@ class _PickLocatorEntry:
 class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     """V15 renderer with interactive/idle quality states and indexed picking."""
 
-    INTERACTIVE_MULTISAMPLES = 8
-    MIN_IDLE_MULTISAMPLES = 4
+    INTERACTIVE_MULTISAMPLES = 0
+    MIN_IDLE_MULTISAMPLES = 8
     MAX_PICK_CANDIDATES = 64
     # A cell pick identifies the shared mesh actor, not the concrete instance.
     # Dense IFC models can contain hundreds of copies of the same profile. The
@@ -67,6 +67,10 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         if requested == self._interaction_quality_active:
             return False
 
+        interaction_scene = getattr(self, "set_interaction_scene", None)
+        if callable(interaction_scene):
+            interaction_scene(requested)
+
         window = self._render_window
         if window is not None:
             try:
@@ -81,6 +85,16 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
                 renderer.SetPass(None if requested else self._ssao_pass)
             except Exception:
                 pass
+            shadow_method = getattr(
+                renderer,
+                "UseShadowsOff" if requested else "UseShadowsOn",
+                None,
+            )
+            if callable(shadow_method):
+                try:
+                    shadow_method()
+                except Exception:
+                    pass
 
         self._interaction_quality_active = requested
         return True
@@ -197,12 +211,27 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             return None
 
         state = self._state
+        # Long members must remain selectable near either end. Ranking only by
+        # instance centre can discard the clicked beam before surface testing.
+        bounded_candidates: list[tuple[float, float, str]] = []
+        for node_id in entry.node_ids:
+            bounds = index.world_bounds_by_node.get(node_id)
+            if bounds is None:
+                continue
+            offset = (
+                Vector3.zero()
+                if state is None
+                else state.explode_offsets.get(node_id, Vector3.zero())
+            )
+            minimum = bounds.minimum + offset
+            maximum = bounds.maximum + offset
+            distance_sq = self._distance_sq_to_bounds(world_point, minimum, maximum)
+            delta = world_point - ((minimum + maximum) * 0.5)
+            bounded_candidates.append((distance_sq, delta.dot(delta), node_id))
+        bounded_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
         best_id: str | None = None
         best_key = (float("inf"), float("inf"), float("inf"))
-        for instance_index in self._candidate_instance_indexes(entry, world_point):
-            if instance_index < 0 or instance_index >= len(entry.node_ids):
-                continue
-            node_id = entry.node_ids[instance_index]
+        for _bounds_distance, _center_distance, node_id in bounded_candidates[: self.MAX_PICK_CANDIDATES]:
             bounds = index.world_bounds_by_node.get(node_id)
             if bounds is None:
                 continue

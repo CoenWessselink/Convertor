@@ -563,6 +563,36 @@ def _quality_inspection_check() -> dict[str, Any]:
     }
 
 
+def _phase2_production_check() -> dict[str, Any]:
+    from datetime import datetime, timedelta, timezone
+    from cws_convertor.optimization.plate_nesting import PlateGeometryRef, PlateNestDemand, PlateStock, solve_canonical_plate_nesting, validate_canonical_plate_nesting
+    from cws_convertor.production import FiniteCapacityPlanner, MachineResource, OperationRequirement, ProductionOrder, Shift, ShopfloorState
+    from cws_convertor.proof_center import PROOF_CATEGORIES, ProofCenter, ProofEvidence
+
+    geometry = PlateGeometryRef("runtime-plate", ((0, 0), (200, 0), (200, 100), (0, 100)))
+    demand = PlateNestDemand("runtime-demand", "runtime-part", geometry, "steel", "S355", 10, allowed_rotations_deg=(0,))
+    stock = PlateStock("runtime-stock", 500, 300, "steel", "S355", 10)
+    plan = solve_canonical_plate_nesting((demand,), (stock,), run_id="runtime-plate-run")
+    if not validate_canonical_plate_nesting(plan, (demand,), (stock,)).passed:
+        raise AssertionError("Canonical plate nesting failed in packaged runtime")
+    start = datetime(2026, 8, 29, 6, 0, tzinfo=timezone.utc)
+    stamp = lambda value: value.isoformat().replace("+00:00", "Z")
+    machine = MachineResource("runtime-machine", "Runtime machine", "runtime-wc", ("saw",))
+    shift = Shift("runtime-shift", machine.resource_id, stamp(start), stamp(start + timedelta(hours=8)))
+    order = ProductionOrder("runtime-order", "runtime-part", 1, stamp(start + timedelta(hours=7)), "d" * 64, (OperationRequirement("runtime-saw", "saw", 10),))
+    schedule = FiniteCapacityPlanner().schedule((order,), (machine,), (shift,))
+    shopfloor = ShopfloorState.from_schedule(schedule, (order,))
+    selected = shopfloor.scan_select("runtime-saw")
+    execution = shopfloor.start_operation(selected.schedule_id, release_hash=order.release_hash, operator="runtime", started_at=selected.starts_at)
+    shopfloor.complete_operation(execution.execution_id, completed_at=selected.ends_at, good_quantity=1)
+    center = ProofCenter()
+    for category in PROOF_CATEGORIES:
+        center.record(ProofEvidence(f"runtime:{category}", category, "PASS", "e" * 64, category))
+    if not schedule.feasible or shopfloor.open_released_work() or not center.release_allowed:
+        raise AssertionError("Phase-2 planning/shopfloor/proof-center runtime failed")
+    return {"schema": "cws-phase2-packaged-production-1.0", "manufacturing": True, "profile_nesting_available": True, "plate_nesting": True, "finite_capacity_planning": True, "shopfloor": True, "proof_center": True, "direct_machine_control_allowed": False, "plate_plan_sha256": plan.plan_sha256, "schedule_sha256": schedule.schedule_sha256}
+
+
 def run_native_self_test() -> dict[str, Any]:
     checks = [
         _run_check("casadi", _casadi_check),
@@ -576,6 +606,7 @@ def run_native_self_test() -> dict[str, Any]:
         _run_check("vtk_viewer", _vtk_viewer_check),
         _run_check("project_roundtrips", _project_roundtrip_check),
         _run_check("quality_inspection", _quality_inspection_check),
+        _run_check("phase2_production", _phase2_production_check),
     ]
     return {
         "application": APP_NAME,

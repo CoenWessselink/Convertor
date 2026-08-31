@@ -63,13 +63,20 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
     screenshot.parent.mkdir(parents=True, exist_ok=True)
     saved = pixmap.save(str(screenshot), "PNG")
     tab_labels = [window.tabs.tabText(index) for index in range(window.tabs.count())]
+    expected_primary_labels = ["Project", "Viewer", "Productie", "Controle", "Uitvoer"]
+    workspace_pages = (
+        window.import_page, window.viewer_page, window.edit_page, window.converter_page,
+        window.control_page, window.pdf_page, window.profiles_page, window.drawings_page,
+        window.scribing_page, window.bom_excel_page, window.production_workflow_page,
+        window.export_page,
+    )
     viewer_layout = window.viewer_host.layout()
     viewer_host_populated = bool(viewer_layout is not None and viewer_layout.count() > 0)
     checks = {
         "window_visible": window.isVisible(), "viewer_host_present": window.viewer_host is window.centralWidget(),
         "product_header_present": bool(header is not None and header.isVisible() and header.layout() is not None),
-        "text_tabs_present": len(tab_labels) >= 10 and all(tab_labels),
-        "tab_icons_present": any(not window.tabs.tabIcon(index).isNull() for index in range(window.tabs.count())),
+        "primary_navigation_complete": tab_labels == expected_primary_labels,
+        "all_workspaces_reachable": all(page.parent() is not None for page in workspace_pages),
         "viewer_host_split_layout": viewer_host_populated,
         "keyboard_focus_moves": bool(
             len(focusables) >= 2

@@ -151,7 +151,7 @@ class VtkProjectBackend:
         else:
             render_window = self._external_render_window
         render_window.SetSize(self._width, self._height)
-        render_window.SetMultiSamples(4)
+        render_window.SetMultiSamples(8)
         render_window.AddRenderer(renderer)
         render_window.SetWindowName("CWS Viewer V2 — Projectscene")
 

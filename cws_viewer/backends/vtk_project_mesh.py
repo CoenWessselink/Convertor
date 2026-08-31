@@ -88,6 +88,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._node_instance: dict[str, tuple[_MeshActorGroup, int]] = {}
         self._point_picker: Any | None = None
         self._geometry_filter: frozenset[str] | None = None
+        self._interaction_actor: Any | None = None
 
     def set_geometry_filter(self, geometry_ids: tuple[str, ...] | None) -> None:
         """Temporarily bound first-frame actor construction for huge scenes."""
@@ -124,6 +125,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             self._render_window.SetWindowName("CWS Viewer V3 — echt projectmodel")
 
     def load_scene(self, scene, index) -> None:
+        self._discard_interaction_actor()
         super().load_scene(scene, index)
         self._static_groups_ready = False
         self._mesh_groups = []
@@ -131,6 +133,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._point_picker = None
 
     def clear_scene(self) -> None:
+        self._discard_interaction_actor()
         super().clear_scene()
         self._static_groups_ready = False
         self._mesh_groups = []
@@ -143,8 +146,14 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         ProjectScene identities and camera/session state stay unchanged.  Only
         VTK source polydata and the derived feature-edge cache are rebuilt.
         """
+        self._discard_interaction_actor()
         requested = None if geometry_ids is None else {str(value) for value in geometry_ids}
         polydata_cache = getattr(self, "_cws_polydata_cache", None)
+        previous_sources = (
+            {}
+            if requested is None or not isinstance(polydata_cache, dict)
+            else {geometry_id: polydata_cache.get(geometry_id) for geometry_id in requested}
+        )
         if isinstance(polydata_cache, dict):
             if requested is None:
                 polydata_cache.clear()
@@ -158,6 +167,28 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             else:
                 for geometry_id in requested:
                     feature_cache.pop(geometry_id, None)
+        if requested is not None:
+            changed = False
+            for geometry_id, previous_source in previous_sources.items():
+                if previous_source is None:
+                    continue
+                replacement = self._mesh_polydata(geometry_id)
+                for group in self._mesh_groups:
+                    if group.source is not previous_source:
+                        continue
+                    group.source = replacement
+                    group.mapper.SetSourceData(replacement)
+                    group.mapper.Modified()
+                    changed = True
+            for cache_name in ("_surface_hit_cache", "_pick_locator_cache"):
+                cache = getattr(self, cache_name, None)
+                if cache is not None and hasattr(cache, "clear"):
+                    cache.clear()
+            if changed:
+                self._base_signature = ""
+                self._selection_signature = ""
+                self._remove_pick_actor()
+                return
         self._remove_groups(self._groups)
         self._groups = []
         self._mesh_groups = []
@@ -167,6 +198,101 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._base_signature = ""
         self._selection_signature = ""
         self._remove_pick_actor()
+
+    def rebind_scene_index(self, scene: ProjectScene, index: SceneIndex) -> None:
+        """Bind upgraded geometry without destroying actors, camera or selection."""
+        self._scene = scene
+        self._index = index
+        if hasattr(self, "_active_index"):
+            self._active_index = index
+        self._base_signature = ""
+        self._selection_signature = ""
+
+    def _discard_interaction_actor(self) -> None:
+        actor = getattr(self, "_interaction_actor", None)
+        renderer = getattr(self, "_renderer", None)
+        if actor is not None and renderer is not None:
+            try:
+                renderer.RemoveActor(actor)
+            except Exception:
+                pass
+        self._interaction_actor = None
+        for group in getattr(self, "_mesh_groups", ()):
+            group.actor.SetVisibility(True)
+
+    def _build_interaction_actor(self) -> Any | None:
+        """Combine exact world-space meshes into one colour-preserving draw call."""
+        vtk = getattr(self, "_vtk", None)
+        renderer = getattr(self, "_renderer", None)
+        index = getattr(self, "_active_index", None) or getattr(self, "_index", None)
+        if vtk is None or renderer is None or index is None or not getattr(self, "_mesh_groups", ()):
+            return None
+        import numpy as np
+        from vtk.util.numpy_support import numpy_to_vtk
+
+        append = vtk.vtkAppendPolyData()
+        inputs = 0
+        for group in self._mesh_groups:
+            for instance_index, node_id in enumerate(group.node_ids):
+                if int(group.mask.GetValue(instance_index)) == 0:
+                    continue
+                matrix = index.world_transform_by_node[node_id]
+                vtk_matrix = vtk.vtkMatrix4x4()
+                rows = matrix.to_rows()
+                for row in range(4):
+                    for column in range(4):
+                        vtk_matrix.SetElement(row, column, float(rows[row][column]))
+                transform = vtk.vtkTransform()
+                transform.SetMatrix(vtk_matrix)
+                transformed = vtk.vtkTransformPolyDataFilter()
+                transformed.SetInputData(group.source)
+                transformed.SetTransform(transform)
+                transformed.Update()
+                polydata = vtk.vtkPolyData()
+                polydata.ShallowCopy(transformed.GetOutput())
+                cell_count = int(polydata.GetNumberOfCells())
+                if cell_count <= 0:
+                    continue
+                rgba = tuple(int(value) for value in group.colors.GetTuple4(instance_index))
+                cell_rgba = numpy_to_vtk(
+                    np.tile(np.asarray(rgba, dtype=np.uint8), (cell_count, 1)),
+                    deep=True,
+                    array_type=vtk.VTK_UNSIGNED_CHAR,
+                )
+                cell_rgba.SetName("cws_interaction_rgba")
+                cell_rgba.SetNumberOfComponents(4)
+                polydata.GetCellData().SetScalars(cell_rgba)
+                append.AddInputData(polydata)
+                inputs += 1
+        if inputs == 0:
+            return None
+        append.Update()
+        mapper = vtk.vtkPolyDataMapper()
+        mapper.SetInputData(append.GetOutput())
+        mapper.SetScalarModeToUseCellData()
+        mapper.SetColorModeToDirectScalars()
+        mapper.ScalarVisibilityOn()
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        prop = actor.GetProperty()
+        prop.SetInterpolationToGouraud()
+        prop.SetAmbient(0.34)
+        prop.SetDiffuse(0.66)
+        prop.SetSpecular(0.08)
+        prop.EdgeVisibilityOff()
+        renderer.AddActor(actor)
+        actor.SetVisibility(False)
+        self._interaction_actor = actor
+        return actor
+
+    def set_interaction_scene(self, active: bool) -> None:
+        actor = getattr(self, "_interaction_actor", None)
+        if active and actor is None:
+            actor = self._build_interaction_actor()
+        if actor is not None:
+            actor.SetVisibility(bool(active))
+        for group in getattr(self, "_mesh_groups", ()):
+            group.actor.SetVisibility(not bool(active))
 
     def _mesh_polydata(self, geometry_id: str):
         vtk = self._vtk
@@ -194,12 +320,21 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         polydata = vtk.vtkPolyData()
         polydata.SetPoints(points)
         polydata.SetPolys(cell_array)
-        # AutoOrientNormals traverses complete connected surfaces and can block
-        # the Qt GUI for minutes on heterogeneous IFC models. The source is
-        # already triangulated; direct polydata gives VTK a correct, immediate
-        # first frame while preserving picking and all per-instance state.
+        # Point normals smooth radii while splitting at a small feature angle
+        # keeps fabricated steel edges crisp. Auto-orientation remains off: it
+        # traverses whole IFC shells and previously blocked the Qt GUI.
+        normals = vtk.vtkPolyDataNormals()
+        normals.SetInputData(polydata)
+        normals.ComputePointNormalsOn()
+        normals.ComputeCellNormalsOff()
+        normals.SplittingOn()
+        normals.SetFeatureAngle(32.0)
+        normals.ConsistencyOn()
+        normals.AutoOrientNormalsOff()
+        normals.NonManifoldTraversalOn()
+        normals.Update()
         output = vtk.vtkPolyData()
-        output.ShallowCopy(polydata)
+        output.ShallowCopy(normals.GetOutput())
         cache[geometry_id] = output
         return output
 

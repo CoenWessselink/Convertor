@@ -582,6 +582,19 @@ def _cws_ifcopenshell_load_many(
                 completed += 1
                 if progress is not None:
                     progress(completed / max(total, 1), request.geometry_id)
+        for request in group:
+            if request.geometry_id in output:
+                continue
+            mesh = _cws_ifcopenshell_load(
+                self,
+                request,
+                settings,
+                cancel_check=cancel_check,
+            )
+            output[request.geometry_id] = mesh
+            completed += 1
+            if progress is not None:
+                progress(completed / max(total, 1), request.geometry_id)
     return output
 
 

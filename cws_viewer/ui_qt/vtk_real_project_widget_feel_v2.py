@@ -6,11 +6,16 @@ restored once pointer input has been idle for a short, deterministic debounce.
 """
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from cws_viewer.backends.vtk_project_mesh_adaptive import VtkProjectMeshAdaptiveBackend
-from cws_viewer.contracts.enums import SelectionLevel
+from cws_viewer.contracts.enums import RenderMode, SelectionLevel
 from cws_viewer.core.viewer_feel_navigation_v2 import ViewerFeelNavigationV2Service
+from cws_viewer.core.viewer_interaction_profile import (
+    TRIMBLE_STYLE_INTERACTION_PROFILE,
+)
+from cws_viewer.performance import FrameTimeRecorder
 from cws_viewer.ui_qt import vtk_real_project_widget_feel as _feel_module
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
@@ -27,11 +32,18 @@ if qt_available():
         # remaining perceptually direct. Measurement preview remains smooth at
         # roughly 22 Hz without rebuilding transient VTK actors for every raw
         # mouse event.
-        NAVIGATION_FRAME_MS = 16
-        MEASURE_PREVIEW_MS = 45
-        INTERACTION_IDLE_MS = 180
+        NAVIGATION_FRAME_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.navigation_frame_ms
+        MEASURE_PREVIEW_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.measurement_preview_ms
+        INTERACTION_IDLE_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.interaction_idle_ms
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:
+            # Prevent VTK's native diagnostic window from floating through the
+            # embedded viewport. Application errors remain visible normally.
+            try:
+                from vtkmodules.vtkCommonCore import vtkOutputWindow, vtkStringOutputWindow
+                vtkOutputWindow.SetInstance(vtkStringOutputWindow())
+            except Exception:
+                pass
             previous = _feel_module.VtkProjectMeshFeelBackend
             _feel_module.VtkProjectMeshFeelBackend = VtkProjectMeshAdaptiveBackend
             try:
@@ -54,6 +66,7 @@ if qt_available():
             self._interaction_idle_timer.setSingleShot(True)
             self._interaction_idle_timer.setInterval(self.INTERACTION_IDLE_MS)
             self._interaction_idle_timer.timeout.connect(self._restore_idle_quality)
+            self._navigation_frame_metrics = FrameTimeRecorder()
             self._install_viewport_controls()
 
         RAL_COLOURS = (
@@ -79,6 +92,11 @@ if qt_available():
                 "border: 1px solid #aebdce; border-radius: 4px; }"
                 "QComboBox { min-height: 25px; padding: 2px 7px; background: white; "
                 "border: 1px solid #b8c6d6; border-radius: 3px; }"
+                "QPushButton#cwsRealisticButton { min-height: 27px; padding: 2px 13px; "
+                "color: white; font-weight: 700; background: #0875d1; "
+                "border: 1px solid #075fa8; border-radius: 3px; }"
+                "QPushButton#cwsRealisticButton:hover { background: #0868b8; }"
+                "QPushButton#cwsRealisticButton:pressed { background: #064f8c; }"
                 "QLabel { color: #1b3552; font-weight: 600; }"
             )
             layout = _QtWidgets.QHBoxLayout(panel)
@@ -111,6 +129,15 @@ if qt_available():
             ral.currentIndexChanged.connect(self._viewport_ral_changed)
             layout.addWidget(ral)
 
+            realistic = _QtWidgets.QPushButton("Realistisch", panel)
+            realistic.setObjectName("cwsRealisticButton")
+            realistic.setToolTip(
+                "Render het volledige model met originele IFC-kleuren, "
+                "realistische materialen, belichting en schaduw"
+            )
+            realistic.clicked.connect(self._apply_best_realistic_rendering)
+            layout.addWidget(realistic)
+
             panel.adjustSize()
             panel.move(12, 12)
             panel.raise_()
@@ -118,6 +145,7 @@ if qt_available():
             self._viewport_selection_combo = selection
             self._viewport_render_combo = rendering
             self._viewport_ral_combo = ral
+            self._viewport_realistic_button = realistic
 
         def _viewport_selection_level_changed(self, _index: int) -> None:
             value = str(self._viewport_selection_combo.currentData() or SelectionLevel.PART.value)
@@ -130,6 +158,33 @@ if qt_available():
             value = self._viewport_ral_combo.currentData()
             rgb = None if value is None else tuple(int(channel) for channel in value)
             self.backend.set_ral_colour(rgb)
+
+        def _apply_best_realistic_rendering(self) -> None:
+            """Apply the highest-quality realistic preset to the complete scene."""
+            render_blocker = QtCore.QSignalBlocker(self._viewport_render_combo)
+            colour_blocker = QtCore.QSignalBlocker(self._viewport_ral_combo)
+            self._viewport_render_combo.setCurrentIndex(0)
+            self._viewport_ral_combo.setCurrentIndex(0)
+            del render_blocker, colour_blocker
+
+            try:
+                self.backend.set_interaction_quality(False)
+                self.controller.set_render_mode(RenderMode.SHADED_EDGES)
+                self.backend.set_ral_colour(None)
+                self.backend.set_realistic_rendering(True)
+
+                overlay = getattr(self, "_trimble_navigation_overlay", None)
+                opacity_slider = getattr(overlay, "opacity_slider", None)
+                if opacity_slider is not None:
+                    opacity_slider.setValue(100)
+                else:
+                    opacity_setter = getattr(self.backend, "set_global_opacity", None)
+                    if callable(opacity_setter):
+                        opacity_setter(1.0)
+
+                self.backend.render()
+            except Exception as exc:
+                self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
 
         def resizeEvent(self, event: Any) -> None:
             super().resizeEvent(event)
@@ -183,6 +238,7 @@ if qt_available():
             button = self._pressed_button
             if button is None:
                 return
+            frame_started = time.perf_counter()
             try:
                 if button == QtCore.Qt.MouseButton.MiddleButton or (
                     button == QtCore.Qt.MouseButton.LeftButton
@@ -212,6 +268,18 @@ if qt_available():
                     overlay.update()
             except Exception as exc:
                 self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+            finally:
+                self._navigation_frame_metrics.record((time.perf_counter() - frame_started) * 1000.0)
+
+        def performance_diagnostics(self) -> dict[str, Any]:
+            return {
+                "schema": "cws-viewer-interaction-performance-2.0",
+                "navigation": self._navigation_frame_metrics.to_dict(),
+                "interaction_quality_active": self.interaction_quality_active,
+                "navigation_frame_ms": self.NAVIGATION_FRAME_MS,
+                "measurement_preview_ms": self.MEASURE_PREVIEW_MS,
+                "interaction_idle_ms": self.INTERACTION_IDLE_MS,
+            }
 
         def mousePressEvent(self, event: Any) -> None:
             if not self.markup_tool_active and event.button() in {

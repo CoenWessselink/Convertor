@@ -41,7 +41,7 @@ def _full_geometry_entity_limit() -> int:
     # critical path for a large structural model.  The Qt shell starts with
     # placed display geometry and upgrades it to exact source meshes in the
     # background.  Deployments can raise this boundary explicitly.
-    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "750")))
+    return max(100, int(os.environ.get("CWS_FULL_GEOMETRY_MAX_ENTITIES", "400")))
 from cws_viewer.exact.workbench import ExactPartWorkbenchService
 from cws_viewer.properties import GridViewerBridge
 from .selection import (
@@ -217,13 +217,13 @@ class IntegratedProjectWorkspace:
             if load_all_geometry and allow_proxy and not effective_prefer_proxy:
                 limit = max(
                     8 * 1024 * 1024,
-                    int(float(os.environ.get("CWS_FULL_GEOMETRY_MAX_MB", "64")) * 1024 * 1024),
+                    int(float(os.environ.get("CWS_FULL_GEOMETRY_MAX_MB", "32")) * 1024 * 1024),
                 )
                 source_sizes: list[int] = []
                 heavy_ifc_source = False
                 ifc_limit = max(
                     1 * 1024 * 1024,
-                    int(float(os.environ.get("CWS_FULL_IFC_GEOMETRY_MAX_MB", "32")) * 1024 * 1024),
+                    int(float(os.environ.get("CWS_FULL_IFC_GEOMETRY_MAX_MB", "16")) * 1024 * 1024),
                 )
                 for value in session.source_paths.values():
                     candidate = Path(value)
@@ -243,7 +243,7 @@ class IntegratedProjectWorkspace:
             if effective_prefer_proxy:
                 notify(
                     31,
-                    f"Complex model ({renderable_entity_count:,} objecten); responsieve 3D-weergave voorbereiden",
+                    f"Complex model ({renderable_entity_count:,} objecten); snelle volledige voorvertoning voorbereiden",
                 )
             else:
                 notify(31, "Exacte brongeometrie voorbereiden")
@@ -252,7 +252,7 @@ class IntegratedProjectWorkspace:
                 source_search_roots=roots,
                 provider_factory=(lambda: ()) if effective_prefer_proxy else None,
             )
-            notify(38, "Viewer-scene en geometriecatalogus opbouwen")
+            notify(38, "Volledige proxy-scene en geometriecatalogus opbouwen")
             def relay_geometry_progress(ratio: float, message: str) -> None:
                 if cancellation_token is not None:
                     cancellation_token.check()
@@ -269,7 +269,7 @@ class IntegratedProjectWorkspace:
             )
             if cancellation_token is not None:
                 cancellation_token.check()
-            notify(64, "Viewer-scene opgebouwd; selectie-index maken")
+            notify(64, "Model volledig zichtbaar; selectie-index aanvullen")
             if load_result.project is not session.project:
                 raise RuntimeError("Viewer heeft een tweede projectinstantie aangemaakt")
             if preview_callback is not None:

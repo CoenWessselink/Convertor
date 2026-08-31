@@ -25,7 +25,10 @@ def main() -> None:
     assert [scribing.phase3_scribing_tabs.tabText(i) for i in range(scribing.phase3_scribing_tabs.count())] == list(
         ScribingWorkspacePanel.TAB_NAMES
     )
-    assert nesting.phase3_nesting_tabs.count() == len(ProfileNestingPanel.EXTRA_TABS)
+    assert nesting.phase3_nesting_tabs.count() == len(ProfileNestingPanel.EXTRA_TABS) + 3
+    assert nesting.phase3_nesting_tabs.tabText(nesting.phase3_nesting_tabs.count() - 3) == "Realistisch zaagbeeld"
+    assert nesting.phase3_nesting_tabs.tabText(nesting.phase3_nesting_tabs.count() - 2) == "Plaatnesting"
+    assert nesting.phase3_nesting_tabs.tabText(nesting.phase3_nesting_tabs.count() - 1) == "Machine-instellingen"
     assert export.job_manager is manager
     assert export.scope.count() == 12
     export._preflight()

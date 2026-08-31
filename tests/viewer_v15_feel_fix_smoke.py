@@ -18,6 +18,7 @@ from cws_viewer.core.viewer_feel_navigation import (
 from cws_viewer.fixtures import build_synthetic_product_scene
 from cws_viewer.math3d import Vector3
 from cws_viewer.ui_qt.cockpit_feel_fix_v15 import viewer_feel_workspace_contract
+from cws_viewer.core.viewer_interaction_profile import TRIMBLE_STYLE_INTERACTION_PROFILE
 
 
 class ViewerFeelFixSmokeTests(unittest.TestCase):
@@ -81,7 +82,8 @@ class ViewerFeelFixSmokeTests(unittest.TestCase):
         self.assertIn("OpenHandCursor", widget_source)
         self.assertIn("WHEEL_ZOOM_PER_NOTCH", widget_source)
         self.assertIn("world_point_at_display_depth", widget_source)
-        self.assertIn("NAVIGATION_FRAME_MS = 10", widget_source)
+        self.assertIn("NAVIGATION_FRAME_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.navigation_frame_ms", widget_source)
+        self.assertLessEqual(TRIMBLE_STYLE_INTERACTION_PROFILE.navigation_frame_ms, 16)
 
     def test_phase2_contract_is_preserved(self) -> None:
         caps = viewer_feel_workspace_contract()["capabilities"]

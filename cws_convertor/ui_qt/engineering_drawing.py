@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -76,10 +76,29 @@ class EngineeringDrawingGenerator:
         minimum, maximum = screen.min(axis=0), screen.max(axis=0)
         model_span = np.maximum(projected.max(axis=0) - projected.min(axis=0), 1.0)
         left, _top, _right, bottom = rectangle
-        shown_positions = 0
+        dimension_points: list[tuple[float, float, float, float, float]] = []
 
         for feature in features:
             kind = str(feature.get("kind") or feature.get("type") or "").lower()
+            if kind in {"cut", "miter", "mitre", "saw_cut", "end_cut", "angle_cut"}:
+                parameters = dict(feature.get("parameters") or feature)
+                angle = cls._number(
+                    parameters, "primary_angle_deg", "angle_deg", "saw_angle_deg", "miter_angle_deg"
+                )
+                if abs(angle) > 0.05:
+                    at_end = str(parameters.get("end") or parameters.get("position") or "end").lower() not in {
+                        "start", "front", "begin", "left",
+                    }
+                    cls._draw_angle_dimension(
+                        draw,
+                        center=(
+                            float(maximum[0] if at_end else minimum[0]),
+                            float((minimum[1] + maximum[1]) * 0.5),
+                        ),
+                        angle_deg=abs(angle),
+                        reverse=at_end,
+                    )
+                continue
             if kind not in {"hole", "slot", "countersink", "countersunk_hole"}:
                 continue
             parameters = dict(feature.get("parameters") or feature)
@@ -185,9 +204,17 @@ class EngineeringDrawingGenerator:
             draw.line((cx, cy - radius - 4, cx, cy + radius + 4), fill=blue, width=1)
             draw.line((cx + radius, cy - radius, cx + radius + 22, cy - radius - 17), fill=blue, width=1)
             draw.text((cx + radius + 25, cy - radius - 26), callout, fill=blue, font=cls._font(12, bold=True))
+            dimension_points.append((x_mm, y_mm, cx, cy, radius))
 
-            if dimensions and dimension_mode != "Hoofdmaten" and shown_positions < 4:
-                datum_y = min(float(bottom - 10), float(maximum[1] + 48 + shown_positions * 18))
+        if dimensions and dimension_mode != "Hoofdmaten" and dimension_points:
+            x_points: dict[float, tuple[float, float, float, float, float]] = {}
+            y_points: dict[float, tuple[float, float, float, float, float]] = {}
+            for point in dimension_points:
+                x_points.setdefault(round(point[0], 6), point)
+                y_points.setdefault(round(point[1], 6), point)
+            for level, point in enumerate(sorted(x_points.values(), key=lambda item: item[0])[:8]):
+                x_mm, _y_mm, cx, cy, radius = point
+                datum_y = min(float(bottom - 10), float(maximum[1] + 42 + level * 16))
                 cls._draw_dimension(
                     draw,
                     orientation="horizontal",
@@ -197,7 +224,18 @@ class EngineeringDrawingGenerator:
                     witness_end=(cx, cy + radius + 4),
                     label=f"{max(0.0, x_mm):,.1f} mm",
                 )
-                shown_positions += 1
+            for level, point in enumerate(sorted(y_points.values(), key=lambda item: item[1])[:6]):
+                _x_mm, y_mm, cx, cy, radius = point
+                datum_x = max(float(left + 10), float(minimum[0] - 44 - level * 20))
+                cls._draw_dimension(
+                    draw,
+                    orientation="vertical",
+                    start=(datum_x, float(maximum[1])),
+                    end=(datum_x, cy),
+                    witness_start=(float(minimum[0]) - 4, float(maximum[1])),
+                    witness_end=(cx - radius - 4, cy),
+                    label=f"{max(0.0, y_mm):,.1f} mm",
+                )
 
     def _resolve(self, entity_id: str | None) -> tuple[Any, Any, str, np.ndarray, np.ndarray]:
         project = self.workspace.project
@@ -262,7 +300,13 @@ class EngineeringDrawingGenerator:
     @classmethod
     def _project(cls, vertices: np.ndarray, view: str) -> tuple[np.ndarray, np.ndarray]:
         u, v, direction = cls._basis(view)
-        return np.column_stack((vertices @ u, vertices @ v)), vertices @ direction
+        projected = np.column_stack((vertices @ u, vertices @ v))
+        primary = np.array((float(u[0]), float(v[0])), dtype=float)
+        if float(np.linalg.norm(primary)) > 1.0e-9:
+            angle = math.atan2(float(primary[1]), float(primary[0]))
+            cosine, sine = math.cos(angle), math.sin(angle)
+            projected = projected @ np.array(((cosine, -sine), (sine, cosine)), dtype=float)
+        return projected, vertices @ direction
 
     @staticmethod
     def _visible_edges(
@@ -331,6 +375,32 @@ class EngineeringDrawingGenerator:
         draw.rounded_rectangle((tx - 3, ty - 2, tx + (box[2] - box[0]) + 3, ty + (box[3] - box[1]) + 3), radius=2, fill="white")
         draw.text((tx, ty), label, fill=blue, font=cls._font(14))
 
+    @classmethod
+    def _draw_angle_dimension(
+        cls,
+        draw: ImageDraw.ImageDraw,
+        *,
+        center: tuple[float, float],
+        angle_deg: float,
+        reverse: bool = False,
+    ) -> None:
+        blue = (0, 102, 220)
+        radius = 34.0
+        cx, cy = center
+        sign = -1.0 if reverse else 1.0
+        base_angle = 180.0 if reverse else 0.0
+        target_angle = base_angle + sign * max(0.1, min(179.9, float(angle_deg)))
+        for value in (base_angle, target_angle):
+            radians = math.radians(value)
+            draw.line(
+                (cx, cy, cx + math.cos(radians) * (radius + 12), cy - math.sin(radians) * (radius + 12)),
+                fill=blue,
+                width=2,
+            )
+        start, end = sorted((base_angle, target_angle))
+        draw.arc((cx - radius, cy - radius, cx + radius, cy + radius), start=360.0 - end, end=360.0 - start, fill=blue, width=2)
+        draw.text((cx - 18, cy - radius - 24), f"{float(angle_deg):g}\N{DEGREE SIGN}", fill=blue, font=cls._font(13, bold=True))
+
     @staticmethod
     def _rectangles(count: int, area: tuple[int, int, int, int]) -> list[tuple[int, int, int, int]]:
         left, top, right, bottom = area
@@ -381,8 +451,8 @@ class EngineeringDrawingGenerator:
         for view, rectangle in zip(views, rectangles):
             projected, _depths = self._project(vertices, view)
             span = np.maximum(projected.max(axis=0) - projected.min(axis=0), 1.0)
-            width = max(1.0, float(rectangle[2] - rectangle[0] - 70)) / px_per_mm
-            height = max(1.0, float(rectangle[3] - rectangle[1] - 105)) / px_per_mm
+            width = max(1.0, float(rectangle[2] - rectangle[0] - 150)) / px_per_mm
+            height = max(1.0, float(rectangle[3] - rectangle[1] - 145)) / px_per_mm
             required = max(required, float(span[0] / width), float(span[1] / height))
         fitted = self._next_standard_scale(required * 1.05)
         if requested is None:
@@ -411,8 +481,8 @@ class EngineeringDrawingGenerator:
         _u, _v, direction = self._basis(view)
         center = (projected.min(axis=0) + projected.max(axis=0)) * 0.5
         scale = px_per_mm / float(denominator)
-        usable_left, usable_top = left + 32, top + 44
-        usable_right, usable_bottom = right - 32, bottom - (54 if dimensions else 25)
+        usable_left, usable_top = left + (78 if dimensions else 32), top + 48
+        usable_right, usable_bottom = right - 40, bottom - (92 if dimensions else 25)
         screen_center = np.array(((usable_left + usable_right) * 0.5, (usable_top + usable_bottom) * 0.5))
         screen = np.empty_like(projected)
         screen[:, 0] = (projected[:, 0] - center[0]) * scale + screen_center[0]
@@ -510,8 +580,17 @@ class EngineeringDrawingGenerator:
         }
         normalized_features: list[Mapping[str, Any]] = []
         seen_features: set[str] = set()
-        for source_name in ("production_features", "features"):
-            for item in (getattr(entity, source_name, None) or ()):
+        feature_sources: list[Any] = [
+            getattr(entity, "production_features", None),
+            getattr(entity, "features", None),
+        ]
+        workbench = getattr(entity, "workbench", {}) or {}
+        if isinstance(workbench, Mapping):
+            revision = workbench.get("current_revision") or {}
+            if isinstance(revision, Mapping):
+                feature_sources.append(revision.get("features"))
+        for source_items in feature_sources:
+            for item in (source_items or ()):
                 if not isinstance(item, Mapping):
                     continue
                 record = dict(item)
@@ -540,6 +619,19 @@ class EngineeringDrawingGenerator:
                     continue
                 seen_features.add(identity)
                 normalized_features.append(record)
+        for attribute, end_name in (("start_cut", "start"), ("end_cut", "end")):
+            raw_cut = getattr(entity, attribute, None)
+            if raw_cut is None:
+                continue
+            if is_dataclass(raw_cut):
+                cut_parameters = asdict(raw_cut)
+            elif isinstance(raw_cut, Mapping):
+                cut_parameters = dict(raw_cut)
+            else:
+                cut_parameters = dict(getattr(raw_cut, "__dict__", {}) or {})
+            if cut_parameters:
+                cut_parameters.setdefault("end", end_name)
+                normalized_features.append({"kind": "miter", "parameters": cut_parameters})
         production_features = tuple(normalized_features)
         selected_views = tuple(view for view in views if view in {"front", "top", "side", "3d", "iso"})
         if not selected_views:
@@ -577,8 +669,18 @@ class EngineeringDrawingGenerator:
             middle = top + 48
             draw.line((34, middle, width - 34, middle), fill=(91, 116, 145), width=1)
             part_id = str(getattr(entity, "part_position", "") or getattr(entity, "position", "") or getattr(entity, "name", "") or resolved_entity_id)
-            profile = str(getattr(entity, "profile_designation", "") or getattr(entity, "profile", "") or "Niet herkend")
-            material = str(getattr(entity, "material_grade", "") or getattr(entity, "material", "") or "Niet herkend")
+            profile = str(
+                getattr(entity, "normalized_profile", "")
+                or getattr(entity, "profile_designation", "")
+                or getattr(entity, "profile", "")
+                or "Niet herkend"
+            )
+            material = str(
+                getattr(entity, "normalized_material", "")
+                or getattr(entity, "material_grade", "")
+                or getattr(entity, "material", "")
+                or "Niet herkend"
+            )
             project_label = str(
                 getattr(self.workspace.project, "project_name", "")
                 or getattr(self.workspace.project, "name", "")

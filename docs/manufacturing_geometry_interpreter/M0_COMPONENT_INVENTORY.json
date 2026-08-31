@@ -1,0 +1,101 @@
+{
+  "schema": "cws-manufacturing-geometry-interpreter-m0-1.0",
+  "generated_on": "2026-08-30",
+  "status": "M0_COMPLETE",
+  "scope": "repository_audit_and_plan_only",
+  "production_code_changed": false,
+  "production_gates_changed": false,
+  "canonical_authorities": {
+    "project_state": "cws_convertor.project.model.ProjectModel",
+    "session": "cws_convertor.project.service.ProjectSession",
+    "persistence": "cws_convertor.project.storage",
+    "steel_read_contract": "cws_convertor.steel_model.contracts.SteelModelSnapshot",
+    "tolerance_policy": "cws_convertor.steel_model.tolerances.TolerancePolicy",
+    "profile_database": "profile_database.ProfileDatabase",
+    "canonical_brep": "cws_convertor.project.canonical_rebuild",
+    "production_release": "cws_convertor.production_export.readiness.ReadinessGate"
+  },
+  "existing_capabilities": {
+    "source_geometry": [
+      "IFC and STEP immutable source locators",
+      "per-part exact IFC/STEP BREP isolation",
+      "OCCT shape validity and topology counts"
+    ],
+    "extrusion": [
+      "IFC extrusion-depth semantic capture",
+      "exact parametric IFC profile prism reconstruction",
+      "plate, catalogue profile, round-bar and reviewed custom canonical builders"
+    ],
+    "profile": [
+      "single persisted ProfileDatabase",
+      "dimension/area based profile match",
+      "profile driven canonical build"
+    ],
+    "feature": [
+      "through hole",
+      "cylindrical pocket",
+      "through slot",
+      "outer contour",
+      "contour radii",
+      "round profile",
+      "reviewed plate cuts and holes in canonical rebuild"
+    ],
+    "comparison": [
+      "source/canonical volume, area, bounds and centroid metrics",
+      "bidirectional OCCT point-to-shape deviation",
+      "feature-set comparison",
+      "NC1, STEP, IFC and trusted-PDF roundtrip evidence"
+    ],
+    "manufacturing": [
+      "manufacturing face resolution",
+      "exact contact patches",
+      "marking and identification",
+      "machine capability evaluation",
+      "fail-closed release"
+    ]
+  },
+  "missing_capabilities": [
+    "general multi-extrusion decomposition",
+    "axis-hypothesis scoring across arbitrary solids",
+    "cross-section constancy segmentation",
+    "manufacturing geometry residual BREP calculation",
+    "residual classification into cuts, copes, notches, holes and additions",
+    "compound canonical reconstruction from multiple extrusion regions",
+    "one policy-bound equivalence service used by every geometry consumer",
+    "production-scale interpreter benchmarks and corpus evidence"
+  ],
+  "duplication_risks": [
+    {
+      "id": "M0-DUP-001",
+      "risk": "Exact source isolation lives under cws_viewer although source BREP is application-owned.",
+      "decision": "Reuse implementation behind an application service; do not copy it."
+    },
+    {
+      "id": "M0-DUP-002",
+      "risk": "canonical_rebuild comparison and cws_viewer.exact.compare overlap.",
+      "decision": "Create one policy-bound comparison facade while preserving existing algorithms."
+    },
+    {
+      "id": "M0-DUP-003",
+      "risk": "Display IFC reconstruction and exact IFC profile reconstruction are separate paths.",
+      "decision": "Keep display as non-authoritative; exact path supplies evidence only through the geometry service."
+    },
+    {
+      "id": "M0-DUP-004",
+      "risk": "Several geometry modules use local numeric tolerances.",
+      "decision": "Map them to named TolerancePolicy rules before adding new interpretation logic."
+    },
+    {
+      "id": "M0-DUP-005",
+      "risk": "Project roundtrip and Exact Workbench roundtrip provide adjacent evidence contracts.",
+      "decision": "Retain both executors but publish results through one project-owned evidence envelope."
+    }
+  ],
+  "external_evidence_boundary": {
+    "trimble_parity_status": "BLOCKED_EXTERNAL_EVIDENCE",
+    "required_pass": 31,
+    "required_fail": 0,
+    "required_blocked_external_evidence": 9,
+    "note": "M0 does not relabel live Trimble gesture, same-camera visual, cold-load, FPS or latency evidence as passed."
+  }
+}

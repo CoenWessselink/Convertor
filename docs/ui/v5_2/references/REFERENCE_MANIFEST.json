@@ -1,0 +1,133 @@
+{
+  "binding_source": "CWS_UI_V5_2_COMPLETE_CONTROL_BUILD_HANDOVER_2026-08-31.zip",
+  "count": 25,
+  "references": [
+    {
+      "file": "01_PROJECT_Start_Inlezen.png",
+      "screen_id": "01",
+      "sha256": "4f3cd469692e1f423a7641c49a1aa79dd45ed3840a2b54196fcf11a6f992508e"
+    },
+    {
+      "file": "02_PROJECT_Projectoverzicht.png",
+      "screen_id": "02",
+      "sha256": "28899e8f194446912902095261a66147123680e3ef231f0ac0f574d06bbafb16"
+    },
+    {
+      "file": "03_PROJECT_Projectstructuur.png",
+      "screen_id": "03",
+      "sha256": "80a2331697e47c11f97358c9d77cc68e9ecf77c766768308cf937e007b844854"
+    },
+    {
+      "file": "04_PROJECT_Profielen_Materialen.png",
+      "screen_id": "04",
+      "sha256": "301b857f8209d918d4985585008c4d3ee80819aa46849d8a124b374450218310"
+    },
+    {
+      "file": "05_VIEWER_3D_Cockpit.png",
+      "screen_id": "05",
+      "sha256": "6d926fb1e69fe2849d91897d1ee7f771c1da883a267baedab248d6c774eadcce"
+    },
+    {
+      "file": "06_VIEWER_Selectie_Context.png",
+      "screen_id": "06",
+      "sha256": "952c2267a7b6a5b17140c159ee935fc263fd0071212636bb962ccd9dfab95cc1"
+    },
+    {
+      "file": "07_VIEWER_Weergave_Meten.png",
+      "screen_id": "07",
+      "sha256": "9b55cc13a1ccf615709bf3acea47cb03833dee97a7135a4230a21015af0c804f"
+    },
+    {
+      "file": "08_VIEWER_Doorsnede_Isoleren.png",
+      "screen_id": "08",
+      "sha256": "eed1fee6c5018206eea6fdad945723f3010ba34565aa853a80c6468ad5b1cbcd"
+    },
+    {
+      "file": "09_VIEWER_Laadstatus_Performance.png",
+      "screen_id": "09",
+      "sha256": "ea81e457714cf2cd4199089c9191e8c3bb6fcfba6fef30db63c540fdc0a08f09"
+    },
+    {
+      "file": "10_PROJECT_Projectreviews.png",
+      "screen_id": "10",
+      "sha256": "ff344e4dd6d336bdfb49aaf3f9231aed801eb3050af5a9ca8c0d9e6b48291b11"
+    },
+    {
+      "file": "11_PRODUCTIE_BOM_Machines_BOM.png",
+      "screen_id": "11",
+      "sha256": "fda199782fe573c3e81bc03477ee13247fa5d0c7714725f235a932c3c872234a"
+    },
+    {
+      "file": "12_PRODUCTIE_Machineindeling_Automatisch.png",
+      "screen_id": "12",
+      "sha256": "aa879ff78482fce8a574e95af5f1919329e3a3af5cc87f8dc9e24240c728da84"
+    },
+    {
+      "file": "13_PRODUCTIE_Machineindeling_Handmatige_Override.png",
+      "screen_id": "13",
+      "sha256": "dcb522933a74e1e3bc1b832e7e5669121c3a06078e81379b3a832094e015d3ce"
+    },
+    {
+      "file": "14_PRODUCTIE_Optimalisatie_Profile_Nesting.png",
+      "screen_id": "14",
+      "sha256": "243effd3f6604ce5c8913433e2031f58e213bf8f1cd03bda53d597429c257643"
+    },
+    {
+      "file": "15_PRODUCTIE_Optimalisatie_Plate_Nesting.png",
+      "screen_id": "15",
+      "sha256": "e4d1fe59d8914a59181c8831dfabdcd481499bf5bf0eed6b5c85cbe7f0dcd083"
+    },
+    {
+      "file": "16_PRODUCTIE_Bewerken_Workbench.png",
+      "screen_id": "16",
+      "sha256": "58761e9df9f9ffceabd9e4091e8500054d2a2a7036f9a68ab438072d216ef699"
+    },
+    {
+      "file": "17_PRODUCTIE_Scribing.png",
+      "screen_id": "17",
+      "sha256": "55d7934f06af0846200a69499c13d54157a11e325d1d893dfb1f157c9eda31a9"
+    },
+    {
+      "file": "18_PRODUCTIE_Converteren.png",
+      "screen_id": "18",
+      "sha256": "7adeb12a2bdb0ea6156dafef11db93b95e6082fa2c6e1ea99e1f4f7b3b218cd8"
+    },
+    {
+      "file": "19_PRODUCTIE_Tekeningen_PDF.png",
+      "screen_id": "19",
+      "sha256": "94c2cc186f44186a9f2a834d08c813767f11a1f17620fc9ee71e3b95f523118d"
+    },
+    {
+      "file": "20_UITVOER_Afdrukken_Print_Center.png",
+      "screen_id": "20",
+      "sha256": "5fefd86bd51b0e9a321495b81bfa773a02ad1021f16a4a44f2d4bd68eb8ab1bc"
+    },
+    {
+      "file": "21_CONTROLE_Validatie.png",
+      "screen_id": "21",
+      "sha256": "0cdfaf70fa1fae9f76f45ef00fc7029a77af963d271243d41da9ea3cdef2e8b3"
+    },
+    {
+      "file": "22_CONTROLE_Revisies_Compare.png",
+      "screen_id": "22",
+      "sha256": "67e9ae81246f7c87fddeb4220807e4a86e1644d1c969c09f6aed9e0268584111"
+    },
+    {
+      "file": "23_CONTROLE_Maakbaarheid.png",
+      "screen_id": "23",
+      "sha256": "8f859af1c4c2261c4bdd35702accb16b2be113f29bd090ef2bc6d72824aed412"
+    },
+    {
+      "file": "24_UITVOER_Export_Center.png",
+      "screen_id": "24",
+      "sha256": "f9df1e013a800372c9cea1d412cfe34201d0df832a658e9e3f066ef88feba4d1"
+    },
+    {
+      "file": "25_UITVOER_Rapport_Pakket.png",
+      "screen_id": "25",
+      "sha256": "dde5a2c0bf915cb7a1aa41a37b3ce50d16f32cba0cb2a5c47cf194a778440aa3"
+    }
+  ],
+  "schema": "cws-ui-v5.2-reference-manifest-v1",
+  "support_surfaces_26_31": "REQUIRED_PENDING_REFERENCE_APPROVAL"
+}

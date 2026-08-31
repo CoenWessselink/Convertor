@@ -1,8 +1,10 @@
 """Verified, lazy source-geometry isolation for semantic project parts.
 
 The resolver never selects a STEP solid by list position or filename. IFC
-products are isolated by their persistent entity identity and are explicitly
-reported as triangulated evidence, not as exact production BREP geometry.
+products are isolated by their persistent entity identity.  When IfcOpenShell
+can serialize the selected entity as native OpenCascade BREP, that shape is
+handed to CadQuery/OCP for exact production use; triangulation remains the
+fail-closed viewer fallback.
 """
 from __future__ import annotations
 
@@ -489,6 +491,7 @@ def _ifc_worker_payload(
     entity_id: int,
     expected_global_id: str,
     expected_representation: str,
+    prefer_native_brep: bool = True,
 ) -> dict[str, Any]:
     import ifcopenshell
     import ifcopenshell.geom
@@ -541,6 +544,44 @@ def _ifc_worker_payload(
             "vertices_mm": [],
             "triangles": [],
         }
+    try:
+        if not prefer_native_brep:
+            raise RuntimeError("native BREP overgeslagen na validatiefallback")
+        import ifcopenshell.ifcopenshell_wrapper as ifc_wrapper
+
+        native_settings = ifcopenshell.geom.settings()
+        native_settings.set("iterator-output", ifc_wrapper.SERIALIZED)
+        native_settings.set("use-world-coords", False)
+        native = ifcopenshell.geom.create_shape(native_settings, entity)
+        brep_data = str(native.geometry.brep_data or "")
+        if brep_data.strip():
+            native_evidence = dict(evidence)
+            native_evidence.update(
+                {
+                    "coordinate_space": "entity_local",
+                    "geometry_engine": "ifcopenshell_opencascade_serialization",
+                    "serialized_brep_sha256": hashlib.sha256(
+                        brep_data.encode("utf-8")
+                    ).hexdigest(),
+                }
+            )
+            return {
+                "status": "resolved_exact",
+                "scope": "part",
+                "geometry_kind": "native_brep",
+                "selection_verified": True,
+                "production_geometry_exact": True,
+                "metrics": {},
+                "topology": {},
+                "evidence": native_evidence,
+                "warnings": [],
+                "blocking_reasons": [],
+                "brep_data": brep_data,
+                "vertices_mm": [],
+                "triangles": [],
+            }
+    except Exception as exc:
+        evidence["native_brep_error"] = f"{type(exc).__name__}: {exc}"
     settings = ifcopenshell.geom.settings()
     # IfcOpenShell is authoritative for nested IFC placements. The viewer
     # converts this world mesh back to the entity-local Project Model frame.
@@ -588,6 +629,7 @@ def _ifc_worker_entry(
     expected_global_id: str,
     expected_representation: str,
     output_path: str,
+    prefer_native_brep: bool = True,
 ) -> None:
     try:
         payload = _ifc_worker_payload(
@@ -595,6 +637,7 @@ def _ifc_worker_entry(
             entity_id,
             expected_global_id,
             expected_representation,
+            prefer_native_brep,
         )
         result = {"ok": True, "result": payload}
     except SourceGeometryError as exc:
@@ -624,6 +667,8 @@ def _run_ifc_worker(
     expected_global_id: str,
     expected_representation: str,
     cancel_check: CancelCheck | None,
+    *,
+    prefer_native_brep: bool = True,
 ) -> dict[str, Any]:
     import multiprocessing
 
@@ -638,6 +683,7 @@ def _run_ifc_worker(
                 expected_global_id,
                 expected_representation,
                 str(output),
+                prefer_native_brep,
             ),
             name=f"cws-ifc-shape-{entity_id}",
         )
@@ -714,8 +760,93 @@ def _inspect_ifc(
             blocking_reasons=[str(error.get("message") or "IFC-geometrieworker faalde")],
         )
     payload = dict(worker.get("result") or {})
+    brep_data = str(payload.pop("brep_data", "") or "")
     vertices = tuple(tuple(float(value) for value in item) for item in payload.pop("vertices_mm", []))
     triangles = tuple(tuple(int(value) for value in item) for item in payload.pop("triangles", []))
+    if brep_data.strip():
+        try:
+            import cadquery as cq
+
+            with tempfile.TemporaryDirectory(prefix="cws_ifc_brep_") as folder_name:
+                brep_path = Path(folder_name) / "selected_part.brep"
+                brep_path.write_text(brep_data, encoding="utf-8")
+                native_shape = cq.importers.importBrep(str(brep_path)).val().scale(1000.0)
+            box = native_shape.BoundingBox()
+            topology = {
+                "solid_count": len(native_shape.Solids()),
+                "shell_count": len(native_shape.Shells()),
+                "face_count": len(native_shape.Faces()),
+                "edge_count": len(native_shape.Edges()),
+                "vertex_count": len(native_shape.Vertices()),
+            }
+            metrics = {
+                "scope": "exact_part",
+                "fidelity": "native_brep",
+                "measurement_method": "ifcopenshell_serialized_brep_cadquery_ocp",
+                "solid_count": topology["solid_count"],
+                "volume_mm3": float(native_shape.Volume()),
+                "area_mm2": float(native_shape.Area()),
+                "bbox_mm": [float(box.xlen), float(box.ylen), float(box.zlen)],
+                "valid": bool(native_shape.isValid()),
+            }
+            if topology["solid_count"] != 1 or not metrics["valid"]:
+                fallback = _run_ifc_worker(
+                    path,
+                    entity_id,
+                    expected_global_id,
+                    expected_representation,
+                    cancel_check,
+                    prefer_native_brep=False,
+                )
+                if not fallback.get("ok"):
+                    return _inspection(
+                        part,
+                        status="manual_validation_required",
+                        scope="part",
+                        geometry_kind="native_brep",
+                        selection_verified=True,
+                        production_geometry_exact=False,
+                        metrics=metrics,
+                        topology=topology,
+                        evidence=dict(payload.get("evidence") or {}),
+                        blocking_reasons=["IFC-BREP is geen enkel geldig productiesolid."],
+                    )
+                payload = dict(fallback.get("result") or {})
+                vertices = tuple(
+                    tuple(float(value) for value in item)
+                    for item in payload.pop("vertices_mm", [])
+                )
+                triangles = tuple(
+                    tuple(int(value) for value in item)
+                    for item in payload.pop("triangles", [])
+                )
+                fallback_evidence = dict(payload.get("evidence") or {})
+                fallback_evidence["native_brep_rejected"] = {
+                    "reason": "not_one_valid_solid",
+                    "metrics": metrics,
+                    "topology": topology,
+                }
+                payload["evidence"] = fallback_evidence
+            else:
+                return _inspection(
+                    part,
+                    status="resolved_exact",
+                    scope="part",
+                    geometry_kind="native_brep",
+                    selection_verified=True,
+                    production_geometry_exact=True,
+                    metrics=metrics,
+                    topology=topology,
+                    evidence=dict(payload.get("evidence") or {}),
+                    native_shape=native_shape,
+                )
+        except Exception as exc:
+            payload.setdefault("warnings", []).append(
+                f"Native IFC-BREP kon niet door OCP worden geladen: {exc}"
+            )
+            payload.setdefault("blocking_reasons", []).append(
+                "Native IFC-BREP is niet beschikbaar voor productie-export."
+            )
     return _inspection(
         part,
         status=str(payload.get("status") or "unavailable"),

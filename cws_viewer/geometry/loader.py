@@ -1,11 +1,12 @@
 """Cancelable, cached geometry loading coordinator."""
 from __future__ import annotations
 from dataclasses import dataclass
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import threading,time
 from typing import Iterable,Sequence
 from cws_viewer.cache.mesh_cache import MeshCache
 from cws_viewer.contracts.geometry import GeometryLoadResult,GeometryLoadStatus,GeometryProvider,GeometryRequest,MeshData,ProgressCallback,TessellationSettings
+from cws_viewer.performance import GeometryPriorityScheduler,LoadProfileSession
 
 class GeometryLoadCancelled(RuntimeError):pass
 class CancellationToken:
@@ -41,8 +42,8 @@ class BatchLoadReport:
     def to_dict(self):return {"requested_count":self.requested_count,"ready_count":self.ready_count,"partial_count":self.partial_count,"failed_count":self.failed_count,"cancelled_count":self.cancelled_count,"cache_hit_count":self.cache_hit_count,"proxy_count":self.proxy_count,"elapsed_seconds":self.elapsed_seconds,"results":[r.to_dict() for r in self.results]}
 
 class GeometryLoadCoordinator:
-    def __init__(self,providers:Sequence[GeometryProvider],*,proxy_provider:GeometryProvider|None=None,cache:MeshCache|None=None,repository:MeshRepository|None=None,settings:TessellationSettings|None=None,max_workers:int=1)->None:
-        self.providers=tuple(providers);self.proxy_provider=proxy_provider;self.cache=cache;self.repository=repository if repository is not None else MeshRepository();self.settings=settings or TessellationSettings();self.max_workers=max(1,int(max_workers));self.failed_requests={}
+    def __init__(self,providers:Sequence[GeometryProvider],*,proxy_provider:GeometryProvider|None=None,cache:MeshCache|None=None,repository:MeshRepository|None=None,settings:TessellationSettings|None=None,max_workers:int=1,scheduler:GeometryPriorityScheduler|None=None,profiler:LoadProfileSession|None=None)->None:
+        self.providers=tuple(providers);self.proxy_provider=proxy_provider;self.cache=cache;self.repository=repository if repository is not None else MeshRepository();self.settings=settings or TessellationSettings();self.max_workers=max(1,int(max_workers));self.scheduler=scheduler or GeometryPriorityScheduler();self.profiler=profiler;self.failed_requests={}
     def _provider(self,request):
         for p in self.providers:
             if p.supports(request):return p
@@ -75,18 +76,31 @@ class GeometryLoadCoordinator:
     def load_many(self,requests:Iterable[GeometryRequest],*,token:CancellationToken|None=None,progress:ProgressCallback|None=None,allow_proxy:bool=True)->BatchLoadReport:
         values=tuple(requests);start=time.perf_counter();results=[]
         if self.max_workers==1:
-            for i,r in enumerate(values):
+            for i,r in enumerate(self.scheduler.order(values)):
                 result=self.load_one(r,token=token,allow_proxy=allow_proxy);results.append(result)
                 if progress:progress((i+1)/max(len(values),1),f'{i+1}/{len(values)} {r.geometry_id}')
                 if result.status==GeometryLoadStatus.CANCELLED:break
         else:
             # CadQuery/OCP providers can serialize internally; threads primarily keep source/cache IO responsive.
             with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
-                futures={pool.submit(self.load_one,r,token=token,allow_proxy=allow_proxy):r for r in values}
-                for i,future in enumerate(as_completed(futures)):
-                    results.append(future.result())
-                    if progress:progress((i+1)/max(len(values),1),f'{i+1}/{len(values)} geometry resources')
+                pending=list(values);active={};completed_count=0
+                while pending or active:
+                    while pending and len(active)<self.max_workers:
+                        r=min(pending,key=self.scheduler.key);pending.remove(r)
+                        active[pool.submit(self.load_one,r,token=token,allow_proxy=allow_proxy)]=r
+                    completed,_=wait(tuple(active),return_when=FIRST_COMPLETED)
+                    for future in completed:
+                        active.pop(future,None);results.append(future.result());completed_count+=1
+                        if progress:progress(completed_count/max(len(values),1),f'{completed_count}/{len(values)} geometry resources')
         results=tuple(sorted(results,key=lambda x:x.request.geometry_id));status=[r.status for r in results]
+        if self.profiler is not None:
+            for index,result in enumerate(results,1):
+                mesh=result.mesh
+                self.profiler.record_resource(geometry_id=result.request.geometry_id,source_entity=result.request.source_entity_id,cache_hit=bool(result.cache_hit),provider='' if mesh is None else mesh.provider,duration_seconds=float(result.elapsed_seconds),triangle_count=0 if mesh is None else mesh.triangle_count,vertex_count=0 if mesh is None else mesh.vertex_count,mesh_bytes=0 if mesh is None else mesh.byte_length,result=result.status.value,exactness='' if mesh is None else mesh.exactness,error=result.error)
+                ratio=index/max(len(results),1)
+                if index==1 and mesh is not None:self.profiler.mark('first_geometry')
+                for threshold,label in ((0.25,'geometry_25'),(0.50,'geometry_50'),(0.75,'geometry_75'),(1.0,'geometry_100')):
+                    if ratio>=threshold:self.profiler.mark(label)
         return BatchLoadReport(len(values),status.count(GeometryLoadStatus.READY),status.count(GeometryLoadStatus.PARTIAL),status.count(GeometryLoadStatus.FAILED),status.count(GeometryLoadStatus.CANCELLED),sum(r.cache_hit for r in results),sum(bool(r.mesh and r.mesh.exactness=='display_proxy') for r in results),time.perf_counter()-start,results)
     def retry_failed(self,*,token=None,progress=None,allow_proxy=True):
         requests=tuple(self.failed_requests.values())
@@ -97,6 +111,8 @@ class GeometryLoadCoordinator:
         return self.load_many(requests,token=token,progress=progress,allow_proxy=allow_proxy)
     def close(self)->None:
         for provider in (*self.providers,self.proxy_provider):
+            if bool(getattr(provider,'persistent_session_provider',False)):
+                continue
             close=getattr(provider,'close',None) if provider is not None else None
             if callable(close):
                 try:close()

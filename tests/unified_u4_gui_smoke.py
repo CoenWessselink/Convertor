@@ -35,13 +35,13 @@ class UnifiedU4GuiSmoke(unittest.TestCase):
                     break
             self.assertIsNotNone(window.workspace)
             titles = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-            self.assertIn("Rapport", titles)
+            self.assertEqual(["Project", "Viewer", "Productie", "Controle", "Uitvoer"], titles)
             self.assertEqual(window.objectName(), "cwsConvertorUnifiedU4MainWindow")
             self.assertEqual(
                 window.production_workflow_page.property("cwsUnifiedProductionWorkflow"),
                 U4_WORKFLOW_TOKEN,
             )
-            window.tabs.setCurrentWidget(window.production_workflow_page)
+            window._route_action("report")
             app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
             self.assertEqual(window.application_context.active_surface, "production_workflow")
             window.production_workflow_page.refresh()

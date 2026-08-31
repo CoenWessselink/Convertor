@@ -74,6 +74,13 @@ class ProfileDefinition:
         self.radius = float(self.radius or 0.0)
         self.mass_kg_m = float(self.mass_kg_m or 0.0)
         self.area_mm2 = float(self.area_mm2 or 0.0)
+        # The generated equal-angle catalogue historically included the root
+        # fillet but omitted both toe radii. EN 10056 workshop geometry uses a
+        # toe radius of r/2 when no separate value is supplied. Recalculate
+        # these generated rows so mass, nesting and NC1 rebuild use one shape.
+        if self.profile_type == "L" and self.catalogue_status == "geometry-catalogue":
+            self.area_mm2 = self.calculated_area_mm2()
+            self.mass_kg_m = self.area_mm2 * 0.00785
         if self.area_mm2 <= 0:
             self.area_mm2 = self.calculated_area_mm2()
         if self.mass_kg_m <= 0 and self.area_mm2 > 0:
@@ -101,7 +108,9 @@ class ProfileDefinition:
         if self.profile_type in {"U", "C"}:
             return 2.0 * b * d3 + max(h - 2.0 * d3, 0.0) * d4 + 2.0 * extra
         if self.profile_type == "L":
-            return h * d4 + b * d3 - d3 * d4 + extra
+            toe_radius = float(self.properties.get("toe_radius", r / 2.0) or 0.0)
+            toe_correction = 2.0 * max(toe_radius, 0.0) ** 2 * (1.0 - math.pi / 4.0)
+            return h * d4 + b * d3 - d3 * d4 + extra - toe_correction
         if self.profile_type == "M":
             positive = [value for value in (d3, d4) if value > 0]
             t = min(positive) if positive else 0.0

@@ -604,6 +604,9 @@ class ViewerCoreController(ViewerController):
         self.set_camera(replace(self._session.camera, projection=ProjectionType(projection)))
 
     def orbit(self, azimuth_deg: float, elevation_deg: float = 0.0) -> None:
+        interaction_quality = getattr(self._backend, "set_interaction_quality", None)
+        if callable(interaction_quality):
+            interaction_quality(True)
         camera = self._session.camera
         offset = camera.position - camera.target
         yaw = math.radians(float(azimuth_deg))
@@ -710,10 +713,39 @@ class ViewerCoreController(ViewerController):
                 replacement_index = SceneIndex.build(scene)
         if replacement_index is not None:
             self._index = replacement_index
-            self._backend.load_scene(replacement_index.scene, replacement_index)
-            self._backend.set_camera(self._session.camera)
+            rebind = getattr(self._backend, "rebind_scene_index", None)
+            refresh = getattr(self._backend, "refresh_geometry", None)
+            if callable(rebind) and callable(refresh):
+                rebind(replacement_index.scene, replacement_index)
+                refresh(values)
+            else:
+                self._backend.load_scene(replacement_index.scene, replacement_index)
+                self._backend.set_camera(self._session.camera)
         else:
             refresh(values)
+        self._sync_display(render=True)
+
+    def replace_scene_preserving_state(self, scene: ProjectScene) -> None:
+        """Replace exact/source appearance data while preserving the live workcontext."""
+        current = self._ensure_index()
+        replacement = SceneIndex.build(scene)
+        if replacement.scene.project_id != current.scene.project_id:
+            raise ViewerError(
+                "Scene-upgrade hoort niet bij het actieve project",
+                code=ViewerErrorCode.COMPARE_INPUT_MISMATCH,
+            )
+        if set(replacement.nodes_by_id) != set(current.nodes_by_id):
+            raise ViewerError(
+                "Scene-upgrade verandert de objectidentiteit",
+                code=ViewerErrorCode.COMPARE_INPUT_MISMATCH,
+            )
+        self._index = replacement
+        rebind = getattr(self._backend, "rebind_scene_index", None)
+        if callable(rebind):
+            rebind(replacement.scene, replacement)
+        else:
+            self._backend.load_scene(replacement.scene, replacement)
+            self._backend.set_camera(self._session.camera)
         self._sync_display(render=True)
 
     def resize(self, width: int, height: int) -> None:

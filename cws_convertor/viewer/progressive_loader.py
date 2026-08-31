@@ -8,7 +8,18 @@ from dataclasses import dataclass, field
 import time
 
 
-PROGRESSIVE_MESH_LOAD_VERSION = "1.0"
+PROGRESSIVE_MESH_LOAD_VERSION = "2.0"
+
+
+VIEWPORT_PRIORITY_NAMES = (
+    "selected",
+    "under_cursor",
+    "visible",
+    "near_camera",
+    "large_silhouette",
+    "current_assembly",
+    "rest",
+)
 
 
 class ProgressiveMeshLoadCancelled(RuntimeError):
@@ -33,6 +44,9 @@ class ProgressiveMeshLoadPlan:
     _started_at: float = field(init=False, repr=False)
     _finished_at: float | None = field(default=None, init=False, repr=False)
     _selected_priority: str | None = field(default=None, init=False, repr=False)
+    _priority_rank: dict[str, int] = field(default_factory=dict, init=False, repr=False)
+    _camera_distance: dict[str, float] = field(default_factory=dict, init=False, repr=False)
+    _original_index: dict[str, int] = field(default_factory=dict, init=False, repr=False)
     _cancel_requested: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -47,6 +61,8 @@ class ProgressiveMeshLoadPlan:
             raise ValueError(f"Unsupported progressive mesh load mode: {self.mode}")
         self._all_ids = unique_ids
         self._queue = deque(unique_ids)
+        self._original_index = {entity_id: index for index, entity_id in enumerate(unique_ids)}
+        self._priority_rank = {entity_id: 6 for entity_id in unique_ids}
         self._started_at = self.clock()
         if not unique_ids:
             self._finished_at = self._started_at
@@ -77,6 +93,7 @@ class ProgressiveMeshLoadPlan:
         if entity_id not in self._all_ids:
             return False
         self._selected_priority = entity_id
+        self._priority_rank[entity_id] = 0
         if entity_id in self._loaded or entity_id in self._pending:
             return False
         if entity_id in self._failed:
@@ -94,6 +111,48 @@ class ProgressiveMeshLoadPlan:
             pass
         self._queue.appendleft(entity_id)
         return True
+
+    def update_viewport_context(
+        self,
+        *,
+        selected: Iterable[str] = (),
+        under_cursor: Iterable[str] = (),
+        visible: Iterable[str] = (),
+        near_camera: Iterable[str] = (),
+        large_silhouette: Iterable[str] = (),
+        current_assembly: Iterable[str] = (),
+        camera_distances: dict[str, float] | None = None,
+    ) -> None:
+        """Re-rank queued work using seven explicit viewport priority bands."""
+        bands = (
+            tuple(str(item) for item in selected),
+            tuple(str(item) for item in under_cursor),
+            tuple(str(item) for item in visible),
+            tuple(str(item) for item in near_camera),
+            tuple(str(item) for item in large_silhouette),
+            tuple(str(item) for item in current_assembly),
+        )
+        self._priority_rank = {entity_id: 6 for entity_id in self._all_ids}
+        for rank, values in enumerate(bands):
+            for entity_id in values:
+                if entity_id in self._priority_rank:
+                    self._priority_rank[entity_id] = min(rank, self._priority_rank[entity_id])
+        self._camera_distance = {
+            str(entity_id): max(0.0, float(distance))
+            for entity_id, distance in (camera_distances or {}).items()
+            if str(entity_id) in self._priority_rank
+        }
+        self._selected_priority = bands[0][0] if bands[0] else None
+        queued = list(self._queue)
+        queued.sort(
+            key=lambda entity_id: (
+                self._priority_rank.get(entity_id, 6),
+                self._camera_distance.get(entity_id, float("inf")),
+                self._original_index.get(entity_id, self.total),
+                entity_id,
+            )
+        )
+        self._queue = deque(queued)
 
     def claim(self) -> tuple[str, ...]:
         """Claim only the work that can run immediately."""
@@ -171,6 +230,16 @@ class ProgressiveMeshLoadPlan:
             "max_in_flight": self.max_in_flight,
             "patch_batch_size": self.patch_batch_size,
             "selected_priority": self._selected_priority,
+            "viewport_priority_version": "cws-viewport-priority-v2",
+            "priority_order": list(VIEWPORT_PRIORITY_NAMES),
+            "queued_priority_counts": {
+                VIEWPORT_PRIORITY_NAMES[rank]: sum(
+                    1
+                    for entity_id in self._queue
+                    if self._priority_rank.get(entity_id, 6) == rank
+                )
+                for rank in range(len(VIEWPORT_PRIORITY_NAMES))
+            },
             "failures": dict(sorted(self._failed.items())),
         }
         if include_runtime:

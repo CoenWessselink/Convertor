@@ -11,6 +11,8 @@ import sys
 import time
 import zipfile
 
+from cws_convertor.project.model import APP_VERSION
+
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist" / "CWS_Convertor"
 ONEFILE_SPEC = ROOT / "CWS_Convertor_OneFile.spec"
@@ -67,10 +69,19 @@ def _zip_tree(source: Path, target: Path) -> None:
                 archive.writestr(info, path.read_bytes())
 
 
+def _clean_revision() -> str:
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    dirty = subprocess.check_output(["git", "status", "--porcelain=v1"], cwd=ROOT, text=True).strip()
+    if len(revision) != 40 or dirty:
+        raise RuntimeError("Phase-2 release requires one clean, exact Git commit")
+    return revision
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build and prove the dedicated Phase-2 Windows runtime")
     parser.add_argument("--skip-build", action="store_true")
     args = parser.parse_args()
+    revision = _clean_revision()
     results: list[dict] = []
     if not args.skip_build:
         results.append(_run("windows_build", [str(ROOT / "build_windows_exe.bat")]))
@@ -90,6 +101,8 @@ def main() -> int:
     shutil.copytree(DIST, ONE_FOLDER)
     standalone_release = RELEASE / "CWS_Convertor_Phase2.exe"
     shutil.copy2(ONEFILE_DIST, standalone_release)
+    cli_release = RELEASE / "CWS_Convertor_CLI_Phase2.exe"
+    shutil.copy2(cli, cli_release)
     RESULTS.mkdir(parents=True, exist_ok=True)
     env = _runtime_env(ONE_FOLDER)
     results.append(_run("one_folder_gui_selftest", [str(ONE_FOLDER / gui.name), "--quick-self-test", "--report", str(RESULTS / "one-folder-gui.json")], env))
@@ -97,6 +110,8 @@ def main() -> int:
     results.append(_run("one_folder_packaged_m18", [sys.executable, "tests/phase2_m18_packaged_gate_smoke.py"], env))
     results.append(_run("one_folder_packaged_runtime", [sys.executable, "tests/packaged_runtime_smoke.py", "--runtime-dir", str(ONE_FOLDER), "--label", "phase2-one-folder", "--result-dir", str(RESULTS)], env))
     _zip_tree(ONE_FOLDER, PORTABLE)
+    versioned_portable = RELEASE / f"CWS_Convertor_Phase2_{APP_VERSION}_{revision[:7]}_Portable.zip"
+    shutil.copy2(PORTABLE, versioned_portable)
     _reset(FRESH_ROOT)
     with zipfile.ZipFile(PORTABLE, "r") as archive:
         archive.extractall(FRESH_ROOT)
@@ -119,13 +134,17 @@ def main() -> int:
     if internal_present:
         raise RuntimeError("Standalone smoke directory unexpectedly contains _internal")
     artifacts = {}
-    for path in (standalone_release, PORTABLE):
+    for path in (standalone_release, cli_release, PORTABLE, versioned_portable):
         artifacts[path.name] = {"path": str(path), "bytes": path.stat().st_size, "sha256": _sha(path)}
+    release_manifest = RELEASE / "PHASE_2_RELEASE_MANIFEST.json"
+    release_manifest.write_text(json.dumps({"schema": "cws-phase2-release-manifest-2.0", "status": "passed", "version": APP_VERSION, "source_revision": revision, "artifacts": artifacts, "machine_transfer_allowed": False, "direct_machine_control_allowed": False}, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+    artifacts[release_manifest.name] = {"path": str(release_manifest), "bytes": release_manifest.stat().st_size, "sha256": _sha(release_manifest)}
     checksums = RELEASE / "SHA256SUMS.txt"
     checksums.write_text("".join(f"{value['sha256']}  {name}\n" for name, value in artifacts.items()), encoding="ascii")
     payload = {
         "schema": "cws-phase2-windows-runtime-evidence-1.0",
         "status": "passed",
+        "source_revision": revision,
         "python_removed_from_runtime_path": True,
         "one_folder": str(ONE_FOLDER),
         "fresh_portable": str(fresh),

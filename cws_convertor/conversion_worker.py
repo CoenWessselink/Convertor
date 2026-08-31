@@ -25,16 +25,48 @@ def _convert_project_selection(
     from cws_convertor.project import ProjectSession
     from cws_convertor.project.canonical_rebuild import rebuild_and_compare
     from cws_convertor.project.roundtrip import validate_roundtrips
+    from cws_convertor.project.model import stable_sha256
 
     session = ProjectSession.open(project_path, read_only=True)
     part = session.project.parts.get(entity_id)
     if part is None:
         raise RuntimeError(f"Onbekend maakdeel {entity_id}")
+    # The active UI may have prepared an exact imported part in memory while the
+    # source package deliberately remains untouched. Reconstruct that same
+    # deterministic production context for this one selection in the isolated
+    # worker instead of migrating the complete project or relying on stale data.
+    if not part.workbench:
+        from cws_convertor.project.production_normalization import prepare_exact_imported_part
+
+        prepare_exact_imported_part(part)
     if not part.workbench:
         raise RuntimeError("Conversie vereist een Part Workbench-revisie")
-    rebuild = rebuild_and_compare(part)
-    if rebuild.shape is None or rebuild.report.get("status") != "passed":
-        raise RuntimeError("Conversie vereist een exact geslaagde canonical rebuild")
+    inspection = session.inspect_part_source_geometry(entity_id, persist=False)
+    if (
+        inspection.native_shape is not None
+        and inspection.selection_verified
+        and inspection.production_geometry_exact
+        and inspection.status == "resolved_exact"
+    ):
+        conversion_shape = inspection.native_shape
+        signature = stable_sha256(
+            {
+                "source_sha256": inspection.source_sha256,
+                "source_geometry_hash": inspection.source_geometry_hash,
+                "metrics": inspection.metrics,
+            }
+        )
+    else:
+        rebuild = rebuild_and_compare(part)
+        if rebuild.shape is None or rebuild.report.get("status") != "passed":
+            blockers = "; ".join(inspection.blocking_reasons)
+            raise RuntimeError(
+                "Conversie vereist een exact geisoleerde IFC/STEP-BREP of een "
+                "geslaagde canonical rebuild"
+                + (f": {blockers}" if blockers else "")
+            )
+        conversion_shape = rebuild.shape
+        signature = str(rebuild.report.get("canonical_signature") or "")
     raw_name = str(getattr(part, "part_position", "") or entity_id)
     safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._") or "selected_part"
     target_format = direction.lower().replace("dstv", "nc1").replace("->", "-").split("-")[-1]
@@ -42,13 +74,12 @@ def _convert_project_selection(
     if target_format not in {"nc1", "step", "ifc", "pdf"}:
         raise ValueError(f"Doelformaat {target_format!r} ondersteunt geen canonical conversie")
     output.mkdir(parents=True, exist_ok=True)
-    signature = str(rebuild.report.get("canonical_signature") or "")
     report = validate_roundtrips(
         part,
-        rebuild.shape,
+        conversion_shape,
         output,
         canonical_signature=signature,
-        formats=(target_format.upper(),),
+        formats=("NC1", "STEP", "IFC", "PDF"),
     )
     format_result = dict(report.get("formats", {}).get(target_format) or {})
     if format_result.get("status") != "passed":

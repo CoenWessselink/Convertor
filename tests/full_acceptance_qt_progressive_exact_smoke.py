@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 import time
+import statistics
 
 from PySide6 import QtCore, QtWidgets
 
@@ -14,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from cws_convertor.ui_qt.u4_shell import CWSMainWindow
 from cws_viewer.contracts.state import ScreenshotOptions
+from cws_viewer.contracts.enums import SelectionLevel
 from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
 
 
@@ -28,6 +30,21 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
         "status": "FAIL",
         "project_path": str(project_path),
     }
+
+    def percentile(values: list[float], ratio: float) -> float:
+        ordered = sorted(values)
+        position = (len(ordered) - 1) * ratio
+        low = int(position)
+        high = min(low + 1, len(ordered) - 1)
+        fraction = position - low
+        return ordered[low] + (ordered[high] - ordered[low]) * fraction
+
+    def rss_mb() -> float:
+        try:
+            import psutil
+            return psutil.Process().memory_info().rss / (1024.0 * 1024.0)
+        except Exception:
+            return 0.0
 
     def open_project() -> None:
         started["value"] = time.perf_counter()
@@ -79,6 +96,64 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
                     ScreenshotOptions(width=1200, height=700, format="png"),
                 )
                 preferences = viewer.controller.get_display_preferences()
+                backend = viewer.backend
+                before_rss = rss_mb()
+                frame_samples: list[float] = []
+                input_samples: list[float] = []
+                pick_samples: list[float] = []
+                selection_samples: list[float] = []
+                wrong_picks = 0
+                interaction_quality = getattr(backend, "set_interaction_quality", None)
+                if callable(interaction_quality):
+                    interaction_quality(True)
+                for index in range(36):
+                    before = time.perf_counter()
+                    viewer.controller.orbit(0.45, 0.12 if index % 2 else -0.12)
+                    input_samples.append((time.perf_counter() - before) * 1000.0)
+                    app.processEvents()
+                if callable(interaction_quality):
+                    interaction_quality(False)
+                for _ in range(48):
+                    before = time.perf_counter()
+                    viewer.controller.render()
+                    frame_samples.append((time.perf_counter() - before) * 1000.0)
+                    app.processEvents()
+                bounds = viewer.controller.index.world_bounds_by_node[node_id]
+                screen_x, screen_y = backend.world_to_display(bounds.center)
+                for _ in range(24):
+                    before = time.perf_counter()
+                    picked = viewer.controller.pick_at_level(
+                        screen_x,
+                        screen_y,
+                        level=SelectionLevel.PART,
+                        mode="replace",
+                    )
+                    pick_samples.append((time.perf_counter() - before) * 1000.0)
+                    if picked is None:
+                        wrong_picks += 1
+                for _ in range(24):
+                    before = time.perf_counter()
+                    viewer.controller.set_selection((node_id,), mode="replace")
+                    selection_samples.append((time.perf_counter() - before) * 1000.0)
+                after_rss = rss_mb()
+                metrics = {
+                    "frame_p50_ms": percentile(frame_samples, 0.50),
+                    "frame_p95_ms": percentile(frame_samples, 0.95),
+                    "frame_p99_ms": percentile(frame_samples, 0.99),
+                    "input_to_render_p95_ms": percentile(input_samples, 0.95),
+                    "input_to_render_p99_ms": percentile(input_samples, 0.99),
+                    "pick_p95_ms": percentile(pick_samples, 0.95),
+                    "pick_p99_ms": percentile(pick_samples, 0.99),
+                    "selection_p95_ms": percentile(selection_samples, 0.95),
+                    "wrong_instance_picks": wrong_picks,
+                    "freeze_over_100ms_count": sum(value > 100.0 for value in input_samples + frame_samples),
+                    "rss_start_mb": before_rss,
+                    "rss_end_mb": after_rss,
+                    "rss_drift_percent": 0.0 if before_rss <= 0.0 else ((after_rss - before_rss) / before_rss) * 100.0,
+                    "frame_sample_count": len(frame_samples),
+                    "input_sample_count": len(input_samples),
+                    "pick_sample_count": len(pick_samples),
+                }
                 report.update(
                     exact_seconds=time.perf_counter() - started["value"],
                     repository_meshes=len(meshes),
@@ -91,6 +166,7 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
                     pan_mode=pan_ok,
                     orbit_mode=orbit_ok,
                     screenshot=str(screenshot_path),
+                    performance_metrics=metrics,
                 )
                 first_frame = float(report.get("first_frame_seconds", 999.0))
                 success = bool(

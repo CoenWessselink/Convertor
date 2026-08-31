@@ -40,6 +40,9 @@ from cws_convertor.ui_qt.product_workspaces import (
     ProfileNestingPanel as _ProfileNestingPanel,
     ScribingWorkspacePanel as _ScribingWorkspacePanel,
 )
+from cws_convertor.ui_qt.machine_settings_panel import MachineSettingsPanel
+from cws_convertor.ui_qt.nesting_visualization import PlateNestingVisualization, ProfileNestingVisualization
+from cws_convertor.ui_qt.production_printing import print_pdf_file, print_widget
 from cws_viewer.export_center.models import ExportScope as ViewerExportScope
 from cws_viewer.export_center.models import ExportScopeKind as ViewerExportScopeKind
 from cws_viewer.export_center.service import V15ExportCenterService
@@ -398,9 +401,27 @@ class ProfileNestingPanel(_ProfileNestingPanel):
             table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
             self.phase3_nesting_tabs.addTab(table, name)
             self._phase3_tables[name] = table
+        self.profile_visualization = ProfileNestingVisualization(self.phase3_nesting_tabs)
+        self.phase3_nesting_tabs.addTab(self.profile_visualization, "Realistisch zaagbeeld")
+        self.plate_visualization = PlateNestingVisualization(self.phase3_nesting_tabs)
+        self.phase3_nesting_tabs.addTab(self.plate_visualization, "Plaatnesting")
+        self.machine_settings = MachineSettingsPanel(self.phase3_nesting_tabs)
+        self.phase3_nesting_tabs.addTab(self.machine_settings, "Machine-instellingen")
+        print_bar = QHBoxLayout()
+        print_nesting = QPushButton("Nesting / optimalisatie afdrukken", self)
+        print_nesting.clicked.connect(lambda: print_widget(self.profile_visualization, title="CWS profieloptimalisatie", parent=self))
+        preview_nesting = QPushButton("Afdrukvoorbeeld", self)
+        preview_nesting.clicked.connect(lambda: print_widget(self.profile_visualization, title="CWS profieloptimalisatie", parent=self, preview=True))
+        print_drawing = QPushButton("PDF-tekening afdrukken", self)
+        print_drawing.clicked.connect(self._print_drawing_pdf)
+        print_bar.addWidget(print_nesting)
+        print_bar.addWidget(preview_nesting)
+        print_bar.addWidget(print_drawing)
+        print_bar.addStretch(1)
         root = self.layout()
         if root is not None:
             root.addWidget(controls)
+            root.addLayout(print_bar)
             root.addWidget(self.phase3_nesting_tabs, 1)
 
     def set_context(self, workspace: Any, selection: Any) -> None:
@@ -408,6 +429,7 @@ class ProfileNestingPanel(_ProfileNestingPanel):
         self._phase3_workspace = workspace
         self._phase3_project = _project_from_workspace(workspace)
         self._phase3_selection = _selection_ids(selection)
+        self.machine_settings.set_project(self._phase3_project, self._persist_phase3_project)
         self._refresh_phase3_nesting()
 
     def _settings(self) -> dict[str, Any]:
@@ -438,7 +460,16 @@ class ProfileNestingPanel(_ProfileNestingPanel):
         run_id = self._run_id()
         if not run_id or self._phase3_project is None:
             self.phase3_proof_badge.setText("UNKNOWN")
+            self.profile_visualization.set_record(None)
+            plate_runs = self._settings().get("plate_nesting_runs", {})
+            plate_record = next(reversed(plate_runs.values()), {}) if isinstance(plate_runs, dict) and plate_runs else {}
+            self.plate_visualization.set_plan(dict(plate_record).get("plan", plate_record) if isinstance(plate_record, dict) else {})
             return
+        record = dict(getattr(self._phase3_project, "profile_nesting_runs", {}).get(run_id) or {})
+        self.profile_visualization.set_record(record)
+        plate_runs = self._settings().get("plate_nesting_runs", {})
+        plate_record = next(reversed(plate_runs.values()), {}) if isinstance(plate_runs, dict) and plate_runs else {}
+        self.plate_visualization.set_plan(dict(plate_record).get("plan", plate_record) if isinstance(plate_record, dict) else {})
         try:
             inspection = self.profile_nesting_commands.inspect_run(self._phase3_project, run_id)
             proof = str(inspection.get("proof_status") or "UNKNOWN")
@@ -446,6 +477,16 @@ class ProfileNestingPanel(_ProfileNestingPanel):
             self.phase3_proof_badge.setText(proof if fresh else f"STALE | {proof}")
         except ProfileNestingCommandError as exc:
             self.phase3_proof_badge.setText(f"BLOCKED {exc.code}")
+
+    def _print_drawing_pdf(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(self, "PDF-tekening afdrukken", "", "PDF-document (*.pdf)")
+        if not path:
+            return
+        try:
+            print_pdf_file(path, parent=self)
+            self.phase3_nesting_status.setText(f"PDF naar printer gestuurd: {Path(path).name}")
+        except Exception as exc:
+            QMessageBox.warning(self, "PDF afdrukken geblokkeerd", str(exc))
 
     def _run_id(self) -> str:
         project = self._phase3_project

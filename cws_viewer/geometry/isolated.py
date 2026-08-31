@@ -85,6 +85,25 @@ class IsolatedIfcMeshProvider:
     def transport_mode(self) -> str:
         return "frozen_subprocess" if self._frozen else "multiprocessing_spawn"
 
+    def diagnostics(self) -> dict[str, object]:
+        """Expose the long-lived child process used for IFC geometry work."""
+        process = self._process
+        if process is None and self._frozen_client is not None:
+            process = getattr(self._frozen_client, "_process", None)
+        pid = getattr(process, "pid", None)
+        is_alive = getattr(process, "is_alive", None)
+        poll = getattr(process, "poll", None)
+        alive = bool(
+            process is not None
+            and ((callable(is_alive) and is_alive()) or (callable(poll) and poll() is None))
+        )
+        return {
+            "transport_mode": self.transport_mode,
+            "generation": int(self._generation),
+            "worker_pid": int(pid) if pid else None,
+            "worker_alive": alive,
+        }
+
     def supports(self, request: GeometryRequest) -> bool:
         return request.source_format.upper() == "IFC"
 

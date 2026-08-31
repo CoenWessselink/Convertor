@@ -19,12 +19,15 @@ if qt_available():
     from cws_viewer.contracts.geometry import GeometryLoadStatus, TessellationSettings
     from cws_viewer.core.controller import ViewerCoreController
     from cws_viewer.geometry import IsolatedIfcMeshProvider, StepMeshProvider
+    from cws_viewer.geometry.worker_pool import PersistentGeometryWorkerPool
     from cws_viewer.geometry.loader import (
         CancellationToken,
         GeometryLoadCancelled,
         GeometryLoadCoordinator,
     )
+    from cws_viewer.performance import GeometryPriorityScheduler
     from cws_viewer.ui_qt.exact_part_workbench import ExactPartWorkbenchPanel
+    from cws_viewer.performance.policy import LoadingPerformancePolicy
     from cws_viewer.ui_qt.property_grid import ProfessionalPropertyGridPanel
     from cws_viewer.ui_qt.vtk_project_widget import VtkProjectWidget
     from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
@@ -151,9 +154,14 @@ if qt_available():
         failed = QtCore.Signal(str)
         finished = QtCore.Signal()
 
-        def __init__(self, workspace: IntegratedProjectWorkspace) -> None:
+        def __init__(
+            self,
+            workspace: IntegratedProjectWorkspace,
+            scheduler: GeometryPriorityScheduler | None = None,
+        ) -> None:
             super().__init__()
             self.workspace = workspace
+            self.scheduler = scheduler or GeometryPriorityScheduler()
             self.token = CancellationToken()
 
         def request_cancel(self) -> None:
@@ -171,18 +179,27 @@ if qt_available():
                     search_roots=roots,
                 )
                 requests = workspace.load_result.catalog.unique_requests(resolver)
+                self.scheduler.update_context(
+                    visible=(request.geometry_id for request in requests),
+                )
+                requests = self.scheduler.order(requests)
                 cache = MeshCache(
                     Path.home() / ".cws_convertor" / "viewer_mesh_cache",
                     max_memory_items=max(128, min(len(requests), 2048)),
                 )
                 settings = TessellationSettings()
-                ifc_provider = IsolatedIfcMeshProvider()
+                performance_policy = LoadingPerformancePolicy.detect(len(requests))
+                ifc_provider = PersistentGeometryWorkerPool(performance_policy.worker_count)
+                ifc_provider_version = getattr(
+                    ifc_provider, "provider_version", "persistent-ifc-worker-pool-v1"
+                )
                 coordinator = GeometryLoadCoordinator(
                     (StepMeshProvider(),),
                     cache=cache,
                     repository=workspace.load_result.repository,
                     settings=settings,
-                    max_workers=1,
+                    max_workers=performance_policy.worker_count,
+                    scheduler=self.scheduler,
                 )
                 upgraded: list[str] = []
                 failures: list[str] = []
@@ -195,15 +212,15 @@ if qt_available():
                     nonlocal completed
                     workspace.load_result.repository.put(request.geometry_id, mesh)
                     cache.put(
-                        request.cache_key(settings, ifc_provider.provider_version),
+                        request.cache_key(settings, ifc_provider_version),
                         mesh,
-                        provider_version=ifc_provider.provider_version,
+                        provider_version=ifc_provider_version,
                         settings=settings,
                     )
                     upgraded.append(request.geometry_id)
                     batch.append(request.geometry_id)
                     completed += 1
-                    if len(batch) >= 128:
+                    if len(batch) >= performance_policy.scene_upload_batch_limit:
                         self.batch_ready.emit(tuple(batch))
                         batch.clear()
                     message = f"Exacte brongeometrie {completed:,}/{total:,}"
@@ -216,7 +233,12 @@ if qt_available():
                     if context is not None:
                         context.check_cancelled()
                     provider = ifc_provider if request.source_format.upper() == "IFC" else coordinator._provider(request)
-                    key = request.cache_key(settings, provider.provider_version) if provider is not None else ""
+                    provider_version = (
+                        ifc_provider_version
+                        if request.source_format.upper() == "IFC"
+                        else (provider.provider_version if provider is not None else "")
+                    )
+                    key = request.cache_key(settings, provider_version) if provider_version else ""
                     cached = cache.get(key) if key else None
                     if cached is not None:
                         publish(request, cached)
@@ -238,7 +260,7 @@ if qt_available():
                         failures.append(
                             f"{request.geometry_id}: {result.error or result.status.value}"
                         )
-                    if batch and len(batch) >= 128:
+                    if batch and len(batch) >= performance_policy.scene_upload_batch_limit:
                         self.batch_ready.emit(tuple(batch))
                         batch.clear()
                     percent = int(round(completed * 100 / max(total, 1)))
@@ -252,11 +274,48 @@ if qt_available():
                         tuple(ifc_misses),
                         settings,
                         cancel_check=self.token.check,
-                        on_mesh=lambda geometry_id, mesh: publish(request_by_id[geometry_id], mesh),
                     )
+                    for geometry_id, mesh in returned.items():
+                        publish(request_by_id[geometry_id], mesh)
                     missing_ids = {request.geometry_id for request in ifc_misses} - set(returned)
                     for geometry_id in sorted(missing_ids):
                         failures.append(f"{geometry_id}: IFC-batch leverde geen mesh")
+                source_appearance_scene = None
+                source_appearance_report = None
+                if any(request.source_format.upper() == "IFC" for request in requests):
+                    # The responsive first frame deliberately avoids parsing
+                    # the full IFC presentation graph.  Exact geometry is now
+                    # available, so restore source-owned colours on this worker
+                    # thread and publish one immutable replacement scene.
+                    from cws_convertor.importers.p21 import P21Document
+                    from cws_viewer.adapters.project_model import SceneBuildOptions
+                    from cws_viewer.adapters.source_style_scene import (
+                        SourceAppearanceProjectSceneAdapter,
+                    )
+
+                    catalog = workspace.load_result.catalog
+                    source_ids = sorted(
+                        {
+                            str(getattr(record, "source_file_id", "") or "")
+                            for record in catalog.records_by_entity.values()
+                            if str(getattr(record, "source_format", "") or "").upper() == "IFC"
+                        }
+                        - {""}
+                    )
+                    for source_file_id in source_ids:
+                        self.token.check()
+                        if source_file_id not in catalog._documents:
+                            source = resolver.resolve(source_file_id)
+                            catalog._documents[source_file_id] = P21Document.load(source.path)
+                    appearance_adapter = SourceAppearanceProjectSceneAdapter()
+                    source_appearance_scene = appearance_adapter.build_scene(
+                        workspace.project,
+                        SceneBuildOptions(),
+                        geometry_catalog=catalog,
+                        mesh_repository=workspace.load_result.repository,
+                        enrich_source_appearance=True,
+                    )
+                    source_appearance_report = appearance_adapter.last_report
                 if batch:
                     self.batch_ready.emit(tuple(batch))
                 self.completed.emit(
@@ -264,6 +323,8 @@ if qt_available():
                         "requested": total,
                         "upgraded": len(upgraded),
                         "failed": tuple(failures),
+                        "source_appearance_scene": source_appearance_scene,
+                        "source_appearance_report": source_appearance_report,
                     }
                 )
             except GeometryLoadCancelled:
@@ -402,7 +463,7 @@ if qt_available():
             self.open_action.triggered.connect(self.choose_project)
             self.close_action.triggered.connect(self.close_project)
             self.fit_action.triggered.connect(lambda: self._controller_call("fit_all"))
-            self.select_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.ORBIT, "Selecteren"))
+            self.select_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.SELECT, "Selecteren"))
             self.orbit_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.ORBIT, "Draaien rond muispositie"))
             self.pan_action.triggered.connect(lambda: self._set_navigation_mode(NavigationMode.PAN, "Slepen"))
             self.zoom_area_action.triggered.connect(self._activate_zoom_area)
@@ -553,7 +614,7 @@ if qt_available():
                     QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
                 )
                 self._load_progress_changed(66, "Eerste interactieve modelweergave gereed")
-                QtCore.QTimer.singleShot(50, self._complete_preview_geometry)
+                QtCore.QTimer.singleShot(250, self._complete_preview_geometry)
             finally:
                 if worker is not None:
                     worker.acknowledge_preview()
@@ -568,7 +629,7 @@ if qt_available():
                 render_window = getattr(backend, "_render_window", None)
                 if render_window is not None:
                     render_window.SetMultiSamples(
-                        int(getattr(backend, "INTERACTIVE_MULTISAMPLES", 8))
+                        int(getattr(backend, "MIN_IDLE_MULTISAMPLES", 8))
                     )
                 set_filter(None)
                 viewer.controller.refresh_geometry(None)
@@ -747,7 +808,11 @@ if qt_available():
             if self._job_manager is None or workspace is not self.workspace:
                 return
             generation = self._load_generation
-            worker = _ExactGeometryWorker(workspace)
+            scheduler = getattr(self, "_geometry_priority_scheduler", None)
+            if scheduler is None:
+                scheduler = GeometryPriorityScheduler()
+                self._geometry_priority_scheduler = scheduler
+            worker = _ExactGeometryWorker(workspace, scheduler=scheduler)
             worker.batch_ready.connect(
                 lambda values, value=generation: self._exact_geometry_batch(value, values)
             )
@@ -777,8 +842,30 @@ if qt_available():
         def _exact_geometry_batch(self, generation: int, geometry_ids: Any) -> None:
             if generation != self._load_generation or self.viewer is None:
                 return
-            self.viewer.controller.refresh_geometry(tuple(geometry_ids))
-            self.viewer.update()
+            from cws_viewer.performance import LoadingPerformancePolicy,SceneUploadQueue
+            values=tuple(geometry_ids);queue=getattr(self,'_scene_upload_queue',None)
+            if queue is None:
+                policy=LoadingPerformancePolicy.detect(len(values));queue=SceneUploadQueue(budget_ms=policy.scene_upload_budget_ms,batch_limit=policy.scene_upload_batch_limit)
+                self._scene_upload_queue=queue;self._scene_upload_drain_scheduled=False
+            queue.enqueue(generation,values)
+            if not self._scene_upload_drain_scheduled:
+                self._scene_upload_drain_scheduled=True;QtCore.QTimer.singleShot(0,self._drain_exact_geometry_uploads)
+
+        def _drain_exact_geometry_uploads(self) -> None:
+            import time
+            self._scene_upload_drain_scheduled=False;queue=getattr(self,'_scene_upload_queue',None)
+            if queue is None or self.viewer is None:return
+            backend = getattr(self.viewer, "backend", None) or getattr(self.viewer, "_backend", None)
+            if bool(getattr(backend, "interaction_quality_active", False)):
+                self._scene_upload_drain_scheduled=True;QtCore.QTimer.singleShot(50,self._drain_exact_geometry_uploads);return
+            frame_started=time.perf_counter();uploaded=0
+            while (time.perf_counter()-frame_started)*1000.0<queue.budget_ms:
+                geometry_ids=queue.claim(self._load_generation,max_items=1)
+                if not geometry_ids:break
+                started=time.perf_counter();self.viewer.controller.refresh_geometry(geometry_ids);queue.record_upload(1,(time.perf_counter()-started)*1000.0);uploaded+=1
+            if uploaded:self.viewer.update()
+            if queue.pending_count and not self._scene_upload_drain_scheduled:
+                self._scene_upload_drain_scheduled=True;QtCore.QTimer.singleShot(0,self._drain_exact_geometry_uploads)
 
         def _exact_geometry_progress(self, generation: int, percent: int, message: str) -> None:
             if generation != self._load_generation:
@@ -792,6 +879,18 @@ if qt_available():
             failures = tuple(report.get("failed") or ())
             upgraded = int(report.get("upgraded") or 0)
             requested = int(report.get("requested") or 0)
+            source_scene = report.get("source_appearance_scene")
+            if source_scene is not None and self.workspace is not None and self.viewer is not None:
+                from dataclasses import replace
+
+                load_result = self.workspace.load_result
+                self.workspace.load_result = replace(
+                    load_result,
+                    scene=source_scene,
+                    scene_report=report.get("source_appearance_report") or load_result.scene_report,
+                )
+                self.viewer.controller.replace_scene_preserving_state(source_scene)
+                self.viewer.update()
             self._exact_job_id = None
             self._exact_worker = None
             if failures:

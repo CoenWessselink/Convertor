@@ -67,6 +67,15 @@ class ProjectPackage:
     read_only: bool = False
     migration_performed: bool = False
 
+    def __post_init__(self) -> None:
+        if self.read_only:
+            return
+        from .production_normalization import prepare_project_exact_parts
+
+        summary = prepare_project_exact_parts(self.project)
+        if summary["prepared"] or summary["profile_types_updated"]:
+            self.migration_performed = True
+
     def embedded_source_names(self) -> dict[str, str]:
         return {
             str(item.get("source_id")): str(item.get("path"))

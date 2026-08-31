@@ -751,7 +751,7 @@ def build_l_profile(part: NC1Part) -> cq.Workplane:
     if min(length, h, b, t_horiz, t_vert) <= 0 or t_horiz >= h or t_vert >= b:
         raise ValueError("Ongeldige afmetingen voor L-profiel")
     part.warnings.append(
-        "L-profiel opgebouwd uit nominale benen, diktes en wortelradius; niet-opgegeven teenradii kunnen afwijken"
+        "L-profiel opgebouwd uit nominale benen, wortelradius en EN-teenradii r/2"
     )
     fallback = _box(length + 20.0, b + 20.0, h + 20.0, -10.0, -10.0, -10.0)
     vmask = _first_mask(part, "v", b, fallback)
@@ -763,6 +763,24 @@ def build_l_profile(part: NC1Part) -> cq.Workplane:
     if r > 0:
         patch = _fillet_patch_x(length, t_vert, t_horiz, r, t_vert + r, t_horiz + r)
         result = result.union(patch.intersect(vmask).intersect(umask))
+        toe_radius = r / 2.0
+        vertical_toe = _fillet_patch_x(
+            length,
+            t_vert - toe_radius,
+            h - toe_radius,
+            toe_radius,
+            t_vert - toe_radius,
+            h - toe_radius,
+        )
+        horizontal_toe = _fillet_patch_x(
+            length,
+            b - toe_radius,
+            t_horiz - toe_radius,
+            toe_radius,
+            b - toe_radius,
+            t_horiz - toe_radius,
+        )
+        result = result.cut(vertical_toe).cut(horizontal_toe)
     return _apply_holes(part, result, "L", h, b, t_horiz, t_vert)
 
 
@@ -1045,7 +1063,17 @@ def _fmt_number(value: float) -> str:
     return f"{rounded:.2f}".rstrip("0").rstrip(".")
 
 
-def _ak_line(face: str, x: float, datum: str, q: float, notch: str = "", radius: float = 0.0) -> str:
+def _ak_line(
+    face: str,
+    x: float,
+    datum: str,
+    q: float,
+    notch: str = "",
+    radius: float = 0.0,
+    weld: tuple[float, float, float, float] | list[float] | None = None,
+) -> str:
+    weld_values = [float(value) for value in (weld or ())[:4]]
+    weld_values.extend([0.0] * (4 - len(weld_values)))
     return (
         "  " + (face[:1] if face else " ")
         + f"{x:11.2f}"
@@ -1053,7 +1081,7 @@ def _ak_line(face: str, x: float, datum: str, q: float, notch: str = "", radius:
         + f"{q:10.2f}"
         + (notch[:1] if notch else " ")
         + f"{radius:10.2f}"
-        + f"{0.0:11.2f}{0.0:11.2f}{0.0:11.2f}{0.0:11.2f}"
+        + "".join(f"{value:11.2f}" for value in weld_values)
     )
 
 

@@ -6,10 +6,13 @@ import math
 from typing import Any
 
 from cws_viewer.core.viewer_feel_navigation import ViewerFeelNavigationService
+from cws_viewer.core.viewer_interaction_profile import (
+    TRIMBLE_STYLE_INTERACTION_PROFILE,
+)
 from cws_viewer.math3d import Vector3
 
 WORLD_UP = Vector3(0.0, 0.0, 1.0)
-MAX_ELEVATION_DEG = 88.5
+MAX_ELEVATION_DEG = TRIMBLE_STYLE_INTERACTION_PROFILE.maximum_elevation_deg
 
 
 class ViewerFeelNavigationV2Service(ViewerFeelNavigationService):

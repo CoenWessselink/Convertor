@@ -1094,6 +1094,11 @@ def import_ifc_project(
             ("Finish", "Coating", "Surface treatment"),
         )
         category = _classification_for_part(entity.type_name, material)
+        from cws_convertor.project.production_normalization import (
+            infer_profile_type,
+            prepare_exact_imported_part,
+        )
+
         part = Part(
             internal_id=internal_id,
             name=_first_nonempty(
@@ -1112,7 +1117,7 @@ def import_ifc_project(
             quantity_total=1,
             part_type=entity.type_name.removeprefix("IFC").lower(),
             profile=profile,
-            profile_type=entity.type_name.removeprefix("IFC").upper(),
+            profile_type=infer_profile_type(profile, entity.type_name),
             material=material,
             material_grade=material,
             length_mm=_float(length),
@@ -1123,6 +1128,7 @@ def import_ifc_project(
             nc1_eligible=False,
             export_status="review_required",
         )
+        prepare_exact_imported_part(part)
         part.properties["ifc_spatial_container_source_id"] = str(
             indexes.element_spatial_parent.get(entity.entity_id, "")
         )

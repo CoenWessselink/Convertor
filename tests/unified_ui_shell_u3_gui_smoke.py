@@ -39,9 +39,19 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
             self.assertEqual("cwsPermanentViewerWorkspaceHost", window.viewer_host.objectName())
             self.assertIs(window.viewer_page, window.project_page)
             self.assertGreaterEqual(window.tabs.indexOf(window.viewer_page), 0)
-            self.assertTrue(
-                any(not window.tabs.tabIcon(index).isNull() for index in range(window.tabs.count()))
+            self.assertEqual(
+                ["Project", "Viewer", "Productie", "Controle", "Uitvoer"],
+                [window.tabs.tabText(index) for index in range(window.tabs.count())],
             )
+            self.assertTrue(all(
+                page.parent() is not None
+                for page in (
+                    window.import_page, window.viewer_page, window.edit_page, window.converter_page,
+                    window.control_page, window.pdf_page, window.profiles_page, window.drawings_page,
+                    window.scribing_page, window.bom_excel_page, window.production_workflow_page,
+                    window.export_page,
+                )
+            ))
             window.project_page.open_project(project_path, load_geometry=False)
             deadline = time.monotonic() + 30.0
             while time.monotonic() < deadline:
@@ -74,14 +84,14 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
             self.assertIn("part-v9", window._u3_bom_context.text())
             self.assertIn("part-v9", window.context_strip.selection.text())
 
-            for page, expected_surface in (
-                (window.viewer_page, "viewer"),
-                (window.edit_page, "workbench"),
-                (window.scribing_page, "scribing"),
-                (window.bom_excel_page, "bom"),
-                (window.export_page, "export"),
+            for route, expected_surface in (
+                ("viewer", "viewer"),
+                ("edit", "workbench"),
+                ("scribing", "scribing"),
+                ("bom", "bom"),
+                ("export", "export"),
             ):
-                window.tabs.setCurrentWidget(page)
+                self.assertTrue(window.workspace_router.open_workspace(route))
                 application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
                 self.assertEqual(expected_surface, window.application_context.active_surface)
                 self.assertEqual("part-v9", window.context_snapshot.selection.primary_entity_id)

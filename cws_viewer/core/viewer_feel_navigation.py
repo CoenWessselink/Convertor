@@ -8,9 +8,14 @@ from typing import Any
 from cws_viewer.contracts.enums import ProjectionType
 from cws_viewer.contracts.state import CameraState
 from cws_viewer.core.v15_navigation import V15ViewNavigationService
+from cws_viewer.core.viewer_interaction_profile import (
+    TRIMBLE_STYLE_INTERACTION_PROFILE,
+)
 from cws_viewer.math3d import Vector3
 
-WHEEL_ZOOM_PER_NOTCH = 1.08
+WHEEL_ZOOM_PER_NOTCH = (
+    TRIMBLE_STYLE_INTERACTION_PROFILE.wheel_zoom_factor_per_notch
+)
 
 
 class ViewerFeelNavigationService(V15ViewNavigationService):

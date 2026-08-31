@@ -205,9 +205,12 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         actor.SetMapper(mapper)
         actor.PickableOff()
         prop = actor.GetProperty()
-        selected = entries[0][2] if entries else Rgba(0.02, 0.62, 1.0, 1.0)
+        # Selection is an observable product invariant. Older projects may
+        # persist a blue selection preference, but the desktop parity contract
+        # requires the same saturated engineering-yellow outline everywhere.
+        selected = Rgba(1.0, 0.82, 0.0, 1.0)
         prop.SetColor(selected.red, selected.green, selected.blue)
-        prop.SetLineWidth(3.4)
+        prop.SetLineWidth(4.2)
         prop.LightingOff()
         self._renderer.AddActor(actor)
         return _ActorGroup(

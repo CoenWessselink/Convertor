@@ -9,6 +9,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "validation" / "phases" / "PHASE_2_SOURCE_TEST_EVIDENCE.json"
+COMPLETION_OUTPUT = ROOT / "validation" / "phases" / "PHASE_2_COMPLETION_SCOPE_EVIDENCE.json"
 
 
 def _run(label: str, command: list[str], *, environment: dict[str, str] | None = None) -> dict:
@@ -31,6 +32,8 @@ def main() -> int:
         ("source_compile", [python, "-m", "compileall", "-q", "cws_convertor", "cws_viewer", "tools"], None),
         ("phase1_unified_regression", [python, "tools/run_phase1_unified_gates.py"], None),
         ("manufacturing_e2e", [python, "tests/phase2_manufacturing_e2e_smoke.py"], None),
+        ("completion_scope", [python, "tests/phase2_completion_scope_smoke.py", "--output", str(COMPLETION_OUTPUT)], None),
+        ("quality_inspection", [python, "tests/phase3_quality_inspection_smoke.py"], None),
         ("plate_nesting", [python, "tests/phase2_plate_nesting_smoke.py"], None),
         ("export_scope_matrix", [python, "tests/phase2_export_scope_matrix_smoke.py"], None),
         ("manufacturing_save_reopen_stale", [python, "tests/phase2_manufacturing_persistence_smoke.py"], None),

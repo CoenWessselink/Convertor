@@ -495,16 +495,82 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("project", help="Oud of read-only .cwscproj-projectbestand")
     p.add_argument("-o", "--output", required=True, help="Nieuw doelbestand; bron wordt niet gewijzigd")
     _report_arg(p)
+
+    p = sub.add_parser(
+        "analyze-manufacturing",
+        help="Analyseer exacte STEP-geometrie met de Manufacturing Geometry Interpreter",
+    )
+    p.add_argument("inputs", nargs="+", help="Een of meer STEP/STP-bestanden")
+    p.add_argument(
+        "-o",
+        "--output",
+        default="validation/manufacturing_interpreter/cli",
+        help="Map voor deterministische JSON-rapporten",
+    )
+    _report_arg(p)
+
+    p = sub.add_parser(
+        "loader-engine-v2-probe",
+        help="Meet Loader Engine V2 in de actieve bron- of packaged runtime",
+    )
+    p.add_argument("--output", required=True, help="Doelpad voor het JSON-bewijs")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    forwarded = list(argv if argv is not None else sys.argv[1:])
+    if forwarded and forwarded[0] == "--geometry-worker-service":
+        worker_parser = argparse.ArgumentParser(add_help=False)
+        worker_parser.add_argument("--geometry-worker-service", action="store_true")
+        worker_parser.add_argument("--worker-host", required=True)
+        worker_parser.add_argument("--worker-port", required=True, type=int)
+        worker_parser.add_argument("--worker-token", required=True)
+        worker_parser.add_argument("--worker-root", required=True, type=Path)
+        worker = worker_parser.parse_args(forwarded)
+        from cws_viewer.geometry.frozen_worker import run_geometry_worker_service
+        return run_geometry_worker_service(
+            host=worker.worker_host,
+            port=worker.worker_port,
+            token=worker.worker_token,
+            root=worker.worker_root,
+        )
+    if forwarded and forwarded[0] == "viewer-real-benchmark":
+        from cws_viewer.core.real_performance_evidence import main as real_performance_main
+        return real_performance_main(["benchmark", *forwarded[1:]])
+    if forwarded and forwarded[0] == "viewer-real-soak":
+        from cws_viewer.core.real_performance_evidence import main as real_performance_main
+        return real_performance_main(["soak", *forwarded[1:]])
+    if forwarded and forwarded[0] == "viewer-real-warm":
+        from cws_viewer.core.real_performance_evidence import main as real_performance_main
+        return real_performance_main(["warm", *forwarded[1:]])
+    if forwarded and forwarded[0] == "viewer-real-session":
+        from cws_viewer.core.real_performance_evidence import main as real_performance_main
+        return real_performance_main(["session", *forwarded[1:]])
+    if forwarded and forwarded[0] == "viewer-real-aa":
+        from cws_viewer.core.real_performance_evidence import main as real_performance_main
+        return real_performance_main(["aa", *forwarded[1:]])
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.quick_self_test:
         return _quick_self_test(args.report)
     if not args.command:
         parser.error("een command is verplicht, behalve bij --quick-self-test of --version")
+
+    if args.command == "analyze-manufacturing":
+        from cws_convertor.manufacturing_interpreter.cli import run_cli
+
+        return run_cli(args)
+
+    if args.command == "loader-engine-v2-probe":
+        from cws_viewer.core.loader_v2_probe import run_probe
+
+        result = run_probe(
+            Path(args.output),
+            require_frozen=bool(getattr(sys, "frozen", False)),
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=True))
+        return 0 if result.get("status") == "PASS" else 1
+
     failures = 0
     review_required = 0
     entries: list[dict[str, Any]] = []

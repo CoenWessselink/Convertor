@@ -300,7 +300,7 @@ class FrozenIfcWorkerClient:
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         listener.bind(("127.0.0.1", 0))
         listener.listen(1)
-        listener.settimeout(20.0)
+        listener.setblocking(False)
         host, port = listener.getsockname()
         token = secrets.token_urlsafe(32)
         stderr_path = self._root / "worker-stderr.log"
@@ -328,7 +328,22 @@ class FrozenIfcWorkerClient:
                 close_fds=True,
             )
             self._process = process
-            connection, _address = listener.accept()
+            startup_deadline = time.monotonic() + min(120.0, max(20.0, self.timeout_seconds))
+            connection = None
+            while connection is None:
+                if process.poll() is not None:
+                    detail = self._stderr_tail()
+                    raise FrozenWorkerProtocolError(
+                        f"IFC-worker stopte voor de handshake (exitcode={process.returncode})"
+                        + (f": {detail}" if detail else "")
+                    )
+                if time.monotonic() >= startup_deadline:
+                    detail = self._stderr_tail()
+                    raise TimeoutError("IFC-worker handshake timeout" + (f": {detail}" if detail else ""))
+                readable, _, _ = select.select([listener], [], [], 0.05)
+                if readable:
+                    connection, _address = listener.accept()
+            connection.settimeout(self.timeout_seconds)
             connection.setblocking(True)
             hello = _recv_message(connection)
             if hello.get("protocol") != _PROTOCOL or hello.get("type") != "hello" or hello.get("token") != token:

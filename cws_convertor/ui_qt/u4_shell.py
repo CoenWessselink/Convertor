@@ -6,6 +6,8 @@ from typing import Any, Iterable
 
 from cws_convertor.product import APP_NAME, APP_VERSION
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
+from .context_action_service import ContextActionService
+from .ui_v51_contract import apply_v51_contract
 from .unified_shell import (
     CWSMainWindow as _U3MainWindow,
     U3_CONTEXT_PROPERTY,
@@ -51,12 +53,9 @@ QStatusBar { background:#ffffff; border-top:1px solid #d4dde8; }
 if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
     from .ribbon_icons import ribbon_icon
-    from .product_workspaces import (
-        BomWorkspacePanel,
-        ProfileNestingPanel,
-        ProductionWorkflowPanel,
-        ScribingWorkspacePanel,
-    )
+    from .product_workspaces import BomWorkspacePanel, ProductionWorkflowPanel, ScribingWorkspacePanel
+    from .phase3_workspaces import ProfileNestingPanel
+    from .machine_settings_panel import MachineSettingsPanel
     from .functional_workspaces import DrawingWorkspacePanel, EditWorkspacePanel
 
     class WorkspaceRouter(QtCore.QObject):
@@ -72,11 +71,28 @@ if qt_available():
             self.history: list[str] = []
             self.history_index = -1
             self._routing = False
+            self.context_actions = ContextActionService()
 
-        def register(self, name: str, page: Any) -> None:
+        def register(
+            self,
+            name: str,
+            page: Any,
+            *,
+            primary: str,
+            primary_page: Any,
+            host: Any | None = None,
+        ) -> None:
             key = str(name).strip().lower()
             self.pages[key] = page
             self.names_by_page[page] = key
+            self.names_by_page.setdefault(primary_page, primary)
+            self.context_actions.register(
+                key,
+                primary=primary,
+                page=page,
+                primary_page=primary_page,
+                host=host,
+            )
 
         def open_workspace(
             self,
@@ -93,12 +109,12 @@ if qt_available():
                     "U4 workspace switching vereist behoud van project, selectie, camera en visibility"
                 )
             key = str(workspace).strip().lower()
-            page = self.pages.get(key)
-            if page is None:
+            binding = self.context_actions.activate(key)
+            if binding is None:
                 return False
             self._routing = True
             try:
-                self.window.tabs.setCurrentWidget(page)
+                self.window.tabs.setCurrentWidget(binding.primary_page)
                 self.window.application_context.set_active_surface(
                     "workbench" if key == "edit" else key
                 )
@@ -117,6 +133,8 @@ if qt_available():
             if self._routing:
                 return
             key = self.names_by_page.get(page)
+            if not key:
+                key = self.context_actions.route_for_primary_page(page)
             if key:
                 self.open_workspace(key)
 
@@ -131,6 +149,59 @@ if qt_available():
                 return
             self.history_index += 1
             self.open_workspace(self.history[self.history_index], record_history=False)
+
+
+    _PRODUCT_QSS += """
+QMainWindow, QWidget#cwsCentral, QStackedWidget {
+    background: #0b1118;
+    color: #dce9f3;
+}
+QMenuBar, QMenu, QStatusBar, QToolBar {
+    background: #0d151e;
+    color: #dce9f3;
+    border-color: #294354;
+}
+QTabWidget::pane { background: #101923; border: 1px solid #294354; }
+QTabBar::tab {
+    background: #111c26; color: #aebfcc; border: 1px solid #294354;
+    padding: 7px 18px; min-height: 22px;
+}
+QTabBar::tab:hover { background: #182a38; color: #ffffff; }
+QTabBar::tab:selected {
+    background: #153c55; color: #ffffff; border-bottom: 2px solid #22a8f0;
+}
+QTabWidget#cwsPrimaryTabs > QTabBar::tab {
+    font: 700 10pt "Bahnschrift"; min-width: 112px; padding: 8px 22px;
+}
+QFrame, QGroupBox, QScrollArea, QTableView, QTreeView, QListView, QTableWidget, QTreeWidget {
+    background: #111b25; color: #dce9f3; border-color: #294354;
+    alternate-background-color: #14222d; gridline-color: #294354;
+}
+QHeaderView::section {
+    background: #172531; color: #cfe0eb; border: 1px solid #294354; padding: 5px;
+}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit {
+    background: #0b141c; color: #edf7fc; border: 1px solid #35566b;
+    border-radius: 2px; padding: 4px 6px; selection-background-color: #157fc0;
+}
+QPushButton, QToolButton {
+    background: #152532; color: #dce9f3; border: 1px solid #35566b;
+    border-radius: 3px; padding: 5px 10px;
+}
+QPushButton:hover, QToolButton:hover { background: #1c3b4e; border-color: #22a8f0; }
+QPushButton:checked, QToolButton:checked, QPushButton:default {
+    background: #087fc4; color: #ffffff; border-color: #2bb4ff;
+}
+QPushButton:disabled, QToolButton:disabled { color: #617482; background: #121b23; }
+QLabel { color: #dce9f3; }
+QProgressBar { background: #0b141c; border: 1px solid #294354; color: #dce9f3; }
+QProgressBar::chunk { background: #1499df; }
+QSplitter::handle { background: #294354; }
+QScrollBar:vertical, QScrollBar:horizontal { background: #0e1720; }
+QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+    background: #35566b; min-width: 10px; min-height: 10px;
+}
+"""
 
 
     class _ProductHeader(QtWidgets.QFrame):
@@ -208,17 +279,17 @@ if qt_available():
             ("Modus", (("Bewerk modus", "nav:edit"), ("Apart venster", "viewer:detach"), ("Meer", "viewer:tools"))),
         ),
         "edit": (
-            ("Bewerken", (("Toevoegen", "viewer:exact"), ("Verwijderen", "viewer:exact"), ("Dupliceren", "viewer:exact"))),
-            ("Volgorde", (("Omhoog", "viewer:exact"), ("Omlaag", "viewer:exact"))),
-            ("Data", (("Importeren", "convert:add"), ("Acties", "viewer:exact"))),
-            ("Controle", (("Vernieuwen", "scribing:refresh"), ("Validatie", "control:run"), ("Berekenen", "report:refresh"))),
-            ("Wijzigingen", (("Opslaan", "project:save"), ("Annuleren", "viewer:clear"))),
+            ("Bewerken", (("Toevoegen", "edit:add"), ("Verwijderen", "edit:delete"), ("Dupliceren", "edit:duplicate"))),
+            ("Volgorde", (("Omhoog", "edit:move_up"), ("Omlaag", "edit:move_down"))),
+            ("Data", (("Importeren", "edit:import"), ("Acties", "edit:actions"))),
+            ("Controle", (("Vernieuwen", "edit:refresh"), ("Validatie", "edit:validate"), ("Berekenen", "edit:calculate"))),
+            ("Wijzigingen", (("Opslaan", "edit:save"), ("Annuleren", "edit:cancel"))),
         ),
         "converter": (
             ("Acties", (("Converteren", "convert:run"), ("Batch converteren", "convert:run"), ("Validatie", "control:run"), ("Vergelijken", "nav:control"))),
             ("Import", (("Importeren", "convert:add"), ("Toevoegen", "convert:add"))),
             ("Export", (("Exporteren", "nav:export"), ("Opslaan", "project:save"))),
-            ("Opties", (("Instellingen", "convert:output"), ("Mapping", "nav:converter"), ("Materiaaltabel", "nav:bom"), ("Profielbibliotheek", "nav:profile_nesting"))),
+            ("Opties", (("Instellingen", "nav:settings"), ("Mapping", "nav:converter"), ("Materiaaltabel", "nav:bom"), ("Profielbibliotheek", "nav:profile_nesting"))),
             ("Overig", (("Log", "nav:report"), ("Geschiedenis", "nav:report"))),
         ),
         "control": (
@@ -347,13 +418,15 @@ if qt_available():
             self.setObjectName("cwsConvertorUnifiedU4MainWindow")
             self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
             application = QtWidgets.QApplication.instance()
-            product_font = QtGui.QFont("Segoe UI", 9)
+            product_font = QtGui.QFont("Bahnschrift", 9)
             if application is not None:
                 application.setFont(product_font)
             self.setFont(product_font)
             self.setStyleSheet(self.styleSheet() + _PRODUCT_QSS)
             self.workspace_router = WorkspaceRouter(self)
+            self._v51_binding = apply_v51_contract(self, self.workspace_router)
             self._install_product_pages()
+            self.tabs.setObjectName("cwsPrimaryTabs")
             self.production_workflow_page.setProperty(
                 U4_WORKFLOW_PROPERTY,
                 U4_WORKFLOW_TOKEN,
@@ -449,6 +522,9 @@ if qt_available():
                 self._u3_bom_context.setWordWrap(True)
                 bom_layout.insertWidget(1, self._u3_bom_context)
             self._replace_page("profiles_page", ProfileNestingPanel(self), "Optimaliseren")
+            self.settings_page = MachineSettingsPanel(self)
+            self.settings_page.setProperty(U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN)
+            self.settings_page.setProperty(U4_WORKFLOW_PROPERTY, U4_WORKFLOW_TOKEN)
             # The U4 ribbon complements the proven Viewer V15 toolbar; it must
             # not hide direct navigation or the model-opacity slider.
             for toolbar in self.project_page.findChildren(QtWidgets.QToolBar):
@@ -485,24 +561,73 @@ if qt_available():
                 page.action_requested.connect(self._route_action)
             self.pdf_page.generate_pdf.connect(self._generate_pdf)
             self.bom_excel_page.show_project_requested.connect(lambda: self._route_action("viewer"))
-            ordered_pages = (
-                (self.import_page, "Inlezen"),
-                (self.project_page, "Viewer"),
-                (self.edit_page, "Bewerken"),
-                (self.converter_page, "Converteren"),
-                (self.control_page, "Controleren"),
-                (self.pdf_page, "PDF / Tekening"),
-                (self.scribing_page, "Scribing"),
-                (self.bom_excel_page, "BOM / Hoeveelheden"),
-                (self.profiles_page, "Optimaliseren"),
-                (self.production_workflow_page, "Productieworkflow"),
-                (self.export_page, "Exporteren"),
+            leaf_pages = (
+                self.import_page,
+                self.project_page,
+                self.edit_page,
+                self.converter_page,
+                self.control_page,
+                self.pdf_page,
+                self.scribing_page,
+                self.bom_excel_page,
+                self.profiles_page,
+                self.settings_page,
+                self.production_workflow_page,
+                self.export_page,
             )
-            for page, _title in ordered_pages:
-                index = self.tabs.indexOf(page)
-                if index >= 0:
-                    self.tabs.removeTab(index)
-            for page, title in ordered_pages:
+            # Remove every legacy top-level registration, including base-shell
+            # aliases such as Rapport. The page widgets remain alive and are
+            # immediately rehomed below one of the five primary workspaces.
+            while self.tabs.count():
+                self.tabs.removeTab(0)
+
+            def primary_host(name: str, pages: tuple[tuple[Any, str], ...]) -> Any:
+                host = QtWidgets.QTabWidget(self.tabs)
+                host.setObjectName(name)
+                host.setDocumentMode(True)
+                host.setTabPosition(QtWidgets.QTabWidget.TabPosition.North)
+                for child, title in pages:
+                    host.addTab(child, title)
+                return host
+
+            self.project_workspace_page = primary_host(
+                "cwsPrimaryProjectWorkspace",
+                ((self.import_page, "Inlezen"), (self.converter_page, "Converteren"), (self.control_page, "Controleren")),
+            )
+            self.edit_workspace_page = primary_host(
+                "cwsPrimaryEditWorkspace",
+                ((self.edit_page, "Onderdelen"), (self.scribing_page, "Scribing")),
+            )
+            self.production_workspace_page = primary_host(
+                "cwsPrimaryProductionWorkspace",
+                ((self.bom_excel_page, "BOM"), (self.profiles_page, "Optimaliseren"), (self.settings_page, "Machine-instellingen"), (self.production_workflow_page, "Productieworkflow")),
+            )
+            self.output_workspace_page = primary_host(
+                "cwsPrimaryOutputWorkspace",
+                ((self.pdf_page, "PDF / Tekening"), (self.export_page, "Exporteren")),
+            )
+            legacy_edit_workspace = self.edit_workspace_page
+            legacy_production_workspace = self.production_workspace_page
+            manufacturing = QtWidgets.QWidget()
+            manufacturing_layout = QtWidgets.QVBoxLayout(manufacturing)
+            manufacturing_layout.setContentsMargins(0, 0, 0, 0)
+            manufacturing_tabs = QtWidgets.QTabWidget()
+            manufacturing_tabs.setDocumentMode(True)
+            manufacturing_tabs.addTab(legacy_edit_workspace, "Onderdelen & Scribing")
+            manufacturing_tabs.addTab(legacy_production_workspace, "BOM, Machines & Optimalisatie")
+            manufacturing_layout.addWidget(manufacturing_tabs)
+            self._edit_subworkspace_host = legacy_edit_workspace
+            self._production_subworkspace_host = legacy_production_workspace
+            self.edit_workspace_page = manufacturing
+            self.production_workspace_page = manufacturing
+            self.control_workspace_page = self.control_page
+            for page, title in (
+                (self.project_workspace_page, "Project"),
+                (self.project_page, "Viewer"),
+                (self.production_workspace_page, "Productie"),
+                (self.control_workspace_page, "Controle"),
+                (self.output_workspace_page, "Uitvoer"),
+            ):
                 self.tabs.addTab(page, QtGui.QIcon(), title)
             self.tabs.tabBar().setExpanding(False)
             self.tabs.tabBar().setUsesScrollButtons(True)
@@ -540,24 +665,33 @@ if qt_available():
                 self.statusBar().addPermanentWidget(widget)
 
         def _register_workspaces(self) -> None:
-            for name, page in (
-                ("import", self.import_page),
-                ("viewer", self.project_page),
-                ("edit", self.edit_page),
-                ("converter", self.converter_page),
-                ("control", self.control_page),
-                ("pdf", self.pdf_page),
-                ("scribing", self.scribing_page),
-                ("bom", self.bom_excel_page),
-                ("profile_nesting", self.profiles_page),
-                ("production_workflow", self.production_workflow_page),
-                ("export", self.export_page),
+            for name, page, primary, primary_page, host in (
+                ("project", self.import_page, "project", self.project_workspace_page, self.project_workspace_page),
+                ("import", self.import_page, "project", self.project_workspace_page, self.project_workspace_page),
+                ("converter", self.converter_page, "project", self.project_workspace_page, self.project_workspace_page),
+                ("control", self.control_page, "project", self.control_workspace_page, None),
+                ("viewer", self.project_page, "viewer", self.project_page, None),
+                ("edit", self.edit_page, "edit", self.edit_workspace_page, self._edit_subworkspace_host),
+                ("scribing", self.scribing_page, "edit", self.edit_workspace_page, self._edit_subworkspace_host),
+                ("production", self.bom_excel_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("bom", self.bom_excel_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("profile_nesting", self.profiles_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("settings", self.settings_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("production_workflow", self.production_workflow_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("report", self.production_workflow_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("output", self.pdf_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("pdf", self.pdf_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("export", self.export_page, "output", self.output_workspace_page, self.output_workspace_page),
             ):
-                self.workspace_router.register(name, page)
+                self.workspace_router.register(name, page, primary=primary, primary_page=primary_page, host=host)
 
         def _install_context_ribbons(self) -> None:
             self.context_ribbons: dict[str, Any] = {}
+            installed_pages: set[Any] = set()
             for workspace, page in self.workspace_router.pages.items():
+                if page in installed_pages:
+                    continue
+                installed_pages.add(page)
                 layout = page.layout() if hasattr(page, "layout") else None
                 if layout is None or not hasattr(layout, "insertWidget"):
                     continue
@@ -611,6 +745,8 @@ if qt_available():
                         self.bom_excel_page.set_context(self.workspace, self.application_context.snapshot.selection)
                     else:
                         self.bom_excel_page.handle_ribbon(command)
+                elif namespace == "edit":
+                    self.edit_page.handle_ribbon(command)
                 elif namespace == "nesting":
                     if command == "analyse":
                         self.profiles_page._analyse()
@@ -793,6 +929,10 @@ if qt_available():
         def _workspace_changed(self, workspace: str) -> None:
             if not hasattr(self, "status_workspace"):
                 return
+            # QVTK owns a native child window and cannot safely be reparented
+            # between tabs. Keep it permanently in the Viewer workspace.
+            if workspace == "viewer":
+                self._place_shared_viewer(workspace)
             self.production_workflow_page.setProperty(
                 U4_WORKFLOW_PROPERTY,
                 U4_WORKFLOW_TOKEN,
@@ -845,6 +985,14 @@ if qt_available():
             self.pdf_page.set_context(self.workspace, snapshot.selection)
             self.bom_excel_page.set_context(workspace, selection)
             self.production_workflow_page.set_context(workspace, selection)
+            settings = getattr(self, "settings_page", None)
+            if settings is not None and workspace is not None:
+                if hasattr(settings, "set_context"):
+                    settings.set_context(workspace, selection)
+                elif hasattr(settings, "set_workspace"):
+                    settings.set_workspace(workspace)
+                elif hasattr(settings, "set_project"):
+                    settings.set_project(workspace.project)
 
         def _route_action(self, action: str) -> None:
             key = str(action)
@@ -863,6 +1011,7 @@ if qt_available():
                 "pdf": "pdf",
                 "profiles": "profile_nesting",
                 "optimize": "profile_nesting",
+                "settings": "settings",
                 "drawings": "pdf",
                 "scribing": "scribing",
                 "quantities": "bom",
@@ -908,7 +1057,7 @@ if qt_available():
                 self._cws_viewer_home_parent = home
                 self._cws_viewer_home_index = home.indexOf(viewer) if isinstance(home, QtWidgets.QSplitter) else -1
                 self._cws_module_viewer_hosts = {}
-            if workspace in {"viewer", "import", "pdf", "drawing"}:
+            if workspace == "viewer":
                 home = self._cws_viewer_home_parent
                 if viewer.parentWidget() is not home:
                     if isinstance(home, QtWidgets.QSplitter):
@@ -917,6 +1066,9 @@ if qt_available():
                         home.layout().addWidget(viewer)
                 viewer.setMinimumHeight(320)
                 viewer.show()
+                return
+            if workspace == "import":
+                viewer.hide()
                 return
             page = self.workspace_router.pages.get(workspace)
             if isinstance(page, QtWidgets.QTabWidget):
@@ -930,24 +1082,24 @@ if qt_available():
             if host is None:
                 host = QtWidgets.QFrame(page)
                 host.setObjectName("module3dViewerHost")
-                host.setStyleSheet("QFrame#module3dViewerHost{background:#e9eff6;border:1px solid #c8d4e2}")
+                host.setStyleSheet("QFrame#module3dViewerHost{background:#101820;border:1px solid #354a5a}")
                 host_layout = QtWidgets.QVBoxLayout(host)
                 host_layout.setContentsMargins(0, 0, 0, 0)
                 host_layout.setSpacing(0)
                 bar = QtWidgets.QHBoxLayout()
                 label = QtWidgets.QLabel(f"3D MODEL - {workspace.upper()}")
-                label.setStyleSheet("padding:5px 10px;color:#153b66;font-weight:700")
+                label.setStyleSheet("padding:5px 10px;color:#e8f0f5;font-weight:700")
                 bar.addWidget(label)
                 bar.addStretch(1)
-                hint = QtWidgets.QLabel("Een model, een selectie, Viewer V15")
-                hint.setStyleSheet("padding-right:10px;color:#66798e")
+                hint = QtWidgets.QLabel("Een model, een selectie, een Viewer")
+                hint.setStyleSheet("padding-right:10px;color:#9fb1bf")
                 bar.addWidget(hint)
                 host_layout.addLayout(bar)
                 layout.insertWidget(min(1, layout.count()), host, 3)
                 self._cws_module_viewer_hosts[page] = host
             viewer.setParent(host)
             host.layout().addWidget(viewer, 1)
-            viewer.setMinimumHeight(310)
+            viewer.setMinimumHeight(120)
             viewer.show()
 
         def _restore_layout(self) -> None:
@@ -957,7 +1109,7 @@ if qt_available():
                 self.restoreGeometry(geometry)
             workspace = str(settings.value("product-ui/last-workspace", "import") or "import")
             if workspace in self.workspace_router.pages:
-                self.tabs.setCurrentWidget(self.workspace_router.pages[workspace])
+                self.workspace_router.open_workspace(workspace, record_history=False)
 
         def closeEvent(self, event: Any) -> None:
             settings = QtCore.QSettings("CWS", "CWS Convertor")

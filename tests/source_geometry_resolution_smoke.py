@@ -154,9 +154,12 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             )
             payload = json.loads(inspection_report.read_text(encoding="utf-8"))
             self.assertEqual(payload["status"], "passed")
-            self.assertEqual(payload["inspection"]["status"], "resolved_mesh")
+            self.assertEqual(payload["inspection"]["status"], "resolved_exact")
+            self.assertEqual(payload["inspection"]["geometry_kind"], "native_brep")
             self.assertTrue(payload["inspection"]["selection_verified"])
-            self.assertFalse(payload["inspection"]["production_geometry_exact"])
+            self.assertTrue(payload["inspection"]["production_geometry_exact"])
+            self.assertEqual(payload["inspection"]["metrics"]["solid_count"], 1)
+            self.assertTrue(payload["inspection"]["metrics"]["valid"])
 
     def test_single_step_solid_resolves_as_exact_native_brep_and_persists(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_source_step_") as folder_name:
@@ -252,14 +255,14 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             self.assertIsNone(inspection.native_shape)
             self.assertIn("volgorde", inspection.blocking_reasons[0])
 
-    def test_ifc_product_resolves_to_part_scoped_mesh_but_not_production_brep(self) -> None:
+    def test_ifc_product_resolves_to_verified_part_scoped_native_brep(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_source_ifc_") as folder_name:
             folder = Path(folder_name)
             source = folder / "plate.ifc"
             project_path = folder / "plate.cwscproj"
             export_ifc(source)
 
-            session = ProjectSession.new("IFC source mesh")
+            session = ProjectSession.new("IFC native source BREP")
             registration = session.register_sources([source], include_step_geometry=False)[0]
             session.semantic_import_source(registration.source.source_id)
             part = next(iter(session.project.parts.values()))
@@ -267,14 +270,14 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             self.assertEqual(locator["selector"]["kind"], "ifc_product_entity")
 
             inspection = session.inspect_part_source_geometry(part.internal_id, user="tester")
-            self.assertEqual(inspection.status, "resolved_mesh")
+            self.assertEqual(inspection.status, "resolved_exact")
             self.assertEqual(inspection.scope, "part")
-            self.assertEqual(inspection.geometry_kind, "triangulated_mesh")
+            self.assertEqual(inspection.geometry_kind, "native_brep")
             self.assertTrue(inspection.selection_verified)
-            self.assertFalse(inspection.production_geometry_exact)
-            self.assertEqual(len(inspection.mesh_vertices_mm), 8)
-            self.assertEqual(len(inspection.mesh_triangles), 12)
-            self.assertTrue(inspection.topology["closed_mesh"])
+            self.assertTrue(inspection.production_geometry_exact)
+            self.assertIsNotNone(inspection.native_shape)
+            self.assertEqual(inspection.topology["solid_count"], 1)
+            self.assertTrue(inspection.metrics["valid"])
             self.assertEqual(
                 sorted(round(value, 6) for value in inspection.metrics["bbox_mm"]),
                 [100.0, 1000.0, 2000.0],
@@ -284,10 +287,10 @@ class SourceGeometryResolutionTests(unittest.TestCase):
                 200_000_000.0,
                 places=3,
             )
-            self.assertNotIn("cad_metrics", part.geometry_descriptor)
+            self.assertIn("cad_metrics", part.geometry_descriptor)
             self.assertEqual(
-                part.geometry_descriptor["source_mesh_metrics"]["fidelity"],
-                "triangulated_mesh",
+                part.geometry_descriptor["cad_metrics"]["fidelity"],
+                "native_brep",
             )
             steel_model = build_steel_model_snapshot(session.project)
             viewer_state = ViewerWorkspaceState(
@@ -300,9 +303,9 @@ class SourceGeometryResolutionTests(unittest.TestCase):
                 entity=viewer_state.entity(part.internal_id),
                 binding=viewer_state.binding(part.internal_id),
             )
-            self.assertEqual(viewer_resource.geometry_basis, "source_ifc_triangulation")
-            self.assertEqual(len(viewer_resource.vertices_mm), 8)
-            self.assertEqual(len(viewer_resource.triangles), 12)
+            self.assertEqual(viewer_resource.geometry_basis, "source_native_brep")
+            self.assertGreaterEqual(len(viewer_resource.vertices_mm), 8)
+            self.assertGreaterEqual(len(viewer_resource.triangles), 12)
             viewer_state.attach_mesh_resource(viewer_resource)
             self.assertEqual(
                 viewer_state.binding(part.internal_id).viewer_geometry_content_sha256,
@@ -313,8 +316,8 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             session.close()
             with ProjectSession.open(project_path, read_only=True) as reopened:
                 stored = reopened.project.parts[part.internal_id].geometry_descriptor
-                self.assertEqual(stored["source_inspection"]["status"], "resolved_mesh")
-                self.assertFalse(stored["source_inspection"]["production_geometry_exact"])
+                self.assertEqual(stored["source_inspection"]["status"], "resolved_exact")
+                self.assertTrue(stored["source_inspection"]["production_geometry_exact"])
 
     def test_tampered_locator_source_hash_is_rejected_on_project_load(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_source_tamper_") as folder_name:

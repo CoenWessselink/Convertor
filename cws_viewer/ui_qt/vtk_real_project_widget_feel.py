@@ -9,6 +9,9 @@ from cws_viewer.core.viewer_feel_navigation import (
     ViewerFeelNavigationService,
     WHEEL_ZOOM_PER_NOTCH,
 )
+from cws_viewer.core.viewer_interaction_profile import (
+    TRIMBLE_STYLE_INTERACTION_PROFILE,
+)
 from cws_viewer.ui_qt import vtk_real_project_widget as _base_widget
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
@@ -21,10 +24,12 @@ if qt_available():
     class VtkRealProjectWidgetFeel(VtkRealProjectWidgetPhase2):
         """Phase-2 viewer with cursor zoom and coalesced mouse navigation."""
 
-        ORBIT_DEG_PER_PIXEL = 0.22
-        LOOK_DEG_PER_PIXEL = 0.20
-        WALK_DISTANCE_PER_PIXEL = 0.0018
-        NAVIGATION_FRAME_MS = 10
+        ORBIT_DEG_PER_PIXEL = TRIMBLE_STYLE_INTERACTION_PROFILE.orbit_deg_per_pixel
+        LOOK_DEG_PER_PIXEL = TRIMBLE_STYLE_INTERACTION_PROFILE.look_deg_per_pixel
+        WALK_DISTANCE_PER_PIXEL = (
+            TRIMBLE_STYLE_INTERACTION_PROFILE.walk_distance_per_pixel
+        )
+        NAVIGATION_FRAME_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.navigation_frame_ms
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             # The original VTK widget constructs its backend from a module-level

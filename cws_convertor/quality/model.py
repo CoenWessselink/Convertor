@@ -23,12 +23,23 @@ class InspectionCharacteristic:
     unit: str = "mm"
     measuring_tool_type: str = "caliper"
     required: bool = True
+    scope_type: str = "part"
+    assembly_id: str = ""
+    sample_size: int = 1
+    fai_required: bool = False
+    reject_on_failure: bool = True
 
     def __post_init__(self) -> None:
         if not self.characteristic_id or not self.entity_id or not self.feature_id:
             raise ValueError("Inspection characteristics require stable IDs")
         if self.lower_tolerance > self.upper_tolerance:
             raise ValueError("Lower tolerance cannot exceed upper tolerance")
+        if self.scope_type not in {"part", "assembly"}:
+            raise ValueError("Inspection scope must be part or assembly")
+        if self.scope_type == "assembly" and not self.assembly_id:
+            raise ValueError("Assembly inspection requires assembly_id")
+        if int(self.sample_size) < 1:
+            raise ValueError("Inspection sample size must be positive")
 
     @property
     def lower_limit(self) -> float:
@@ -80,6 +91,10 @@ class MeasurementRecord:
     tool_calibration_id: str
     passed: bool
     evidence_sha256: str
+    entity_id: str = ""
+    assembly_id: str = ""
+    sample_id: str = ""
+    first_article: bool = False
 
 
 @dataclass
@@ -92,10 +107,41 @@ class NonConformanceRecord:
     rework_reference: str = ""
     reinspection_measurement_id: str = ""
     closed_by: str = ""
+    entity_id: str = ""
+    assembly_id: str = ""
 
     @property
     def is_open(self) -> bool:
         return self.disposition == "open"
+
+
+@dataclass(frozen=True)
+class InspectionResult:
+    characteristic_id: str
+    measurement_ids: tuple[str, ...]
+    accepted: bool
+    sampled_quantity: int
+    rejected_quantity: int
+
+
+@dataclass(frozen=True)
+class ReworkRecord:
+    rework_id: str
+    ncr_id: str
+    operation_reference: str
+    performed_by: str
+    performed_at: str
+    evidence_sha256: str
+
+
+@dataclass(frozen=True)
+class ReleaseDecision:
+    decision: str
+    source_release_hash: str
+    approved_by: str
+    approved_at: str
+    blocker_codes: tuple[str, ...]
+    decision_sha256: str
 
 
 @dataclass
@@ -106,6 +152,9 @@ class QualityLedger:
     nonconformances: list[NonConformanceRecord] = field(default_factory=list)
     heat_certificates: dict[str, str] = field(default_factory=dict)
     approvals: list[dict[str, str]] = field(default_factory=list)
+    inspection_results: list[InspectionResult] = field(default_factory=list)
+    rework_records: list[ReworkRecord] = field(default_factory=list)
+    release_decisions: list[ReleaseDecision] = field(default_factory=list)
     final_release_allowed: bool = False
     final_release_hash: str = ""
 
@@ -121,7 +170,8 @@ class QualityLedger:
 
     def record_measurement(self, *, measurement_id: str, characteristic_id: str, measured_value: float,
                            measured_at: str, operator: str, tool_id: str,
-                           tool_calibration_id: str) -> MeasurementRecord:
+                           tool_calibration_id: str, entity_id: str = "", assembly_id: str = "",
+                           sample_id: str = "", first_article: bool = False) -> MeasurementRecord:
         if any(item.measurement_id == measurement_id for item in self.measurements):
             raise ValueError(f"Duplicate measurement ID: {measurement_id}")
         characteristic = self._characteristic(characteristic_id)
@@ -136,6 +186,8 @@ class QualityLedger:
             measured_value=float(measured_value), measured_at=measured_at, operator=operator,
             tool_id=tool_id, tool_calibration_id=tool_calibration_id,
             passed=characteristic.accepts(measured_value), evidence_sha256=_stable_sha256(evidence),
+            entity_id=entity_id or characteristic.entity_id, assembly_id=assembly_id or characteristic.assembly_id,
+            sample_id=sample_id, first_article=bool(first_article),
         )
         self.measurements.append(record)
         self.final_release_allowed = False
@@ -144,7 +196,29 @@ class QualityLedger:
             self.nonconformances.append(NonConformanceRecord(
                 ncr_id=f"ncr-{measurement_id}", measurement_id=measurement_id,
                 characteristic_id=characteristic_id, cause="measurement_outside_tolerance",
+                entity_id=record.entity_id, assembly_id=record.assembly_id,
             ))
+        return record
+
+    def inspection_result(self, characteristic_id: str) -> InspectionResult:
+        characteristic = self._characteristic(characteristic_id)
+        records = [item for item in self.measurements if item.characteristic_id == characteristic_id]
+        accepted = len(records) >= characteristic.sample_size and all(item.passed for item in records[-characteristic.sample_size:])
+        result = InspectionResult(characteristic_id, tuple(item.measurement_id for item in records), accepted, len(records), sum(not item.passed for item in records))
+        self.inspection_results = [item for item in self.inspection_results if item.characteristic_id != characteristic_id]
+        self.inspection_results.append(result)
+        return result
+
+    def record_rework(self, *, rework_id: str, ncr_id: str, operation_reference: str,
+                      performed_by: str, performed_at: str, evidence_sha256: str) -> ReworkRecord:
+        if any(item.rework_id == rework_id for item in self.rework_records):
+            raise ValueError(f"Duplicate rework ID: {rework_id}")
+        if not any(item.ncr_id == ncr_id for item in self.nonconformances):
+            raise KeyError(f"Unknown NCR: {ncr_id}")
+        if len(evidence_sha256) != 64:
+            raise ValueError("Rework evidence requires SHA-256")
+        record = ReworkRecord(rework_id, ncr_id, operation_reference, performed_by, performed_at, evidence_sha256)
+        self.rework_records.append(record)
         return record
 
     def add_heat_certificate(self, heat_id: str, certificate_sha256: str) -> None:
@@ -199,6 +273,8 @@ class QualityLedger:
     def approve_final_release(self, *, source_release_hash: str, approved_by: str, approved_at: str) -> str:
         blockers = self.release_blockers(source_release_hash)
         if blockers:
+            rejected = {"decision": "rejected", "source_release_hash": source_release_hash, "approved_by": approved_by, "approved_at": approved_at, "blocker_codes": tuple(blockers)}
+            self.release_decisions.append(ReleaseDecision(**rejected, decision_sha256=_stable_sha256(rejected)))
             raise ValueError("Quality release blocked: " + ", ".join(blockers))
         approval = {
             "approved_at": approved_at, "approved_by": approved_by,
@@ -209,6 +285,8 @@ class QualityLedger:
         self.approvals.append(approval)
         self.final_release_hash = approval["approval_sha256"]
         self.final_release_allowed = True
+        accepted = {"decision": "accepted", "source_release_hash": source_release_hash, "approved_by": approved_by, "approved_at": approved_at, "blocker_codes": ()}
+        self.release_decisions.append(ReleaseDecision(**accepted, decision_sha256=_stable_sha256(accepted)))
         return self.final_release_hash
 
     def _payload(self) -> dict[str, Any]:
@@ -220,12 +298,16 @@ class QualityLedger:
             "heat_certificates": dict(sorted(self.heat_certificates.items())),
             "approvals": list(self.approvals), "final_release_allowed": self.final_release_allowed,
             "final_release_hash": self.final_release_hash,
+            "inspection_results": [asdict(item) for item in self.inspection_results],
+            "rework_records": [asdict(item) for item in self.rework_records],
+            "release_decisions": [asdict(item) for item in self.release_decisions],
         }
 
     @property
     def quality_sha256(self) -> str:
         payload = self._payload()
         payload["approvals"] = []
+        payload["release_decisions"] = []
         payload["final_release_allowed"] = False
         payload["final_release_hash"] = ""
         return _stable_sha256(payload)
@@ -245,6 +327,9 @@ class QualityLedger:
             nonconformances=[NonConformanceRecord(**dict(item)) for item in value.get("nonconformances", [])],
             heat_certificates=dict(value.get("heat_certificates") or {}),
             approvals=[dict(item) for item in value.get("approvals", [])],
+            inspection_results=[InspectionResult(**dict(item)) for item in value.get("inspection_results", [])],
+            rework_records=[ReworkRecord(**dict(item)) for item in value.get("rework_records", [])],
+            release_decisions=[ReleaseDecision(**dict(item)) for item in value.get("release_decisions", [])],
             final_release_allowed=bool(value.get("final_release_allowed", False)),
             final_release_hash=str(value.get("final_release_hash") or ""),
         )
@@ -261,3 +346,6 @@ class QualityLedger:
     @classmethod
     def load(cls, path: str | Path) -> "QualityLedger":
         return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+NcrRecord = NonConformanceRecord

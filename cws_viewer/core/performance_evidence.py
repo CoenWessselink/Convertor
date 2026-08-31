@@ -15,17 +15,64 @@ METRIC_FIELDS = (
     "shell_visible_ms",
     "first_tree_ms",
     "first_pixels_ms",
+    "proxy_scene_ready_ms",
+    "first_usable_ms",
     "geometry_ready_ms",
+    "exact_25_ms",
+    "exact_50_ms",
+    "exact_75_ms",
+    "exact_100_ms",
+    "exact_ready_ms",
     "frame_p50_ms",
     "frame_p95_ms",
+    "frame_p99_ms",
+    "stall_33ms_count",
+    "stall_50ms_count",
+    "stall_100ms_count",
+    "input_to_render_p50_ms",
     "input_to_render_p95_ms",
+    "input_to_render_p99_ms",
+    "orbit_latency_p95_ms",
+    "pan_latency_p95_ms",
+    "zoom_latency_p95_ms",
+    "fit_latency_p95_ms",
+    "pick_p50_ms",
     "pick_p95_ms",
+    "pick_p99_ms",
     "selection_p95_ms",
+    "whole_object_highlight_p95_ms",
     "area_select_ms",
+    "freeze_over_100ms_count",
+    "stall_over_33ms_count",
+    "stall_over_50ms_count",
+    "stall_over_100ms_count",
     "rss_peak_mb",
     "rss_drift_percent",
     "vram_peak_mb",
     "wrong_instance_picks",
+    "hidden_object_false_picks",
+    "geometry_queue_depth_peak",
+    "upload_queue_depth_peak",
+    "upload_frame_p50_ms",
+    "upload_frame_p95_ms",
+    "cache_memory_hits",
+    "cache_disk_hits",
+    "cache_misses",
+    "cache_corruptions",
+    "worker_count",
+    "worker_utilization",
+    "worker_restart_count",
+    "worker_crash_count",
+    "rss_start_mb",
+    "rss_end_mb",
+    "vram_start_mb",
+    "vram_end_mb",
+    "thread_count_start",
+    "thread_count_end",
+    "process_count_start",
+    "process_count_end",
+    "actor_count_start",
+    "actor_count_end",
     "camera_roll_error",
 )
 
@@ -55,7 +102,11 @@ class ViewerPerformanceEvidence:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def mark(self, metric: str, *, at_monotonic: float | None = None) -> float:
-        if metric not in {"shell_visible_ms", "first_tree_ms", "first_pixels_ms", "geometry_ready_ms"}:
+        if metric not in {
+            "shell_visible_ms", "first_tree_ms", "first_pixels_ms", "proxy_scene_ready_ms",
+            "first_usable_ms", "geometry_ready_ms", "exact_25_ms", "exact_50_ms",
+            "exact_75_ms", "exact_100_ms", "exact_ready_ms",
+        }:
             raise KeyError(metric)
         value = ((at_monotonic or time.perf_counter()) - self.started_monotonic) * 1000.0
         self.values[metric] = round(max(0.0, value), 6)
@@ -73,13 +124,34 @@ class ViewerPerformanceEvidence:
         frames = self.samples.get("frame", ())
         self.values["frame_p50_ms"] = _percentile(frames, 0.50)
         self.values["frame_p95_ms"] = _percentile(frames, 0.95)
+        self.values["frame_p99_ms"] = _percentile(frames, 0.99)
+        self.values["input_to_render_p50_ms"] = _percentile(self.samples.get("input_to_render", ()), 0.50)
+        self.values["pick_p50_ms"] = _percentile(self.samples.get("pick", ()), 0.50)
         for family, metric in (
             ("input_to_render", "input_to_render_p95_ms"),
+            ("orbit", "orbit_latency_p95_ms"),
+            ("pan", "pan_latency_p95_ms"),
+            ("zoom", "zoom_latency_p95_ms"),
+            ("fit", "fit_latency_p95_ms"),
             ("pick", "pick_p95_ms"),
             ("selection", "selection_p95_ms"),
+            ("whole_object_highlight", "whole_object_highlight_p95_ms"),
             ("area_select", "area_select_ms"),
         ):
             self.values[metric] = _percentile(self.samples.get(family, ()), 0.95)
+        self.values["upload_frame_p50_ms"] = _percentile(self.samples.get("upload_frame", ()), 0.50)
+        self.values["upload_frame_p95_ms"] = _percentile(self.samples.get("upload_frame", ()), 0.95)
+        self.values["input_to_render_p99_ms"] = _percentile(self.samples.get("input_to_render", ()), 0.99)
+        self.values["pick_p99_ms"] = _percentile(self.samples.get("pick", ()), 0.99)
+        interactive = tuple(self.samples.get("input_to_render", ())) + tuple(self.samples.get("frame", ()))
+        stalls = tuple(self.samples.get("frame", ()))
+        self.values["stall_over_33ms_count"] = sum(value > 33.0 for value in stalls)
+        self.values["stall_over_50ms_count"] = sum(value > 50.0 for value in stalls)
+        self.values["stall_over_100ms_count"] = sum(value > 100.0 for value in stalls)
+        self.values["stall_33ms_count"] = self.values["stall_over_33ms_count"]
+        self.values["stall_50ms_count"] = self.values["stall_over_50ms_count"]
+        self.values["stall_100ms_count"] = self.values["stall_over_100ms_count"]
+        self.values["freeze_over_100ms_count"] = sum(value > 100.0 for value in interactive)
 
     def to_dict(self) -> dict[str, Any]:
         self.finalize_samples()

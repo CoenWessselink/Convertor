@@ -254,6 +254,9 @@ class V14ViewerCoreController(ViewerCoreController):
 
     def orbit(self, azimuth_deg: float, elevation_deg: float = 0.0) -> None:
         """Rigidly rotate the camera around the active picked/selection pivot."""
+        interaction_quality = getattr(self._backend, "set_interaction_quality", None)
+        if callable(interaction_quality):
+            interaction_quality(True)
         camera = self.get_camera()
         pivot = self.orbit_pivot
         yaw = math.radians(float(azimuth_deg))

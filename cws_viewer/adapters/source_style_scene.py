@@ -6,6 +6,7 @@ from typing import Any
 
 from cws_viewer.adapters.project_model import CwsProjectSceneAdapter
 from cws_viewer.adapters.source_appearance import IfcAppearanceResolver
+from cws_viewer.adapters.source_geometry import ProjectGeometryCatalog
 from cws_viewer.contracts.enums import RenderMode
 from cws_viewer.contracts.scene import ProjectScene, StyleDefinition
 from cws_viewer.math3d import Rgba
@@ -72,9 +73,22 @@ class SourceAppearanceProjectSceneAdapter(CwsProjectSceneAdapter):
             if resolver is None:
                 resolver = IfcAppearanceResolver(document)
                 resolvers[source_id] = resolver
-            key = (source_id, tuple(record.source_item_ids))
+            source_item_ids = tuple(record.source_item_ids)
+            if not source_item_ids:
+                # Proxy-first catalogues intentionally skip the expensive IFC
+                # dependency walk, so canonical descriptors can contain no
+                # representation-item IDs.  Once the verified document is
+                # available after exact loading, derive those IDs from the
+                # immutable source entity instead of leaving the node neutral.
+                _representation_id, source_item_ids, _geometry_hash = (
+                    ProjectGeometryCatalog._ifc_items(
+                        document,
+                        str(record.source_entity_id),
+                    )
+                )
+            key = (source_id, tuple(source_item_ids))
             if key not in appearance_cache:
-                appearance_cache[key] = resolver.color_for_items(record.source_item_ids)
+                appearance_cache[key] = resolver.color_for_items(source_item_ids)
             appearance = appearance_cache[key]
             if appearance is None:
                 nodes.append(replace(node, style_id=self._IFC_NEUTRAL_STYLE_ID))

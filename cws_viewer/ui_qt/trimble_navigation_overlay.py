@@ -74,6 +74,7 @@ class TrimbleNavigationOverlay(QtWidgets.QFrame):
         opacity_label.setToolTip("Doorzichtigheid van het volledige model")
         layout.addWidget(opacity_label)
         self.opacity_slider = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal, self)
+        self.opacity_slider.setObjectName("trimbleOpacitySlider")
         self.opacity_slider.setRange(15, 100)
         self.opacity_slider.setValue(100)
         self.opacity_slider.setFixedWidth(86)
@@ -97,6 +98,14 @@ class TrimbleNavigationOverlay(QtWidgets.QFrame):
 
     def _button(self, text: str, tooltip: str, *, checkable: bool = False) -> QtWidgets.QToolButton:
         button = QtWidgets.QToolButton(self)
+        object_names = {
+            "Select": "trimbleNavSelect",
+            "Orbit": "trimbleNavOrbit",
+            "Slepen": "trimbleNavPan",
+            "Fit": "trimbleNavFit",
+            "Zoom": "trimbleNavZoom",
+        }
+        button.setObjectName(object_names[text])
         button.setText(text)
         button.setToolTip(tooltip)
         button.setCheckable(checkable)
@@ -210,7 +219,14 @@ class TrimbleNavigationOverlay(QtWidgets.QFrame):
             return
         self.adjustSize()
         x = max(8, self._viewer.width() - self.width() - 12)
-        self.move(x, 10)
+        y = 10
+        controls = getattr(self._viewer, "_viewport_controls", None)
+        if controls is not None and controls.isVisible():
+            controls_rect = controls.geometry().adjusted(-6, -4, 6, 4)
+            candidate = QtCore.QRect(x, y, self.width(), self.height())
+            if candidate.intersects(controls_rect):
+                y = controls_rect.bottom() + 8
+        self.move(x, y)
         self.raise_()
 
     def reposition(self) -> None:

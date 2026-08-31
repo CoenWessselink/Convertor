@@ -53,7 +53,7 @@ def _validate_parent_cycles(parent_by_node: dict[str, str | None]) -> None:
             current = parent_by_node.get(current)
 
 
-def validate_project_scene(scene: "ProjectScene") -> None:
+def validate_project_scene(scene: "ProjectScene", *, verify_hash: bool = True) -> None:
     model_ids = [item.model_id for item in scene.models]
     node_ids = [item.node_id for item in scene.nodes]
     entity_ids = [item.entity_id for item in scene.nodes if item.selectable]
@@ -117,8 +117,8 @@ def validate_project_scene(scene: "ProjectScene") -> None:
         for lod in resource.lods:
             validate_payload_reference(lod.payload_ref)
 
-    calculated = scene.calculate_hash()
-    if not scene.scene_hash or calculated.lower() != scene.scene_hash.lower():
+    calculated = scene.calculate_hash() if verify_hash else scene.scene_hash
+    if not scene.scene_hash or not calculated or calculated.lower() != scene.scene_hash.lower():
         raise ViewerError(
             "Scenehash komt niet overeen met de contractinhoud",
             code=ViewerErrorCode.SCENE_HASH_MISMATCH,

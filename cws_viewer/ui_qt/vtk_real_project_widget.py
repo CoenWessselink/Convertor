@@ -20,6 +20,7 @@ from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
 
 class NavigationMode(StrEnum):
+    SELECT = "select"
     ORBIT = "orbit"
     PAN = "pan"
     WALK = "walk"

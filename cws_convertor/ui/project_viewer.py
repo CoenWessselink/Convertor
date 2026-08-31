@@ -1,11 +1,13 @@
 """SteelModel-bound project viewer host for the desktop application."""
 from __future__ import annotations
 
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import json
 import queue
 import threading
+import time
 import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import Any, Callable, Mapping
@@ -25,7 +27,9 @@ from cws_convertor.viewer.progressive_loader import (
     ProgressiveMeshLoadCancelled,
     ProgressiveMeshLoadPlan,
 )
+from cws_convertor.viewer.scene_upload import SceneUploadBudget
 from cws_convertor.viewer.workspace import ACCURACY_LABELS, ViewerTreeNode, ViewerWorkspaceState
+from cws_viewer.performance.policy import LoadingPerformancePolicy
 
 
 ACCURACY_TAGS: Mapping[str, str] = {
@@ -68,8 +72,11 @@ class ProjectViewerPanel(ttk.Frame):
         self._mesh_plan: ProgressiveMeshLoadPlan | None = None
         self._mesh_cancel_event = threading.Event()
         self._mesh_events: queue.Queue[tuple[int, str, Any, Exception | None]] = queue.Queue()
+        self._mesh_ready_uploads: deque[tuple[str, ViewerMeshResource]] = deque()
+        self._loading_policy = LoadingPerformancePolicy.detect(geometry_count=0)
+        self._scene_upload_budget = SceneUploadBudget.for_geometry_count(0)
         self._mesh_executor = ThreadPoolExecutor(
-            max_workers=2,
+            max_workers=self._loading_policy.worker_count,
             thread_name_prefix="cws-viewer-mesh",
         )
         self._mesh_completion_reported_generation = -1
@@ -557,6 +564,7 @@ class ProjectViewerPanel(ttk.Frame):
         was_loading = bool(plan is not None and not plan.is_finished)
         loaded_ids = tuple(plan.loaded_ids) if plan is not None and was_loading else ()
         self._mesh_cancel_event.set()
+        self._mesh_ready_uploads.clear()
         if plan is not None:
             plan.cancel()
         if loaded_ids and self.state is not None:
@@ -599,18 +607,27 @@ class ProjectViewerPanel(ttk.Frame):
             or self._mesh_plan is not None
         ):
             return
+        entity_ids = self._mesh_entity_ids()
+        self._loading_policy = LoadingPerformancePolicy.detect(
+            geometry_count=len(entity_ids),
+            source_format="ifc",
+        )
+        self._scene_upload_budget = SceneUploadBudget.for_geometry_count(len(entity_ids))
         max_in_flight = max(
             1,
-            min(2, int(getattr(self._mesh_provider, "viewer_max_concurrency", 1))),
+            min(
+                self._loading_policy.worker_count,
+                int(getattr(self._mesh_provider, "viewer_max_concurrency", 1)),
+            ),
         )
         self._mesh_plan = ProgressiveMeshLoadPlan(
-            self._mesh_entity_ids(),
+            entity_ids,
             max_in_flight=max_in_flight,
-            patch_batch_size=4,
+            patch_batch_size=self._scene_upload_budget.batch_limit,
         )
         selected = self.state.selected_entity
         if selected is not None:
-            self._mesh_plan.prioritize(selected.steel_model_id)
+            self._mesh_plan.update_viewport_context(selected=(selected.steel_model_id,))
         self._dispatch_mesh_requests()
         self._refresh_mesh_progress()
 
@@ -640,7 +657,10 @@ class ProjectViewerPanel(ttk.Frame):
             self._mesh_cancel_event = threading.Event()
             provider_limit = max(
                 1,
-                min(2, int(getattr(self._mesh_provider, "viewer_max_concurrency", 1))),
+                min(
+                    self._loading_policy.worker_count,
+                    int(getattr(self._mesh_provider, "viewer_max_concurrency", 1)),
+                ),
             )
             plan = ProgressiveMeshLoadPlan(
                 (entity.steel_model_id,),
@@ -650,9 +670,37 @@ class ProjectViewerPanel(ttk.Frame):
             )
             self._mesh_plan = plan
         if plan is not None:
-            plan.prioritize(entity.steel_model_id)
+            plan.update_viewport_context(
+                selected=(entity.steel_model_id,),
+                under_cursor=(entity.steel_model_id,),
+            )
             self._dispatch_mesh_requests()
             self._refresh_mesh_progress()
+
+    def update_mesh_viewport_context(
+        self,
+        *,
+        selected: tuple[str, ...] = (),
+        under_cursor: tuple[str, ...] = (),
+        visible: tuple[str, ...] = (),
+        near_camera: tuple[str, ...] = (),
+        large_silhouette: tuple[str, ...] = (),
+        current_assembly: tuple[str, ...] = (),
+        camera_distances: dict[str, float] | None = None,
+    ) -> None:
+        plan = self._mesh_plan
+        if plan is None:
+            return
+        plan.update_viewport_context(
+            selected=selected,
+            under_cursor=under_cursor,
+            visible=visible,
+            near_camera=near_camera,
+            large_silhouette=large_silhouette,
+            current_assembly=current_assembly,
+            camera_distances=camera_distances,
+        )
+        self._dispatch_mesh_requests()
 
     def _dispatch_mesh_requests(self) -> None:
         state = self.state
@@ -726,10 +774,12 @@ class ProjectViewerPanel(ttk.Frame):
                     if plan.mark_failed(steel_model_id, error):
                         failures.append((steel_model_id, error))
                     continue
-                resources.append((steel_model_id, resource))
+                self._mesh_ready_uploads.append((steel_model_id, resource))
         except queue.Empty:
             pass
 
+        resources = self._scene_upload_budget.take(self._mesh_ready_uploads)
+        upload_started = time.perf_counter()
         state = self.state
         plan = self._mesh_plan
         if resources and state is not None and plan is not None:
@@ -788,6 +838,11 @@ class ProjectViewerPanel(ttk.Frame):
                 except Exception as exc:
                     self.status_callback(f"Viewerselectie na meshpatch mislukt: {exc}")
 
+        self._scene_upload_budget.record_frame(
+            resources,
+            (time.perf_counter() - upload_started) * 1000.0,
+        )
+
         for steel_model_id, error in failures:
             self.status_callback(
                 f"Viewer-mesh voor {steel_model_id} niet geladen: {error}"
@@ -795,7 +850,10 @@ class ProjectViewerPanel(ttk.Frame):
         self._dispatch_mesh_requests()
         self._refresh_mesh_progress()
         try:
-            self._mesh_poll_after_id = self.after(100, self._poll_mesh_events)
+            self._mesh_poll_after_id = self.after(
+                16 if self._mesh_ready_uploads else 50,
+                self._poll_mesh_events,
+            )
         except tk.TclError:
             self._mesh_poll_after_id = None
 
@@ -1670,6 +1728,7 @@ class ProjectViewerPanel(ttk.Frame):
             value["progressive_mesh_load"] = self._mesh_plan.manifest(
                 include_runtime=True
             )
+        value["scene_upload"] = self._scene_upload_budget.telemetry()
         if self._builtin_renderer is not None:
             value["builtin_renderer_telemetry"] = self._builtin_renderer.telemetry()
         if self._integrated_scene is not None:

@@ -129,9 +129,9 @@ def source_inventories() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
                             "owner_class": owner_class,
                             "qualified_owner": f"{module_name}.{owner_class}" if owner_class else "",
                             "public": public,
-                            "required": False,
+                            "required": public,
                             "test_reference_count": references,
-                            "covered": True,
+                            "covered": references > 0,
                         }
                     )
                 if not isinstance(node, ast.Call):
@@ -159,9 +159,9 @@ def source_inventories() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     return controls, functions
 
 
-def runtime_inventory() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PySide6.QtGui import QAction
+    from PySide6.QtGui import QAction, QPixmap
     from PySide6.QtWidgets import (
         QApplication,
         QAbstractButton,
@@ -303,25 +303,46 @@ def runtime_inventory() -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from PySide6.QtGui import QCloseEvent
 
     close_event = QCloseEvent()
+    operation_import = OUTPUT / "runtime-inventory-operations.json"
+    operation_export = OUTPUT / "runtime-inventory-operations-export.json"
+    operation_import.write_text('{"features": []}\n', encoding="utf-8")
     safe_method_arguments: dict[str, tuple[Any, ...]] = {
         "cws_convertor.ui_qt.converter_panel._ModelPreview.set_caption": ("Acceptance",),
         "cws_convertor.ui_qt.converter_panel.ConverterPanel.add_files": ([],),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.delete_selected_features": (),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.duplicate_selected_feature": (),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.move_selected_feature": (1,),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.add_feature": ("hole",),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.validate_draft": (),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.calculate_draft": (),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.choose_import": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.import_operations": (operation_import,),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.choose_export": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.export_operations": (operation_export,),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.remove_concepts": (),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.refresh_from_project": (),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.cancel_changes": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.save_changes": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.start_part_workbench": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.undo_part_workbench": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.redo_part_workbench": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.review_part_workbench": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.rebuild_part_canonical": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.validate_part_roundtrips": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.handle_ribbon": ("validate",),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.release_part_workbench": (),
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.show_project_selection": (None,),
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_png": (),
+        "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_pdf": (),
+        "cws_convertor.ui_qt.product_workspaces.BomWorkspacePanel.refresh": (),
+        "cws_convertor.ui_qt.product_workspaces.BomWorkspacePanel.handle_ribbon": ("totals",),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.choose_project": (),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.open_exact_workbench": (),
+        "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.cancel_project_load": (),
+        "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.export_bom": (),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.closeEvent": (close_event,),
         "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.add_paths": ([],),
+        "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.clear": (),
         "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.dragEnterEvent": (empty_event,),
         "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.dropEvent": (empty_event,),
     }
@@ -339,6 +360,35 @@ def runtime_inventory() -> tuple[list[dict[str, Any]], dict[str, Any]]:
                 safe_methods_exercised += 1
             except Exception as exc:
                 safe_method_errors.append(f"{key}: {type(exc).__name__}: {exc}")
+    for item in all_widgets:
+        owner = f"{type(item).__module__}.{type(item).__qualname__.split('.')[0]}"
+        if owner not in {
+            "cws_convertor.ui_qt.nesting_visualization.ProfileNestingVisualization",
+            "cws_convertor.ui_qt.nesting_visualization.PlateNestingVisualization",
+        }:
+            continue
+        try:
+            target = QPixmap(max(1, item.width()), max(1, item.height()))
+            target.fill()
+            item.render(target)
+            app.processEvents()
+            safe_methods_exercised += 1
+        except Exception as exc:
+            safe_method_errors.append(f"{owner}.paintEvent: {type(exc).__name__}: {exc}")
+    if project is not None:
+        for item in all_widgets:
+            owner = f"{type(item).__module__}.{type(item).__qualname__.split('.')[0]}"
+            if owner != "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget":
+                continue
+            try:
+                item.open_project(project, load_geometry=False)
+                app.processEvents()
+                item.cancel_project_load()
+                item.close_project()
+                app.processEvents()
+                safe_methods_exercised += 2
+            except Exception as exc:
+                safe_method_errors.append(f"{owner}.open_project: {type(exc).__name__}: {exc}")
     window.close()
     app.processEvents()
     sys.settrace(None)
@@ -672,12 +722,12 @@ def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
 
     controls, functions = source_inventories()
+    project, fixture = prepare_acceptance_project(args.project)
     try:
-        runtime, runtime_result = runtime_inventory()
+        runtime, runtime_result = runtime_inventory(project)
     except Exception as exc:
         runtime = []
         runtime_result = {"status": "FAIL", "error": f"{type(exc).__name__}: {exc}"}
-    project, fixture = prepare_acceptance_project(args.project)
     runtime_evidence = run_runtime_acceptance_evidence(project)
     geometry = geometry_evidence(project)
     phases = phase_gates(args.inventory_only, args.reuse_fresh_phase3_evidence)
@@ -687,7 +737,6 @@ def main() -> int:
         item["required"] = bool(item["public"] and item["qualified_owner"] in active_classes)
         item["covered"] = bool(
             (not item["required"])
-            or item["test_reference_count"] > 0
             or item["id"] in executed_functions
         )
     uncovered = [item for item in functions if item["required"] and not item["covered"]]

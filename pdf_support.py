@@ -404,14 +404,15 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
             header=CanonicalHeader(
                 part_number=item.name or f"{source.stem}_{index}",
                 position_number=item.name or f"{source.stem}_{index}",
-                material=item.material or material,
+                material=item.material_name or material,
                 quantity=1,
                 length=max(dims) if dims else 0.0,
             ),
             product=CanonicalProductData(
                 name=item.name or f"{source.stem}_{index}",
-                material_code=item.material or material,
-                material_grade=item.material or material,
+                material_code=item.material_name or material,
+                material_grade=item.material_name or material,
+                length_mm=max(dims) if dims else 0.0,
                 main_dimensions_mm=dims,
             ),
             geometry={
@@ -3349,8 +3350,8 @@ def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
         f"** Generated from validated canonical model by {PRODUCT_NAME} v{DEFAULT_CONVERTER_VERSION}",
         f"  {_ascii_safe(header.order_number, 'PDF')}",
         f"  {_ascii_safe(header.drawing_number or header.position_number or part.part_id, 'PART')}",
-        "  1",
         f"  {_ascii_safe(header.part_number or header.position_number or part.part_id, 'PART')}",
+        f"  {_ascii_safe(header.position_number or header.drawing_number or part.part_id, 'PART')}",
         f"  {_ascii_safe(header.material, 'S235JR')}",
         f"  {int(header.quantity or 1)}",
         f"  {_ascii_safe(header.profile, 'PROFILE')}",
@@ -3386,10 +3387,11 @@ def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
                 core._ak_line(
                     contour.face if index == 0 else "",
                     round(float(point.x), 2),
-                    "s" if index == 0 else point.datum,
+                    point.datum or ("s" if index == 0 else ""),
                     round(float(point.q), 2),
                     point.notch,
                     round(float(point.radius), 2),
+                    [round(float(value), 2) for value in point.weld],
                 )
             )
     if part.holes:
@@ -3426,6 +3428,21 @@ def canonical_to_nc1(part: CanonicalPart, output_path: str | Path) -> Path:
     if len(parsed.contours) != len(part.contours):
         target.unlink(missing_ok=True)
         raise ValueError("NC1-roundtrip veranderde het aantal contouren")
+    source_welds = [
+        tuple(round(float(value), 2) for value in point.weld)
+        for contour in part.contours
+        for point in contour.points
+        if any(abs(float(value)) > 0.005 for value in point.weld)
+    ]
+    result_welds = [
+        tuple(round(float(value), 2) for value in point.weld)
+        for contour in parsed.contours
+        for point in contour.points
+        if any(abs(float(value)) > 0.005 for value in point.weld)
+    ]
+    if result_welds != source_welds:
+        target.unlink(missing_ok=True)
+        raise ValueError("NC1-roundtrip veranderde kopsnede-/weldparameters")
     return target
 
 
@@ -3680,7 +3697,7 @@ def ifc_to_pdf(
     target.mkdir(parents=True, exist_ok=True)
     for index, part in enumerate(parts, start=1):
         safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", part.part_id or f"part_{index}").strip("_.") or f"part_{index}"
-        result = create_trusted_pdf(part, target / f"{safe}.pdf", template=template)
+        result = create_trusted_pdf(part, target / f"{index:05d}_{safe}.pdf", template=template)
         outputs.extend(result.outputs)
         warnings.extend(result.warnings)
     return PDFConversionResult(
