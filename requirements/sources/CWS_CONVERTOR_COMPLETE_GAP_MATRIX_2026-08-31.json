@@ -1,0 +1,486 @@
+{
+  "audit_date": "2026-08-31",
+  "repository": "CoenWessselink/Convertor",
+  "canonical_branch": "agent/cws-product-ui-reintegration-v1",
+  "canonical_sha": "dc4e3e2ec2f91c40aad271d985b3fe59a44c7325",
+  "app_version": "0.10.18-beta-dev",
+  "project_schema": "2.25",
+  "canonical_part_schema": "1.1",
+  "scope": "All active requirements through 2026-08-31, including Viewer Performance Closeout, V5.2 UI Control Build, Manufacturing Geometry Interpreter V2, Completion 100%, Full Product Acceptance and prior manufacturing/nesting/PDF requirements.",
+  "important_note": "Percentages are engineering coverage estimates for the canonical GitHub SHA, not PASS claims. Unpushed local Codex work is deliberately excluded.",
+  "weighted_scores": {
+    "implementation": 58.5,
+    "integration": 53.5,
+    "testing": 46.8,
+    "release_proven": 38.9
+  },
+  "old_scope_release_evidence": {
+    "status": "PASS_ON_2026_08_29_SCOPE",
+    "workflow": "Final release proof",
+    "head_sha": "dc4e3e2ec2f91c40aad271d985b3fe59a44c7325",
+    "qualification": "Does not prove requirements added on 2026-08-30/31."
+  },
+  "domains": [
+    {
+      "id": "D01",
+      "domain": "Canonical architectuur / één waarheid",
+      "weight": 6,
+      "implemented": 92,
+      "integrated": 90,
+      "tested": 85,
+      "release_proven": 80,
+      "priority": "P0",
+      "status": "STERK",
+      "gap": "Nieuwe subsystemen moeten aansluiten op bestaande authorities; legacy UI-surfaces en oude naming nog consolideren.",
+      "evidence": [
+        "docs/CURRENT_PRODUCT_AUTHORITY.md",
+        "cws_convertor/integration/ui_context.py",
+        "cws_convertor/project/model.py"
+      ]
+    },
+    {
+      "id": "D02",
+      "domain": "Project Model / storage / hashes / Workbench persistence",
+      "weight": 5,
+      "implemented": 90,
+      "integrated": 90,
+      "tested": 85,
+      "release_proven": 80,
+      "priority": "P0",
+      "status": "STERK",
+      "gap": "Laatste V5 state/user-preference scheiding en migration/corruption/cross-project acceptance nog verbreden.",
+      "evidence": [
+        "cws_convertor/project/model.py",
+        "cws_convertor/project/storage.py",
+        "cws_convertor/project/workbench.py"
+      ]
+    },
+    {
+      "id": "D03",
+      "domain": "Unified project intake — IFC/STEP/NC1/PDF/batch/revision",
+      "weight": 5,
+      "implemented": 55,
+      "integrated": 50,
+      "tested": 45,
+      "release_proven": 40,
+      "priority": "P0",
+      "status": "PARTIAL",
+      "gap": "Project baseline/service materialiseert primair IFC/STEP; NC1/PDF bestaan elders maar nog niet als één project-intake authority met alle edge cases.",
+      "evidence": [
+        "cws_convertor/project/service.py",
+        "cws_convertor/project/baseline.py",
+        "cws_convertor/ui_qt/project_intake.py"
+      ]
+    },
+    {
+      "id": "D04",
+      "domain": "Classificatie / profiel / materiaal / productie-identiteit",
+      "weight": 3,
+      "implemented": 80,
+      "integrated": 75,
+      "tested": 70,
+      "release_proven": 65,
+      "priority": "P1",
+      "status": "GOEDE FOUNDATION",
+      "gap": "Geometry-based profielbewijs ontbreekt nog als onderdeel van de Manufacturing Geometry Interpreter; metadata/text recognition blijft reviewplichtig.",
+      "evidence": [
+        "cws_convertor/project/classification.py",
+        "profile_database.py",
+        "material_database.py"
+      ]
+    },
+    {
+      "id": "D05",
+      "domain": "Viewer functionele breedte",
+      "weight": 7,
+      "implemented": 85,
+      "integrated": 82,
+      "tested": 75,
+      "release_proven": 65,
+      "priority": "P0",
+      "status": "STERK",
+      "gap": "Volledige V5.2 control mapping, box/crossing-selection parity, state persistence en actuele packaged acceptance opnieuw bewijzen.",
+      "evidence": [
+        "cws_viewer/ui_qt/vtk_real_project_widget_feel_v2.py",
+        "cws_convertor/ui_qt/viewer_tools.py",
+        "tests/viewer_v15_trimble_feel_v2_smoke.py"
+      ]
+    },
+    {
+      "id": "D06",
+      "domain": "Viewer performance closeout",
+      "weight": 8,
+      "implemented": 45,
+      "integrated": 40,
+      "tested": 30,
+      "release_proven": 20,
+      "priority": "P0",
+      "status": "GROOTSTE TECHNISCHE GAP",
+      "gap": "Single-worker exact load, Cache V1, selected-only priority, geen echte frame-upload governor, 8x interactive MSAA, geen volledige packaged cold/warm/soak proof.",
+      "evidence": [
+        "cws_convertor/ui_qt/project_workspace.py",
+        "cws_viewer/cache/mesh_cache.py",
+        "cws_convertor/viewer/progressive_loader.py",
+        "cws_viewer/backends/vtk_project_mesh_adaptive.py"
+      ]
+    },
+    {
+      "id": "D07",
+      "domain": "Trimble observable parity",
+      "weight": 3,
+      "implemented": 65,
+      "integrated": 60,
+      "tested": 40,
+      "release_proven": 20,
+      "priority": "P0",
+      "status": "FOUNDATION, NIET BEWEZEN",
+      "gap": "Gedragstestfoundation bestaat; complete same-machine/model behavior + performance matrix ontbreekt.",
+      "evidence": [
+        "tests/viewer_v15_trimble_feel_v2_smoke.py",
+        "cws_viewer/core/viewer_feel_navigation_v2.py"
+      ]
+    },
+    {
+      "id": "D08",
+      "domain": "V5/V5.1/V5.2 visuele product-UI",
+      "weight": 7,
+      "implemented": 15,
+      "integrated": 10,
+      "tested": 5,
+      "release_proven": 0,
+      "priority": "P0",
+      "status": "NIET DOORGEVOERD",
+      "gap": "Canonical main window is nog V9/12-tab shell met legacy teksten/QSS; definitieve vijfdeling Project|Viewer|Productie|Controle|Uitvoer ontbreekt.",
+      "evidence": [
+        "cws_convertor/ui_qt/main_window.py"
+      ]
+    },
+    {
+      "id": "D09",
+      "domain": "UI control binding / design system / icon authority",
+      "weight": 4,
+      "implemented": 5,
+      "integrated": 5,
+      "tested": 0,
+      "release_proven": 0,
+      "priority": "P0",
+      "status": "SPEC BESTAAT, REPO NIET",
+      "gap": "SCREEN_MANIFEST/control binding/ui_test_id/IconRegistry/V5.2 design system ontbreken in canonical repo.",
+      "evidence": [
+        "cws_convertor/ui_qt/main_window.py",
+        "cws_convertor/ui_qt/ribbon_icons.py"
+      ]
+    },
+    {
+      "id": "D10",
+      "domain": "Part Workbench / edit / canonical rebuild / roundtrip",
+      "weight": 5,
+      "implemented": 88,
+      "integrated": 85,
+      "tested": 80,
+      "release_proven": 70,
+      "priority": "P0",
+      "status": "STERK",
+      "gap": "Legacy editor volledig terugtrekken na parity; unsupported richer feature rebuild/roundtrip uitbreiden; interpreter promotion koppelen.",
+      "evidence": [
+        "cws_convertor/project/workbench.py",
+        "cws_convertor/project/canonical_rebuild.py",
+        "cws_convertor/project/roundtrip.py",
+        "cws_convertor/ui_qt/functional_workspaces.py"
+      ]
+    },
+    {
+      "id": "D11",
+      "domain": "Canonical BOM / quantities / traceability",
+      "weight": 4,
+      "implemented": 85,
+      "integrated": 82,
+      "tested": 75,
+      "release_proven": 70,
+      "priority": "P0",
+      "status": "STERK",
+      "gap": "Nieuwe production-status joins en V5 hub moeten bovenop BOM truth komen zonder quantity truth te muteren.",
+      "evidence": [
+        "cws_convertor/bom/models.py",
+        "cws_convertor/bom/engine.py"
+      ]
+    },
+    {
+      "id": "D12",
+      "domain": "BOM & Machines / automatische routing / manual override",
+      "weight": 5,
+      "implemented": 35,
+      "integrated": 25,
+      "tested": 15,
+      "release_proven": 5,
+      "priority": "P0",
+      "status": "GROTE GAP",
+      "gap": "Geen centrale MachineRoutingService/assignment authority, recommended/assigned/auto-manual flow en V5 production hub gevonden.",
+      "evidence": [
+        "cws_convertor/bom/models.py",
+        "cws_convertor/manufacturing/machine_capability.py"
+      ]
+    },
+    {
+      "id": "D13",
+      "domain": "Machine capability / reachability / fail-closed safety",
+      "weight": 3,
+      "implemented": 80,
+      "integrated": 75,
+      "tested": 70,
+      "release_proven": 65,
+      "priority": "P0",
+      "status": "STERKE FOUNDATION",
+      "gap": "Capability is diep voor manufacturing/marking; route-aggregate, machine library UI en bredere operation mapping ontbreken.",
+      "evidence": [
+        "cws_convertor/manufacturing/machine_capability.py",
+        "cws_convertor/manufacturing/machine_capability_model.py"
+      ]
+    },
+    {
+      "id": "D14",
+      "domain": "Manufacturing Faces / Contact / Scribing / Identification / Neutral Job",
+      "weight": 5,
+      "implemented": 90,
+      "integrated": 88,
+      "tested": 82,
+      "release_proven": 75,
+      "priority": "P0",
+      "status": "ZEER STERK",
+      "gap": "V5 Control/Manufacturing Geometry integratie, final E2E en interpreter-upstream feeding moeten nog volledig samenkomen.",
+      "evidence": [
+        "cws_convertor/manufacturing/__init__.py",
+        "cws_convertor/manufacturing/faces.py",
+        "cws_convertor/manufacturing/contact.py",
+        "cws_convertor/manufacturing/neutral_job.py"
+      ]
+    },
+    {
+      "id": "D15",
+      "domain": "Manufacturing Geometry Interpreter V2",
+      "weight": 5,
+      "implemented": 10,
+      "integrated": 5,
+      "tested": 0,
+      "release_proven": 0,
+      "priority": "P0",
+      "status": "NIEUW SUBSYSTEEM ONTBREEKT",
+      "gap": "Geen source FAG, decomposition hypotheses, independent reconstruction/two-way BREP proof, residual solver of transactionele Workbench promotion aangetroffen.",
+      "evidence": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/project/canonical_rebuild.py"
+      ]
+    },
+    {
+      "id": "D16",
+      "domain": "Profile Nesting",
+      "weight": 5,
+      "implemented": 85,
+      "integrated": 75,
+      "tested": 70,
+      "release_proven": 60,
+      "priority": "P1",
+      "status": "STERKE BACKEND",
+      "gap": "Complete V5 production flow, packaged E2E, full proof/status/UI reconciliation en current master acceptance nog afronden.",
+      "evidence": [
+        "cws_convertor/optimization/profile_nesting/"
+      ]
+    },
+    {
+      "id": "D17",
+      "domain": "Plate Nesting",
+      "weight": 5,
+      "implemented": 30,
+      "integrated": 25,
+      "tested": 20,
+      "release_proven": 10,
+      "priority": "P0",
+      "status": "GROTE GAP",
+      "gap": "Huidige solver is rechthoekige deterministic shelf solver; polygonen/holes/grain/remnants/reservations/manual locks/exact polygon validation ontbreken.",
+      "evidence": [
+        "cws_convertor/optimization/plate_nesting/core.py"
+      ]
+    },
+    {
+      "id": "D18",
+      "domain": "Converter / capability registry / roundtrip",
+      "weight": 4,
+      "implemented": 75,
+      "integrated": 70,
+      "tested": 65,
+      "release_proven": 55,
+      "priority": "P1",
+      "status": "GOEDE FOUNDATION",
+      "gap": "Rijkere features dan hole blijven terecht geblokkeerd; scope-first V5 UX en uitgebreide lossless feature coverage nog sluiten.",
+      "evidence": [
+        "cws_convertor/conversion_capabilities.py",
+        "cws_convertor/conversion_worker.py",
+        "cws_convertor/project/roundtrip.py"
+      ]
+    },
+    {
+      "id": "D19",
+      "domain": "Trusted PDF / external PDF analyse / AI review",
+      "weight": 3,
+      "implemented": 75,
+      "integrated": 65,
+      "tested": 60,
+      "release_proven": 50,
+      "priority": "P1",
+      "status": "GOEDE FOUNDATION",
+      "gap": "Consolidatie met production Drawing engine en actuele V5 PDF Review/evidence flow vereist; external PDF blijft confidence/review-gated.",
+      "evidence": [
+        "pdf_support.py",
+        "ai_support.py",
+        "dimension_graph.py"
+      ]
+    },
+    {
+      "id": "D20",
+      "domain": "Productietekeningen / vector PDF",
+      "weight": 4,
+      "implemented": 40,
+      "integrated": 35,
+      "tested": 25,
+      "release_proven": 10,
+      "priority": "P0",
+      "status": "KRITIEKE DUBBELE ROUTE",
+      "gap": "Vectorfoundation bestaat in pdf_support, maar de geïntegreerde DrawingWorkspace gebruikt PIL-rastergenerator en slaat de hele pagina als raster-PDF op.",
+      "evidence": [
+        "pdf_support.py",
+        "cws_convertor/ui_qt/engineering_drawing.py",
+        "cws_convertor/ui_qt/functional_workspaces.py"
+      ]
+    },
+    {
+      "id": "D21",
+      "domain": "DocumentOutputService / Print Center / Ctrl+P / batchprint",
+      "weight": 3,
+      "implemented": 25,
+      "integrated": 20,
+      "tested": 10,
+      "release_proven": 0,
+      "priority": "P0",
+      "status": "GROTE GAP",
+      "gap": "Geen centrale DocumentOutputService/Print Center authority gevonden; output zit verdeeld over drawing/PDF/export.",
+      "evidence": [
+        "cws_convertor/ui_qt/engineering_drawing.py",
+        "cws_convertor/production_export/"
+      ]
+    },
+    {
+      "id": "D22",
+      "domain": "Validatie / revisiecompare / maakbaarheid / evidence",
+      "weight": 3,
+      "implemented": 70,
+      "integrated": 65,
+      "tested": 55,
+      "release_proven": 45,
+      "priority": "P1",
+      "status": "GOEDE FOUNDATION",
+      "gap": "Laatste V5 Controle-structuur, Manufacturing Geometry, Evidence, PDF Review en Problem Center nog integreren en volledig click-through bewijzen.",
+      "evidence": [
+        "cws_convertor/ui_qt/main_window.py",
+        "cws_viewer/revisions/",
+        "cws_convertor/production_export/readiness.py"
+      ]
+    },
+    {
+      "id": "D23",
+      "domain": "Quality / Inspection / NCR / release",
+      "weight": 3,
+      "implemented": 78,
+      "integrated": 65,
+      "tested": 55,
+      "release_proven": 45,
+      "priority": "P1",
+      "status": "STERKE FOUNDATION",
+      "gap": "Volledige operator-UI, traceability en koppeling met planning/shopfloor/product readiness nog afronden.",
+      "evidence": [
+        "cws_convertor/quality/model.py"
+      ]
+    },
+    {
+      "id": "D24",
+      "domain": "Planning / Shopfloor / finite capacity",
+      "weight": 4,
+      "implemented": 15,
+      "integrated": 10,
+      "tested": 5,
+      "release_proven": 0,
+      "priority": "P1",
+      "status": "SUBSYSTEEM ONTBREEKT GROTENDEELS",
+      "gap": "Geen dedicated Resource/WorkCenter/Shift/ProductionOrder/ScheduledOperation finite-capacity subsystem aangetroffen.",
+      "evidence": [
+        "cws_convertor/integration/production_workflow.py"
+      ]
+    },
+    {
+      "id": "D25",
+      "domain": "Export / readiness / scope / verify / release backend",
+      "weight": 4,
+      "implemented": 85,
+      "integrated": 80,
+      "tested": 75,
+      "release_proven": 70,
+      "priority": "P0",
+      "status": "STERK",
+      "gap": "V5 scope→formats→preflight→generate→verify→package UX en nieuwe routing/quality/planning gates aan dezelfde releaseauthority koppelen.",
+      "evidence": [
+        "cws_convertor/production_export/",
+        "cws_convertor/integration/production_workflow.py"
+      ]
+    },
+    {
+      "id": "D26",
+      "domain": "Viewer/project/user preference persistence",
+      "weight": 2,
+      "implemented": 65,
+      "integrated": 55,
+      "tested": 45,
+      "release_proven": 35,
+      "priority": "P1",
+      "status": "PARTIAL",
+      "gap": "Projectstate en userprefs versioned scheiden; columns/theme/splitters/printer plus saved views/measurements/sections/markups volledig restart/migration testen.",
+      "evidence": [
+        "cws_convertor/integration/ui_context.py",
+        "cws_convertor/project/storage.py"
+      ]
+    },
+    {
+      "id": "D27",
+      "domain": "Master traceability / acceptance voor ALLE actuele prompts",
+      "weight": 4,
+      "implemented": 40,
+      "integrated": 35,
+      "tested": 30,
+      "release_proven": 20,
+      "priority": "P0",
+      "status": "OUTDATED",
+      "gap": "Repo traceability wijst nog naar 27-aug prompt; 30/31-aug UI/performance/interpreter requirements zijn niet onderdeel van de 29-aug 51/51 acceptance.",
+      "evidence": [
+        "docs/CWS_CONVERTOR_PROMPT_TRACEABILITY.md",
+        ".github/workflows/final-release-proof.yml",
+        "tools/run_full_product_acceptance.py"
+      ]
+    }
+  ],
+  "critical_gaps": [
+    "Viewer performance closeout is not canonical-proven: worker pool, dynamic priority, Cache V2, upload governor, MSAA benchmark, packaged cold/warm/soak.",
+    "V5/V5.1/V5.2 UI visual/control contract is not implemented on canonical branch.",
+    "BOM & Machines routing/assignment authority and V5 production hub are incomplete.",
+    "Manufacturing Geometry Interpreter V2 is not implemented.",
+    "Plate Nesting is still rectangular shelf nesting rather than full polygon nesting.",
+    "Integrated production drawing path is raster while vector PDF foundation exists elsewhere; needs one canonical vector Drawing engine.",
+    "Central DocumentOutputService/Print Center is missing.",
+    "Project intake is not yet one all-format project intake authority.",
+    "Planning/Shopfloor finite-capacity subsystem is largely absent.",
+    "Master requirement traceability/acceptance is outdated and must cover all 30/31 Aug requirements."
+  ],
+  "recommended_build_phases": [
+    "Phase 1 — Canonical foundation closeout: requirement reconciliation, Viewer performance, unified intake, V5.2 design system/shell/state.",
+    "Phase 2 — Production completion: BOM & Machines/routing, Workbench + Manufacturing Geometry Interpreter, manufacturing chain, Profile/Plate Nesting, converter.",
+    "Phase 3 — Documents/Control/Operations: vector drawing/Trusted & External PDF, Print Center, Validation/Evidence, Quality, Planning/Shopfloor, Export/Reports, all V5 surfaces.",
+    "Phase 4 — Total acceptance & exact-SHA Windows release: UI/control/visual/E2E/performance/Trimble/negative/persistence/stress + one-folder/portable/installer/SBOM/checksums/source bundle."
+  ]
+}

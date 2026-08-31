@@ -13,9 +13,8 @@ UI_PREFERENCES_SCHEMA = {
         "remember_last_workspace": True,
     },
     "allowed": {
-        "theme": ["Default Light"],
+        "theme": ["Default Light", "Engineering Dark"],
         "density": ["compact", "comfortable"],
         "scale_percent": [100, 125, 150, 175, 200],
     },
 }
-

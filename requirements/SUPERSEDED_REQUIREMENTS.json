@@ -1,0 +1,26 @@
+{
+  "schema": "cws-superseded-requirements-1.0",
+  "generated_at": "2026-08-31T21:29:57.003175+00:00",
+  "requirements": [
+    {
+      "requirement_id": "LEGACY-NAV-12",
+      "description": "Twelve legacy top-level product tabs",
+      "superseded_by": "F1-013"
+    },
+    {
+      "requirement_id": "LEGACY-DARK-DEFAULT",
+      "description": "Engineering Dark as mandatory/default product theme",
+      "superseded_by": "F1-014"
+    },
+    {
+      "requirement_id": "LEGACY-ACCEPTANCE-51",
+      "description": "A fixed 51-check report as complete current acceptance",
+      "superseded_by": "F4-001"
+    },
+    {
+      "requirement_id": "LEGACY-RASTER-DRAWING",
+      "description": "Full-page raster production PDF route",
+      "superseded_by": "F3-001"
+    }
+  ]
+}

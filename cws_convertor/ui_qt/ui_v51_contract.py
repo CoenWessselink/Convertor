@@ -296,6 +296,8 @@ def _label(widget: Any) -> str:
 def _set_test_id(obj: Any, test_id: str) -> None:
     obj.setObjectName(test_id)
     obj.setProperty("test_id", test_id)
+    obj.setProperty("ui_test_id", test_id)
+    obj.setProperty("cws_product_control", True)
 
 
 def _records() -> list[dict[str, Any]]:
@@ -427,12 +429,11 @@ if QtWidgets is not None:
                 font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.SystemFont.GeneralFont)
                 font.setPointSize(10)
                 app.setFont(font)
-            from .design_system.stylesheet import V52_DARK_QSS
+            from .design_system.stylesheet import apply_v52_design_system
 
-            # V5.2 is the only visual authority. Combining the historical light
-            # theme, a dark override and the product QSS produced the mixed shell.
-            self.window.setStyleSheet(V52_DARK_QSS)
-            self.window.setProperty("cws_theme", "Engineering Dark")
+            settings = QtCore.QSettings("CWS", "CWS Convertor")
+            theme = str(settings.value("product-ui/theme", "Default Light") or "Default Light")
+            apply_v52_design_system(self.window, theme)
 
         def _primary_tabs(self) -> QtWidgets.QTabWidget | None:
             tabs = self.window.findChild(QtWidgets.QTabWidget, "cwsPrimaryTabs")
@@ -604,6 +605,17 @@ if QtWidgets is not None:
 
         def _create_settings_center(self) -> None:
             dock, layout = self._dock("Instellingen", "cwsV51SettingsCenter")
+            theme_row = QtWidgets.QHBoxLayout()
+            theme_row.addWidget(QtWidgets.QLabel("Thema"))
+            theme = QtWidgets.QComboBox()
+            theme.addItems(("Default Light", "Engineering Dark"))
+            settings = QtCore.QSettings("CWS", "CWS Convertor")
+            current = str(settings.value("product-ui/theme", "Default Light") or "Default Light")
+            theme.setCurrentText(current if current in {"Default Light", "Engineering Dark"} else "Default Light")
+            _set_test_id(theme, "cmb_theme_preference")
+            theme.currentTextChanged.connect(self._set_theme)
+            theme_row.addWidget(theme, 1)
+            layout.addLayout(theme_row)
             tabs = QtWidgets.QTabWidget()
             tabs.setObjectName("cwsV51SettingsTabs")
             for screen_id, title in (("26", "Machinebibliotheek"), ("27", "PDF/Print & Tekeningtemplates")):
@@ -619,6 +631,12 @@ if QtWidgets is not None:
                 tabs.addTab(page, title)
             layout.addWidget(tabs)
             self.settings_dock = dock
+
+        def _set_theme(self, theme: str) -> None:
+            from .design_system.stylesheet import apply_v52_design_system
+
+            selected = apply_v52_design_system(self.window, theme)
+            QtCore.QSettings("CWS", "CWS Convertor").setValue("product-ui/theme", selected)
 
         def _screen_records(self, screen_id: str) -> list[dict[str, Any]]:
             return [item for item in self.records if str(item.get("screen_id")) == str(screen_id)]
