@@ -23,8 +23,8 @@ def profile_definitions(database: Any) -> tuple[Any, ...]:
 
 def _candidate_dimensions(profile: Any) -> tuple[float, float]:
     kind = str(getattr(profile, "profile_type", "")).upper()
-    first = abs(float(getattr(profile, "dim1", 0.0) or 0.0))
-    second = abs(float(getattr(profile, "dim2", 0.0) or 0.0))
+    first = abs(float(getattr(profile, "height", 0.0) or getattr(profile, "dim1", 0.0) or 0.0))
+    second = abs(float(getattr(profile, "width", 0.0) or getattr(profile, "dim2", 0.0) or 0.0))
     if kind in {"RU", "RO"}:
         return (first, first)
     return tuple(sorted((first, second), reverse=True))
@@ -112,4 +112,3 @@ def recognize_profile(
         candidates=(best[1],),
         reason="Geometrie matcht exact binnen de centrale tolerance policy",
     )
-

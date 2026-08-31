@@ -428,7 +428,11 @@ if QtWidgets is not None:
                 font.setPointSize(10)
                 app.setFont(font)
             from .design_system.stylesheet import V52_DARK_QSS
-            self.window.setStyleSheet(self.window.styleSheet() + "\n" + V51_LIGHT_QSS + "\n" + V51_DARK_OVERRIDE_QSS + "\n" + V52_DARK_QSS)
+
+            # V5.2 is the only visual authority. Combining the historical light
+            # theme, a dark override and the product QSS produced the mixed shell.
+            self.window.setStyleSheet(V52_DARK_QSS)
+            self.window.setProperty("cws_theme", "Engineering Dark")
 
         def _primary_tabs(self) -> QtWidgets.QTabWidget | None:
             tabs = self.window.findChild(QtWidgets.QTabWidget, "cwsPrimaryTabs")
@@ -523,6 +527,7 @@ if QtWidgets is not None:
             toolbar.setObjectName("cwsV51ScreenActions")
             toolbar.setMovable(False)
             toolbar.setFloatable(False)
+            toolbar.setFixedHeight(42)
             toolbar.hide()
             self.screen_toolbar = toolbar
 
@@ -669,28 +674,46 @@ if QtWidgets is not None:
                 return
             toolbar.clear()
             self._dynamic_actions.clear()
-            heading = QtWidgets.QLabel(f"{screen_id}  {title}")
-            heading.setStyleSheet("font-weight: 650; color: #E8F0F5; padding-right: 10px;")
+            number = QtWidgets.QLabel(screen_id)
+            number.setObjectName("cwsScreenNumber")
+            number.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            number.setFixedSize(34, 28)
+            number.setProperty("v51_screen_id", screen_id)
+            toolbar.addWidget(number)
+            heading = QtWidgets.QLabel(title.upper())
+            heading.setObjectName("cwsWorkspaceTitle")
             heading.setProperty("v51_screen_id", screen_id)
             toolbar.addWidget(heading)
+            spacer = QtWidgets.QWidget(toolbar)
+            spacer.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Preferred,
+            )
+            toolbar.addWidget(spacer)
+            context = QtWidgets.QLabel("Een model, een selectie, een werkcontext", toolbar)
+            context.setObjectName("cwsWorkspaceContext")
+            toolbar.addWidget(context)
+            close = QtWidgets.QToolButton(toolbar)
+            close.setObjectName("cwsWorkspaceClose")
+            close.setText("X")
+            close.setToolTip("Terug naar Start / Inlezen")
+            close.clicked.connect(lambda: self.screen_selector.setCurrentIndex(0))
+            toolbar.addWidget(close)
+
+            # Keep the complete acceptance inventory alive for automation and
+            # bindings, but never render synthetic controls over native pages.
             for record in self._screen_records(screen_id):
                 test_id = str(record["test_id"])
                 existing = self.window.findChild(QtCore.QObject, test_id)
                 if existing is not None and not bool(existing.property("v51_dynamic")):
                     continue
-                if str(record.get("type")) in {"QListView", "QTableView", "QTreeView", "QVTK/OpenGLWidget", "OpenGLWidget", "QProgressBar"}:
-                    proxy = self._make_contract_widget(record, compact=False)
-                    if proxy is not None:
-                        proxy.setParent(self.window)
-                        proxy.setProperty("v51_binding_proxy", True)
-                        proxy.hide()
-                    continue
-                widget = self._make_contract_widget(record, compact=True)
-                if widget is not None:
-                    widget.setProperty("v51_dynamic", True)
-                    widget.setProperty("v51_screen_id", screen_id)
-                    action = toolbar.addWidget(widget)
-                    self._dynamic_actions.append(action)
+                proxy = self._make_contract_widget(record, compact=False)
+                if proxy is not None:
+                    proxy.setParent(self.window)
+                    proxy.setProperty("v51_dynamic", True)
+                    proxy.setProperty("v51_binding_proxy", True)
+                    proxy.setProperty("v51_screen_id", screen_id)
+                    proxy.hide()
 
         def _make_contract_widget(self, record: dict[str, Any], *, compact: bool) -> QtWidgets.QWidget | None:
             kind = str(record.get("type", "QToolButton"))

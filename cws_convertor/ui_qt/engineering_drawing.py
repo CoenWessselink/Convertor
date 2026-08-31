@@ -8,6 +8,9 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from cws_convertor.drawings import DrawingProjectionModel
+from cws_convertor.output import DocumentOutputService
+
 SHEET_MM: dict[str, tuple[float, float]] = {
     "A4": (297.0, 210.0), "A3": (420.0, 297.0), "A2": (594.0, 420.0),
     "A1": (841.0, 594.0), "A0": (1189.0, 841.0),
@@ -283,30 +286,11 @@ class EngineeringDrawingGenerator:
 
     @staticmethod
     def _basis(view: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        if view == "front":
-            return np.array((1.0, 0.0, 0.0)), np.array((0.0, 1.0, 0.0)), np.array((0.0, 0.0, 1.0))
-        if view == "top":
-            return np.array((1.0, 0.0, 0.0)), np.array((0.0, 0.0, 1.0)), np.array((0.0, -1.0, 0.0))
-        if view == "side":
-            return np.array((0.0, 1.0, 0.0)), np.array((0.0, 0.0, 1.0)), np.array((1.0, 0.0, 0.0))
-        direction = np.array((1.0, -1.0, 0.78), dtype=float)
-        direction /= np.linalg.norm(direction)
-        u = np.array((1.0, 1.0, 0.0), dtype=float)
-        u /= np.linalg.norm(u)
-        v = np.cross(direction, u)
-        v /= np.linalg.norm(v)
-        return u, v, direction
+        return DrawingProjectionModel.basis(view)
 
     @classmethod
     def _project(cls, vertices: np.ndarray, view: str) -> tuple[np.ndarray, np.ndarray]:
-        u, v, direction = cls._basis(view)
-        projected = np.column_stack((vertices @ u, vertices @ v))
-        primary = np.array((float(u[0]), float(v[0])), dtype=float)
-        if float(np.linalg.norm(primary)) > 1.0e-9:
-            angle = math.atan2(float(primary[1]), float(primary[0]))
-            cosine, sine = math.cos(angle), math.sin(angle)
-            projected = projected @ np.array(((cosine, -sine), (sine, cosine)), dtype=float)
-        return projected, vertices @ direction
+        return DrawingProjectionModel.project(vertices, view)
 
     @staticmethod
     def _visible_edges(
@@ -314,31 +298,7 @@ class EngineeringDrawingGenerator:
         vertices: np.ndarray,
         direction: np.ndarray,
     ) -> set[tuple[int, int]]:
-        adjacency: dict[tuple[int, int], list[int]] = {}
-        normals: list[np.ndarray] = []
-        for triangle_index, triangle in enumerate(triangles):
-            a, b, c = (int(value) for value in triangle)
-            normal = np.cross(vertices[b] - vertices[a], vertices[c] - vertices[a])
-            length = float(np.linalg.norm(normal))
-            normals.append(normal / length if length > 1.0e-9 else np.zeros(3))
-            for start, end in ((a, b), (b, c), (c, a)):
-                edge = (start, end) if start < end else (end, start)
-                adjacency.setdefault(edge, []).append(triangle_index)
-        front_facing = [float(np.dot(normal, direction)) >= -1.0e-8 for normal in normals]
-        result: set[tuple[int, int]] = set()
-        for edge, faces in adjacency.items():
-            if len(faces) == 1:
-                if front_facing[faces[0]]:
-                    result.add(edge)
-                continue
-            first, second = normals[faces[0]], normals[faces[1]]
-            first_front, second_front = front_facing[faces[0]], front_facing[faces[1]]
-            if first_front != second_front:
-                result.add(edge)
-                continue
-            if first_front and second_front and float(np.dot(first, second)) < math.cos(math.radians(28.0)):
-                result.add(edge)
-        return result
+        return set(DrawingProjectionModel.visible_edges(triangles, vertices, direction))
 
     @classmethod
     def _draw_dimension(
@@ -701,5 +661,6 @@ class EngineeringDrawingGenerator:
         if png_path is not None:
             image.save(png_path, format="PNG", optimize=True, dpi=(300, 300))
         if pdf_path is not None:
-            image.save(pdf_path, format="PDF", resolution=300.0)
+            DrawingProjectionModel.export_pdf(pdf_path,vertices,triangles,views=drawing_views,sheet_mm=(paper_width,paper_height),scale_denominator=denominator,title="TECHNISCHE WERKPLAATSTEKENING",metadata={"Onderdeel":stem,"Formaat":sheet_key,"Eenheid":unit})
+            DocumentOutputService.shared().register(pdf_path,kind="engineering_drawing",producer="EngineeringDrawingGenerator",entity_ids=(resolved_entity_id,))
         return DrawingOutput(png_path=png_path, pdf_path=pdf_path, warnings=tuple(warnings), scale_label=f"1:{denominator}")

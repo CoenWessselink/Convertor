@@ -214,7 +214,18 @@ class IntegratedProjectWorkspace:
             effective_prefer_proxy = bool(prefer_proxy)
             renderable_entity_count = _renderable_entity_count(session.project)
             entity_limit = _full_geometry_entity_limit()
-            if load_all_geometry and allow_proxy and not effective_prefer_proxy:
+            # Large valid IFC geometry may never be replaced by boxes merely
+            # because a size heuristic fired. Keep that behaviour available
+            # only for explicit diagnostic proxy sessions.
+            auto_proxy_large_model = (
+                os.environ.get("CWS_AUTO_PROXY_LARGE_MODEL", "0") == "1"
+            )
+            if (
+                auto_proxy_large_model
+                and load_all_geometry
+                and allow_proxy
+                and not effective_prefer_proxy
+            ):
                 limit = max(
                     8 * 1024 * 1024,
                     int(float(os.environ.get("CWS_FULL_GEOMETRY_MAX_MB", "32")) * 1024 * 1024),

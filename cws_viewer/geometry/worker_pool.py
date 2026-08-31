@@ -45,6 +45,7 @@ class PersistentGeometryWorkerPool:
         self.failed_requests = 0
         self.restarted_workers = 0
         self.retry_successes = 0
+        self._last_dispatch_worker_count = 0
 
     @classmethod
     def shared(
@@ -199,9 +200,18 @@ class PersistentGeometryWorkerPool:
         values = tuple(requests)
         if not values:
             return {}
+        # Keep entities from one source together. Round-robin distribution made
+        # every child parse the complete IFC independently.
+        source_groups: dict[tuple[str, str, str], list[GeometryRequest]] = {}
+        for request in values:
+            key = (str(request.source_path), str(request.source_sha256), str(request.source_format))
+            source_groups.setdefault(key, []).append(request)
         chunks: list[list[GeometryRequest]] = [[] for _ in range(self.worker_count)]
-        for offset, request in enumerate(values):
-            chunks[offset % self.worker_count].append(request)
+        loads = [0 for _ in range(self.worker_count)]
+        for group in sorted(source_groups.values(), key=lambda item: (-len(item), item[0].source_path)):
+            index = min(range(self.worker_count), key=lambda value: (loads[value], value))
+            chunks[index].extend(group)
+            loads[index] += len(group)
         futures = [
             self._executor.submit(
                 self._load_many_on_worker,
@@ -213,6 +223,7 @@ class PersistentGeometryWorkerPool:
             for index, chunk in enumerate(chunks)
             if chunk
         ]
+        self._last_dispatch_worker_count = len(futures)
         result: dict[str, MeshData] = {}
         for future in as_completed(futures):
             result.update(future.result())
@@ -234,6 +245,7 @@ class PersistentGeometryWorkerPool:
             "transport": "persistent_ifc_process_worker_pool_v3",
             "dispatcher": "bounded_thread_dispatcher",
             "worker_count": self.worker_count,
+            "dispatch_worker_count": int(self._last_dispatch_worker_count),
             "active_process_count": len(process_ids),
             "active_process_ids": process_ids,
             "worker_processes": worker_processes,

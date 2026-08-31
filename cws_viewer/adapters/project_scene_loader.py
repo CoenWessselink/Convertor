@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import threading
 import time
 from typing import Callable, Iterable, Sequence
 
@@ -37,6 +38,8 @@ class ProjectSceneLoadResult:
                 "repository":{"mesh_count":len(self.repository),"bytes":self.repository.total_bytes},"load_profile":self.load_profile}
 
 class ProjectSceneLoader:
+    _session_cache_lock=threading.RLock()
+    _session_caches:dict[str,MeshCache]={}
     def __init__(self,*,cache_root:str|Path|None=None,source_search_roots:Iterable[str|Path]=(),settings:TessellationSettings|None=None,
                  provider_factory:Callable[[],Sequence[GeometryProvider]]|None=None)->None:
         self.cache_root=Path(cache_root or Path.home()/'.cws_convertor'/'viewer_mesh_cache').expanduser().resolve()
@@ -95,10 +98,14 @@ class ProjectSceneLoader:
         # A proxy-only first frame has no primary-provider cache keys. Avoid
         # opening/indexing the persistent mesh cache on this latency-critical
         # path; exact background upgrades use the cache normally.
-        cache=(
-            MeshCache(self.cache_root,max_memory_items=max(128,min(len(requests),2048)),max_memory_bytes=policy.cache_memory_bytes)
-            if providers else None
-        )
+        cache=None
+        if providers:
+            cache_identity=str(self.cache_root).casefold()
+            with self._session_cache_lock:
+                cache=self._session_caches.get(cache_identity)
+                if cache is None:
+                    cache=MeshCache(self.cache_root,max_memory_items=max(128,min(len(requests),2048)),max_memory_bytes=policy.cache_memory_bytes)
+                    self._session_caches[cache_identity]=cache
         repository=MeshRepository()
         t=time.perf_counter();prefetch_keys=[]
         for request in requests:

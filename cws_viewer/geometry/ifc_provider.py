@@ -322,7 +322,7 @@ __all__=['IfcMeshProvider','IfcShapeBuilder','UnsupportedIfcGeometry','PROVIDER_
 # IfcOpenShell is authoritative for visual geometry; the legacy parser remains
 # available only as an explicit compatibility fallback for malformed sources.
 _LEGACY_IFC_MESH_LOAD = IfcMeshProvider.load
-PROVIDER_VERSION = "cws-ifc-display-v5-ifcopenshell"
+PROVIDER_VERSION = "cws-ifc-display-v6-balanced-tessellation"
 
 
 def _cws_ifcopenshell_load(self, request, settings, *, cancel_check=None):
@@ -378,21 +378,21 @@ def _cws_ifcopenshell_load(self, request, settings, *, cancel_check=None):
             raise LookupError(f"IFC entity not found: {entity_token!r}")
 
         geom_settings = ifcopenshell.geom.settings()
-        circle_segments = max(64, int(getattr(settings, "circle_segments", 24)) * 3)
+        circle_segments = max(24, int(getattr(settings, "circle_segments", 24)))
         configured = {
             "use-world-coords": False,
             "weld-vertices": True,
             "no-normals": True,
             "circle-segments": circle_segments,
             "mesher-linear-deflection": min(
-                0.00020,
-                max(0.00001, float(getattr(settings, "linear_deflection_mm", 1.0)) / 4000.0),
+                0.001,
+                max(0.00005, float(getattr(settings, "linear_deflection_mm", 1.0)) / 1000.0),
             ),
             "mesher-angular-deflection": min(
-                0.10,
-                max(0.02, float(getattr(settings, "angular_deflection_rad", 0.35)) / 3.0),
+                0.35,
+                max(0.05, float(getattr(settings, "angular_deflection_rad", 0.35))),
             ),
-            "precision": 1.0e-7,
+            "precision": 1.0e-6,
         }
         for key, value in configured.items():
             try:
@@ -520,16 +520,16 @@ def _cws_ifcopenshell_load_many(
             "use-world-coords": False,
             "weld-vertices": True,
             "no-normals": True,
-            "circle-segments": max(64, int(getattr(settings, "circle_segments", 24)) * 3),
+            "circle-segments": max(24, int(getattr(settings, "circle_segments", 24))),
             "mesher-linear-deflection": min(
-                0.00020,
-                max(0.00001, float(getattr(settings, "linear_deflection_mm", 1.0)) / 4000.0),
+                0.001,
+                max(0.00005, float(getattr(settings, "linear_deflection_mm", 1.0)) / 1000.0),
             ),
             "mesher-angular-deflection": min(
-                0.10,
-                max(0.02, float(getattr(settings, "angular_deflection_rad", 0.35)) / 3.0),
+                0.35,
+                max(0.05, float(getattr(settings, "angular_deflection_rad", 0.35))),
             ),
-            "precision": 1.0e-7,
+            "precision": 1.0e-6,
         }
         for key, value in configured.items():
             try:
@@ -539,7 +539,7 @@ def _cws_ifcopenshell_load_many(
         iterator = ifcopenshell.geom.iterate(
             geom_settings,
             model,
-            num_threads=max(1, min(8, int(os.cpu_count() or 1))),
+            num_threads=max(1, min(24, int(os.cpu_count() or 1))),
             include=entities,
         )
         for shape in iterator:

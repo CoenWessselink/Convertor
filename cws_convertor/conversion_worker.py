@@ -14,6 +14,116 @@ import traceback
 from typing import Any
 
 
+def _convert_exact_native_step(
+    part: Any,
+    shape: Any,
+    output: Path,
+    safe_name: str,
+    signature: str,
+) -> tuple[list[Path], list[str], list[str]]:
+    """Export an exact selected source BREP to STEP without a Workbench revision.
+
+    A Workbench revision is required when manufacturing semantics must be
+    reconstructed. It is not required for a lossless IFC/STEP BREP transfer.
+    The generated STEP is therefore accepted only after a physical re-import
+    and comparison against the isolated source shape.
+    """
+    import cadquery as cq
+
+    from cws_convertor.project.canonical_rebuild import canonical_shape_metrics
+    from cws_convertor.project.model import stable_sha256
+
+    expected = canonical_shape_metrics(shape)
+    output.mkdir(parents=True, exist_ok=True)
+    manufacturing_hash = str(getattr(part, "manufacturing_hash", "") or "")[:12]
+    suffix = f"_{manufacturing_hash}" if manufacturing_hash else ""
+    artifact = output / f"{safe_name}{suffix}.step"
+    with tempfile.TemporaryDirectory(prefix=".cws_exact_step_", dir=str(output)) as folder:
+        temporary = Path(folder) / artifact.name
+        cq.exporters.export(shape, str(temporary), exportType="STEP")
+        restored = cq.importers.importStep(str(temporary)).val()
+        actual = canonical_shape_metrics(restored)
+
+        checks: list[dict[str, Any]] = []
+
+        def exact_check(name: str, expected_value: Any, actual_value: Any) -> None:
+            checks.append(
+                {
+                    "property": name,
+                    "expected": expected_value,
+                    "found": actual_value,
+                    "tolerance": 0.0,
+                    "status": "passed" if expected_value == actual_value else "failed",
+                }
+            )
+
+        def numeric_check(name: str, expected_value: float, actual_value: float, tolerance: float) -> None:
+            delta = abs(float(actual_value) - float(expected_value))
+            checks.append(
+                {
+                    "property": name,
+                    "expected": float(expected_value),
+                    "found": float(actual_value),
+                    "delta": delta,
+                    "tolerance": float(tolerance),
+                    "status": "passed" if delta <= tolerance else "failed",
+                }
+            )
+
+        exact_check("valid", True, bool(actual.get("valid")))
+        exact_check("solid_count", int(expected["solid_count"]), int(actual["solid_count"]))
+        numeric_check(
+            "volume_mm3",
+            float(expected["volume_mm3"]),
+            float(actual["volume_mm3"]),
+            max(0.001, abs(float(expected["volume_mm3"])) * 1.0e-8),
+        )
+        numeric_check(
+            "area_mm2",
+            float(expected["area_mm2"]),
+            float(actual["area_mm2"]),
+            max(0.001, abs(float(expected["area_mm2"])) * 1.0e-8),
+        )
+        for index, (expected_value, actual_value) in enumerate(
+            zip(expected["bbox_mm"], actual["bbox_mm"], strict=True),
+            start=1,
+        ):
+            numeric_check(
+                f"bbox_mm_{index}",
+                float(expected_value),
+                float(actual_value),
+                max(0.001, abs(float(expected_value)) * 1.0e-8),
+            )
+        if not all(item["status"] == "passed" for item in checks):
+            failed = ", ".join(item["property"] for item in checks if item["status"] != "passed")
+            raise RuntimeError(f"STEP herimport wijkt af van de exacte brongeometrie: {failed}")
+        temporary.replace(artifact)
+
+    report = {
+        "schema": "cws.exact-native-step-selection.v1",
+        "status": "passed",
+        "part_id": str(getattr(part, "internal_id", "") or ""),
+        "source_signature": signature,
+        "artifact_path": str(artifact.resolve()),
+        "artifact_sha256": __import__("hashlib").sha256(artifact.read_bytes()).hexdigest(),
+        "source_metrics": expected,
+        "reimport_metrics": actual,
+        "checks": checks,
+        "workbench_revision_required": False,
+        "authority": "exact_isolated_native_brep",
+    }
+    report_path = output / f"{safe_name}_step_compare.json"
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return (
+        [report_path, artifact],
+        [
+            f"{safe_name}: exacte bron-BREP fysiek naar STEP geschreven en opnieuw geimporteerd.",
+            f"Geometrische vergelijking geslaagd: {report_path.name}",
+        ],
+        [],
+    )
+
+
 def _convert_project_selection(
     project_path: Path,
     entity_id: str,
@@ -31,6 +141,11 @@ def _convert_project_selection(
     part = session.project.parts.get(entity_id)
     if part is None:
         raise RuntimeError(f"Onbekend maakdeel {entity_id}")
+    raw_name = str(getattr(part, "part_position", "") or entity_id)
+    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._") or "selected_part"
+    target_format = direction.lower().replace("dstv", "nc1").replace("->", "-").split("-")[-1]
+    if target_format not in {"nc1", "step", "ifc", "pdf"}:
+        raise ValueError(f"Doelformaat {target_format!r} ondersteunt geen canonical conversie")
     # The active UI may have prepared an exact imported part in memory while the
     # source package deliberately remains untouched. Reconstruct that same
     # deterministic production context for this one selection in the isolated
@@ -39,8 +154,6 @@ def _convert_project_selection(
         from cws_convertor.project.production_normalization import prepare_exact_imported_part
 
         prepare_exact_imported_part(part)
-    if not part.workbench:
-        raise RuntimeError("Conversie vereist een Part Workbench-revisie")
     inspection = session.inspect_part_source_geometry(entity_id, persist=False)
     if (
         inspection.native_shape is not None
@@ -56,7 +169,24 @@ def _convert_project_selection(
                 "metrics": inspection.metrics,
             }
         )
+        if not part.workbench:
+            if target_format == "step":
+                return _convert_exact_native_step(
+                    part,
+                    conversion_shape,
+                    output,
+                    safe_name,
+                    signature,
+                )
+            raise RuntimeError(
+                f"{target_format.upper()}-productie-uitvoer vereist bevestigde maakgegevens; "
+                "STEP-export van deze exacte brongeometrie is wel direct beschikbaar"
+            )
     else:
+        if not part.workbench:
+            raise RuntimeError(
+                "Conversie vereist een exact geisoleerde bron-BREP of bevestigde maakgegevens"
+            )
         rebuild = rebuild_and_compare(part)
         if rebuild.shape is None or rebuild.report.get("status") != "passed":
             blockers = "; ".join(inspection.blocking_reasons)
@@ -67,12 +197,7 @@ def _convert_project_selection(
             )
         conversion_shape = rebuild.shape
         signature = str(rebuild.report.get("canonical_signature") or "")
-    raw_name = str(getattr(part, "part_position", "") or entity_id)
-    safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", raw_name).strip("._") or "selected_part"
-    target_format = direction.lower().replace("dstv", "nc1").replace("->", "-").split("-")[-1]
     del material
-    if target_format not in {"nc1", "step", "ifc", "pdf"}:
-        raise ValueError(f"Doelformaat {target_format!r} ondersteunt geen canonical conversie")
     output.mkdir(parents=True, exist_ok=True)
     report = validate_roundtrips(
         part,

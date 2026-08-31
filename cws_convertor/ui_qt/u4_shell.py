@@ -211,15 +211,15 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
         def __init__(self, parent: Any | None = None) -> None:
             super().__init__(parent)
             self.setObjectName("cwsProductHeader")
+            self.setFixedHeight(38)
+            self.setMinimumWidth(286)
             layout = QtWidgets.QHBoxLayout(self)
-            layout.setContentsMargins(12, 6, 12, 6)
-            layout.setSpacing(9)
+            layout.setContentsMargins(9, 0, 6, 0)
+            layout.setSpacing(6)
             name = QtWidgets.QLabel(APP_NAME)
             name.setObjectName("productName")
             version = QtWidgets.QLabel(APP_VERSION)
             version.setObjectName("versionBadge")
-            safety = QtWidgets.QLabel("Productiegates actief | machine-transfer gesloten")
-            safety.setObjectName("safetyBadge")
             back = QtWidgets.QToolButton()
             back.setText("<")
             back.setToolTip("Vorige werkruimte")
@@ -232,8 +232,6 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             layout.addWidget(version)
             layout.addWidget(back)
             layout.addWidget(forward)
-            layout.addStretch(1)
-            layout.addWidget(safety)
 
 
     class _QuickWorkspaceBar(QtWidgets.QFrame):
@@ -245,15 +243,16 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             layout = QtWidgets.QHBoxLayout(self)
             layout.setContentsMargins(8, 4, 8, 4)
             layout.setSpacing(4)
-            label = QtWidgets.QLabel("Actieve part-context")
+            label = QtWidgets.QLabel("CONTEXTACTIES")
             label.setObjectName("mutedText")
             layout.addWidget(label)
             for title, action in (
                 ("Bewerken", "edit"),
-                ("Scribing", "scribing"),
-                ("BOM", "quantities"),
-                ("Rapportage", "report"),
-                ("Export", "export"),
+                ("Tekening", "drawings"),
+                ("Machine", "settings"),
+                ("Optimaliseren", "profile_nesting"),
+                ("Afdrukken", "report"),
+                ("Meer", "production"),
             ):
                 button = QtWidgets.QToolButton()
                 button.setText(title)
@@ -337,38 +336,31 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
         def __init__(self, workspace: str, parent: Any | None = None) -> None:
             super().__init__(parent)
             self.setObjectName("cwsContextRibbon")
-            self.setFixedHeight(104)
+            self.setFixedHeight(48)
             row = QtWidgets.QHBoxLayout(self)
-            row.setContentsMargins(8, 3, 8, 3)
-            row.setSpacing(0)
+            row.setContentsMargins(7, 4, 7, 4)
+            row.setSpacing(4)
             for group_title, actions in _RIBBON_DEFINITIONS.get(workspace, ()):
                 group = QtWidgets.QFrame(self)
                 group.setObjectName("ribbonGroup")
-                group_layout = QtWidgets.QVBoxLayout(group)
-                group_layout.setContentsMargins(5, 2, 5, 1)
-                group_layout.setSpacing(1)
-                buttons = QtWidgets.QHBoxLayout()
+                group.setAccessibleName(group_title)
+                buttons = QtWidgets.QHBoxLayout(group)
+                buttons.setContentsMargins(3, 0, 3, 0)
                 buttons.setSpacing(1)
                 for title, action in actions:
                     button = QtWidgets.QToolButton(group)
                     button.setObjectName("ribbonButton")
-                    display_title = title
-                    if len(title) > 12 and " " in title:
-                        display_title = title.replace(" ", "\n", 1)
-                    button.setText(display_title)
+                    button.setText(title)
                     button.setToolTip(title)
-                    button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+                    button.setAccessibleName(title)
+                    button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
                     button.setIcon(self._icon_for(action, title))
-                    button.setIconSize(QtCore.QSize(26, 26))
+                    button.setIconSize(QtCore.QSize(18, 18))
+                    button.setFixedSize(32, 32)
                     button.clicked.connect(
                         lambda _checked=False, value=action: self.action_requested.emit(value)
                     )
                     buttons.addWidget(button)
-                group_layout.addLayout(buttons)
-                caption = QtWidgets.QLabel(group_title, group)
-                caption.setObjectName("ribbonGroupTitle")
-                caption.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                group_layout.addWidget(caption)
                 row.addWidget(group)
             row.addStretch(1)
 
@@ -422,7 +414,6 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             if application is not None:
                 application.setFont(product_font)
             self.setFont(product_font)
-            self.setStyleSheet(self.styleSheet() + _PRODUCT_QSS)
             self.workspace_router = WorkspaceRouter(self)
             self._v51_binding = apply_v51_contract(self, self.workspace_router)
             self._install_product_pages()
@@ -447,7 +438,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 QtWidgets.QToolBar, "cwsV9ProjectToolbar"
             )
             if legacy_viewer_toolbar is not None:
-                legacy_viewer_toolbar.show()
+                legacy_viewer_toolbar.hide()
                 actions = legacy_viewer_toolbar.actions()
                 slider_action = next(
                     (
@@ -521,7 +512,25 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 self._u3_bom_context.setObjectName("selectionContext")
                 self._u3_bom_context.setWordWrap(True)
                 bom_layout.insertWidget(1, self._u3_bom_context)
-            self._replace_page("profiles_page", ProfileNestingPanel(self), "Optimaliseren")
+            # Preserve the real profile/material library as a Project screen and
+            # install profile nesting as its own Productie workspace.
+            self.project_profiles_page = self.profiles_page
+            from cws_convertor.ui_qt.v5_workspaces import (
+                ManufacturabilityPanel, PlateNestingPanel, PrintCenterPanel,
+                ProjectOverviewPanel, ProjectReviewsPanel, ProjectStructurePanel,
+            )
+            self.project_overview_page = ProjectOverviewPanel(self)
+            self.project_structure_page = ProjectStructurePanel(self)
+            self.project_reviews_page = ProjectReviewsPanel(self)
+            self.plate_nesting_page = PlateNestingPanel(self)
+            self.print_center_page = PrintCenterPanel(self)
+            self.manufacturability_page = ManufacturabilityPanel(self)
+            project_profiles_index = self.tabs.indexOf(self.project_profiles_page)
+            if project_profiles_index >= 0:
+                self.tabs.removeTab(project_profiles_index)
+            self.project_profiles_page.setParent(None)
+            self.profiles_page = ProfileNestingPanel(self)
+            self.tabs.insertTab(project_profiles_index if project_profiles_index >= 0 else self.tabs.count(), self.profiles_page, "Optimaliseren")
             self.settings_page = MachineSettingsPanel(self)
             self.settings_page.setProperty(U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN)
             self.settings_page.setProperty(U4_WORKFLOW_PROPERTY, U4_WORKFLOW_TOKEN)
@@ -529,7 +538,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             # not hide direct navigation or the model-opacity slider.
             for toolbar in self.project_page.findChildren(QtWidgets.QToolBar):
                 if toolbar.objectName() == "cwsV9ProjectToolbar":
-                    toolbar.setVisible(True)
+                    toolbar.setVisible(False)
             self.project_page.transparency_slider.setVisible(True)
             index = self.control_page.indexOf(self.optimization_page)
             if index >= 0:
@@ -539,6 +548,8 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             # Keep the base-window selection contract pointed at the live U4
             # optimization surface instead of the deleted legacy tab.
             self.optimization_page = self.profiles_page
+            if isinstance(self.control_page, QtWidgets.QTabWidget):
+                self.control_page.addTab(self.manufacturability_page, "Maakbaarheid")
             self.production_workflow_page = ProductionWorkflowPanel(self)
             self.production_workflow_page.setProperty(U4_WORKFLOW_PROPERTY, U4_WORKFLOW_TOKEN)
             export_index = self.tabs.indexOf(self.export_page)
@@ -563,6 +574,10 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.bom_excel_page.show_project_requested.connect(lambda: self._route_action("viewer"))
             leaf_pages = (
                 self.import_page,
+                self.project_profiles_page,
+                self.project_overview_page,
+                self.project_structure_page,
+                self.project_reviews_page,
                 self.project_page,
                 self.edit_page,
                 self.converter_page,
@@ -571,6 +586,9 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 self.scribing_page,
                 self.bom_excel_page,
                 self.profiles_page,
+                self.plate_nesting_page,
+                self.print_center_page,
+                self.manufacturability_page,
                 self.settings_page,
                 self.production_workflow_page,
                 self.export_page,
@@ -578,6 +596,8 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             # Remove every legacy top-level registration, including base-shell
             # aliases such as Rapport. The page widgets remain alive and are
             # immediately rehomed below one of the five primary workspaces.
+            self.tabs.setObjectName("cwsPrimaryNavigation")
+            self.tabs.tabBar().setObjectName("cwsPrimaryNavigationBar")
             while self.tabs.count():
                 self.tabs.removeTab(0)
 
@@ -592,34 +612,28 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
 
             self.project_workspace_page = primary_host(
                 "cwsPrimaryProjectWorkspace",
-                ((self.import_page, "Inlezen"), (self.converter_page, "Converteren"), (self.control_page, "Controleren")),
-            )
-            self.edit_workspace_page = primary_host(
-                "cwsPrimaryEditWorkspace",
-                ((self.edit_page, "Onderdelen"), (self.scribing_page, "Scribing")),
+                ((self.import_page, "Start / Inlezen"), (self.project_overview_page, "Projectoverzicht"), (self.project_structure_page, "Projectstructuur"), (self.project_profiles_page, "Profielen & Materialen"), (self.project_reviews_page, "Projectreviews")),
             )
             self.production_workspace_page = primary_host(
                 "cwsPrimaryProductionWorkspace",
-                ((self.bom_excel_page, "BOM"), (self.profiles_page, "Optimaliseren"), (self.settings_page, "Machine-instellingen"), (self.production_workflow_page, "Productieworkflow")),
+                (
+                    (self.bom_excel_page, "BOM & Machines"),
+                    (self.settings_page, "Machine-indeling"),
+                    (self.profiles_page, "Optimalisatie"),
+                    (self.plate_nesting_page, "Plaatnesting"),
+                    (self.edit_page, "Bewerken"),
+                    (self.scribing_page, "Scribing"),
+                    (self.converter_page, "Converteren"),
+                    (self.pdf_page, "Tekeningen & PDF"),
+                ),
             )
             self.output_workspace_page = primary_host(
                 "cwsPrimaryOutputWorkspace",
-                ((self.pdf_page, "PDF / Tekening"), (self.export_page, "Exporteren")),
+                ((self.print_center_page, "Print Center"), (self.export_page, "Export Center"), (self.production_workflow_page, "Rapport & Pakket")),
             )
-            legacy_edit_workspace = self.edit_workspace_page
-            legacy_production_workspace = self.production_workspace_page
-            manufacturing = QtWidgets.QWidget()
-            manufacturing_layout = QtWidgets.QVBoxLayout(manufacturing)
-            manufacturing_layout.setContentsMargins(0, 0, 0, 0)
-            manufacturing_tabs = QtWidgets.QTabWidget()
-            manufacturing_tabs.setDocumentMode(True)
-            manufacturing_tabs.addTab(legacy_edit_workspace, "Onderdelen & Scribing")
-            manufacturing_tabs.addTab(legacy_production_workspace, "BOM, Machines & Optimalisatie")
-            manufacturing_layout.addWidget(manufacturing_tabs)
-            self._edit_subworkspace_host = legacy_edit_workspace
-            self._production_subworkspace_host = legacy_production_workspace
-            self.edit_workspace_page = manufacturing
-            self.production_workspace_page = manufacturing
+            self._edit_subworkspace_host = self.production_workspace_page
+            self._production_subworkspace_host = self.production_workspace_page
+            self.edit_workspace_page = self.production_workspace_page
             self.control_workspace_page = self.control_page
             for page, title in (
                 (self.project_workspace_page, "Project"),
@@ -629,18 +643,19 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 (self.output_workspace_page, "Uitvoer"),
             ):
                 self.tabs.addTab(page, QtGui.QIcon(), title)
+            for index, color in enumerate(("#2E9BE8", "#27B6E8", "#55C56B", "#E9A438", "#8B6DE3")):
+                self.tabs.tabBar().setTabTextColor(index, QtGui.QColor(color))
             self.tabs.tabBar().setExpanding(False)
             self.tabs.tabBar().setUsesScrollButtons(True)
 
         def _install_product_header(self) -> None:
-            central = self.centralWidget()
-            layout = central.layout() if central is not None else None
-            if layout is None:
-                return
-            self.product_header = _ProductHeader(central)
+            self.product_header = _ProductHeader(self.tabs)
             self.product_header.back_requested.connect(self.workspace_router.back)
             self.product_header.forward_requested.connect(self.workspace_router.forward)
-            layout.insertWidget(0, self.product_header)
+            self.tabs.setCornerWidget(
+                self.product_header,
+                QtCore.Qt.Corner.TopLeftCorner,
+            )
 
         def _install_quick_workspace_bar(self) -> None:
             layout = self.project_page.layout()
@@ -668,19 +683,25 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             for name, page, primary, primary_page, host in (
                 ("project", self.import_page, "project", self.project_workspace_page, self.project_workspace_page),
                 ("import", self.import_page, "project", self.project_workspace_page, self.project_workspace_page),
-                ("converter", self.converter_page, "project", self.project_workspace_page, self.project_workspace_page),
-                ("control", self.control_page, "project", self.control_workspace_page, None),
+                ("converter", self.converter_page, "production", self.production_workspace_page, self.production_workspace_page),
+                ("control", self.control_page, "control", self.control_workspace_page, None),
+                ("project_overview", self.project_overview_page, "project", self.project_workspace_page, self.project_workspace_page),
+                ("project_structure", self.project_structure_page, "project", self.project_workspace_page, self.project_workspace_page),
+                ("project_reviews", self.project_reviews_page, "project", self.project_workspace_page, self.project_workspace_page),
                 ("viewer", self.project_page, "viewer", self.project_page, None),
-                ("edit", self.edit_page, "edit", self.edit_workspace_page, self._edit_subworkspace_host),
-                ("scribing", self.scribing_page, "edit", self.edit_workspace_page, self._edit_subworkspace_host),
+                ("edit", self.edit_page, "production", self.edit_workspace_page, self._edit_subworkspace_host),
+                ("scribing", self.scribing_page, "production", self.edit_workspace_page, self._edit_subworkspace_host),
                 ("production", self.bom_excel_page, "production", self.production_workspace_page, self._production_subworkspace_host),
                 ("bom", self.bom_excel_page, "production", self.production_workspace_page, self._production_subworkspace_host),
                 ("profile_nesting", self.profiles_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("plate_nesting", self.plate_nesting_page, "production", self.production_workspace_page, self._production_subworkspace_host),
                 ("settings", self.settings_page, "production", self.production_workspace_page, self._production_subworkspace_host),
                 ("production_workflow", self.production_workflow_page, "production", self.production_workspace_page, self._production_subworkspace_host),
-                ("report", self.production_workflow_page, "production", self.production_workspace_page, self._production_subworkspace_host),
-                ("output", self.pdf_page, "output", self.output_workspace_page, self.output_workspace_page),
-                ("pdf", self.pdf_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("report", self.production_workflow_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("output", self.output_workspace_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("pdf", self.pdf_page, "production", self.production_workspace_page, self.production_workspace_page),
+                ("print_center", self.print_center_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("manufacturability", self.manufacturability_page, "control", self.control_workspace_page, self.control_page),
                 ("export", self.export_page, "output", self.output_workspace_page, self.output_workspace_page),
             ):
                 self.workspace_router.register(name, page, primary=primary, primary_page=primary_page, host=host)
@@ -983,6 +1004,8 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             workspace = self.workspace if snapshot.project_attached else None
             self.edit_page.set_context(self.workspace, snapshot.selection)
             self.pdf_page.set_context(self.workspace, snapshot.selection)
+            for page in (self.project_overview_page, self.project_structure_page, self.project_reviews_page, self.plate_nesting_page, self.print_center_page, self.manufacturability_page):
+                page.set_context(workspace, selection)
             self.bom_excel_page.set_context(workspace, selection)
             self.production_workflow_page.set_context(workspace, selection)
             settings = getattr(self, "settings_page", None)

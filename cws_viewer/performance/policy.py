@@ -71,7 +71,10 @@ class LoadingPerformancePolicy:
             desired = min(desired, 4)
         memory_cap = max(1, int(available_ram // (3 * 1024**3)))
         worker_count = max(1, min(desired, memory_cap, max(1, cores // 2), 6))
-        override = os.environ.get("CWS_GEOMETRY_WORKERS", "").strip()
+        override = (
+            os.environ.get("CWS_GEOMETRY_WORKERS", "").strip()
+            or os.environ.get("CWS_VIEWER_IFC_WORKERS", "").strip()
+        )
         if override:
             worker_count = max(1, min(int(override), 8))
         cache_memory = int(min(max(total_ram * 0.03, 256 * 1024**2), 2 * 1024**3))

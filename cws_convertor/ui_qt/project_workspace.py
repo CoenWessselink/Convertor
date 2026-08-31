@@ -99,21 +99,12 @@ if qt_available():
                 self.token.check()
                 self.progress.emit(5, "Projectbestand en schema controleren")
                 self.progress.emit(18, "Projectmodel, bronnen en geometrie openen")
-                project_size = Path(self.path).stat().st_size
-                full_geometry_limit = int(
-                    # Compressed Tekla packages expand far beyond archive size.
-                    # Keep the shared Viewer responsive; exact selected-part
-                    # geometry remains available from the workbench.
-                    float(__import__("os").environ.get("CWS_FULL_GEOMETRY_MAX_MB", "64"))
-                    * 1024 * 1024
-                )
-                # The desktop viewer is progressive by default: show a fully
-                # placed model immediately and replace display meshes with
-                # exact source geometry after the first interactive frame.
-                progressive = os.environ.get("CWS_PROGRESSIVE_PROJECT_LOAD", "1") != "0"
-                prefer_proxy = bool(
-                    self.load_geometry and (progressive or project_size > full_geometry_limit)
-                )
+                # Product mode renders authoritative source geometry. Display
+                # proxies are diagnostic only: silently presenting boxes as a
+                # completed model is never acceptable.
+                allow_proxy = os.environ.get("CWS_ALLOW_DISPLAY_PROXIES", "0") == "1"
+                progressive = os.environ.get("CWS_PROGRESSIVE_PROJECT_LOAD", "0") == "1"
+                prefer_proxy = bool(self.load_geometry and allow_proxy and progressive)
 
                 def report(percent: int, message: str) -> None:
                     self.token.check()
@@ -125,7 +116,7 @@ if qt_available():
                     self.path,
                     read_only=False,
                     load_all_geometry=self.load_geometry,
-                    allow_proxy=True,
+                    allow_proxy=allow_proxy,
                     prefer_proxy=prefer_proxy,
                     progress_callback=report,
                     cancellation_token=self.token,
@@ -208,15 +199,16 @@ if qt_available():
                 completed = 0
                 ifc_misses = []
 
-                def publish(request: Any, mesh: Any) -> None:
+                def publish(request: Any, mesh: Any, *, persist: bool = True) -> None:
                     nonlocal completed
                     workspace.load_result.repository.put(request.geometry_id, mesh)
-                    cache.put(
-                        request.cache_key(settings, ifc_provider_version),
-                        mesh,
-                        provider_version=ifc_provider_version,
-                        settings=settings,
-                    )
+                    if persist:
+                        cache.put_async(
+                            request.cache_key(settings, ifc_provider_version),
+                            mesh,
+                            provider_version=ifc_provider_version,
+                            settings=settings,
+                        )
                     upgraded.append(request.geometry_id)
                     batch.append(request.geometry_id)
                     completed += 1
@@ -228,6 +220,12 @@ if qt_available():
                         self.progress.emit(int(round(completed * 100 / max(total, 1))), message)
 
                 request_by_id = {request.geometry_id: request for request in requests}
+                ifc_keys = {
+                    request.geometry_id: request.cache_key(settings, ifc_provider_version)
+                    for request in requests
+                    if request.source_format.upper() == "IFC"
+                }
+                cached_ifc = cache.get_many(ifc_keys.values(), max_workers=12)
                 for request in requests:
                     self.token.check()
                     if context is not None:
@@ -239,9 +237,13 @@ if qt_available():
                         else (provider.provider_version if provider is not None else "")
                     )
                     key = request.cache_key(settings, provider_version) if provider_version else ""
-                    cached = cache.get(key) if key else None
+                    cached = (
+                        cached_ifc.get(key)
+                        if request.source_format.upper() == "IFC"
+                        else (cache.get(key) if key else None)
+                    )
                     if cached is not None:
-                        publish(request, cached)
+                        publish(request, cached, persist=False)
                         continue
                     if request.source_format.upper() == "IFC":
                         ifc_misses.append(request)
@@ -275,11 +277,38 @@ if qt_available():
                         settings,
                         cancel_check=self.token.check,
                     )
+                    cache.put_many_async(
+                        (
+                            request_by_id[geometry_id].cache_key(settings, ifc_provider_version),
+                            mesh,
+                            ifc_provider_version,
+                            settings,
+                        )
+                        for geometry_id, mesh in returned.items()
+                    )
                     for geometry_id, mesh in returned.items():
-                        publish(request_by_id[geometry_id], mesh)
+                        publish(request_by_id[geometry_id], mesh, persist=False)
                     missing_ids = {request.geometry_id for request in ifc_misses} - set(returned)
                     for geometry_id in sorted(missing_ids):
-                        failures.append(f"{geometry_id}: IFC-batch leverde geen mesh")
+                        request = request_by_id[geometry_id]
+                        try:
+                            mesh = IsolatedIfcMeshProvider().load(
+                                request,
+                                settings,
+                                cancel_check=self.token.check,
+                            )
+                        except Exception as exc:
+                            failures.append(
+                                f"{geometry_id}: IFC-batch en geisoleerde retry faalden: "
+                                f"{type(exc).__name__}: {exc}"
+                            )
+                            continue
+                        if mesh.exactness == "display_proxy":
+                            failures.append(
+                                f"{geometry_id}: geisoleerde retry leverde alleen een displayproxy"
+                            )
+                            continue
+                        publish(request, mesh)
                 source_appearance_scene = None
                 source_appearance_report = None
                 if any(request.source_format.upper() == "IFC" for request in requests):
@@ -592,18 +621,6 @@ if qt_available():
                     viewer = _HeadlessGuiSmokeViewer()
                 else:
                     viewer = VtkRealProjectWidget(load_result.repository)
-                    backend = getattr(viewer, "backend", None)
-                    set_filter = getattr(backend, "set_geometry_filter", None)
-                    if callable(set_filter):
-                        render_window = getattr(backend, "_render_window", None)
-                        if render_window is not None:
-                            render_window.SetMultiSamples(0)
-                        first_geometry = tuple(dict.fromkeys(
-                            str(node.geometry_id)
-                            for node in load_result.scene.nodes
-                            if node.geometry_id and load_result.repository.get(node.geometry_id) is not None
-                        ))[:32]
-                        set_filter(first_geometry)
                 viewer.load_scene(load_result.scene)
                 self.viewer = viewer
                 self._preview_result = load_result
@@ -614,7 +631,7 @@ if qt_available():
                     QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
                 )
                 self._load_progress_changed(66, "Eerste interactieve modelweergave gereed")
-                QtCore.QTimer.singleShot(250, self._complete_preview_geometry)
+                QtCore.QTimer.singleShot(0, self._complete_preview_geometry)
             finally:
                 if worker is not None:
                     worker.acknowledge_preview()

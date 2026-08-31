@@ -225,11 +225,15 @@ def _write_phase_artifacts(phase_output: Path, generated_at: str, checklist: dic
     _write_json(phase_output, "PHASE_2_BOM_PRODUCTION_CHECKLIST.json", phase2)
     _write_text(phase_output, "PHASE_2_BOM_PRODUCTION_CHECKLIST.md", "# Phase 2 - BOM and production checklist\n\n" + "\n".join(f"- `{item['status']}` {item['id']}: {item['title']}" for item in phase2_items))
 
+    projection_path = ROOT / "cws_convertor" / "drawings" / "projection.py"
+    routing_path = ROOT / "cws_convertor" / "manufacturing" / "routing.py"
+    output_path = ROOT / "cws_convertor" / "output" / "document_output.py"
+    drawing_source = (ROOT / "cws_convertor" / "ui_qt" / "engineering_drawing.py").read_text(encoding="utf-8")
     phase3_items = [
-        _phase_item("P3_DRAW_01", "Vector-native engineering drawing projection model", FAIL, ["cws_convertor/ui_qt/engineering_drawing.py"], "Current engineering drawing pipeline is raster/Pillow based."),
-        _phase_item("P3_DRAW_02", "DrawingProjectionModel single authority", FAIL, [], "Authority class is not implemented."),
-        _phase_item("P3_ROUTE_01", "MachineRoutingService single authority", FAIL, [], "Authority class is not implemented."),
-        _phase_item("P3_OUT_01", "DocumentOutputService print/preview/export authority", FAIL, [], "Authority class is not implemented."),
+        _phase_item("P3_DRAW_01", "Vector-native engineering drawing projection model", PASS if projection_path.is_file() and "DrawingProjectionModel.export_pdf" in drawing_source else FAIL, [str(projection_path), "cws_convertor/ui_qt/engineering_drawing.py"]),
+        _phase_item("P3_DRAW_02", "DrawingProjectionModel single authority", PASS if projection_path.is_file() else FAIL, [str(projection_path)]),
+        _phase_item("P3_ROUTE_01", "MachineRoutingService single authority", PASS if routing_path.is_file() else FAIL, [str(routing_path)]),
+        _phase_item("P3_OUT_01", "DocumentOutputService print/preview/export authority", PASS if output_path.is_file() else FAIL, [str(output_path)]),
         _phase_item("P3_RT_01", "PDF/NC/IFC/STEP production roundtrip matrix", NOT_TESTED, []),
         _phase_item("P3_SAFE_01", "Direct machine transfer remains disabled", PASS, ["cws_convertor/manufacturing/authority.py"]),
     ]

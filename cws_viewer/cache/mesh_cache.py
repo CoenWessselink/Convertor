@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import hashlib
 import json
@@ -66,6 +66,7 @@ class MeshCache:
         max_memory_bytes: int = 512 * 1024 * 1024,
         storage_mode: str = "mmap",
         integrity_mode: str = "fast",
+        async_writer_count: int = 4,
     ) -> None:
         self.root = Path(root).expanduser().resolve()
         self.root.mkdir(parents=True, exist_ok=True)
@@ -80,6 +81,13 @@ class MeshCache:
         self._memory: OrderedDict[str, MeshData] = OrderedDict()
         self._memory_bytes = 0
         self._lock = threading.RLock()
+        self._write_locks: dict[str, threading.Lock] = {}
+        self._async_writer_count = max(1, int(async_writer_count))
+        self._write_pool: ThreadPoolExecutor | None = None
+        self._pending_writes: set[Future[int]] = set()
+        self._async_write_errors: list[str] = []
+        self._async_submitted = 0
+        self._async_completed = 0
         self.stats = MeshCacheStats()
 
     @staticmethod
@@ -98,6 +106,23 @@ class MeshCache:
     def _v2_dir_for(self, key: str) -> Path:
         self._validate_key(key)
         return self.root / key[:2] / f"{key.lower()}.meshv2"
+
+    @staticmethod
+    def bundle_key(keys: Iterable[str]) -> str:
+        digest = hashlib.sha256(b"CWS-MESH-CACHE-V2-BUNDLE\0")
+        for key in sorted(dict.fromkeys(str(value).lower() for value in keys)):
+            MeshCache._validate_key(key)
+            digest.update(key.encode("ascii"))
+            digest.update(b"\0")
+        return digest.hexdigest()
+
+    def _bundle_dir_for(self, keys: Iterable[str]) -> Path:
+        key = self.bundle_key(keys)
+        return self.root / "_bundles" / key[:2] / f"{key}.meshbundlev2"
+
+    def _key_write_lock(self, key: str) -> threading.Lock:
+        with self._lock:
+            return self._write_locks.setdefault(key, threading.Lock())
 
     @staticmethod
     def _sha(path: Path) -> str:
@@ -184,7 +209,7 @@ class MeshCache:
         )
 
     def get(self, key: str) -> MeshData | None:
-        with self._lock:
+        with self._key_write_lock(key):
             mesh = self._memory.get(key)
             if mesh is not None:
                 self._memory.move_to_end(key)
@@ -378,8 +403,9 @@ class MeshCache:
                         import time
 
                         time.sleep(0.025 * (attempt + 1))
-                self._remember(key, mesh)
-                self.stats.writes += 1
+                with self._lock:
+                    self._remember(key, mesh)
+                    self.stats.writes += 1
                 return target / "manifest.json"
             finally:
                 if temporary.exists():
@@ -436,11 +462,246 @@ class MeshCache:
             checksum = path.with_suffix(".sha256.tmp")
             checksum.write_text(digest + "\n", encoding="ascii")
             os.replace(checksum, path.with_suffix(".sha256"))
-            self._remember(key, mesh)
-            self.stats.writes += 1
+            with self._lock:
+                self._remember(key, mesh)
+                self.stats.writes += 1
             return path
         finally:
             temporary.unlink(missing_ok=True)
+
+    def put_many_async(
+        self,
+        entries: Iterable[tuple[str, MeshData, str, TessellationSettings]],
+    ) -> tuple[Future[int], ...]:
+        """Remember meshes immediately and persist them in a bounded batch pool.
+
+        The number of queued futures is bounded by ``async_writer_count`` even
+        for projects containing thousands of products.  Disk persistence is
+        deliberately outside the first-visible-scene critical path.
+        """
+        values = tuple(entries)
+        if not values:
+            return ()
+        with self._lock:
+            for key, mesh, _provider_version, _settings in values:
+                self._validate_key(key)
+                self._remember(key, mesh)
+            if self._write_pool is None:
+                self._write_pool = ThreadPoolExecutor(
+                    max_workers=self._async_writer_count,
+                    thread_name_prefix="CWS-MeshCacheWriter",
+                )
+            if len(values) >= 256 and self.storage_mode == "mmap":
+                futures = (self._write_pool.submit(self._write_bundle, values),)
+            else:
+                chunks = [values[index :: self._async_writer_count] for index in range(self._async_writer_count)]
+                chunks = [chunk for chunk in chunks if chunk]
+                futures = tuple(self._write_pool.submit(self._write_chunk, chunk) for chunk in chunks)
+            self._pending_writes.update(futures)
+            self._async_submitted += len(values)
+            for future in futures:
+                future.add_done_callback(self._async_write_done)
+            return futures
+
+    def put_async(
+        self,
+        key: str,
+        mesh: MeshData,
+        *,
+        provider_version: str,
+        settings: TessellationSettings,
+    ) -> tuple[Future[int], ...]:
+        return self.put_many_async(((key, mesh, provider_version, settings),))
+
+    def _write_chunk(
+        self,
+        entries: tuple[tuple[str, MeshData, str, TessellationSettings], ...],
+    ) -> int:
+        written = 0
+        for key, mesh, provider_version, settings in entries:
+            self.put(key, mesh, provider_version=provider_version, settings=settings)
+            written += 1
+        return written
+
+    def _write_bundle(
+        self,
+        entries: tuple[tuple[str, MeshData, str, TessellationSettings], ...],
+    ) -> int:
+        unique = {key: (mesh, provider_version, settings) for key, mesh, provider_version, settings in entries}
+        keys = tuple(sorted(unique))
+        target = self._bundle_dir_for(keys)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = Path(tempfile.mkdtemp(prefix=f".{target.stem}.", dir=target.parent))
+        try:
+            vertex_arrays = [unique[key][0].vertices for key in keys]
+            triangle_arrays = [unique[key][0].triangles for key in keys]
+            vertices = np.concatenate(vertex_arrays, axis=0)
+            triangles = np.concatenate(triangle_arrays, axis=0)
+            vertices_path = temporary / "vertices.npy"
+            triangles_path = temporary / "triangles.npy"
+            np.save(vertices_path, np.ascontiguousarray(vertices, dtype=np.float64), allow_pickle=False)
+            np.save(triangles_path, np.ascontiguousarray(triangles, dtype=np.int32), allow_pickle=False)
+            items = []
+            vertex_offset = 0
+            triangle_offset = 0
+            for key in keys:
+                mesh, provider_version, settings = unique[key]
+                items.append(
+                    {
+                        "key": key,
+                        "vertex_offset": vertex_offset,
+                        "vertex_count": mesh.vertex_count,
+                        "triangle_offset": triangle_offset,
+                        "triangle_count": mesh.triangle_count,
+                        "source_geometry_hash": mesh.source_geometry_hash,
+                        "mesh_hash": mesh.mesh_hash,
+                        "provider": mesh.provider,
+                        "provider_version": provider_version,
+                        "settings": settings.to_dict(),
+                        "exactness": mesh.exactness,
+                        "warnings": list(mesh.warnings),
+                        "mesh_metadata": dict(mesh.metadata),
+                    }
+                )
+                vertex_offset += mesh.vertex_count
+                triangle_offset += mesh.triangle_count
+            manifest = {
+                "format": _CACHE_FORMAT,
+                "container": "contiguous_scene_bundle",
+                "bundle_key": self.bundle_key(keys),
+                "mesh_count": len(items),
+                "files": {
+                    "vertices.npy": {"bytes": vertices_path.stat().st_size, "sha256": self._sha(vertices_path)},
+                    "triangles.npy": {"bytes": triangles_path.stat().st_size, "sha256": self._sha(triangles_path)},
+                },
+                "items": items,
+            }
+            manifest_path = temporary / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False),
+                encoding="utf-8",
+            )
+            (temporary / "manifest.sha256").write_text(self._sha(manifest_path) + "\n", encoding="ascii")
+            with self._key_write_lock(manifest["bundle_key"]):
+                if target.exists():
+                    shutil.rmtree(target)
+                os.replace(temporary, target)
+            with self._lock:
+                self.stats.writes += len(items)
+            return len(items)
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary, ignore_errors=True)
+
+    def get_bundle(self, keys: Iterable[str]) -> dict[str, MeshData] | None:
+        values = tuple(sorted(dict.fromkeys(str(value).lower() for value in keys)))
+        if not values:
+            return {}
+        target = self._bundle_dir_for(values)
+        manifest_path = target / "manifest.json"
+        checksum_path = target / "manifest.sha256"
+        if not manifest_path.is_file() or not checksum_path.is_file():
+            return None
+        try:
+            expected = checksum_path.read_text(encoding="ascii").strip()
+            if expected != self._sha(manifest_path):
+                raise ValueError("bundle manifest checksum")
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest.get("bundle_key") != self.bundle_key(values):
+                raise ValueError("bundle key")
+            if int(manifest.get("mesh_count", -1)) != len(values):
+                raise ValueError("bundle mesh count")
+            vertices_path = target / "vertices.npy"
+            triangles_path = target / "triangles.npy"
+            if self.integrity_mode == "full":
+                files = manifest.get("files") or {}
+                if self._sha(vertices_path) != files.get("vertices.npy", {}).get("sha256"):
+                    raise ValueError("bundle vertices checksum")
+                if self._sha(triangles_path) != files.get("triangles.npy", {}).get("sha256"):
+                    raise ValueError("bundle triangles checksum")
+            vertices = np.load(vertices_path, allow_pickle=False)
+            triangles = np.load(triangles_path, allow_pickle=False)
+            output: dict[str, MeshData] = {}
+            for item in manifest["items"]:
+                key = str(item["key"])
+                vertex_offset = int(item["vertex_offset"])
+                triangle_offset = int(item["triangle_offset"])
+                mesh = MeshData(
+                    vertices=vertices[vertex_offset : vertex_offset + int(item["vertex_count"])],
+                    triangles=triangles[triangle_offset : triangle_offset + int(item["triangle_count"])],
+                    source_geometry_hash=str(item["source_geometry_hash"]),
+                    provider=str(item["provider"]),
+                    exactness=str(item.get("exactness", "source_tessellation")),
+                    warnings=tuple(item.get("warnings", ())),
+                    metadata=dict(item.get("mesh_metadata", {})),
+                    mesh_hash=str(item["mesh_hash"]),
+                )
+                output[key] = mesh
+            if tuple(sorted(output)) != values:
+                raise ValueError("bundle sleutelset")
+            with self._lock:
+                for key, mesh in output.items():
+                    self._remember(key, mesh)
+                self.stats.mmap_hits += len(output)
+            return output
+        except Exception:
+            with self._lock:
+                self.stats.corrupt_entries += 1
+            shutil.rmtree(target, ignore_errors=True)
+            return None
+
+    def get_many(self, keys: Iterable[str], *, max_workers: int = 8) -> dict[str, MeshData]:
+        values = tuple(dict.fromkeys(str(value).lower() for value in keys))
+        bundled = self.get_bundle(values)
+        if bundled is not None:
+            return bundled
+        self.prefetch(values, max_workers=max_workers)
+        return {key: mesh for key in values if (mesh := self.get(key)) is not None}
+
+    def _async_write_done(self, future: Future[int]) -> None:
+        error = ""
+        completed = 0
+        try:
+            completed = int(future.result())
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+        with self._lock:
+            self._pending_writes.discard(future)
+            self._async_completed += completed
+            if error:
+                self._async_write_errors.append(error)
+
+    def flush(self) -> int:
+        """Wait for current background writes and fail on persistence errors."""
+        with self._lock:
+            pending = tuple(self._pending_writes)
+        for future in pending:
+            future.result()
+        with self._lock:
+            if self._async_write_errors:
+                errors = "; ".join(self._async_write_errors)
+                self._async_write_errors.clear()
+                raise RuntimeError(f"MeshCache achtergrondpersistatie faalde: {errors}")
+            return self._async_completed
+
+    def async_diagnostics(self) -> dict[str, int | list[str]]:
+        with self._lock:
+            return {
+                "writer_count": self._async_writer_count,
+                "submitted_meshes": self._async_submitted,
+                "completed_meshes": self._async_completed,
+                "pending_batches": len(self._pending_writes),
+                "errors": list(self._async_write_errors),
+            }
+
+    def close(self, *, wait: bool = True) -> None:
+        pool = None
+        if wait:
+            self.flush()
+        with self._lock:
+            pool, self._write_pool = self._write_pool, None
+        if pool is not None:
+            pool.shutdown(wait=wait, cancel_futures=not wait)
 
     def prefetch(self, keys: Iterable[str], *, max_workers: int = 4) -> int:
         values = tuple(dict.fromkeys(str(key).lower() for key in keys))

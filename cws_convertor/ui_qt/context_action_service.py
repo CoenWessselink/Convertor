@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-PRIMARY_WORKSPACES = ("project", "viewer", "edit", "production", "output")
+PRIMARY_WORKSPACES = ("project", "viewer", "production", "control", "output")
 PRIMARY_LABELS = ("Project", "Viewer", "Productie", "Controle", "Uitvoer")
 
 

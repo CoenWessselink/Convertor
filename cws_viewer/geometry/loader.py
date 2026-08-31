@@ -57,7 +57,7 @@ class GeometryLoadCoordinator:
             key=request.cache_key(self.settings,provider.provider_version);mesh=self.cache.get(key) if self.cache else None;hit=mesh is not None
             if mesh is None:
                 mesh=provider.load(request,self.settings,cancel_check=check)
-                if self.cache:self.cache.put(key,mesh,provider_version=provider.provider_version,settings=self.settings)
+                if self.cache:self.cache.put_async(key,mesh,provider_version=provider.provider_version,settings=self.settings)
             self.repository.put(request.geometry_id,mesh);status=GeometryLoadStatus.PARTIAL if mesh.exactness!='source_tessellation' else GeometryLoadStatus.READY
             self.failed_requests.pop(request.geometry_id,None)
             return GeometryLoadResult(request,status,mesh,time.perf_counter()-start,hit,mesh.warnings,'')
@@ -75,15 +75,61 @@ class GeometryLoadCoordinator:
             return GeometryLoadResult(request,GeometryLoadStatus.FAILED,None,time.perf_counter()-start,False,(),str(exc))
     def load_many(self,requests:Iterable[GeometryRequest],*,token:CancellationToken|None=None,progress:ProgressCallback|None=None,allow_proxy:bool=True)->BatchLoadReport:
         values=tuple(requests);start=time.perf_counter();results=[]
-        if self.max_workers==1:
-            for i,r in enumerate(self.scheduler.order(values)):
+        ordered=tuple(self.scheduler.order(values))
+        # Native IFC providers expose a batch iterator. The previous
+        # coordinator never called it and reopened the same IFC per resource.
+        groups={};batch_capable=bool(ordered);cached_by_key={}
+        if self.cache:
+            candidate_keys=[]
+            for request in ordered:
+                provider=self._provider(request)
+                if provider is not None:candidate_keys.append(request.cache_key(self.settings,provider.provider_version))
+            cached_by_key=self.cache.get_many(candidate_keys,max_workers=max(4,self.max_workers*4))
+        for request in ordered:
+            provider=self._provider(request)
+            if provider is None or not callable(getattr(provider,'load_many',None)):
+                batch_capable=False;break
+            key=request.cache_key(self.settings,provider.provider_version)
+            mesh=cached_by_key.get(key) if self.cache else None
+            if mesh is not None:
+                self.repository.put(request.geometry_id,mesh)
+                status=GeometryLoadStatus.PARTIAL if mesh.exactness!='source_tessellation' else GeometryLoadStatus.READY
+                results.append(GeometryLoadResult(request,status,mesh,time.perf_counter()-start,True,mesh.warnings,''))
+            else:
+                groups.setdefault(provider,[]).append((request,key))
+        if batch_capable:
+            completed_count=len(results)
+            deferred_cache_writes=[]
+            for provider,items in groups.items():
+                misses=tuple(item[0] for item in items);batch_started=time.perf_counter()
+                try:
+                    meshes=dict(provider.load_many(misses,self.settings,cancel_check=token.check if token else None))
+                except Exception:
+                    meshes={}
+                per_item=(time.perf_counter()-batch_started)/max(1,len(misses))
+                for request,key in items:
+                    mesh=meshes.get(request.geometry_id)
+                    if mesh is None:
+                        result=self.load_one(request,token=token,allow_proxy=allow_proxy)
+                    else:
+                        if self.cache:deferred_cache_writes.append((key,mesh,provider.provider_version,self.settings))
+                        self.repository.put(request.geometry_id,mesh)
+                        status=GeometryLoadStatus.PARTIAL if mesh.exactness!='source_tessellation' else GeometryLoadStatus.READY
+                        result=GeometryLoadResult(request,status,mesh,per_item,False,mesh.warnings,'')
+                    results.append(result);completed_count+=1
+                    if progress:progress(completed_count/max(len(values),1),f'{completed_count}/{len(values)} geometry resources')
+            if self.cache and deferred_cache_writes:self.cache.put_many_async(deferred_cache_writes)
+        elif self.max_workers==1:
+            results=[]
+            for i,r in enumerate(ordered):
                 result=self.load_one(r,token=token,allow_proxy=allow_proxy);results.append(result)
                 if progress:progress((i+1)/max(len(values),1),f'{i+1}/{len(values)} {r.geometry_id}')
                 if result.status==GeometryLoadStatus.CANCELLED:break
         else:
+            results=[]
             # CadQuery/OCP providers can serialize internally; threads primarily keep source/cache IO responsive.
             with ThreadPoolExecutor(max_workers=self.max_workers) as pool:
-                pending=list(values);active={};completed_count=0
+                pending=list(ordered);active={};completed_count=0
                 while pending or active:
                     while pending and len(active)<self.max_workers:
                         r=min(pending,key=self.scheduler.key);pending.remove(r)

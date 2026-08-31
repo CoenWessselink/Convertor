@@ -59,9 +59,12 @@ def _load(requests,cache_root):
     try:
         cache=MeshCache(cache_root,max_memory_items=max(128,len(requests)*2));started=time.perf_counter()
         meshes=pool.load_many(ordered,settings);cold=time.perf_counter()-started;version=pool.provider_version
+        persist_started=time.perf_counter();cache_entries=[]
         for request in ordered:
             mesh=meshes.get(request.geometry_id)
-            if mesh is not None:cache.put(request.cache_key(settings,version),mesh,provider_version=version,settings=settings)
+            if mesh is not None:cache_entries.append((request.cache_key(settings,version),mesh,version,settings))
+        cache.put_many_async(cache_entries);cache.flush();persist_s=time.perf_counter()-persist_started
+        cache_async=cache.async_diagnostics();cache.close(wait=True)
         workers=pool.diagnostics()
     finally:
         pool.close(force=True)
@@ -69,8 +72,9 @@ def _load(requests,cache_root):
     workers={**workers,'closed':bool(closed_workers.get('closed',True)),
              'active_process_count_after_close':int(closed_workers.get('active_process_count',0)),
              'active_process_ids_after_close':list(closed_workers.get('active_process_ids',()))}
-    disk=MeshCache(cache_root,max_memory_items=max(128,len(requests)*2));started=time.perf_counter()
-    warm=[disk.get(value.cache_key(settings,version)) for value in ordered];warm_s=time.perf_counter()-started;started=time.perf_counter()
+    disk=MeshCache(cache_root,max_memory_items=max(128,len(requests)*2));keys=[value.cache_key(settings,version) for value in ordered];started=time.perf_counter()
+    warm_by_key=disk.get_many(keys,max_workers=min(12,max(1,policy.worker_count*4)))
+    warm=[warm_by_key.get(key) for key in keys];warm_s=time.perf_counter()-started;started=time.perf_counter()
     same=[disk.get(value.cache_key(settings,version)) for value in ordered];same_s=time.perf_counter()-started
     same_runs=[]
     for _index in range(10):
@@ -82,7 +86,8 @@ def _load(requests,cache_root):
         'warm_hit_count':sum(v is not None for v in warm),'same_session_hit_count':sum(v is not None for v in same),
         'worker_pool':workers,'scheduler':scheduler.diagnostics(),
         'cache':{'engine':'MeshCache V2','root':str(Path(cache_root).resolve()),
-                 'storage_mode':str(getattr(disk,'storage_mode','mmap'))},
+                 'storage_mode':str(getattr(disk,'storage_mode','mmap')),
+                 'persist_seconds':persist_s,'async_persistence':cache_async},
         'tessellation':{'linear_deflection_mm':.35,'angular_deflection_rad':.16,'circle_segments':48}}
 
 def _base(kind,ifc):
@@ -92,7 +97,7 @@ def _base(kind,ifc):
 def benchmark(ifc,output,cache_root,limit):
     requests=build_requests(ifc,limit);_,measure=_load(requests,cache_root);workers=measure['worker_pool']
     gates={'real_ifc_exact_geometry':measure['exact_mesh_count']==len(requests),
-           'persistent_process_workers':workers['active_process_count']>=min(workers['worker_count'],len(requests)),
+           'persistent_process_workers':workers['active_process_count']>=max(1,int(workers.get('dispatch_worker_count',workers['worker_count']))),
            'worker_delivery_complete':workers['completed_requests']==len(requests),
            'worker_pool_clean_run':workers['failed_requests']==0 and workers['restarted_workers']==0 and workers['retry_successes']==0,
            'seven_tier_priority_scheduler':len(measure['scheduler']['bands'])==6,

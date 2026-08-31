@@ -28,9 +28,9 @@ class GeometryLoadStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class TessellationSettings:
-    linear_deflection_mm: float = 1.0
-    angular_deflection_rad: float = 0.35
-    circle_segments: int = 24
+    linear_deflection_mm: float = 0.35
+    angular_deflection_rad: float = 0.16
+    circle_segments: int = 48
     relative: bool = False
     weld_proxy_sides: int = 8
     version: str = "cws-tessellation-v1"
