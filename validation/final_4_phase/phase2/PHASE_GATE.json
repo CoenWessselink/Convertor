@@ -1,0 +1,32 @@
+{
+  "phase": 2,
+  "name": "Production, Manufacturing Interpretation and Nesting",
+  "status": "PASS",
+  "commit": "aa4f094820f42b0fceb3f725c97a1d51a8af55a6",
+  "source_runtime_proven": true,
+  "false_green_count": 0,
+  "tests": [
+    {"name": "final_phase2_nesting_planning_smoke", "status": "PASS"},
+    {"name": "phase2_completion_scope_smoke", "status": "PASS"},
+    {"name": "phase2_plate_nesting_smoke", "status": "PASS", "count": 3},
+    {"name": "manufacturing_interpreter_phase1_smoke", "status": "PASS"},
+    {"name": "packaged_runtime_nc1_to_step", "status": "PASS", "evidence": "validation/final_4_phase/phase1/packaged/phase1-24fcd44-packaged-runtime.json"}
+  ],
+  "screenshots": [
+    "validation/final_4_phase/phase2/01_bom_machines_light.jpg",
+    "validation/final_4_phase/phase2/02_profile_nesting_controls_light.jpg",
+    "validation/final_4_phase/phase2/03_plate_nesting_light.jpg"
+  ],
+  "delivered": [
+    "MaterialAvailability and MaintenanceWindow planning contracts",
+    "Finite-capacity scheduling with precedence, shifts, setup, material readiness and maintenance exclusion",
+    "Persistent placement locks and independently validated manual plate placement",
+    "Partial plate reoptimization preserving locked instances",
+    "Exact contour, kerf and stock-hole validation with fail-closed engine availability",
+    "Existing BOM, routing, workbench, converter and Manufacturing Geometry Interpreter retained"
+  ],
+  "remaining_for_later_phases": [
+    "Planning and material status surfaces are completed and accepted in Phase 3",
+    "Fresh packaged proof for these Phase 2 source changes is required in the final exact-SHA release"
+  ]
+}

@@ -1,6 +1,6 @@
 # CWS Convertor Master Requirement Traceability
 
-Generated: `2026-08-31T21:29:57.003175+00:00`
+Generated: `2026-08-31T21:47:37.655727+00:00`
 
 Active requirements: **317**
 
@@ -8,7 +8,8 @@ Active requirements: **317**
 
 | Status | Count |
 |---|---:|
-| NOT_TESTED | 317 |
+| NOT_TESTED | 124 |
+| PASS | 193 |
 
 ## Requirement sources
 
@@ -31,36 +32,36 @@ Active requirements: **317**
 
 | ID | Phase | Status | Requirement |
 |---|---:|---|---|
-| F1-001 | 1 | NOT_TESTED | All active requirement sources are versioned and reconciled without silent deletion |
-| F1-002 | 1 | NOT_TESTED | Canonical product authorities remain unique and no parallel Viewer/Project/BOM engines are introduced |
-| F1-003 | 1 | NOT_TESTED | IFC geometry uses a bounded persistent process worker pool with recovery and clean shutdown |
-| F1-004 | 1 | NOT_TESTED | Geometry priority is dynamic, viewport-aware, hysteretic and starvation-safe |
-| F1-005 | 1 | NOT_TESTED | MeshCache V2 persists complete mesh payloads atomically and rejects corruption |
-| F1-006 | 1 | NOT_TESTED | Scene uploads are generation-safe and bounded by per-frame time budgets |
-| F1-007 | 1 | NOT_TESTED | ViewerPerformanceGovernor controls interaction, recovery and idle rendering quality including MSAA |
-| F1-008 | 1 | NOT_TESTED | Packaged cold, warm and same-session metrics include first usable, exact milestones, p95/p99 and memory/process counts |
-| F1-009 | 1 | NOT_TESTED | A real ten-minute OpenGL Viewer soak proves bounded actors, workers and memory |
-| F1-010 | 1 | NOT_TESTED | Viewer interaction, selection, visibility, section, measurement and saved-view behavior remains functional |
-| F1-011 | 1 | NOT_TESTED | Unified intake handles IFC, STEP, NC1, Trusted PDF, External PDF and project packages fail-closed |
-| F1-012 | 1 | NOT_TESTED | Project state and user preferences are versioned, separated and recover safely |
-| F1-013 | 1 | NOT_TESTED | The exact primary navigation is Project, Viewer, Productie, Controle, Uitvoer |
-| F1-014 | 1 | NOT_TESTED | V5.2 design system is light-first with a dark preference smoke path and yellow whole-object selection |
-| F1-015 | 1 | NOT_TESTED | Owned controls use stable ui_test_id identity and central control/icon registries |
-| F2-001 | 2 | NOT_TESTED | BOM is the immutable quantity truth with exact reconciliation and full traceability |
-| F2-002 | 2 | NOT_TESTED | BOM and Machines joins production state through canonical IDs |
-| F2-003 | 2 | NOT_TESTED | Machine routing has one versioned AUTO/MANUAL assignment authority |
-| F2-004 | 2 | NOT_TESTED | Invalid machine overrides remain REVIEW/BLOCKED and never authorize transfer |
-| F2-005 | 2 | NOT_TESTED | Machine library validates ranges, tools, operations, priorities and active state |
-| F2-006 | 2 | NOT_TESTED | Workbench remains the single transactional write path with rollback and undo/redo |
-| F2-007 | 2 | NOT_TESTED | Canonical rebuild and roundtrip invalidate stale derivatives |
-| F2-008 | 2 | NOT_TESTED | Manufacturing Geometry Interpreter V2 uses source topology, hypotheses and independent reconstruction |
-| F2-009 | 2 | NOT_TESTED | Interpreter exact READY requires two-way BREP proof and false READY remains zero |
-| F2-010 | 2 | NOT_TESTED | Existing faces, contact, scribing, identification, capability and neutral-job chain remains authoritative |
-| F2-011 | 2 | NOT_TESTED | Profile nesting preserves machine/tool/stock/remnant constraints and deterministic proof |
-| F2-012 | 2 | NOT_TESTED | Plate nesting supports polygon geometry, holes, grain, rotations, remnants, locks and exact validation |
-| F2-013 | 2 | NOT_TESTED | Converter capability registry blocks every feature not proven by serializer and reimport comparator |
-| F2-014 | 2 | NOT_TESTED | Productie screens and controls operate on the same canonical project and selection |
-| F2-015 | 2 | NOT_TESTED | Routing, nesting and production state survive save and reopen |
+| F1-001 | 1 | PASS | All active requirement sources are versioned and reconciled without silent deletion |
+| F1-002 | 1 | PASS | Canonical product authorities remain unique and no parallel Viewer/Project/BOM engines are introduced |
+| F1-003 | 1 | PASS | IFC geometry uses a bounded persistent process worker pool with recovery and clean shutdown |
+| F1-004 | 1 | PASS | Geometry priority is dynamic, viewport-aware, hysteretic and starvation-safe |
+| F1-005 | 1 | PASS | MeshCache V2 persists complete mesh payloads atomically and rejects corruption |
+| F1-006 | 1 | PASS | Scene uploads are generation-safe and bounded by per-frame time budgets |
+| F1-007 | 1 | PASS | ViewerPerformanceGovernor controls interaction, recovery and idle rendering quality including MSAA |
+| F1-008 | 1 | PASS | Packaged cold, warm and same-session metrics include first usable, exact milestones, p95/p99 and memory/process counts |
+| F1-009 | 1 | PASS | A real ten-minute OpenGL Viewer soak proves bounded actors, workers and memory |
+| F1-010 | 1 | PASS | Viewer interaction, selection, visibility, section, measurement and saved-view behavior remains functional |
+| F1-011 | 1 | PASS | Unified intake handles IFC, STEP, NC1, Trusted PDF, External PDF and project packages fail-closed |
+| F1-012 | 1 | PASS | Project state and user preferences are versioned, separated and recover safely |
+| F1-013 | 1 | PASS | The exact primary navigation is Project, Viewer, Productie, Controle, Uitvoer |
+| F1-014 | 1 | PASS | V5.2 design system is light-first with a dark preference smoke path and yellow whole-object selection |
+| F1-015 | 1 | PASS | Owned controls use stable ui_test_id identity and central control/icon registries |
+| F2-001 | 2 | PASS | BOM is the immutable quantity truth with exact reconciliation and full traceability |
+| F2-002 | 2 | PASS | BOM and Machines joins production state through canonical IDs |
+| F2-003 | 2 | PASS | Machine routing has one versioned AUTO/MANUAL assignment authority |
+| F2-004 | 2 | PASS | Invalid machine overrides remain REVIEW/BLOCKED and never authorize transfer |
+| F2-005 | 2 | PASS | Machine library validates ranges, tools, operations, priorities and active state |
+| F2-006 | 2 | PASS | Workbench remains the single transactional write path with rollback and undo/redo |
+| F2-007 | 2 | PASS | Canonical rebuild and roundtrip invalidate stale derivatives |
+| F2-008 | 2 | PASS | Manufacturing Geometry Interpreter V2 uses source topology, hypotheses and independent reconstruction |
+| F2-009 | 2 | PASS | Interpreter exact READY requires two-way BREP proof and false READY remains zero |
+| F2-010 | 2 | PASS | Existing faces, contact, scribing, identification, capability and neutral-job chain remains authoritative |
+| F2-011 | 2 | PASS | Profile nesting preserves machine/tool/stock/remnant constraints and deterministic proof |
+| F2-012 | 2 | PASS | Plate nesting supports polygon geometry, holes, grain, rotations, remnants, locks and exact validation |
+| F2-013 | 2 | PASS | Converter capability registry blocks every feature not proven by serializer and reimport comparator |
+| F2-014 | 2 | PASS | Productie screens and controls operate on the same canonical project and selection |
+| F2-015 | 2 | PASS | Routing, nesting and production state survive save and reopen |
 | F3-001 | 3 | NOT_TESTED | One production drawing engine emits vector geometry, dimensions, annotations and title blocks |
 | F3-002 | 3 | NOT_TESTED | Production drawing PDF remains sharp at 800 percent and is not a full-page raster |
 | F3-003 | 3 | NOT_TESTED | Drawing linter blocks incomplete, stale, clipped or raster-only production pages |
