@@ -1,0 +1,257 @@
+{
+  "application": "CWS Convertor",
+  "application_version": "0.10.18-beta-dev",
+  "checks": [
+    {
+      "details": {
+        "expression_result": 10.0,
+        "native_module_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\_casadi.pyd",
+        "package_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi",
+        "required_dlls": {
+          "libcasadi.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libcasadi.dll",
+          "libgcc_s_seh-1.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libgcc_s_seh-1.dll",
+          "libstdc++-6.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libstdc++-6.dll",
+          "libwinpthread-1.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libwinpthread-1.dll"
+        },
+        "version": "3.7.2"
+      },
+      "name": "casadi",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "cadquery_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\cadquery\\__init__.py",
+        "cadquery_version": "2.8.0",
+        "drilled_volume_mm3": 49214.601836602546,
+        "expected_drilled_volume_mm3": 49214.60183660255,
+        "ocp_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\OCP\\__init__.py",
+        "ocp_point": [
+          1.0,
+          2.0,
+          3.0
+        ],
+        "ocp_version": "7.9.3.1.1",
+        "plate_bbox_mm": [
+          100.0,
+          50.0,
+          10.0
+        ],
+        "plate_volume_mm3": 49999.999999999985,
+        "valid_solid": true
+      },
+      "name": "cadquery_ocp",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "module_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\ifcopenshell\\__init__.py",
+        "project_count": 1,
+        "schema": "IFC4",
+        "serialized_bytes": 331,
+        "version": "0.8.5"
+      },
+      "name": "ifcopenshell",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "module_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\fitz\\__init__.py",
+        "page_count": 1,
+        "pdf_bytes": 755,
+        "version": "unknown"
+      },
+      "name": "pymupdf",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "determinant": -2.0,
+        "matplotlib_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\matplotlib\\__init__.py",
+        "matplotlib_version": "3.10.8",
+        "numpy_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\numpy\\__init__.py",
+        "numpy_version": "2.3.5",
+        "pillow_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\PIL\\Image.py",
+        "pillow_version": "unknown",
+        "rendered_bytes": 10000,
+        "scipy_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\scipy\\__init__.py",
+        "scipy_version": "1.18.0"
+      },
+      "name": "scientific_rendering",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "distribution_version": "unknown",
+        "event_loop_processed": true,
+        "platform": "offscreen",
+        "version": "6.9.2",
+        "widget_created": true
+      },
+      "name": "pyside6",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "geometry_count": 0,
+        "headless_controller": "passed",
+        "mesh_count": 0,
+        "node_count": 2,
+        "production_owner": "cws_convertor.project",
+        "project_id": "51530962-3b2c-42b9-a338-b49875daca4e",
+        "scene_hash": "ee4fdacaef7d151263b6a1085fd815464673b17139b22dac468c3fc689e2f060",
+        "selected_entity_id": "viewer-runtime-part",
+        "steel_model_snapshot_sha256": "9135d8088894f4ae6968ac3436c0e8c957205463b3421b1edae9e0499fd0e535",
+        "viewer_host_snapshot_sha256": "7d1c25be231b8f49023643c88a0e8a884ffc66dadb5ca9b1c354d9b2cbed5100",
+        "warnings": []
+      },
+      "name": "viewer_integration",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "backend": "occt_ais_exact_brep",
+        "native_window_created": true,
+        "picked_subshape_id": "face-9ba29da047094001",
+        "source_edge_count": 24,
+        "source_face_count": 10,
+        "source_vertex_count": 16,
+        "stable_pick_match": true
+      },
+      "name": "exact_occt_viewer",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "backend": "vtk_offscreen_png",
+        "mode": "offscreen_png_render",
+        "png_bytes": 11306,
+        "viewport": [
+          160,
+          120
+        ],
+        "vtk_version": "9.6.2"
+      },
+      "name": "vtk_viewer",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "artifact_bytes": {
+          "ifc": 29619,
+          "nc1": 7784,
+          "pdf": 23618,
+          "step": 23658
+        },
+        "formats": {
+          "ifc": "passed",
+          "nc1": "passed",
+          "pdf": "passed",
+          "step": "passed"
+        },
+        "production_package": {
+          "checked_files": 28,
+          "formats": [
+            "nc1",
+            "step",
+            "ifc",
+            "production_pdf",
+            "dxf",
+            "csv",
+            "label_pdf",
+            "preview_png",
+            "json"
+          ],
+          "manifest_sha256": "a3b1c8757f158adc6b41f7fc24c907b8ffaa64e64e0c287f7503c70d54962d54",
+          "status": "passed"
+        },
+        "status": "passed"
+      },
+      "name": "project_roundtrips",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "approval_sha256": "08fe0cb2667f34a6d039d5c71b9b5200858a05c1f2e160ea1819a278aca2c764",
+        "final_release_allowed": true,
+        "heat_certificate_bound": true,
+        "measurement_passed": true,
+        "plan_sha256": "a48c313781dde9890d2f45899076e511339083b7ad68b50abc9266f40ac34a70",
+        "quality_sha256": "c5e4e026605b5c8a68b8bcc83cac1de414dd1237f2b8c56ea74f2c48b0bfe235",
+        "schema": "cws-quality-ledger-1.0"
+      },
+      "name": "quality_inspection",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "direct_machine_control_allowed": false,
+        "finite_capacity_planning": true,
+        "manufacturing": true,
+        "plate_nesting": true,
+        "plate_plan_sha256": "7892838dd86fbbfb4725ec4b9655be079dec3eb7382b1d598d0a06e2da52b523",
+        "profile_nesting_available": true,
+        "proof_center": true,
+        "schedule_sha256": "8a5ad3657cdebae1b33efae76ceb3b902f6eaba4e2636ce07d91c356118de433",
+        "schema": "cws-phase2-packaged-production-1.0",
+        "shopfloor": true
+      },
+      "name": "phase2_production",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "headless_viewer": false,
+        "production_release_allowed": false,
+        "project_opened": false,
+        "qt_platform": "offscreen",
+        "schema": "cws-convertor-v9-gui-smoke-1.0",
+        "status": "passed",
+        "tab_count": 5,
+        "tab_titles": [
+          "Project",
+          "Viewer",
+          "Productie",
+          "Controle",
+          "Uitvoer"
+        ],
+        "viewer_widget": "",
+        "window": "cwsConvertorUnifiedU4MainWindow"
+      },
+      "name": "gui",
+      "status": "passed"
+    }
+  ],
+  "generated_at_utc": "2026-08-31T21:37:40.655226+00:00",
+  "product": "CWS Convertor",
+  "production_release_allowed": false,
+  "runtime": {
+    "architecture": "AMD64",
+    "bundle_root": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal",
+    "executable": "C:\\CONVERTOR\\dist\\CWS_Convertor\\CWS_Convertor.exe",
+    "external_python_on_path": null,
+    "frozen": true,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.12.0"
+  },
+  "schema": "cws-convertor-v9-gui-smoke-1.0",
+  "status": "passed",
+  "v9_gui": {
+    "headless_viewer": false,
+    "production_release_allowed": false,
+    "project_opened": false,
+    "qt_platform": "offscreen",
+    "schema": "cws-convertor-v9-gui-smoke-1.0",
+    "status": "passed",
+    "tab_count": 5,
+    "tab_titles": [
+      "Project",
+      "Viewer",
+      "Productie",
+      "Controle",
+      "Uitvoer"
+    ],
+    "viewer_widget": "",
+    "window": "cwsConvertorUnifiedU4MainWindow"
+  },
+  "version": "0.10.18-beta-dev"
+}

@@ -1,0 +1,614 @@
+{
+  "application": "CWS Convertor",
+  "application_version": "0.10.18-beta-dev",
+  "checks": [
+    {
+      "details": {
+        "expression_result": 10.0,
+        "native_module_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\_casadi.pyd",
+        "package_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi",
+        "required_dlls": {
+          "libcasadi.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libcasadi.dll",
+          "libgcc_s_seh-1.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libgcc_s_seh-1.dll",
+          "libstdc++-6.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libstdc++-6.dll",
+          "libwinpthread-1.dll": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\casadi\\libwinpthread-1.dll"
+        },
+        "version": "3.7.2"
+      },
+      "name": "casadi",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "cadquery_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\cadquery\\__init__.py",
+        "cadquery_version": "2.8.0",
+        "drilled_volume_mm3": 49214.601836602546,
+        "expected_drilled_volume_mm3": 49214.60183660255,
+        "ocp_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\OCP\\__init__.py",
+        "ocp_point": [
+          1.0,
+          2.0,
+          3.0
+        ],
+        "ocp_version": "7.9.3.1.1",
+        "plate_bbox_mm": [
+          100.0,
+          50.0,
+          10.0
+        ],
+        "plate_volume_mm3": 49999.999999999985,
+        "valid_solid": true
+      },
+      "name": "cadquery_ocp",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "module_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\ifcopenshell\\__init__.py",
+        "project_count": 1,
+        "schema": "IFC4",
+        "serialized_bytes": 331,
+        "version": "0.8.5"
+      },
+      "name": "ifcopenshell",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "module_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\fitz\\__init__.py",
+        "page_count": 1,
+        "pdf_bytes": 755,
+        "version": "unknown"
+      },
+      "name": "pymupdf",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "determinant": -2.0,
+        "matplotlib_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\matplotlib\\__init__.py",
+        "matplotlib_version": "3.10.8",
+        "numpy_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\numpy\\__init__.py",
+        "numpy_version": "2.3.5",
+        "pillow_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\PIL\\Image.py",
+        "pillow_version": "unknown",
+        "rendered_bytes": 10000,
+        "scipy_path": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal\\scipy\\__init__.py",
+        "scipy_version": "1.18.0"
+      },
+      "name": "scientific_rendering",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "distribution_version": "unknown",
+        "event_loop_processed": true,
+        "platform": "offscreen",
+        "version": "6.9.2",
+        "widget_created": true
+      },
+      "name": "pyside6",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "geometry_count": 0,
+        "headless_controller": "passed",
+        "mesh_count": 0,
+        "node_count": 2,
+        "production_owner": "cws_convertor.project",
+        "project_id": "3311c0f9-75ba-45f0-952d-c971a3203854",
+        "scene_hash": "9c18eebf020a6266a5973030733f68a1a970ede90f68a1815d66517f6cfb1c10",
+        "selected_entity_id": "viewer-runtime-part",
+        "steel_model_snapshot_sha256": "5e34616665b67dff15c317aee11902ef62d1c57b8494bf143318d741a4ebc02d",
+        "viewer_host_snapshot_sha256": "f47ae48d31ecf4543e1fc757ee737442dbc6fa660f370389a9e6f433d3c9bd8c",
+        "warnings": []
+      },
+      "name": "viewer_integration",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "backend": "occt_ais_exact_brep",
+        "native_window_created": true,
+        "picked_subshape_id": "face-9ba29da047094001",
+        "source_edge_count": 24,
+        "source_face_count": 10,
+        "source_vertex_count": 16,
+        "stable_pick_match": true
+      },
+      "name": "exact_occt_viewer",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "backend": "vtk_offscreen_png",
+        "mode": "offscreen_png_render",
+        "png_bytes": 11306,
+        "viewport": [
+          160,
+          120
+        ],
+        "vtk_version": "9.6.2"
+      },
+      "name": "vtk_viewer",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "artifact_bytes": {
+          "ifc": 29619,
+          "nc1": 7784,
+          "pdf": 23612,
+          "step": 23658
+        },
+        "formats": {
+          "ifc": "passed",
+          "nc1": "passed",
+          "pdf": "passed",
+          "step": "passed"
+        },
+        "production_package": {
+          "checked_files": 28,
+          "formats": [
+            "nc1",
+            "step",
+            "ifc",
+            "production_pdf",
+            "dxf",
+            "csv",
+            "label_pdf",
+            "preview_png",
+            "json"
+          ],
+          "manifest_sha256": "0501e7505358fdf388b4b5e7933697f0ea74f20de5c3717b21b1138849da959f",
+          "status": "passed"
+        },
+        "status": "passed"
+      },
+      "name": "project_roundtrips",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "approval_sha256": "08fe0cb2667f34a6d039d5c71b9b5200858a05c1f2e160ea1819a278aca2c764",
+        "final_release_allowed": true,
+        "heat_certificate_bound": true,
+        "measurement_passed": true,
+        "plan_sha256": "a48c313781dde9890d2f45899076e511339083b7ad68b50abc9266f40ac34a70",
+        "quality_sha256": "c5e4e026605b5c8a68b8bcc83cac1de414dd1237f2b8c56ea74f2c48b0bfe235",
+        "schema": "cws-quality-ledger-1.0"
+      },
+      "name": "quality_inspection",
+      "status": "passed"
+    },
+    {
+      "details": {
+        "direct_machine_control_allowed": false,
+        "finite_capacity_planning": true,
+        "manufacturing": true,
+        "plate_nesting": true,
+        "plate_plan_sha256": "7892838dd86fbbfb4725ec4b9655be079dec3eb7382b1d598d0a06e2da52b523",
+        "profile_nesting_available": true,
+        "proof_center": true,
+        "schedule_sha256": "8a5ad3657cdebae1b33efae76ceb3b902f6eaba4e2636ce07d91c356118de433",
+        "schema": "cws-phase2-packaged-production-1.0",
+        "shopfloor": true
+      },
+      "name": "phase2_production",
+      "status": "passed"
+    }
+  ],
+  "generated_at_utc": "2026-08-31T21:37:33.181683+00:00",
+  "integration": {
+    "check_count": 6,
+    "checks": [
+      {
+        "evidence": {
+          "bom_entity_count": 5,
+          "canonical_entity_count": 5,
+          "duplicate_scene_entity_ids": [],
+          "grid_entity_count": 5,
+          "missing_in_bom": [],
+          "missing_in_grid": [],
+          "missing_in_scene": [],
+          "passed": true,
+          "project_id": "d2046d22-e0cf-4285-9f06-c6f80109a6d5",
+          "project_object_identity_preserved": true,
+          "scene_entity_count": 5,
+          "schema": "cws-v9-identity-audit-1.0",
+          "unexpected_scene_entities": [
+            "viewer-group:assembly",
+            "viewer-group:fastener",
+            "viewer-group:part",
+            "viewer-group:purchased_item",
+            "viewer-group:weld"
+          ]
+        },
+        "name": "single-project-identity",
+        "status": "passed"
+      },
+      {
+        "evidence": {
+          "changed_at": "2026-08-31T21:37:30Z",
+          "entity_ids": [
+            "part-v9"
+          ],
+          "feature_id": "",
+          "origin": "selftest",
+          "primary_entity_id": "part-v9",
+          "schema": "cws-application-selection-1.0",
+          "subshape_id": ""
+        },
+        "name": "tree-grid-viewer-selection",
+        "status": "passed"
+      },
+      {
+        "evidence": {
+          "entity_ids": [
+            "part-v9"
+          ],
+          "group_id": "PART-c38e96350dcf94fc"
+        },
+        "name": "bom-selection-identity",
+        "status": "passed"
+      },
+      {
+        "evidence": {
+          "changed_at": "2026-08-31T21:37:30Z",
+          "entity_ids": [
+            "part-v9"
+          ],
+          "feature_id": "feature:selftest",
+          "origin": "pdf",
+          "primary_entity_id": "part-v9",
+          "schema": "cws-application-selection-1.0",
+          "subshape_id": ""
+        },
+        "name": "pdf-feature-selection",
+        "status": "passed"
+      },
+      {
+        "evidence": {
+          "allowed": {
+            "ifc": false,
+            "json": false,
+            "nc1": false,
+            "production_pdf": false,
+            "review_pdf": false,
+            "step": false
+          },
+          "blocking_codes": [
+            "CWS-EXP-010",
+            "CWS-EXP-101",
+            "CWS-EXP-110",
+            "CWS-EXP-111",
+            "CWS-EXP-120"
+          ],
+          "messages": {
+            "ifc": [
+              {
+                "code": "CWS-EXP-010",
+                "evidence": {},
+                "field": "classification",
+                "message": "Onderdeel is nog niet geclassificeerd",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-101",
+                "evidence": {},
+                "field": "classification",
+                "message": "IFC is alleen toegestaan voor een bevestigd maakdeel",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-120",
+                "evidence": {},
+                "field": "trusted_artifacts",
+                "message": "Geen gevalideerd canoniek model of vertrouwd IFC-artefact beschikbaar",
+                "severity": "error"
+              }
+            ],
+            "json": [
+              {
+                "code": "CWS-EXP-010",
+                "evidence": {},
+                "field": "classification",
+                "message": "Onderdeel is nog niet geclassificeerd",
+                "severity": "error"
+              }
+            ],
+            "nc1": [
+              {
+                "code": "CWS-EXP-010",
+                "evidence": {},
+                "field": "classification",
+                "message": "Onderdeel is nog niet geclassificeerd",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-101",
+                "evidence": {},
+                "field": "classification",
+                "message": "NC1 is alleen toegestaan voor een bevestigd maakdeel",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-110",
+                "evidence": {},
+                "field": "feature_validation_status",
+                "message": "Productiefeatures zijn niet volledig gevalideerd voor NC1",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-111",
+                "evidence": {},
+                "field": "local_axes",
+                "message": "Lokale productieassen/referentiezijden ontbreken",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-120",
+                "evidence": {},
+                "field": "trusted_artifacts",
+                "message": "Geen gevalideerd canoniek model of vertrouwd NC1-artefact beschikbaar",
+                "severity": "error"
+              }
+            ],
+            "production_pdf": [
+              {
+                "code": "CWS-EXP-010",
+                "evidence": {},
+                "field": "classification",
+                "message": "Onderdeel is nog niet geclassificeerd",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-101",
+                "evidence": {},
+                "field": "classification",
+                "message": "PRODUCTION_PDF is alleen toegestaan voor een bevestigd maakdeel",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-120",
+                "evidence": {},
+                "field": "trusted_artifacts",
+                "message": "Geen gevalideerd canoniek model of vertrouwd PRODUCTION_PDF-artefact beschikbaar",
+                "severity": "error"
+              }
+            ],
+            "review_pdf": [
+              {
+                "code": "CWS-EXP-010",
+                "evidence": {},
+                "field": "classification",
+                "message": "Onderdeel is nog niet geclassificeerd",
+                "severity": "error"
+              }
+            ],
+            "step": [
+              {
+                "code": "CWS-EXP-010",
+                "evidence": {},
+                "field": "classification",
+                "message": "Onderdeel is nog niet geclassificeerd",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-101",
+                "evidence": {},
+                "field": "classification",
+                "message": "STEP is alleen toegestaan voor een bevestigd maakdeel",
+                "severity": "error"
+              },
+              {
+                "code": "CWS-EXP-120",
+                "evidence": {},
+                "field": "trusted_artifacts",
+                "message": "Geen gevalideerd canoniek model of vertrouwd STEP-artefact beschikbaar",
+                "severity": "error"
+              }
+            ]
+          },
+          "part_id": "part-v9",
+          "production_ready": false,
+          "viewer_can_override": false
+        },
+        "name": "viewer-cannot-bypass-production-gate",
+        "status": "passed"
+      },
+      {
+        "evidence": {
+          "available": false,
+          "blocking_codes": [
+            "CWS-V9-EXACT-SOURCE-FORMAT-UNSUPPORTED"
+          ],
+          "entity_id": "part-v9",
+          "notes": [
+            "Projectdisplay remains available; exact production review stays blocked."
+          ],
+          "production_release_allowed": false,
+          "source_format": "SYNTHETIC",
+          "source_path": "",
+          "status": "blocked"
+        },
+        "name": "exact-workbench-stays-evidence-gated",
+        "status": "passed"
+      }
+    ],
+    "schema": "cws-v9-integration-selftest-1.0",
+    "status": "passed"
+  },
+  "native": {
+    "check_count": 5,
+    "checks": [
+      {
+        "details": {
+          "node_count": 2,
+          "scene_hash": "4d6d70282278fd180c1a27460fe39d439c01b885a5fa0858d97d5dad79f13ba4"
+        },
+        "name": "scene-create-validate",
+        "status": "passed"
+      },
+      {
+        "details": {
+          "scene_hash": "4d6d70282278fd180c1a27460fe39d439c01b885a5fa0858d97d5dad79f13ba4"
+        },
+        "name": "scene-json-roundtrip",
+        "status": "passed"
+      },
+      {
+        "details": {
+          "hidden_count": 1,
+          "selection": [
+            "node:part"
+          ],
+          "viewpoint_id": "viewpoint-e137bff0-83af-4070-8802-bde015c0e86b"
+        },
+        "name": "headless-controller-state",
+        "status": "passed"
+      },
+      {
+        "details": {
+          "api_version": "0.7.0",
+          "cwd": "C:\\Users\\CE9AC~1.WES\\AppData\\Local\\Temp\\cws-phase1-24fcd44-rx18k3dv",
+          "environment": {
+            "PATH_ENTRY_COUNT": "12",
+            "PYTHONPATH": "",
+            "QT_API": "",
+            "QT_QPA_PLATFORM": ""
+          },
+          "executable": "C:\\CONVERTOR\\dist\\CWS_Convertor\\CWS_Convertor.exe",
+          "forbidden_reference_count": 0,
+          "frozen": true,
+          "platform": "Windows-11-10.0.26200-SP0",
+          "probes": [
+            {
+              "available": true,
+              "error": "",
+              "evidence": {
+                "expression_result": "10.000000"
+              },
+              "imported": true,
+              "module": "casadi",
+              "status": "ok",
+              "version": "3.7.2"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {
+                "box_volume_mm3": "50000.000000",
+                "drilled_volume_mm3": "49214.601837"
+              },
+              "imported": true,
+              "module": "cadquery",
+              "status": "ok",
+              "version": "2.8.0"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {},
+              "imported": true,
+              "module": "OCP",
+              "status": "ok",
+              "version": "7.9.3.1"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {},
+              "imported": true,
+              "module": "ifcopenshell",
+              "status": "ok",
+              "version": "0.8.5"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {
+                "minimal_pdf_bytes": "460"
+              },
+              "imported": true,
+              "module": "fitz",
+              "status": "ok",
+              "version": "1.26.7"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {},
+              "imported": true,
+              "module": "matplotlib",
+              "status": "ok",
+              "version": "3.10.8"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {},
+              "imported": true,
+              "module": "numpy",
+              "status": "ok",
+              "version": "2.3.5"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {
+                "qt_version": "6.9.2"
+              },
+              "imported": true,
+              "module": "PySide6",
+              "status": "ok",
+              "version": "6.9.2"
+            },
+            {
+              "available": true,
+              "error": "",
+              "evidence": {
+                "sphere_points": "50",
+                "vtk_version": "9.6.2"
+              },
+              "imported": true,
+              "module": "vtk",
+              "status": "ok",
+              "version": "9.6.2"
+            }
+          ],
+          "product": "CWS Viewer Core",
+          "python_version": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
+          "report_hash": "85075cde34061f0498be6f162df7e76cb98ebc3e7911b7b93f466b4c9074b4bc",
+          "scene_schema_version": "1.0",
+          "viewer_version": "1.0.0-dev0"
+        },
+        "name": "runtime-diagnostics",
+        "status": "passed"
+      },
+      {
+        "details": {
+          "count": 0
+        },
+        "name": "forbidden-trimble-binaries",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "product": "CWS Convertor",
+  "production_release_allowed": false,
+  "runtime": {
+    "architecture": "AMD64",
+    "bundle_root": "C:\\CONVERTOR\\dist\\CWS_Convertor\\_internal",
+    "executable": "C:\\CONVERTOR\\dist\\CWS_Convertor\\CWS_Convertor.exe",
+    "external_python_on_path": null,
+    "frozen": true,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.12.0"
+  },
+  "schema": "cws-convertor-v9-selftest-1.0",
+  "status": "passed",
+  "version": "0.10.18-beta-dev"
+}

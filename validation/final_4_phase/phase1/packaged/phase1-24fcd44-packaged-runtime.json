@@ -1,0 +1,94 @@
+{
+  "application_version": "0.10.18-beta-dev",
+  "cli_version": "CWS Convertor 0.10.18-beta-dev",
+  "generated_at_utc": "2026-08-31T21:38:11.782867+00:00",
+  "gui_checks": {
+    "cadquery_ocp": "passed",
+    "casadi": "passed",
+    "exact_occt_viewer": "passed",
+    "gui": "passed",
+    "ifcopenshell": "passed",
+    "phase2_production": "passed",
+    "project_roundtrips": "passed",
+    "pymupdf": "passed",
+    "pyside6": "passed",
+    "quality_inspection": "passed",
+    "scientific_rendering": "passed",
+    "viewer_integration": "passed",
+    "vtk_viewer": "passed"
+  },
+  "gui_process_attempts": {
+    "gui_smoke": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "report_status": "passed",
+          "returncode": 0,
+          "returncode_hex": "0x00000000"
+        }
+      ],
+      "retried": false
+    },
+    "native_selftest": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "report_status": "passed",
+          "returncode": 0,
+          "returncode_hex": "0x00000000"
+        }
+      ],
+      "retried": false
+    }
+  },
+  "ifc_source_geometry_smoke": {
+    "geometry_kind": "triangulated_mesh",
+    "production_geometry_exact": false,
+    "selection_verified": true,
+    "status": "passed"
+  },
+  "label": "phase1-24fcd44",
+  "native_checks": {
+    "cadquery_ocp": "passed",
+    "casadi": "passed",
+    "exact_occt_viewer": "passed",
+    "ifcopenshell": "passed",
+    "phase2_production": "passed",
+    "project_roundtrips": "passed",
+    "pymupdf": "passed",
+    "pyside6": "passed",
+    "quality_inspection": "passed",
+    "scientific_rendering": "passed",
+    "viewer_integration": "passed",
+    "vtk_viewer": "passed"
+  },
+  "nc1_to_step_smoke": {
+    "status": "passed",
+    "step_bytes": 33102
+  },
+  "production_package_smoke": {
+    "checked_files": 28,
+    "formats": [
+      "nc1",
+      "step",
+      "ifc",
+      "production_pdf",
+      "dxf",
+      "csv",
+      "label_pdf",
+      "preview_png",
+      "json"
+    ],
+    "manifest_sha256": "0501e7505358fdf388b4b5e7933697f0ea74f20de5c3717b21b1138849da959f",
+    "status": "passed"
+  },
+  "project_smoke": "passed",
+  "python_on_child_path": false,
+  "runtime_directory": "C:\\CONVERTOR\\dist\\CWS_Convertor",
+  "status": "passed",
+  "steel_model_foundation_smoke": {
+    "contract_version": "1.0",
+    "entities": 1,
+    "status": "passed"
+  }
+}
