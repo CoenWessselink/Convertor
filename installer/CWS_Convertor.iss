@@ -39,7 +39,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Maak een snelkoppeling op het bureaublad"; GroupDescription: "Snelkoppelingen:"; Flags: unchecked
-Name: "fileassoc"; Description: "Koppel CWS Convertor-projecten, .nc, .nc1, .step, .stp en .ifc; voeg een PDF-contextmenu toe"; GroupDescription: "Bestandskoppelingen:"; Flags: checkedonce
+Name: "fileassoc"; Description: "Koppel CWS Convertor-projecten, .nc, .nc1, .step, .stp en .ifc; voeg een PDF-contextmenu toe"; GroupDescription: "Bestandskoppelingen:"
 
 [Files]
 Source: "..\dist\CWS_Convertor\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
