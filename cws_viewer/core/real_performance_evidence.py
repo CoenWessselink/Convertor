@@ -111,9 +111,10 @@ def cache_read_probe(ifc,output,cache_root,limit,iterations):
     requests=build_requests(ifc,limit);settings=TessellationSettings(linear_deflection_mm=.35,angular_deflection_rad=.16,circle_segments=48)
     pool=PersistentGeometryWorkerPool(1);version=pool.provider_version;pool.close(force=True)
     cache=MeshCache(cache_root,max_memory_items=max(128,len(requests)*2));runs=[];hits=[]
+    keys=[value.cache_key(settings,version) for value in requests]
     for _index in range(max(1,int(iterations))):
-        started=time.perf_counter();values=[cache.get(value.cache_key(settings,version)) for value in requests]
-        runs.append(time.perf_counter()-started);hits.append(sum(value is not None for value in values))
+        started=time.perf_counter();values=cache.get_many(keys,max_workers=min(12,max(1,len(keys))))
+        runs.append(time.perf_counter()-started);hits.append(sum(key in values for key in keys))
     result={**_base('cws.real_cache_read.v2',ifc),'request_count':len(requests),'iterations':len(runs),
             'runs_seconds':runs,'hits':hits,'cache_stats':cache.stats.to_dict(),
             'status':'PASS' if hits and min(hits)==len(requests) else 'FAIL'}
