@@ -109,6 +109,11 @@ if qt_available():
                     "U4 workspace switching vereist behoud van project, selectie, camera en visibility"
                 )
             key = str(workspace).strip().lower()
+            key = {
+                "drawing": "pdf",
+                "drawings": "pdf",
+                "tekeningen": "pdf",
+            }.get(key, key)
             binding = self.context_actions.activate(key)
             if binding is None:
                 return False
