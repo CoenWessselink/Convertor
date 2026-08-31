@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from dataclasses import asdict
 from typing import Any
 
 from PySide6 import QtCore, QtWidgets
@@ -17,6 +18,7 @@ from cws_convertor.manufacturing.machine_settings import (
     return_remnant_to_stock,
     set_trade_lengths,
 )
+from cws_convertor.production import MaintenanceWindow, MaterialAvailability, Phase2ProductionState
 
 
 def _float(value: str) -> float:
@@ -55,6 +57,8 @@ class MachineSettingsPanel(QtWidgets.QWidget):
         self.tabs.addTab(self.remnant_page, "Reststukken")
         self.tool_table = self._table(("Gereedschap", "Type", "Diameter", "Lengte", "Machine"))
         self.tabs.addTab(self.tool_table, "Gereedschappen")
+        self.planning_page = self._planning_page()
+        self.tabs.addTab(self.planning_page, "Planning & beschikbaarheid")
         self.status = QtWidgets.QLabel("Open een project om instellingen te beheren.")
         root.addWidget(self.status)
 
@@ -131,6 +135,51 @@ class MachineSettingsPanel(QtWidgets.QWidget):
         layout.addWidget(self.remnant_table, 1)
         return page
 
+    def _planning_page(self) -> QtWidgets.QWidget:
+        page = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(page)
+        material_group = QtWidgets.QGroupBox("Materiaalbeschikbaarheid")
+        material_layout = QtWidgets.QVBoxLayout(material_group)
+        material_form = QtWidgets.QHBoxLayout()
+        self.planning_material_id = self._line("Materiaal-ID", "S355")
+        self.planning_material_quantity = self._line("Aantal", "1")
+        self.planning_material_at = self._line("Beschikbaar vanaf (ISO)", "2026-09-01T06:00:00Z")
+        self.planning_material_order = self._line("Order (optioneel)")
+        self.planning_material_operation = self._line("Bewerking (optioneel)")
+        add_material = QtWidgets.QPushButton("Vrijgave toevoegen")
+        add_material.setObjectName("planningAddMaterial")
+        add_material.clicked.connect(self._add_material_availability)
+        for widget in (self.planning_material_id, self.planning_material_quantity, self.planning_material_at, self.planning_material_order, self.planning_material_operation, add_material):
+            material_form.addWidget(widget)
+        material_layout.addLayout(material_form)
+        self.material_availability_table = self._table(("ID", "Materiaal", "Aantal", "Beschikbaar vanaf", "Order", "Bewerking"))
+        material_layout.addWidget(self.material_availability_table)
+        layout.addWidget(material_group)
+
+        maintenance_group = QtWidgets.QGroupBox("Onderhoudsvensters")
+        maintenance_layout = QtWidgets.QVBoxLayout(maintenance_group)
+        maintenance_form = QtWidgets.QHBoxLayout()
+        self.planning_resource_id = self._line("Resource-ID", "machine-1")
+        self.planning_maintenance_start = self._line("Start (ISO)", "2026-09-01T08:00:00Z")
+        self.planning_maintenance_end = self._line("Einde (ISO)", "2026-09-01T09:00:00Z")
+        self.planning_maintenance_reason = self._line("Reden", "Gepland onderhoud")
+        add_maintenance = QtWidgets.QPushButton("Onderhoud toevoegen")
+        add_maintenance.setObjectName("planningAddMaintenance")
+        add_maintenance.clicked.connect(self._add_maintenance_window)
+        for widget in (self.planning_resource_id, self.planning_maintenance_start, self.planning_maintenance_end, self.planning_maintenance_reason, add_maintenance):
+            maintenance_form.addWidget(widget)
+        maintenance_layout.addLayout(maintenance_form)
+        self.maintenance_table = self._table(("ID", "Resource", "Start", "Einde", "Reden"))
+        maintenance_layout.addWidget(self.maintenance_table)
+        layout.addWidget(maintenance_group)
+
+        schedule_group = QtWidgets.QGroupBox("Canonieke finite-capacity schedule")
+        schedule_layout = QtWidgets.QVBoxLayout(schedule_group)
+        self.schedule_table = self._table(("Schedule-ID", "Order", "Bewerking", "Resource", "Start", "Einde", "Status"))
+        schedule_layout.addWidget(self.schedule_table)
+        layout.addWidget(schedule_group, 1)
+        return page
+
     def set_project(self, project: Any, persist_callback: Any = None) -> None:
         self.project = project
         self.persist_callback = persist_callback
@@ -145,7 +194,7 @@ class MachineSettingsPanel(QtWidgets.QWidget):
 
     def refresh(self) -> None:
         project = self.project
-        for table in (self.machine_table, self.trade_table, self.plate_table, self.remnant_table, self.tool_table):
+        for table in (self.machine_table, self.trade_table, self.plate_table, self.remnant_table, self.tool_table, self.material_availability_table, self.maintenance_table, self.schedule_table):
             table.setRowCount(0)
         self.trade_profile.clear()
         self.remnant_profile.clear()
@@ -172,7 +221,18 @@ class MachineSettingsPanel(QtWidgets.QWidget):
             self.remnant_table.item(row, 0).setData(QtCore.Qt.ItemDataRole.UserRole, item.internal_id)
         tool_rows = [(tool_id, value.get("tool_type", ""), value.get("diameter_mm", ""), value.get("length_mm", ""), ", ".join(value.get("allowed_machine_ids", []))) for tool_id, value in sorted(dict(getattr(project, "profile_nesting_tool_library", {}) or {}).items())]
         self._fill(self.tool_table, tool_rows)
-        self.status.setText(f"{len(machine_rows)} machineparameters | {len(trade_rows)} profielbronnen | {len(plate_rows)} platen | {len(remnants)} reststukken")
+        planning = dict(getattr(project, "settings", {}).get("production_planning") or {})
+        materials = tuple(MaterialAvailability(**dict(item)) for item in planning.get("material_availability", []))
+        maintenance = tuple(MaintenanceWindow(**dict(item)) for item in planning.get("maintenance_windows", []))
+        self._fill(self.material_availability_table, [(item.availability_id, item.material_id, item.quantity, item.available_at, item.order_id or "-", item.operation_id or "-") for item in materials])
+        self._fill(self.maintenance_table, [(item.maintenance_id, item.resource_id, item.starts_at, item.ends_at, item.reason) for item in maintenance])
+        try:
+            schedule = Phase2ProductionState.from_project(project).schedule
+        except (KeyError, TypeError, ValueError):
+            schedule = None
+        operations = tuple(schedule.operations) if schedule is not None else ()
+        self._fill(self.schedule_table, [(item.schedule_id, item.order_id, item.operation_id, item.resource_id, item.starts_at, item.ends_at, item.status) for item in operations])
+        self.status.setText(f"{len(machine_rows)} machineparameters | {len(trade_rows)} profielbronnen | {len(plate_rows)} platen | {len(remnants)} reststukken | {len(materials)} materiaalvrijgaven | {len(maintenance)} onderhoudsvensters | {len(operations)} geplande bewerkingen")
 
     def _persist(self) -> None:
         if callable(self.persist_callback):
@@ -246,6 +306,41 @@ class MachineSettingsPanel(QtWidgets.QWidget):
         return_remnant_to_stock(self.project, identifier)
         self._persist()
 
+    def _planning_store(self) -> dict[str, Any]:
+        if self.project is None:
+            raise ValueError("Open eerst een project")
+        settings = getattr(self.project, "settings", None)
+        if not isinstance(settings, dict):
+            raise ValueError("Projectsettings zijn niet schrijfbaar")
+        return settings.setdefault("production_planning", {"material_availability": [], "maintenance_windows": []})
+
+    def _add_material_availability(self) -> None:
+        try:
+            store = self._planning_store()
+            values = store.setdefault("material_availability", [])
+            item = MaterialAvailability(
+                f"material:{len(values) + 1:04d}", self.planning_material_id.text().strip(),
+                self.planning_material_at.text().strip(), int(_float(self.planning_material_quantity.text())),
+                self.planning_material_order.text().strip(), self.planning_material_operation.text().strip(),
+            )
+            values.append(asdict(item))
+            self._persist()
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Materiaalvrijgave niet toegevoegd", str(exc))
+
+    def _add_maintenance_window(self) -> None:
+        try:
+            store = self._planning_store()
+            values = store.setdefault("maintenance_windows", [])
+            item = MaintenanceWindow(
+                f"maintenance:{len(values) + 1:04d}", self.planning_resource_id.text().strip(),
+                self.planning_maintenance_start.text().strip(), self.planning_maintenance_end.text().strip(),
+                self.planning_maintenance_reason.text().strip(),
+            )
+            values.append(asdict(item))
+            self._persist()
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Onderhoudsvenster niet toegevoegd", str(exc))
+
 
 __all__ = ["MachineSettingsPanel"]
-

@@ -1,0 +1,38 @@
+{
+  "checks": {
+    "all_workspaces_reachable": true,
+    "keyboard_focus_moves": true,
+    "minimum_workspace_size": true,
+    "primary_navigation_complete": true,
+    "product_header_present": true,
+    "screenshot_dimensions_valid": true,
+    "screenshot_saved": true,
+    "viewer_host_present": true,
+    "viewer_host_split_layout": true,
+    "visual_content_present": true,
+    "window_visible": true
+  },
+  "device_pixel_ratio": 2.0,
+  "focus_after": "ScrollRightButton",
+  "focus_before": "cwsPrimaryNavigationBar",
+  "logical_size": [
+    1280,
+    800
+  ],
+  "sampled_color_count": 1133,
+  "scale_factor": "2.0",
+  "schema": "cws-phase3-dpi-child-1.0",
+  "screenshot": "validation\\final_4_phase\\phase3\\dpi\\CWS_Convertor_Phase3_DPI_200_attempt1.png",
+  "screenshot_size": [
+    2560,
+    1600
+  ],
+  "status": "passed",
+  "tab_labels": [
+    "Project",
+    "Viewer",
+    "Productie",
+    "Controle",
+    "Uitvoer"
+  ]
+}

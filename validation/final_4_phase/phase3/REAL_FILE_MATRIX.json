@@ -1,0 +1,80 @@
+{
+  "fixture_count": 4,
+  "formats": [
+    "NC1",
+    "STEP",
+    "IFC",
+    "Trusted PDF"
+  ],
+  "generated_at_utc": "2026-08-31T21:50:34.185081+00:00",
+  "machine_transfer_allowed": false,
+  "rows": [
+    {
+      "bytes": 588,
+      "exactness": "deterministic_dstv",
+      "expected_identity": "P19",
+      "format": "NC1",
+      "limitations": [
+        "machine_controller_output_not_authorized"
+      ],
+      "outputs": [
+        "P19.step"
+      ],
+      "passed": true,
+      "roundtrip": "physical_nc1_to_step_generated",
+      "sha256": "27d9c6772729a0072e21308d0fb29feed069d21f64e72adc72ab02573985da7c",
+      "source": "C:\\CONVERTOR\\reference-models-local\\DSTV\\groothuis-te-tubbergen-12-aug\\P19.nc1"
+    },
+    {
+      "bytes": 118366,
+      "exactness": "native_brep",
+      "expected_identity": "ae3cb782c462a79673f246338796c7b17769ad74e0f6ee5ddf0102b5ed020d44",
+      "format": "STEP",
+      "limitations": [],
+      "outputs": [
+        "C:\\CONVERTOR\\validation\\results\\viewer-v6-real-11881-exact-source.json"
+      ],
+      "passed": true,
+      "performance": "C:\\CONVERTOR\\validation\\phases\\PHASE_1_LARGE_MODEL_PERFORMANCE.json",
+      "roundtrip": "source_result_difference_verified",
+      "sha256": "411cbc29e054a2daca351c2c0b0ad33e29f65a7159b44243488192c3e5e0fd85",
+      "source": "C:\\CONVERTOR\\validation\\v0.2_generated_step\\Pr1301.step"
+    },
+    {
+      "bytes": 822809,
+      "exactness": "semantic_import_with_proxy_or_exact_on_demand",
+      "expected_identity": "IfcProduct GlobalId set",
+      "format": "IFC",
+      "limitations": [
+        "production_exactness_requires_per_part_geometry_proof"
+      ],
+      "outputs": [
+        "semantic IFC product inventory"
+      ],
+      "passed": true,
+      "product_count": 749,
+      "roundtrip": "semantic_parse_verified",
+      "sha256": "c82d6446725790539be313942070c6c5f503af5f9cf18edf7c8ef528c82db758",
+      "source": "C:\\CONVERTOR\\reference-models-local\\IFC\\landhuis-te-de-lutte\\TAS_Landhuis te De Lutte [staal onderbouw]- Rev4 [definitief].ifc"
+    },
+    {
+      "bytes": 20196,
+      "exactness": "trusted_payload_acceptance_covered_by_phase1_gate",
+      "expected_identity": "phases",
+      "format": "Trusted PDF",
+      "limitations": [
+        "external_untrusted_pdf_remains_review_required"
+      ],
+      "outputs": [
+        "vector/trusted PDF re-import evidence"
+      ],
+      "page_count": 1,
+      "passed": true,
+      "roundtrip": "trusted_pdf_regression_verified",
+      "sha256": "a8f28418de831ee4190f9c57a4f30199b052f66ea3f5bab31e0c330694888d45",
+      "source": "C:\\CONVERTOR\\validation\\phases\\fixtures\\phase3-trusted-nc1-roundtrip.pdf"
+    }
+  ],
+  "schema": "cws-phase3-real-file-matrix-1.0",
+  "status": "passed"
+}
