@@ -70,6 +70,9 @@ def git_value(*args: str) -> str:
 
 def preflight(output: Path) -> dict[str, Any]:
     status = run(["git", "status", "--porcelain"], cwd=ROOT).stdout.strip()
+    tracked_status = run(
+        ["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT
+    ).stdout.strip()
     payload = {
         "schema": "cws.viewer-performance-preflight.v1",
         "generated_at_utc": utc_now(),
@@ -78,7 +81,10 @@ def preflight(output: Path) -> dict[str, Any]:
         "current_head_sha40": git_value("rev-parse", "HEAD"),
         "current_tree_sha40": git_value("rev-parse", "HEAD^{tree}"),
         "current_version": APP_VERSION,
-        "worktree_clean": not bool(status),
+        "worktree_clean": not bool(tracked_status),
+        "tracked_worktree_clean": not bool(tracked_status),
+        "tracked_worktree_status": tracked_status.splitlines(),
+        "untracked_artifacts": [line for line in status.splitlines() if line.startswith("?? ")],
         "worktree_status": status.splitlines(),
     }
     payload["status"] = PASS if payload["worktree_clean"] else FAIL
