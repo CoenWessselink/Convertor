@@ -1,6 +1,6 @@
 # CWS Convertor Master Requirement Traceability
 
-Generated: `2026-08-31T21:47:37.655727+00:00`
+Generated: `2026-08-31T21:53:18.816412+00:00`
 
 Active requirements: **317**
 
@@ -8,8 +8,8 @@ Active requirements: **317**
 
 | Status | Count |
 |---|---:|
-| NOT_TESTED | 124 |
-| PASS | 193 |
+| NOT_TESTED | 26 |
+| PASS | 291 |
 
 ## Requirement sources
 
@@ -62,22 +62,22 @@ Active requirements: **317**
 | F2-013 | 2 | PASS | Converter capability registry blocks every feature not proven by serializer and reimport comparator |
 | F2-014 | 2 | PASS | Productie screens and controls operate on the same canonical project and selection |
 | F2-015 | 2 | PASS | Routing, nesting and production state survive save and reopen |
-| F3-001 | 3 | NOT_TESTED | One production drawing engine emits vector geometry, dimensions, annotations and title blocks |
-| F3-002 | 3 | NOT_TESTED | Production drawing PDF remains sharp at 800 percent and is not a full-page raster |
-| F3-003 | 3 | NOT_TESTED | Drawing linter blocks incomplete, stale, clipped or raster-only production pages |
-| F3-004 | 3 | NOT_TESTED | Trusted PDF payload and hash verification fails closed on tamper |
-| F3-005 | 3 | NOT_TESTED | External PDF remains evidence/confidence gated and REVIEW_REQUIRED until proven |
-| F3-006 | 3 | NOT_TESTED | One DocumentOutputService owns preview, print and batch output |
-| F3-007 | 3 | NOT_TESTED | Ctrl+P opens the context Print Center and printer failure is fail-closed |
-| F3-008 | 3 | NOT_TESTED | Controle exposes validation, compare, manufacturability, geometry, evidence and PDF review |
-| F3-009 | 3 | NOT_TESTED | Problem Center reports blockers, errors and warnings without false green |
-| F3-010 | 3 | NOT_TESTED | Quality inspection supports plans, measurements, NCR, rework, reinspection and release blocking |
-| F3-011 | 3 | NOT_TESTED | Planning owns resources, work centers, shifts, requirements, orders and scheduled operations |
-| F3-012 | 3 | NOT_TESTED | Finite-capacity scheduling respects availability, maintenance, material, priority and due dates |
-| F3-013 | 3 | NOT_TESTED | Shopfloor transitions and quality hooks remain bounded and auditable |
-| F3-014 | 3 | NOT_TESTED | Export uses Scope to Formats to Preflight to Generate to Verify to Package without scope broadening |
-| F3-015 | 3 | NOT_TESTED | Readiness joins geometry, manufacturing, routing, nesting, drawing, quality and planning gates |
-| F3-016 | 3 | NOT_TESTED | All 25 reference and 6 support surfaces are functional in the real Qt runtime |
+| F3-001 | 3 | PASS | One production drawing engine emits vector geometry, dimensions, annotations and title blocks |
+| F3-002 | 3 | PASS | Production drawing PDF remains sharp at 800 percent and is not a full-page raster |
+| F3-003 | 3 | PASS | Drawing linter blocks incomplete, stale, clipped or raster-only production pages |
+| F3-004 | 3 | PASS | Trusted PDF payload and hash verification fails closed on tamper |
+| F3-005 | 3 | PASS | External PDF remains evidence/confidence gated and REVIEW_REQUIRED until proven |
+| F3-006 | 3 | PASS | One DocumentOutputService owns preview, print and batch output |
+| F3-007 | 3 | PASS | Ctrl+P opens the context Print Center and printer failure is fail-closed |
+| F3-008 | 3 | PASS | Controle exposes validation, compare, manufacturability, geometry, evidence and PDF review |
+| F3-009 | 3 | PASS | Problem Center reports blockers, errors and warnings without false green |
+| F3-010 | 3 | PASS | Quality inspection supports plans, measurements, NCR, rework, reinspection and release blocking |
+| F3-011 | 3 | PASS | Planning owns resources, work centers, shifts, requirements, orders and scheduled operations |
+| F3-012 | 3 | PASS | Finite-capacity scheduling respects availability, maintenance, material, priority and due dates |
+| F3-013 | 3 | PASS | Shopfloor transitions and quality hooks remain bounded and auditable |
+| F3-014 | 3 | PASS | Export uses Scope to Formats to Preflight to Generate to Verify to Package without scope broadening |
+| F3-015 | 3 | PASS | Readiness joins geometry, manufacturing, routing, nesting, drawing, quality and planning gates |
+| F3-016 | 3 | PASS | All 25 reference and 6 support surfaces are functional in the real Qt runtime |
 | F4-001 | 4 | NOT_TESTED | Dynamic full acceptance is generated from this master traceability |
 | F4-002 | 4 | NOT_TESTED | Runtime owned-control scan proves no missing, duplicate, dead or wrong-handler controls |
 | F4-003 | 4 | NOT_TESTED | Visual acceptance covers required resolutions and DPI with light primary and dark smoke |

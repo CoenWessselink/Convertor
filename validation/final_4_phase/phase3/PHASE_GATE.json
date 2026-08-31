@@ -1,0 +1,38 @@
+{
+  "phase": 3,
+  "name": "Documents, Quality, Planning, Control and Output",
+  "status": "PASS",
+  "commit": "682948e7b2fb666fe917018e79858d5f41400846",
+  "source_runtime_proven": true,
+  "false_green_count": 0,
+  "tests": [
+    {"name": "final_phase3_planning_ui_smoke", "status": "PASS"},
+    {"name": "phase3_quality_inspection_smoke", "status": "PASS", "count": 2},
+    {"name": "phase3_completion_smoke", "status": "PASS"},
+    {"name": "phase3_workspaces_gui_smoke", "status": "PASS"},
+    {"name": "part_drawing_standard_smoke", "status": "PASS"},
+    {"name": "phase3_real_file_matrix", "status": "PASS", "formats": ["NC1", "STEP", "IFC", "Trusted PDF"]},
+    {"name": "phase3_visual_dpi_smoke", "status": "PASS", "dpi_percent": [100, 125, 150, 200]},
+    {"name": "production_release_package_smoke", "status": "PASS", "count": 4}
+  ],
+  "screenshots": [
+    "validation/final_4_phase/phase3/01_drawings_pdf_light.jpg",
+    "validation/final_4_phase/phase3/02_manufacturability_light.jpg",
+    "validation/final_4_phase/phase3/03_print_center_light.jpg"
+  ],
+  "delivered": [
+    "Planning and availability controls integrated in the existing Machine-indeling surface",
+    "Material release and maintenance-window persistence in the canonical project settings",
+    "Canonical schedule visibility without a second planner",
+    "Engineering drawing, PDF and shared DocumentOutputService retained",
+    "Quality/NCR, manufacturability, revision/compare and proof-center gates retained",
+    "Print Center and scope-first export authority retained",
+    "Light UI verified at 100, 125, 150 and 200 percent DPI"
+  ],
+  "remaining_for_phase4": [
+    "Full master traceability acceptance",
+    "Fresh exact-SHA one-folder, portable and installer runtime proof",
+    "Cold HVPC 3-5 second requirement",
+    "Same-machine Trimble comparison"
+  ]
+}

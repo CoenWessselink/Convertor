@@ -1,6 +1,6 @@
 {
   "schema": "cws-active-requirements-1.0",
-  "generated_at": "2026-08-31T21:47:37.655727+00:00",
+  "generated_at": "2026-08-31T21:53:18.816412+00:00",
   "required_total": 317,
   "requirements": [
     {
@@ -719,11 +719,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-002",
@@ -742,11 +742,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-003",
@@ -765,11 +765,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-004",
@@ -788,11 +788,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-005",
@@ -812,11 +812,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-006",
@@ -835,11 +835,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-007",
@@ -859,11 +859,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-008",
@@ -882,11 +882,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-009",
@@ -905,11 +905,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-010",
@@ -928,11 +928,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-011",
@@ -951,11 +951,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-012",
@@ -974,11 +974,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-013",
@@ -998,11 +998,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-014",
@@ -1021,11 +1021,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-015",
@@ -1044,11 +1044,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F3-016",
@@ -1068,11 +1068,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "F4-001",
@@ -1828,11 +1828,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-20",
@@ -1851,11 +1851,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-21",
@@ -1874,11 +1874,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-22",
@@ -1897,11 +1897,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-23",
@@ -1920,11 +1920,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-24",
@@ -1943,11 +1943,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-25",
@@ -1966,11 +1966,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-26",
@@ -2012,11 +2012,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-28",
@@ -2035,11 +2035,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-29",
@@ -2058,11 +2058,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-SCREEN-30",
@@ -2104,11 +2104,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-nav_project",
@@ -5485,11 +5485,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_paper_size",
@@ -5508,11 +5508,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_orientation",
@@ -5531,11 +5531,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_scale",
@@ -5554,11 +5554,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_view_front",
@@ -5577,11 +5577,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_view_top",
@@ -5600,11 +5600,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_view_right",
@@ -5623,11 +5623,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_view_iso",
@@ -5646,11 +5646,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_drawing_auto_layout",
@@ -5669,11 +5669,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_drawing_generate",
@@ -5692,11 +5692,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_drawing_edit",
@@ -5715,11 +5715,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_drawing_print",
@@ -5738,11 +5738,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_drawing_export_pdf",
@@ -5761,11 +5761,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_print_content",
@@ -5784,11 +5784,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_print_scope",
@@ -5807,11 +5807,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_printer",
@@ -5830,11 +5830,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_print_paper",
@@ -5853,11 +5853,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_print_orientation",
@@ -5876,11 +5876,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-spin_print_copies",
@@ -5899,11 +5899,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_print_preview",
@@ -5922,11 +5922,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_print_run",
@@ -5945,11 +5945,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_print_pdf",
@@ -5968,11 +5968,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_print_batch",
@@ -5991,11 +5991,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_validation_run",
@@ -6014,11 +6014,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_validation_severity",
@@ -6037,11 +6037,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_validation_domain",
@@ -6060,11 +6060,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_validation_show",
@@ -6083,11 +6083,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_validation_open",
@@ -6106,11 +6106,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_validation_evidence",
@@ -6129,11 +6129,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_compare_a",
@@ -6152,11 +6152,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_compare_b",
@@ -6175,11 +6175,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_compare_run",
@@ -6198,11 +6198,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_compare_added",
@@ -6221,11 +6221,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_compare_removed",
@@ -6244,11 +6244,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_compare_changed",
@@ -6267,11 +6267,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-chk_compare_same",
@@ -6290,11 +6290,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_compare_issue",
@@ -6313,11 +6313,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_dfm_machine",
@@ -6336,11 +6336,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_dfm_run",
@@ -6359,11 +6359,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_dfm_show",
@@ -6382,11 +6382,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_dfm_machine_route",
@@ -6405,11 +6405,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_dfm_evidence",
@@ -6428,11 +6428,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-cmb_export_scope",
@@ -6451,11 +6451,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_export_formats",
@@ -6474,11 +6474,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_export_preflight",
@@ -6497,11 +6497,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_export_generate",
@@ -6520,11 +6520,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_export_verify",
@@ -6543,11 +6543,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_export_package",
@@ -6566,11 +6566,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_export_folder",
@@ -6589,11 +6589,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_report_refresh",
@@ -6612,11 +6612,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_report_open_blocker",
@@ -6635,11 +6635,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_report_print",
@@ -6658,11 +6658,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_report_export",
@@ -6681,11 +6681,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_report_package",
@@ -6704,11 +6704,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_machine_new",
@@ -6888,11 +6888,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_template_duplicate",
@@ -6911,11 +6911,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_template_logo",
@@ -6934,11 +6934,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_template_preview",
@@ -6957,11 +6957,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_template_save",
@@ -6980,11 +6980,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_template_reset",
@@ -7003,11 +7003,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-activity_jobs",
@@ -7026,11 +7026,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_activity_cancel",
@@ -7049,11 +7049,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_activity_open",
@@ -7072,11 +7072,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_activity_clear_done",
@@ -7095,11 +7095,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-problem_list",
@@ -7118,11 +7118,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_problem_open",
@@ -7141,11 +7141,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_problem_show",
@@ -7164,11 +7164,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_problem_rerun",
@@ -7187,11 +7187,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-detached_viewer_canvas",
@@ -7256,11 +7256,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-list_commands",
@@ -7279,11 +7279,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     },
     {
       "requirement_id": "UI-CONTROL-btn_command_execute",
@@ -7302,11 +7302,11 @@
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
       ],
-      "implemented": false,
-      "integrated": false,
-      "tested": false,
+      "implemented": true,
+      "integrated": true,
+      "tested": true,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "PASS"
     }
   ]
 }
