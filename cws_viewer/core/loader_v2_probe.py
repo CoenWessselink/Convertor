@@ -56,11 +56,11 @@ def _measure_pool(worker_count: int, request_count: int = 8) -> tuple[float, dic
     requests = [
         GeometryRequest(
             geometry_id=f"part-{index:02d}",
-            source_geometry_hash="0" * 64,
+            source_geometry_hash=f"{index + 1:064x}",
             source_format="IFC",
-            source_file_id="synthetic-loader-v2",
-            source_path="synthetic.ifc",
-            source_sha256="1" * 64,
+            source_file_id=f"synthetic-loader-v2-{index:02d}",
+            source_path=f"synthetic-{index:02d}.ifc",
+            source_sha256=f"{index + 100:064x}",
             source_entity_id=f"part-{index:02d}",
             source_path_verified=True,
         )
