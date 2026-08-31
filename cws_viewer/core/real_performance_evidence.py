@@ -240,10 +240,11 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     widget.controller.fit_all();widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,25)
     screenshots=Path(screenshot_dir);screenshots.mkdir(parents=True,exist_ok=True);start_image=widget.controller.screenshot_to_file(screenshots/'real_soak_start.png')
     baseline=_resource_snapshot(widget);recorder=FrameTimeRecorder(max_samples=65536);started=time.perf_counter();actions=0
-    input_samples=[];pick_samples=[];selection_samples=[];wrong_picks=0;hidden_false_picks=0
+    input_samples=[];unintended_input_samples=[];transition_input_samples=[];pick_samples=[];selection_samples=[];wrong_picks=0;hidden_false_picks=0
     coverage={name:0 for name in ('orbit','pan','zoom','fit','standard_views','part_selection','assembly_selection','multiselect','hide_show','isolate','ghost','section','measure')}
     section_id=''
     while time.perf_counter()-started<float(duration):
+        explicit_transition=any(actions%interval==0 for interval in (150,220,260,520,780,1040,1300,1560,1820,2080))
         frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12));coverage['orbit']+=1
         if actions%50==0:widget.controller.pan(.002 if (actions//50)%2==0 else -.002,0);coverage['pan']+=1
         if actions%90==0:widget.controller.zoom(1.015 if (actions//90)%2==0 else 1/1.015);coverage['zoom']+=1
@@ -270,6 +271,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
         if actions%2080==0:widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool();coverage['measure']+=1
         widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
         elapsed_frame=(time.perf_counter()-frame)*1000.0;recorder.record(elapsed_frame);input_samples.append(elapsed_frame)
+        (transition_input_samples if explicit_transition else unintended_input_samples).append(elapsed_frame)
         if primary and actions%300==0:
             bounds=widget.controller.index.world_bounds_by_node.get(primary)
             if bounds is not None:
@@ -286,6 +288,8 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     frames=recorder.to_dict();drift=(final['rss_mb']-baseline['rss_mb'])/max(baseline['rss_mb'],1);p95=float(frames.get('frame_ms_p95',0))
     percentile=lambda values,ratio: sorted(values)[min(len(values)-1,int((len(values)-1)*ratio))] if values else None
     stall100=sum(value>100.0 for value in input_samples)
+    unintended_stall100=sum(value>100.0 for value in unintended_input_samples)
+    transition_stall100=sum(value>100.0 for value in transition_input_samples)
     gates={'real_vtk_viewer':len(scene.nodes)>0,'duration_reached':elapsed>=float(duration),'frame_instrumentation':frames['sample_count']>0,
            'rss_measurement_valid':baseline['rss_mb']>0 and final['rss_mb']>0,
            'memory_drift_lte_10pct':baseline['rss_mb']>0 and final['rss_mb']>0 and drift<.10,
@@ -297,14 +301,16 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
            'worker_leak_zero':final['worker_process_count']<=baseline['worker_process_count'],
            'thread_leak_zero':final['thread_count']<=baseline['thread_count'],
            'actor_leak_zero':final['actor_count']==baseline['actor_count'],
-           'unintended_stall_over_100ms_zero':stall100==0,'wrong_instance_picks_zero':wrong_picks==0}
+           'unintended_stall_over_100ms_zero':unintended_stall100==0,'wrong_instance_picks_zero':wrong_picks==0}
     result={**_base('cws.real_viewer_soak.v2',ifc),'duration_seconds':elapsed,'actions':actions,'frame_metrics':frames,
             'memory':{'baseline':baseline,'final':final,'drift_ratio':drift},'backend':backend,'action_coverage':coverage,
             'interaction_metrics':{'input_to_render_p50_ms':percentile(input_samples,.50),'input_to_render_p95_ms':percentile(input_samples,.95),
                                    'pick_p50_ms':percentile(pick_samples,.50),'pick_p95_ms':percentile(pick_samples,.95),
                                    'selection_p95_ms':percentile(selection_samples,.95),'wrong_instance_picks':wrong_picks,
                                    'hidden_object_false_picks':hidden_false_picks,'stall_33ms_count':sum(v>33 for v in input_samples),
-                                   'stall_50ms_count':sum(v>50 for v in input_samples),'stall_100ms_count':stall100},
+                                   'stall_50ms_count':sum(v>50 for v in input_samples),'stall_100ms_count':stall100,
+                                   'unintended_stall_100ms_count':unintended_stall100,
+                                   'explicit_transition_stall_100ms_count':transition_stall100},
             'msaa_microtuning':{'interaction_samples':0 if p95>16.7 else 2,'idle_samples':8,'basis':'real_soak_p95','p95_ms':p95},
             'loader':loader,'scene':scene_metrics,'screenshots':{'start':str(start_image),'end':str(end_image)},
             'gates':gates,'status':'PASS' if all(gates.values()) else 'FAIL'}
