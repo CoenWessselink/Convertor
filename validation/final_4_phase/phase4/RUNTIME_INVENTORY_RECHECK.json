@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "safe_method_errors": [],
+  "uncovered": [
+    "cws_convertor/ui_qt/project_workspace.py:530:open_project"
+  ],
+  "runtime_controls": 572
+}

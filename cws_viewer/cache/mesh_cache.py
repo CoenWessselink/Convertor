@@ -275,6 +275,35 @@ class MeshCache:
             lod_triangles=lods,
         )
 
+    @staticmethod
+    def _materialize(mesh: MeshData) -> MeshData:
+        """Detach a prefetched mesh from Windows mmap file handles."""
+
+        return MeshData(
+            vertices=np.array(mesh.vertices, dtype=np.float64, copy=True),
+            triangles=np.array(mesh.triangles, dtype=np.int32, copy=True),
+            source_geometry_hash=mesh.source_geometry_hash,
+            provider=mesh.provider,
+            exactness=mesh.exactness,
+            warnings=tuple(mesh.warnings),
+            metadata=dict(mesh.metadata),
+            mesh_hash=mesh.mesh_hash,
+            normals=(
+                None
+                if mesh.normals is None
+                else np.array(mesh.normals, dtype=np.float32, copy=True)
+            ),
+            feature_edges=(
+                None
+                if mesh.feature_edges is None
+                else np.array(mesh.feature_edges, dtype=np.int32, copy=True)
+            ),
+            lod_triangles=tuple(
+                np.array(value, dtype=np.int32, copy=True)
+                for value in mesh.lod_triangles
+            ),
+        )
+
     def _load_legacy(self, key: str) -> MeshData | None:
         path = self._path_for(key)
         checksum = path.with_suffix(".sha256")
@@ -721,7 +750,8 @@ class MeshCache:
                 storage_mode=self.storage_mode,
                 integrity_mode=self.integrity_mode,
             )
-            return key, reader.get(key)
+            mesh = reader.get(key)
+            return key, None if mesh is None else self._materialize(mesh)
 
         workers = max(1, min(int(max_workers), len(pending)))
         loaded: list[tuple[str, MeshData | None]] = []

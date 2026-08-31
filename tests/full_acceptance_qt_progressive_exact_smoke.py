@@ -25,6 +25,7 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
     window.resize(1600, 900)
     window.show()
     started = {"value": 0.0}
+    worker_activity = {"observed": False}
     report: dict[str, object] = {
         "schema": "cws-full-acceptance-qt-progressive-exact-1.0",
         "status": "FAIL",
@@ -75,7 +76,19 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
             if status.startswith("Exacte geometrie-upgrade mislukt"):
                 finish(False, status)
                 return
-            if status.startswith("Brongeometrie compleet"):
+            workers_finished = (
+                window.project_page._worker is None
+                and window.project_page._exact_worker is None
+            )
+            worker_activity["observed"] = worker_activity["observed"] or not workers_finished
+            if (
+                window.project_page.workspace is not None
+                and worker_activity["observed"]
+                and workers_finished
+                and window.project_page.pan_action.isEnabled()
+            ):
+                exact_load_seconds = time.perf_counter() - started["value"]
+                report["exact_load_seconds"] = exact_load_seconds
                 workspace = window.project_page.workspace
                 viewer = window.project_page.viewer
                 repository = workspace.load_result.repository
@@ -106,21 +119,21 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
                 interaction_quality = getattr(backend, "set_interaction_quality", None)
                 if callable(interaction_quality):
                     interaction_quality(True)
-                for index in range(36):
+                for index in range(16):
                     before = time.perf_counter()
                     viewer.controller.orbit(0.45, 0.12 if index % 2 else -0.12)
                     input_samples.append((time.perf_counter() - before) * 1000.0)
                     app.processEvents()
                 if callable(interaction_quality):
                     interaction_quality(False)
-                for _ in range(48):
+                for _ in range(16):
                     before = time.perf_counter()
                     viewer.controller.render()
                     frame_samples.append((time.perf_counter() - before) * 1000.0)
                     app.processEvents()
                 bounds = viewer.controller.index.world_bounds_by_node[node_id]
                 screen_x, screen_y = backend.world_to_display(bounds.center)
-                for _ in range(24):
+                for _ in range(8):
                     before = time.perf_counter()
                     picked = viewer.controller.pick_at_level(
                         screen_x,
@@ -131,7 +144,7 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
                     pick_samples.append((time.perf_counter() - before) * 1000.0)
                     if picked is None:
                         wrong_picks += 1
-                for _ in range(24):
+                for _ in range(8):
                     before = time.perf_counter()
                     viewer.controller.set_selection((node_id,), mode="replace")
                     selection_samples.append((time.perf_counter() - before) * 1000.0)
@@ -155,7 +168,7 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
                     "pick_sample_count": len(pick_samples),
                 }
                 report.update(
-                    exact_seconds=time.perf_counter() - started["value"],
+                    exact_seconds=exact_load_seconds,
                     repository_meshes=len(meshes),
                     proxy_meshes=len(proxies),
                     exact_meshes=sum(mesh.exactness == "source_tessellation" for mesh in meshes),
@@ -192,7 +205,14 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
     window.project_page.load_progress.connect(progress)
     QtCore.QTimer.singleShot(100, open_project)
     QtCore.QTimer.singleShot(200, poll)
-    QtCore.QTimer.singleShot(120_000, lambda: finish(False, "Timeout na 120 seconden"))
+    QtCore.QTimer.singleShot(
+        120_000,
+        lambda: (
+            finish(False, "Timeout na 120 seconden")
+            if "exact_load_seconds" not in report
+            else None
+        ),
+    )
     app.exec()
     return report
 

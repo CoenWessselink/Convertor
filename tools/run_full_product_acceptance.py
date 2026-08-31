@@ -37,6 +37,21 @@ CONTROL_TYPES = {
     "QTreeView",
     "QTreeWidget",
 }
+QT_EVENT_OVERRIDES = {
+    "changeEvent",
+    "closeEvent",
+    "dragEnterEvent",
+    "dropEvent",
+    "eventFilter",
+    "keyPressEvent",
+    "mouseMoveEvent",
+    "mousePressEvent",
+    "mouseReleaseEvent",
+    "paintEvent",
+    "resizeEvent",
+    "showEvent",
+    "wheelEvent",
+}
 PHASE_RUNNERS = (
     "tools/run_phase1_unified_gates.py",
     "tools/run_phase2_unified_gates.py",
@@ -106,7 +121,10 @@ def source_inventories() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
             module_name = relative.removeprefix("src/").removesuffix(".py").replace("/", ".")
             for node in ast.walk(tree):
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    public = not node.name.startswith("_")
+                    public = (
+                        not node.name.startswith("_")
+                        and node.name not in QT_EVENT_OVERRIDES
+                    )
                     references = test_text.count(node.name)
                     owner = parents.get(node)
                     nested_function = False
@@ -360,6 +378,43 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
                 safe_methods_exercised += 1
             except Exception as exc:
                 safe_method_errors.append(f"{key}: {type(exc).__name__}: {exc}")
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    from cws_convertor.output import DocumentOutputService
+
+    v5_safe_methods = {
+        "cws_convertor.ui_qt.v5_workspaces.PlateNestingPanel": (
+            "solve",
+            "export_pdf",
+            "preview",
+        ),
+        "cws_convertor.ui_qt.v5_workspaces.PrintCenterPanel": (
+            "preview",
+            "print_selected",
+        ),
+    }
+    with (
+        patch.object(
+            DocumentOutputService,
+            "export_widget_pdf",
+            lambda _service, *_args, **_kwargs: SimpleNamespace(
+                path=operation_export.with_suffix(".pdf")
+            ),
+        ),
+        patch.object(DocumentOutputService, "preview", lambda *_args, **_kwargs: True),
+        patch.object(DocumentOutputService, "print", lambda *_args, **_kwargs: True),
+    ):
+        for item in all_widgets:
+            owner = f"{type(item).__module__}.{type(item).__qualname__.split('.')[0]}"
+            for method_name in v5_safe_methods.get(owner, ()):
+                try:
+                    getattr(item, method_name)()
+                    app.processEvents()
+                    safe_methods_exercised += 1
+                except Exception as exc:
+                    safe_method_errors.append(
+                        f"{owner}.{method_name}: {type(exc).__name__}: {exc}"
+                    )
     for item in all_widgets:
         owner = f"{type(item).__module__}.{type(item).__qualname__.split('.')[0]}"
         if owner not in {

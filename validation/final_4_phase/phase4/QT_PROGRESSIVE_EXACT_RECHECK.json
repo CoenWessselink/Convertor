@@ -1,0 +1,47 @@
+{
+  "schema": "cws-full-acceptance-qt-progressive-exact-1.0",
+  "status": "PASS",
+  "project_path": "C:\\CONVERTOR\\validation\\full_acceptance\\fixtures\\CWS_FULL_ACCEPTANCE_1000.cwscproj",
+  "first_frame_seconds": 2.268128000025172,
+  "first_frame_workspace": "viewer",
+  "viewer_visible": true,
+  "first_frame_groups": 9,
+  "exact_load_seconds": 4.647789300011937,
+  "exact_seconds": 4.647789300011937,
+  "repository_meshes": 9,
+  "proxy_meshes": 0,
+  "exact_meshes": 9,
+  "render_groups": 9,
+  "selected_node_ids": [
+    "entity:004faa91-9d7f-5cb5-b73e-42489d8db66f"
+  ],
+  "selection_color": [
+    1.0,
+    0.82,
+    0.0,
+    1.0
+  ],
+  "transparent_node_count": 1000,
+  "pan_mode": true,
+  "orbit_mode": true,
+  "screenshot": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\qt_progressive_exact_recheck.png",
+  "performance_metrics": {
+    "frame_p50_ms": 1.1898999800905585,
+    "frame_p95_ms": 1.9409999949857593,
+    "frame_p99_ms": 2.308199997060001,
+    "input_to_render_p95_ms": 16.88284998817835,
+    "input_to_render_p99_ms": 30.358489954960525,
+    "pick_p95_ms": 24.82437998696696,
+    "pick_p99_ms": 24.952395967557095,
+    "selection_p95_ms": 26.59980501048267,
+    "wrong_instance_picks": 0,
+    "freeze_over_100ms_count": 0,
+    "rss_start_mb": 1172.55078125,
+    "rss_end_mb": 1190.93359375,
+    "rss_drift_percent": 1.5677625902396284,
+    "frame_sample_count": 16,
+    "input_sample_count": 16,
+    "pick_sample_count": 8
+  },
+  "finished": true
+}

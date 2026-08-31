@@ -1,0 +1,52 @@
+{
+  "schema": "cws-full-acceptance-qt-viewer-visual-1.0",
+  "status": "PASS",
+  "project_path": "C:\\CONVERTOR\\validation\\full_acceptance\\fixtures\\CWS_FULL_ACCEPTANCE_1000.cwscproj",
+  "load_and_exact_seconds": 4.51600000000326,
+  "worker_activity_observed": true,
+  "workspace_published": true,
+  "workers_finished": true,
+  "controller_selection": [
+    "entity:ffb845e4-d761-5440-b392-5e800999103b"
+  ],
+  "backend_type": "VtkProjectMeshAdaptiveBackend",
+  "backend_has_selected_instance": true,
+  "backend_highlighted_nodes": [
+    "entity:ffb845e4-d761-5440-b392-5e800999103b"
+  ],
+  "selection_overlay_groups": 1,
+  "selected_instance_rgba": [
+    249,
+    206,
+    9,
+    255
+  ],
+  "selection_fill_groups": 1,
+  "selection_fill_actor": {
+    "visible": true,
+    "color": [
+      1.0,
+      0.82,
+      0.0
+    ],
+    "opacity": 0.78,
+    "representation": 2,
+    "scalar_visibility": false,
+    "bounds": [
+      122091.42103677962,
+      127508.57896322038,
+      8691.421036779619,
+      14108.578963220381,
+      -1708.5789632203823,
+      3708.5789632203823
+    ]
+  },
+  "screenshot": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\qt_viewer_visual_recheck.png",
+  "screenshot_size": [
+    620,
+    893
+  ],
+  "non_background_pixels": 219197,
+  "yellow_selection_pixels": 36365,
+  "selected_node_id": "entity:ffb845e4-d761-5440-b392-5e800999103b"
+}

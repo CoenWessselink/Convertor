@@ -5,6 +5,7 @@ import argparse
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -45,7 +46,21 @@ GROUPS = {
 
 def run(command: list[str], *, timeout: int) -> dict[str, object]:
     started = time.perf_counter()
-    completed = subprocess.run(command, cwd=ROOT, capture_output=True, text=True, timeout=timeout, check=False)
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = os.pathsep.join(
+        value
+        for value in (str(ROOT), str(ROOT / "src"), environment.get("PYTHONPATH", ""))
+        if value
+    )
+    completed = subprocess.run(
+        command,
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
     return {
         "command": command,
         "returncode": completed.returncode,

@@ -35,7 +35,7 @@ def main() -> int:
         "explicit_selection_pick": 'getattr(self._viewer, "_pick"' in overlay_source,
         "selection_api_present": hasattr(VtkRealProjectWidgetFeelV2, "_pick"),
         "pivot_api_present": hasattr(VtkRealProjectWidgetFeelV2, "_bind_orbit_pivot_from_screen"),
-        "provider_version_v5": PROVIDER_VERSION == "cws-ifc-display-v5-ifcopenshell",
+        "provider_version_current": PROVIDER_VERSION == "cws-ifc-display-v6-balanced-tessellation",
     }
     failed = [name for name, passed in checks.items() if not passed]
     for name, passed in checks.items():

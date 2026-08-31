@@ -79,6 +79,7 @@ class ProjectViewerPanel(ttk.Frame):
             max_workers=self._loading_policy.worker_count,
             thread_name_prefix="cws-viewer-mesh",
         )
+        self._mesh_executor_workers = self._loading_policy.worker_count
         self._mesh_completion_reported_generation = -1
         self._mesh_poll_after_id: str | None = None
         self._resize_after_id: str | None = None
@@ -612,6 +613,15 @@ class ProjectViewerPanel(ttk.Frame):
             geometry_count=len(entity_ids),
             source_format="ifc",
         )
+        desired_workers = self._loading_policy.worker_count
+        if desired_workers != self._mesh_executor_workers:
+            previous_executor = self._mesh_executor
+            self._mesh_executor = ThreadPoolExecutor(
+                max_workers=desired_workers,
+                thread_name_prefix="cws-viewer-mesh",
+            )
+            self._mesh_executor_workers = desired_workers
+            previous_executor.shutdown(wait=False, cancel_futures=True)
         self._scene_upload_budget = SceneUploadBudget.for_geometry_count(len(entity_ids))
         max_in_flight = max(
             1,

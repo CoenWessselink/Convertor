@@ -86,6 +86,15 @@ def main() -> int:
         timed_out = False
         try:
             child_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+            child_env["PYTHONPATH"] = os.pathsep.join(
+                value
+                for value in (
+                    str(ROOT),
+                    str(ROOT / "src"),
+                    child_env.get("PYTHONPATH", ""),
+                )
+                if value
+            )
             if args.headless_windows:
                 child_env["GITHUB_ACTIONS"] = "true"
             result = subprocess.run(

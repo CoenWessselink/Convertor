@@ -59,7 +59,7 @@ class LoadingPerformancePolicy:
         cores = max(1, int(os.cpu_count() or 1))
         total_ram, available_ram = _available_memory_bytes()
         format_name = str(source_format or "").upper()
-        if count < 48:
+        if count <= 1:
             desired = 1
         elif count < 300:
             desired = 2
@@ -90,7 +90,7 @@ class LoadingPerformancePolicy:
             cache_prefetch_workers=max(1, min(worker_count * 2, 8)),
             scene_upload_budget_ms=6.0,
             scene_upload_batch_limit=16,
-            interaction_multisamples=0,
+            interaction_multisamples=2,
             idle_multisamples=8,
             scene_upload_byte_limit=16 * 1024**2,
         )

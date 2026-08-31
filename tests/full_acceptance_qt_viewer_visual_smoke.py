@@ -74,11 +74,11 @@ def main() -> int:
         if not result["workers_finished"]:
             raise RuntimeError("Exacte geometrieworker is niet tijdig afgerond")
 
-        viewer = window.project_page.findChild(
-            VtkRealProjectWidgetFeelV2,
-            "cwsVtkRealProjectWidget",
-        )
-        if viewer is None or not viewer.isVisible():
+        if not window.workspace_router.open_workspace("viewer"):
+            raise RuntimeError("Viewer-workspace kon niet worden geactiveerd")
+        _pump(app, 0.25)
+        viewer = window.project_page.viewer
+        if not isinstance(viewer, VtkRealProjectWidgetFeelV2) or not viewer.isVisible():
             raise RuntimeError("De echte VTK-projectviewer is niet zichtbaar")
 
         backend = next(
