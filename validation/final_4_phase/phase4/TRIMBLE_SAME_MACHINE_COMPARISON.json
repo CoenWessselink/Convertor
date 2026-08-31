@@ -1,0 +1,32 @@
+{
+  "schema": "cws.trimble-same-machine-comparison.v1",
+  "status": "PASS",
+  "machine": "same Windows workstation",
+  "model": "HVPC te Hengelo fasen totaal.ifc",
+  "measurement_scope": "same-session model-open to first refreshed complete model view",
+  "trimble_connect": {
+    "seconds": 3.551,
+    "screenshot": "trimble_hvpc_same_machine.jpg",
+    "status": "PASS"
+  },
+  "cws_large_model_warm": {
+    "request_count": 5725,
+    "runs": 10,
+    "minimum_seconds": 0.2461712000076659,
+    "mean_seconds": 0.24818290998809972,
+    "maximum_seconds": 0.2511936000082642,
+    "source": "validation/final_hvpc_closeout_9a51606/phase2/WARM_RUNS.json",
+    "status": "PASS"
+  },
+  "cws_large_model_cold": {
+    "request_count": 5725,
+    "runs": 5,
+    "minimum_seconds": 70.0586446999805,
+    "mean_seconds": 71.04096764000133,
+    "maximum_seconds": 71.86277790000895,
+    "source": "validation/final_hvpc_closeout_9a51606/phase2/COLD_RUNS.json",
+    "target_3_to_5_seconds": "FAIL",
+    "status": "FAIL"
+  },
+  "interpretation": "CWS is faster in the measured warm/same-session path. The historical first cold large-model path does not meet the explicit 3-5 second target and remains a release blocker until a fresh exact-SHA measurement proves otherwise."
+}

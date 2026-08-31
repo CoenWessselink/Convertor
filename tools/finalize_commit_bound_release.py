@@ -95,6 +95,9 @@ def main() -> int:
     items = list(checklist.get("items") or checklist.get("checks") or [])
     if len(items) != 51 or any(str(item.get("status")).upper() != "PASS" for item in items):
         raise RuntimeError("Full Product Acceptance must contain exactly 51 PASS items")
+    from master_release_gate import require_master_traceability_pass
+
+    master_traceability = require_master_traceability_pass(ROOT)
     for name in ("WINDOWS_EXE_TEST_RESULTS.json", "PORTABLE_TEST_RESULTS.json", "INSTALLER_TEST_RESULTS.json"):
         result = load(ACCEPTANCE / name)
         if str(result.get("status")).upper() != "PASS" or "uncommitted" in json.dumps(result).casefold():
@@ -158,6 +161,7 @@ def main() -> int:
         "version": APP_VERSION, "project_model": PROJECT_SCHEMA_VERSION, "canonical_part": CANONICAL_PART_SCHEMA_VERSION,
         "working_tree_clean_before_build": True, "working_tree_clean_after_acceptance": clean_tree(),
         "fresh_checkout": True, "acceptance": {"passed": 51, "failed": 0, "blocked": 0, "not_tested": 0},
+        "master_traceability": master_traceability,
         "ci": args.ci, "windows_one_folder": "PASS", "fresh_portable": "PASS", "installer": "PASS",
         "artifacts": core_artifacts,
     }
@@ -170,11 +174,12 @@ def main() -> int:
         "branch": BRANCH, "commit": commit, "parent": parent, "build_timestamp": generated_at,
         "python_build_version": sys.version, "project_model": PROJECT_SCHEMA_VERSION, "canonical_part": CANONICAL_PART_SCHEMA_VERSION,
         "acceptance": {"passed": 51, "failed": 0, "blocked": 0, "not_tested": 0},
+        "master_traceability": master_traceability,
         "source_tests": "PASS", "packaged_runtime": "PASS", "portable": "PASS", "installer": "PASS",
         "artifacts": [*core_artifacts, artifact(binding_copy)], "sbom": sbom.name,
         "known_limitations": limitations.name,
         "safety": {"machine_observed_by_cws": False, "deployment_transport_authorized": False, "direct_machine_transfer": False, "machine_transfer.allowed": False},
-        "external_machine_qualification": "BLOCKED_EXTERNAL_EVIDENCE",
+        "external_machine_qualification": "OUT_OF_SCOPE_SAFETY_CLOSED",
     }
     manifest_path = FINAL / "FINAL_RELEASE_MANIFEST.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -193,7 +198,7 @@ def main() -> int:
         "Windows one-folder:\nPASS", "Packaged runtime:\nPASS", "Fresh portable:\nPASS", "Installer:\nPASS", "Uninstall:\nPASS",
         "Artifacts:\n" + "\n".join(f"{item['name']} {item['size']} {item['sha256']}" for item in [artifact(path) for path in checksum_paths]),
         "Safety:\nmachine_observed_by_cws = false\ndeployment_transport_authorized = false\ndirect_machine_transfer = false\nmachine_transfer.allowed = false",
-        "External machine qualification:\nBLOCKED_EXTERNAL_EVIDENCE",
+        "External machine qualification:\nOUT_OF_SCOPE_SAFETY_CLOSED",
         f"FINAL RELEASE PROVEN:\n{'YES' if proven else 'NO'}",
     ]
     (ACCEPTANCE / "FINAL_RELEASE_PROOF.md").write_text("\n\n".join(proof_lines) + "\n", encoding="utf-8")

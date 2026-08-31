@@ -774,8 +774,15 @@ def main() -> int:
     write_json("FULL_ACCEPTANCE_RUNTIME_EVIDENCE.json", runtime_evidence)
     write_json("FIXTURE_GENERATION_RESULTS.json", fixture)
     write_json("PHASE_GATE_RESULTS.json", phases)
+    from master_release_gate import load_master_traceability_gate
+
+    master_traceability = load_master_traceability_gate(ROOT)
+    write_json("MASTER_REQUIREMENT_TRACEABILITY_GATE.json", master_traceability)
+    if master_traceability["status"] != "PASS":
+        overall = "FAIL"
     summary = {
         "FULL_PRODUCT_ACCEPTANCE": overall,
+        "MASTER_REQUIREMENT_TRACEABILITY": master_traceability["status"],
         "UI_AND_FUNCTION_INVENTORY": inventory_status,
         "REAL_GEOMETRY": geometry["status"],
         "PHASE_GATES": phase_status,
