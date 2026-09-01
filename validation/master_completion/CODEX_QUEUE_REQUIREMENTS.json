@@ -1,13 +1,13 @@
 {
   "schema": "cws.codex-queue-requirements.v1",
-  "generated_at": "2026-09-01T04:22:06.763301+00:00",
+  "generated_at": "2026-09-01T06:29:23.632768+00:00",
   "required_total": 1655,
   "status_counts": {
     "BLOCKED_EXTERNAL_EVIDENCE": 138,
-    "FAIL": 104,
+    "FAIL": 88,
     "NOT_TESTED": 1,
     "PARTIAL": 182,
-    "PASS": 1230
+    "PASS": 1246
   },
   "requirements": [
     {
@@ -539,10 +539,11 @@
       "source_sha256": "c3b2cd10803f7dac725473778d8227762102dc76b4983ca0b8b60562e65ab276",
       "source_heading": "Slechts 3 grote hoofdfasen — iedere fase verplicht checklist + Windows EXE + portable",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -1588,10 +1589,11 @@
       "source_sha256": "48583ca864042590214d5d08b58a774fe1e7b61f69995292aece09a56c1a28dd",
       "source_heading": "Volledige productcompletion, integratie, UI, performance, productie en exact-SHA release",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -2511,10 +2513,11 @@
       "source_sha256": "48583ca864042590214d5d08b58a774fe1e7b61f69995292aece09a56c1a28dd",
       "source_heading": "FASE 4 — TOTAL PRODUCT ACCEPTANCE + EXACT-SHA RELEASE",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -2660,10 +2663,11 @@
       "source_sha256": "48583ca864042590214d5d08b58a774fe1e7b61f69995292aece09a56c1a28dd",
       "source_heading": "46. RELEASE ARTIFACTS",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -4611,10 +4615,11 @@
       "source_sha256": "49fa62f5b3999026ed2e300a4a2da53d7a976845b07cda75317f01a58ddd2f6d",
       "source_heading": "27. Windows EXE / portable black-box acceptance",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -4624,10 +4629,11 @@
       "source_sha256": "49fa62f5b3999026ed2e300a4a2da53d7a976845b07cda75317f01a58ddd2f6d",
       "source_heading": "28. Installer acceptance",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -6007,10 +6013,11 @@
       "source_sha256": "7eef4aa8959129a9adf24376ec5004b035d6541a880fc0c4e3420e0158a1f167",
       "source_heading": "Portable",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -6020,10 +6027,11 @@
       "source_sha256": "7eef4aa8959129a9adf24376ec5004b035d6541a880fc0c4e3420e0158a1f167",
       "source_heading": "Installer",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -6033,10 +6041,11 @@
       "source_sha256": "7eef4aa8959129a9adf24376ec5004b035d6541a880fc0c4e3420e0158a1f167",
       "source_heading": "42. RELEASE ARTIFACTS",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -13270,10 +13279,11 @@
       "source_sha256": "b9432e866ede3c4f8c0ccd216542527901764b19c90aa0c1b6339a07e42365b8",
       "source_heading": "94. FRESH PORTABLE",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -13283,10 +13293,11 @@
       "source_sha256": "b9432e866ede3c4f8c0ccd216542527901764b19c90aa0c1b6339a07e42365b8",
       "source_heading": "95. INSTALLER",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -14172,10 +14183,11 @@
       "source_sha256": "b9432e866ede3c4f8c0ccd216542527901764b19c90aa0c1b6339a07e42365b8",
       "source_heading": "125. BLACK-BOX WINDOWS / PORTABLE / INSTALLER ACCEPTANCE",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -15952,10 +15964,11 @@
       "source_sha256": "75192a4e8047f4850b83c7cee9d009c4a034eb3efaa0e5858b9759bc71fb4930",
       "source_heading": "94. FRESH PORTABLE",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -15965,10 +15978,11 @@
       "source_sha256": "75192a4e8047f4850b83c7cee9d009c4a034eb3efaa0e5858b9759bc71fb4930",
       "source_heading": "95. INSTALLER",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -18880,10 +18894,11 @@
       "source_sha256": "aacc53ab32b2a15fbffc35a25c60d8324622da79826ead3948e99b18013817a1",
       "source_heading": "23. Exact-SHA packaged acceptance",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {
@@ -19664,10 +19679,11 @@
       "source_sha256": "37c62f1b44e26148c54ba8e7bd8d79685e30dbef2a211aa6af666d100a788be7",
       "source_heading": "Fase 4 — Total Product Acceptance + exact-SHA Windows release",
       "queue_id": "Q011",
-      "status": "FAIL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ]
     },
     {

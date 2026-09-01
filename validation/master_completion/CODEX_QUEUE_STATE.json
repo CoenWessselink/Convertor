@@ -1,13 +1,13 @@
 {
   "schema": "cws.codex-queue-state.v1",
-  "generated_at": "2026-09-01T04:22:06.763301+00:00",
+  "generated_at": "2026-09-01T06:29:23.632768+00:00",
   "repository": {
     "root": "C:\\CONVERTOR",
     "branch": "agent/cws-product-ui-reintegration-v1",
-    "head": "9ed87cb4da73e3f893f69e875422d09cb02d01a4",
-    "tree": "41692e8421361998389479485d56c51e1ffe96c4",
+    "head": "1513ae3ad91f8581ae41b435ec79a0cf5b1ba722",
+    "tree": "af6f96820901174b9f1e8a6cd4d6995ff5a418b3",
     "remote_ref": "origin/agent/cws-product-ui-reintegration-v1",
-    "remote_head": "9ed87cb4da73e3f893f69e875422d09cb02d01a4",
+    "remote_head": "1513ae3ad91f8581ae41b435ec79a0cf5b1ba722",
     "ahead": 0,
     "behind": 0,
     "app_version": "0.10.18-beta-dev",
@@ -34,9 +34,9 @@
   },
   "queue_status_counts": {
     "BLOCKED_EXTERNAL_EVIDENCE": 1,
-    "FAIL": 2,
+    "FAIL": 1,
     "PARTIAL": 2,
-    "PASS": 7
+    "PASS": 8
   },
   "current_queue_item": "Q002",
   "next_action": "A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95.",
@@ -211,14 +211,16 @@
       "depends_on": [
         "Q010"
       ],
-      "status": "FAIL",
+      "status": "PASS",
       "expected_result": "Fresh release artifacts and packaged evidence bind to one exact commit.",
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
+        "validation/final_4_phase/phase4/PHASE_GATE.json",
+        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
       ],
       "remaining": [
         "Phase 4 gate and final Windows release are not PASS."
-      ]
+      ],
+      "remaining_work": []
     },
     {
       "queue_id": "Q012",

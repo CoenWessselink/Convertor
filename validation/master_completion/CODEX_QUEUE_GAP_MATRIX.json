@@ -1,7 +1,7 @@
 {
   "schema": "cws.codex-queue-gap-matrix.v1",
-  "generated_at": "2026-09-01T04:22:06.763301+00:00",
-  "queue_nonpass_count": 5,
+  "generated_at": "2026-09-01T06:29:23.632768+00:00",
+  "queue_nonpass_count": 4,
   "first_nonpass": "Q002",
   "gaps": [
     {
@@ -84,21 +84,6 @@
       ],
       "remaining": [
         "Master traceability contains 26 FAIL requirements."
-      ]
-    },
-    {
-      "queue_id": "Q011",
-      "title": "Exact-SHA one-folder, portable and installer release",
-      "depends_on": [
-        "Q010"
-      ],
-      "status": "FAIL",
-      "expected_result": "Fresh release artifacts and packaged evidence bind to one exact commit.",
-      "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json"
-      ],
-      "remaining": [
-        "Phase 4 gate and final Windows release are not PASS."
       ]
     }
   ]

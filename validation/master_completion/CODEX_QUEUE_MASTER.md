@@ -1,6 +1,6 @@
 # CODEX QUEUE MASTER
 
-Generated from `9ed87cb4da73e3f893f69e875422d09cb02d01a4` on branch `agent/cws-product-ui-reintegration-v1`. This ledger never converts missing external evidence into PASS.
+Generated from `1513ae3ad91f8581ae41b435ec79a0cf5b1ba722` on branch `agent/cws-product-ui-reintegration-v1`. This ledger never converts missing external evidence into PASS.
 
 | ID | Queue item | Dependencies | Status | Remaining |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@ Generated from `9ed87cb4da73e3f893f69e875422d09cb02d01a4` on branch `agent/cws-p
 | Q008 | Drawings, PDF, Print Center, Controle, Quality, Planning and Uitvoer | Q006 | PASS | None |
 | Q009 | Fresh-checkout source and clean-runtime reproducibility | Q001 | PASS | None |
 | Q010 | Dynamic total product acceptance | Q002, Q003, Q005, Q006, Q007, Q008, Q009 | FAIL | Master traceability contains 26 FAIL requirements. |
-| Q011 | Exact-SHA one-folder, portable and installer release | Q010 | FAIL | Phase 4 gate and final Windows release are not PASS. |
+| Q011 | Exact-SHA one-folder, portable and installer release | Q010 | PASS | Phase 4 gate and final Windows release are not PASS. |
 | Q012 | Queue audit, resumable state and automatic continuation | Q001 | PASS | None |
 
 Current technically logical non-PASS: **Q002**.

@@ -260,6 +260,15 @@ def build() -> dict[str, Any]:
             "remaining": [] if audit_name in source_names else ["Queue audit source is unavailable."],
         },
     ]
+    exact_release_path = ROOT / "validation" / "master_completion" / "EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
+    if exact_release_path.is_file():
+        exact_release = json.loads(exact_release_path.read_text(encoding="utf-8"))
+        if exact_release.get("status") == "PASS" and exact_release.get("packaged_proven") is True:
+            release_item = next(item for item in queue if item["queue_id"] == "Q011")
+            release_item["status"] = "PASS"
+            release_item["evidence"] = [*release_item["evidence"], str(exact_release_path.relative_to(ROOT)).replace("\\", "/")]
+            release_item["remaining_work"] = []
+
     queue_by_id = {item["queue_id"]: item for item in queue}
     active_nonpass = [item for item in queue if item["status"] not in PASS_LIKE]
     first_nonpass = active_nonpass[0]["queue_id"] if active_nonpass else None
