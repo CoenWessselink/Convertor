@@ -65,7 +65,8 @@ class ProjectSceneLoader:
     def load_project(self,project:object,project_path:str|Path,*,geometry_ids:Iterable[str]|None=None,load_all:bool=True,
                      allow_proxy:bool=True,token:CancellationToken|None=None,
                      progress:ProgressCallback|None=None,
-                     fast_proxy_catalog:bool=False)->ProjectSceneLoadResult:
+                     fast_proxy_catalog:bool=False,
+                     verify_ifc_source_geometry:bool=True)->ProjectSceneLoadResult:
         """Build a scene from an already-opened Canonical Project Model.
 
         The object is never cloned or re-opened.  This is the V9 integration
@@ -79,7 +80,7 @@ class ProjectSceneLoader:
         t=time.perf_counter();resolver=ProjectSourceResolver(project,project_package_path=path,search_roots=self.source_search_roots);catalog=ProjectGeometryCatalog().build(
             project,
             resolver,
-            verify_ifc_source_geometry=not fast_proxy_catalog,
+            verify_ifc_source_geometry=bool(verify_ifc_source_geometry and not fast_proxy_catalog),
             progress=(lambda ratio,message:progress(0.03+0.27*ratio,message)) if progress else None,
         );timings.append(('build_catalog',time.perf_counter()-t))
         assert catalog.report is not None

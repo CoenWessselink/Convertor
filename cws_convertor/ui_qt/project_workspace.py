@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import threading
+import time
 from typing import Any
 
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
@@ -13,6 +14,10 @@ if qt_available():
 
     from cws_convertor.bom import export_bom_package
     from cws_convertor.integration import IntegratedProjectWorkspace
+    from cws_viewer.cache.scene_warmstart import (
+        load_exact_scene_warmstart,
+        persist_exact_scene_warmstart,
+    )
     from cws_viewer.adapters.source_geometry import ProjectSourceResolver
     from cws_viewer.backends.memory import MemoryRenderBackend
     from cws_viewer.cache import MeshCache
@@ -66,17 +71,18 @@ if qt_available():
             super().closeEvent(event)
 
     class _LoadWorker(QtCore.QObject):
-        loaded = QtCore.Signal(object)
-        preview_ready = QtCore.Signal(object)
-        progress = QtCore.Signal(int, str)
-        failed = QtCore.Signal(str)
-        cancelled = QtCore.Signal()
-        finished = QtCore.Signal()
+        loaded = QtCore.Signal(int, object)
+        preview_ready = QtCore.Signal(int, object)
+        progress = QtCore.Signal(int, int, str)
+        failed = QtCore.Signal(int, str)
+        cancelled = QtCore.Signal(int)
+        finished = QtCore.Signal(int, object)
 
-        def __init__(self, path: Path, *, load_geometry: bool) -> None:
+        def __init__(self, path: Path, *, load_geometry: bool, generation: int) -> None:
             super().__init__()
             self.path = path
             self.load_geometry = load_geometry
+            self.generation = int(generation)
             self.token = CancellationToken()
             self._preview_ack = threading.Event()
 
@@ -89,7 +95,7 @@ if qt_available():
 
         def _publish_preview(self, load_result: Any) -> None:
             self._preview_ack.clear()
-            self.preview_ready.emit(load_result)
+            self.preview_ready.emit(self.generation, load_result)
             while not self._preview_ack.wait(0.05):
                 self.token.check()
 
@@ -97,20 +103,42 @@ if qt_available():
         def run(self, context: Any | None = None) -> None:
             try:
                 self.token.check()
-                self.progress.emit(5, "Projectbestand en schema controleren")
-                self.progress.emit(18, "Projectmodel, bronnen en geometrie openen")
+                self.progress.emit(self.generation, 5, "Projectbestand en schema controleren")
+                self.progress.emit(self.generation, 18, "Projectmodel, bronnen en geometrie openen")
                 # Product mode renders authoritative source geometry. Display
                 # proxies are diagnostic only: silently presenting boxes as a
                 # completed model is never acceptable.
                 allow_proxy = os.environ.get("CWS_ALLOW_DISPLAY_PROXIES", "0") == "1"
-                progressive = os.environ.get("CWS_PROGRESSIVE_PROJECT_LOAD", "0") == "1"
+                progressive = os.environ.get("CWS_PROGRESSIVE_PROJECT_LOAD", "1") == "1"
                 prefer_proxy = bool(self.load_geometry and allow_proxy and progressive)
+                # The canonical importer already recorded representation/item
+                # identities and source-geometry hashes. ProjectSession and the
+                # resolver still verify the project/source hashes, while
+                # MeshCache V2 verifies every exact mesh resource checksum.
+                # Rewalking the complete IFC dependency graph on every viewer
+                # open therefore adds latency without increasing warm-start
+                # correctness. It remains available for explicit diagnostics.
+                verify_ifc_source_geometry = os.environ.get(
+                    "CWS_VERIFY_IFC_SOURCE_GEOMETRY_ON_OPEN",
+                    "0" if progressive else "1",
+                ) == "1"
+
+                warmstart = None
+                if self.load_geometry and progressive and not allow_proxy:
+                    warmstart = load_exact_scene_warmstart(self.path)
+                    if warmstart is not None:
+                        self.progress.emit(
+                            self.generation,
+                            20,
+                            f"Exacte warmstartscene gereed · {len(warmstart.repository):,} geometrieën",
+                        )
+                        self._publish_preview(warmstart)
 
                 def report(percent: int, message: str) -> None:
                     self.token.check()
                     if context is not None:
                         context.update(max(0.0, min(1.0, float(percent) / 100.0)), message)
-                    self.progress.emit(percent, message)
+                    self.progress.emit(self.generation, percent, message)
 
                 workspace = IntegratedProjectWorkspace.open(
                     self.path,
@@ -118,23 +146,41 @@ if qt_available():
                     load_all_geometry=self.load_geometry,
                     allow_proxy=allow_proxy,
                     prefer_proxy=prefer_proxy,
+                    verify_ifc_source_geometry=verify_ifc_source_geometry,
                     progress_callback=report,
                     cancellation_token=self.token,
                     preview_callback=self._publish_preview,
+                    preloaded_exact_scene=warmstart,
                 )
                 if workspace.load_result.geometry_report.proxy_count:
                     self.progress.emit(
+                        self.generation,
                         70,
                         f"Responsieve 3D-weergave gereed · {workspace.load_result.geometry_report.proxy_count:,} geometrieën",
                     )
-                self.progress.emit(80, "Viewer-scene en selectiecontext voorbereiden")
-                self.loaded.emit(workspace)
+                if self.load_geometry and not workspace.load_result.geometry_report.proxy_count:
+                    try:
+                        cached = persist_exact_scene_warmstart(self.path, workspace.load_result)
+                        if cached is not None:
+                            self.progress.emit(
+                                self.generation, 79, "Exacte scene-warmstartcache bijgewerkt"
+                            )
+                    except Exception as exc:
+                        self.progress.emit(
+                            self.generation,
+                            79,
+                            f"Scene-warmstartcache niet bijgewerkt: {type(exc).__name__}: {exc}",
+                        )
+                self.progress.emit(
+                    self.generation, 80, "Viewer-scene en selectiecontext voorbereiden"
+                )
+                self.loaded.emit(self.generation, workspace)
             except GeometryLoadCancelled:
-                self.cancelled.emit()
+                self.cancelled.emit(self.generation)
             except Exception as exc:
-                self.failed.emit(f"{type(exc).__name__}: {exc}")
+                self.failed.emit(self.generation, f"{type(exc).__name__}: {exc}")
             finally:
-                self.finished.emit()
+                self.finished.emit(self.generation, self)
 
 
     class _ExactGeometryWorker(QtCore.QObject):
@@ -534,28 +580,18 @@ if qt_available():
             project_path = Path(path).expanduser().resolve()
             self.status.setText(f"Controleren en laden: {project_path.name}")
             self.stack.setCurrentWidget(self.loading)
-            worker = _LoadWorker(project_path, load_geometry=load_geometry)
-            worker.progress.connect(
-                lambda percent, message, value=generation: self._load_progress_guarded(
-                    value, percent, message
-                )
+            worker = _LoadWorker(
+                project_path,
+                load_geometry=load_geometry,
+                generation=generation,
             )
-            worker.preview_ready.connect(
-                lambda result, value=generation: self._project_preview_guarded(value, result)
-            )
-            worker.loaded.connect(
-                lambda workspace, value=generation: self._project_loaded_guarded(value, workspace)
-            )
-            worker.failed.connect(
-                lambda message, value=generation: self._project_failed_guarded(value, message)
-            )
-            worker.cancelled.connect(
-                lambda value=generation: self._project_cancelled_guarded(value)
-            )
-            worker.finished.connect(worker.deleteLater)
-            worker.finished.connect(
-                lambda value=generation, target=worker: self._load_finished(value, target)
-            )
+            queued = QtCore.Qt.ConnectionType.QueuedConnection
+            worker.progress.connect(self._load_progress_guarded, queued)
+            worker.preview_ready.connect(self._project_preview_guarded, queued)
+            worker.loaded.connect(self._project_loaded_guarded, queued)
+            worker.failed.connect(self._project_failed_guarded, queued)
+            worker.cancelled.connect(self._project_cancelled_guarded, queued)
+            worker.finished.connect(self._load_finished, queued)
             self._worker = worker
             self._load_elapsed.start()
             self._load_heartbeat.start()
@@ -575,11 +611,13 @@ if qt_available():
 
         def _load_finished(self, generation: int, worker: Any) -> None:
             if self._worker is not worker:
+                worker.deleteLater()
                 return
             self._worker = None
             self._thread = None
             if generation == self._load_generation:
                 self._load_job_id = None
+            worker.deleteLater()
 
         def _load_progress_guarded(self, generation: int, percent: int, message: str) -> None:
             if generation == self._load_generation:
@@ -617,11 +655,14 @@ if qt_available():
                     widget = item.widget()
                     if widget is not None:
                         widget.deleteLater()
+                preview_started = time.perf_counter()
                 if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
                     viewer = _HeadlessGuiSmokeViewer()
                 else:
                     viewer = VtkRealProjectWidget(load_result.repository)
+                widget_ready = time.perf_counter()
                 viewer.load_scene(load_result.scene)
+                scene_bound = time.perf_counter()
                 self.viewer = viewer
                 self._preview_result = load_result
                 self.host_layout.addWidget(viewer)
@@ -630,6 +671,13 @@ if qt_available():
                 QtWidgets.QApplication.processEvents(
                     QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
                 )
+                first_events = time.perf_counter()
+                self._preview_timings = {
+                    "widget_construct_seconds": widget_ready - preview_started,
+                    "scene_bind_seconds": scene_bound - widget_ready,
+                    "first_events_seconds": first_events - scene_bound,
+                    "preview_total_seconds": first_events - preview_started,
+                }
                 self._load_progress_changed(66, "Eerste interactieve modelweergave gereed")
                 QtCore.QTimer.singleShot(0, self._complete_preview_geometry)
             finally:
@@ -673,7 +721,17 @@ if qt_available():
             self._load_heartbeat.stop()
             self._load_progress_changed(84, "Viewer V15-renderer initialiseren")
             self.workspace = workspace
-            preview_viewer = self.viewer if self._preview_result is workspace.load_result else None
+            preview_matches = bool(
+                self.viewer is not None
+                and self._preview_result is not None
+                and getattr(getattr(self._preview_result, "scene", None), "scene_hash", "")
+                == workspace.load_result.scene.scene_hash
+                and len(getattr(self._preview_result, "repository", ()))
+                == len(workspace.load_result.repository)
+            )
+            preview_viewer = self.viewer if preview_matches else None
+            if preview_viewer is not None:
+                self._preview_result = workspace.load_result
             while self.host_layout.count():
                 item = self.host_layout.takeAt(0)
                 widget = item.widget()

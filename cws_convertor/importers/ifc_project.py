@@ -1240,6 +1240,14 @@ def import_ifc_project(
         )
         identity = _source_identity(source, entity)
         internal_id = project.stable_entity_id("fastener", identity)
+        representation = _representation_summary(document, entity.ref(6))
+        representation["source_locator"] = build_ifc_source_locator(
+            source,
+            source_entity_id=identity.source_entity_id,
+            global_id=identity.global_id,
+            representation_id=str(representation.get("source_representation_id") or ""),
+            source_geometry_hash=str(representation.get("source_geometry_hash") or ""),
+        )
         try:
             local, global_transform = placement_resolver.local_placement(entity.ref(5))
         except Exception as exc:
@@ -1268,6 +1276,7 @@ def import_ifc_project(
             quantity=max(1, _int(quantity, 1)),
             hole_diameter_mm=_float(hole_diameter),
             slot={"x_mm": _float(slot_x), "y_mm": _float(slot_y)},
+            geometry_descriptor=representation,
         )
         fastener.field_provenance["diameter_mm"] = _provenance(
             source, diameter_source, diameter_path
@@ -1303,6 +1312,14 @@ def import_ifc_project(
         ).casefold()
         is_weld = any(token in combined_text for token in ("weld", "las", "lassen"))
         identity = _source_identity(source, entity)
+        representation = _representation_summary(document, entity.ref(6))
+        representation["source_locator"] = build_ifc_source_locator(
+            source,
+            source_entity_id=identity.source_entity_id,
+            global_id=identity.global_id,
+            representation_id=str(representation.get("source_representation_id") or ""),
+            source_geometry_hash=str(representation.get("source_geometry_hash") or ""),
+        )
         try:
             local, global_transform = placement_resolver.local_placement(entity.ref(5))
         except Exception as exc:
@@ -1345,6 +1362,7 @@ def import_ifc_project(
                 length_mm=_float(weld_length),
                 process=str(process or ""),
                 location=str(location or "workshop"),
+                geometry_descriptor=representation,
             )
             weld_by_source[entity.entity_id] = weld
             source_to_internal[entity.entity_id] = internal_id
@@ -1369,6 +1387,7 @@ def import_ifc_project(
                 confidence=0.8,
                 status=ReviewStatus.REVIEW_REQUIRED.value,
                 fastener_type="ifc_fastener_unclassified",
+                geometry_descriptor=representation,
             )
             fastener.validation_issues.append(
                 ValidationIssue(

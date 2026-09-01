@@ -971,6 +971,7 @@ class Fastener(ProjectEntity):
     connected_part_ids: list[str] = field(default_factory=list)
     hole_diameter_mm: float = 0.0
     slot: dict[str, Any] = field(default_factory=dict)
+    geometry_descriptor: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -986,6 +987,7 @@ class Weld(ProjectEntity):
     connected_part_ids: list[str] = field(default_factory=list)
     time_minutes: float = 0.0
     cost: float = 0.0
+    geometry_descriptor: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

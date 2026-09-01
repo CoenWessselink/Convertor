@@ -74,6 +74,8 @@ class _MeshActorGroup:
 
 
 class VtkProjectMeshBackend(VtkProjectBackend):
+    SOURCE_TABLE_CHUNK_SIZE = 64
+
     def __init__(
         self,
         repository: MeshRepository,
@@ -89,6 +91,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._point_picker: Any | None = None
         self._geometry_filter: frozenset[str] | None = None
         self._interaction_actor: Any | None = None
+        self._source_table_groups = True
 
     def set_geometry_filter(self, geometry_ids: tuple[str, ...] | None) -> None:
         """Temporarily bound first-frame actor construction for huge scenes."""
@@ -167,7 +170,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             else:
                 for geometry_id in requested:
                     feature_cache.pop(geometry_id, None)
-        if requested is not None:
+        if requested is not None and not self._source_table_groups:
             changed = False
             for geometry_id, previous_source in previous_sources.items():
                 if previous_source is None:
@@ -245,7 +248,10 @@ class VtkProjectMeshBackend(VtkProjectBackend):
                 transform = vtk.vtkTransform()
                 transform.SetMatrix(vtk_matrix)
                 transformed = vtk.vtkTransformPolyDataFilter()
-                transformed.SetInputData(group.source)
+                geometry_id = str(index.node(node_id).geometry_id or "")
+                if not geometry_id:
+                    continue
+                transformed.SetInputData(self._mesh_polydata(geometry_id))
                 transformed.SetTransform(transform)
                 transformed.Update()
                 polydata = vtk.vtkPolyData()
@@ -412,6 +418,88 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             mask,
         )
 
+    def _build_static_mesh_chunk(
+        self,
+        mode: RenderMode,
+        geometry_groups: list[tuple[str, list[tuple[str, Matrix4]]]],
+    ) -> _MeshActorGroup:
+        """Build one indexed glyph mapper for multiple exact mesh resources."""
+        vtk = self._vtk
+        assert vtk is not None and self._renderer is not None
+        points = vtk.vtkPoints()
+        points.SetDataTypeToDouble()
+        colors = vtk.vtkUnsignedCharArray()
+        colors.SetName("cws_rgba")
+        colors.SetNumberOfComponents(4)
+        orientations = vtk.vtkFloatArray()
+        orientations.SetName("cws_quaternion")
+        orientations.SetNumberOfComponents(4)
+        source_indexes = vtk.vtkIntArray()
+        source_indexes.SetName("cws_source_index")
+        source_indexes.SetNumberOfComponents(1)
+        mask = vtk.vtkBitArray()
+        mask.SetName("cws_visible")
+        mask.SetNumberOfComponents(1)
+        node_ids: list[str] = []
+        sources: list[Any] = []
+        for source_index, (geometry_id, entries) in enumerate(geometry_groups):
+            sources.append(self._mesh_polydata(geometry_id))
+            for node_id, matrix in entries:
+                translation = matrix.translation_vector
+                points.InsertNextPoint(translation.x, translation.y, translation.z)
+                orientations.InsertNextTuple(_quaternion(matrix))
+                colors.InsertNextTypedTuple((128, 160, 200, 255))
+                source_indexes.InsertNextValue(source_index)
+                mask.InsertNextValue(1)
+                node_ids.append(node_id)
+        instances = vtk.vtkPolyData()
+        instances.SetPoints(points)
+        instances.GetPointData().AddArray(colors)
+        instances.GetPointData().AddArray(orientations)
+        instances.GetPointData().AddArray(source_indexes)
+        instances.GetPointData().AddArray(mask)
+        mapper = vtk.vtkGlyph3DMapper()
+        mapper.SetInputData(instances)
+        for source_index, source in enumerate(sources):
+            mapper.SetSourceData(source_index, source)
+        mapper.SourceIndexingOn()
+        mapper.SetSourceIndexArray("cws_source_index")
+        mapper.SetRange(0.0, float(max(0, len(sources) - 1)))
+        mapper.ScalingOff()
+        mapper.OrientOn()
+        mapper.SetOrientationArray("cws_quaternion")
+        mapper.SetOrientationModeToQuaternion()
+        mapper.SetScalarModeToUsePointFieldData()
+        mapper.SelectColorArray("cws_rgba")
+        mapper.SetColorModeToDirectScalars()
+        mapper.ScalarVisibilityOn()
+        mapper.SetMaskArray("cws_visible")
+        mapper.MaskingOn()
+        actor = vtk.vtkActor()
+        actor.SetMapper(mapper)
+        prop = actor.GetProperty()
+        prop.SetInterpolationToPhong()
+        self._configure_group_mode(
+            _MeshActorGroup(
+                mode, actor, mapper, instances, points, tuple(sources),
+                tuple(node_ids), colors, mask,
+            ),
+            mode,
+            1.0,
+        )
+        self._renderer.AddActor(actor)
+        return _MeshActorGroup(
+            mode,
+            actor,
+            mapper,
+            instances,
+            points,
+            tuple(sources),
+            tuple(node_ids),
+            colors,
+            mask,
+        )
+
     def _ensure_static_groups(self, index: SceneIndex) -> None:
         if self._static_groups_ready:
             return
@@ -433,14 +521,19 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             grouped.setdefault((node.geometry_id, mode), []).append(
                 (node_id, index.world_transform_by_node[node_id])
             )
-        for key in sorted(grouped, key=lambda value: (value[0], value[1].value)):
-            group = self._build_static_mesh_group(key[0], key[1], grouped[key])
-            self._mesh_groups.append(group)
-            # Base methods only need actor/node_ids, so the richer group is safe.
-            self._groups.append(group)  # type: ignore[arg-type]
-            self._actor_to_group[id(group.actor)] = group  # type: ignore[assignment]
-            for instance_index, node_id in enumerate(group.node_ids):
-                self._node_instance[node_id] = (group, instance_index)
+        groups_by_mode: dict[RenderMode, list[tuple[str, list[tuple[str, Matrix4]]]]] = {}
+        for (geometry_id, mode), entries in grouped.items():
+            groups_by_mode.setdefault(mode, []).append((geometry_id, entries))
+        chunk_size = max(1, int(self.SOURCE_TABLE_CHUNK_SIZE))
+        for mode in sorted(groups_by_mode, key=lambda value: value.value):
+            values = sorted(groups_by_mode[mode], key=lambda value: value[0])
+            for offset in range(0, len(values), chunk_size):
+                group = self._build_static_mesh_chunk(mode, values[offset : offset + chunk_size])
+                self._mesh_groups.append(group)
+                self._groups.append(group)  # type: ignore[arg-type]
+                self._actor_to_group[id(group.actor)] = group  # type: ignore[assignment]
+                for instance_index, node_id in enumerate(group.node_ids):
+                    self._node_instance[node_id] = (group, instance_index)
         self._static_groups_ready = True
 
     @staticmethod

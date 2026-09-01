@@ -7,7 +7,7 @@ stable canonical entity IDs.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import os
 from pathlib import Path
 import tempfile
@@ -20,7 +20,7 @@ from cws_convertor.project.model import ProjectModel
 from cws_convertor.project.service import ProjectSession
 from cws_convertor.production_export.readiness import ReadinessGate
 from cws_viewer.adapters.project_scene_loader import ProjectSceneLoadResult, ProjectSceneLoader
-from cws_viewer.geometry.loader import CancellationToken
+from cws_viewer.geometry.loader import BatchLoadReport, CancellationToken
 from cws_viewer.adapters.source_geometry import ProjectSourceResolver
 from cws_viewer.backends.memory import MemoryRenderBackend
 from cws_viewer.core.controller import ViewerCoreController
@@ -188,9 +188,11 @@ class IntegratedProjectWorkspace:
         load_all_geometry: bool = True,
         allow_proxy: bool = True,
         prefer_proxy: bool = False,
+        verify_ifc_source_geometry: bool = True,
         progress_callback: Callable[[int, str], None] | None = None,
         cancellation_token: CancellationToken | None = None,
         preview_callback: Callable[[ProjectSceneLoadResult], None] | None = None,
+        preloaded_exact_scene: Any | None = None,
     ) -> "IntegratedProjectWorkspace":
         started = time.perf_counter()
         notify = progress_callback or (lambda _percent, _message: None)
@@ -200,7 +202,11 @@ class IntegratedProjectWorkspace:
         session = ProjectSession.open(
             project_path,
             read_only=read_only,
-            verify_semantic_hashes=not prefer_proxy,
+            # ProjectStore's fast route still verifies ZIP entry SHA-256,
+            # sizes, CRC, SQLite snapshot checksum, schema, IDs and manifest
+            # consistency. The expensive entity-by-entity semantic rehash is
+            # reserved for diagnostic/source-verification opens.
+            verify_semantic_hashes=bool(verify_ifc_source_geometry and not prefer_proxy),
         )
         if cancellation_token is not None:
             cancellation_token.check()
@@ -212,6 +218,20 @@ class IntegratedProjectWorkspace:
             roots = list(source_search_roots)
             roots.extend(value.parent for value in session.source_paths.values())
             effective_prefer_proxy = bool(prefer_proxy)
+            if not verify_ifc_source_geometry:
+                renderable_entities = (
+                    tuple(session.project.parts.values())
+                    + tuple(session.project.purchased_items.values())
+                    + tuple(session.project.fasteners.values())
+                    + tuple(session.project.welds.values())
+                )
+                descriptors_complete = all(
+                    len(str((getattr(entity, "geometry_descriptor", {}) or {}).get("source_geometry_hash") or "")) == 64
+                    for entity in renderable_entities
+                )
+                # Older packages did not persist fastener/weld geometry
+                # identities. Never invent cache keys for those packages.
+                verify_ifc_source_geometry = not descriptors_complete
             renderable_entity_count = _renderable_entity_count(session.project)
             entity_limit = _full_geometry_entity_limit()
             # Large valid IFC geometry may never be replaced by boxes merely
@@ -272,18 +292,86 @@ class IntegratedProjectWorkspace:
             load_result = loader.load_project(
                 session.project,
                 project_path,
-                load_all=load_all_geometry,
+                load_all=False if preloaded_exact_scene is not None else load_all_geometry,
                 allow_proxy=allow_proxy,
                 token=cancellation_token,
                 progress=relay_geometry_progress,
                 fast_proxy_catalog=effective_prefer_proxy,
+                verify_ifc_source_geometry=verify_ifc_source_geometry,
             )
+            if preloaded_exact_scene is not None:
+                cached_scene = preloaded_exact_scene.scene
+                cached_repository = preloaded_exact_scene.repository
+                catalog_scene = load_result.scene
+                catalog_geometry = {
+                    resource.geometry_id: resource.content_hash
+                    for resource in catalog_scene.geometry
+                }
+                cached_geometry = {
+                    resource.geometry_id: resource.content_hash
+                    for resource in cached_scene.geometry
+                }
+                node_identity_matches = bool(
+                    len(cached_scene.nodes) == len(catalog_scene.nodes)
+                    and all(
+                        replace(
+                            cached_node,
+                            local_bounds=catalog_node.local_bounds,
+                            style_id=catalog_node.style_id,
+                        )
+                        == catalog_node
+                        for cached_node, catalog_node in zip(
+                            cached_scene.nodes,
+                            catalog_scene.nodes,
+                        )
+                    )
+                )
+                if (
+                    cached_scene.project_id != session.project.project_id
+                    or cached_scene.models != catalog_scene.models
+                    or not node_identity_matches
+                    or cached_geometry != catalog_geometry
+                    or len(cached_repository) != len(cached_geometry)
+                ):
+                    raise RuntimeError(
+                        "Exacte warmstartscene verschilt van de actuele canonical projectscene"
+                    )
+                ready_count = len(cached_geometry)
+                load_result = replace(
+                    load_result,
+                    scene=cached_scene,
+                    repository=cached_repository,
+                    geometry_report=BatchLoadReport(
+                        requested_count=ready_count,
+                        ready_count=ready_count,
+                        partial_count=0,
+                        failed_count=0,
+                        cancelled_count=0,
+                        cache_hit_count=ready_count,
+                        proxy_count=0,
+                        elapsed_seconds=float(preloaded_exact_scene.elapsed_seconds),
+                        results=(),
+                    ),
+                    scene_report=replace(
+                        load_result.scene_report,
+                        loaded_geometry_count=ready_count,
+                        proxy_geometry_count=0,
+                        deferred_geometry_count=0,
+                    ),
+                    timings=tuple(load_result.timings)
+                    + (("exact_scene_warmstart", float(preloaded_exact_scene.elapsed_seconds)),),
+                    load_profile={
+                        **dict(load_result.load_profile or {}),
+                        "warmstart": dict(preloaded_exact_scene.load_profile),
+                        "geometry_resources": [],
+                    },
+                )
             if cancellation_token is not None:
                 cancellation_token.check()
             notify(64, "Model volledig zichtbaar; selectie-index aanvullen")
             if load_result.project is not session.project:
                 raise RuntimeError("Viewer heeft een tweede projectinstantie aangemaakt")
-            if preview_callback is not None:
+            if preview_callback is not None and preloaded_exact_scene is None:
                 preview_callback(load_result)
 
             backend = MemoryRenderBackend()

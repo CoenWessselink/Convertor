@@ -24,8 +24,8 @@ DATA;
 #4=IFCBUILDINGSTOREY('STOREY',$,'Level 1',$,$,#100,$,$,.ELEMENT.,0.);
 #10=IFCELEMENTASSEMBLY('ASSEMBLY',$,'Assembly',$,$,#100,$,'MLO4',.USERDEFINED.);
 #11=IFCPLATE('PART',$,'Plate',$,'STRIP5*120',#100,$,'LO4');
-#12=IFCMECHANICALFASTENER('BOLT',$,'Bolt',$,$,#100,$,'B1',14.,50.);
-#13=IFCFASTENER('WELD',$,'Weld',$,$,#100,$,'W1');
+#12=IFCMECHANICALFASTENER('BOLT',$,'Bolt',$,$,#100,#110,'B1',14.,50.);
+#13=IFCFASTENER('WELD',$,'Weld',$,$,#100,#110,'W1');
 #20=IFCPROPERTYSINGLEVALUE('Assembly/Cast unit Mark',$,IFCLABEL('MLO4'),$);
 #21=IFCPROPERTYSINGLEVALUE('Assembly/Cast unit weight',$,IFCMASSMEASURE(0.62),$);
 #22=IFCPROPERTYSET('PSET-A',$,'Tekla Assembly',$,(#20,#21));
@@ -48,6 +48,9 @@ DATA;
 #100=IFCLOCALPLACEMENT($,#101);
 #101=IFCAXIS2PLACEMENT3D(#102,$,$);
 #102=IFCCARTESIANPOINT((0.,0.,0.));
+#110=IFCPRODUCTDEFINITIONSHAPE($,$,(#111));
+#111=IFCSHAPEREPRESENTATION($,'Body','SweptSolid',(#112));
+#112=IFCBLOCK(#101,10.,10.,50.);
 ENDSEC;
 END-ISO-10303-21;
 """
@@ -88,6 +91,11 @@ class IFCSemanticImportTests(unittest.TestCase):
             self.assertEqual(assembly.weld_ids, [weld.internal_id])
             self.assertAlmostEqual(fastener.diameter_mm, 14.0)
             self.assertEqual(weld.connected_part_ids, [part.internal_id])
+            self.assertEqual(
+                fastener.geometry_descriptor["source_geometry_hash"],
+                weld.geometry_descriptor["source_geometry_hash"],
+            )
+            self.assertEqual(len(fastener.geometry_descriptor["source_geometry_hash"]), 64)
             self.assertEqual(result.evidence["MLO4_assembly_count"], 1)
             self.assertEqual(len(result.evidence["MLO4_LO4_links"]), 1)
             self.assertEqual(result.evidence["bolt_or_hole_diameter_14_count"], 1)

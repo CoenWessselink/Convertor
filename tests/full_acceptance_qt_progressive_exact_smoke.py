@@ -26,6 +26,7 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
     window.show()
     started = {"value": 0.0}
     worker_activity = {"observed": False}
+    progress_timeline: list[dict[str, object]] = []
     report: dict[str, object] = {
         "schema": "cws-full-acceptance-qt-progressive-exact-1.0",
         "status": "FAIL",
@@ -52,6 +53,19 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
         window._open_project(project_path)
 
     def progress(_percent: int, message: str) -> None:
+        if (
+            str(message).startswith("Geometriecatalogus ·")
+            and progress_timeline
+            and int(progress_timeline[-1]["percent"]) == int(_percent)
+        ):
+            return
+        progress_timeline.append(
+            {
+                "percent": int(_percent),
+                "message": str(message),
+                "seconds": time.perf_counter() - started["value"],
+            }
+        )
         if "Eerste interactieve modelweergave gereed" in message and "first_frame_seconds" not in report:
             report["first_frame_seconds"] = time.perf_counter() - started["value"]
             report["first_frame_workspace"] = window._workspace_name(window.tabs.currentWidget())
@@ -92,6 +106,23 @@ def run(project_path: Path, output_path: Path, screenshot_path: Path) -> dict[st
                 workspace = window.project_page.workspace
                 viewer = window.project_page.viewer
                 repository = workspace.load_result.repository
+                report["load_timings"] = dict(workspace.load_result.timings)
+                load_profile = dict(workspace.load_result.load_profile or {})
+                geometry_resources = list(load_profile.pop("geometry_resources", ()) or ())
+                warmstart = dict(load_profile.get("warmstart") or {})
+                warmstart_count = int(warmstart.get("mesh_count") or 0)
+                load_profile["geometry_resource_count"] = (
+                    warmstart_count or len(geometry_resources)
+                )
+                load_profile["cache_hit_count"] = (
+                    warmstart_count
+                    or sum(bool(item.get("cache_hit")) for item in geometry_resources)
+                )
+                report["load_profile"] = load_profile
+                report["preview_timings"] = dict(
+                    getattr(window.project_page, "_preview_timings", {}) or {}
+                )
+                report["progress_timeline"] = progress_timeline
                 meshes = [repository.require(value) for value in repository.ids()]
                 proxies = [mesh for mesh in meshes if mesh.exactness == "display_proxy"]
                 node_id = viewer.controller.index.renderable_node_ids[0]

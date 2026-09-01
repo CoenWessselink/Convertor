@@ -65,6 +65,13 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         Splitting at a feature angle preserves planar steel faces while keeping
         curved/faceted source geometry visually continuous where appropriate.
         """
+        cache = getattr(self, "_cws_polydata_cache", None)
+        if cache is None:
+            cache = {}
+            self._cws_polydata_cache = cache
+        cached = cache.get(geometry_id)
+        if cached is not None:
+            return cached
         vtk = self._vtk
         assert vtk is not None
         mesh = self.repository.require(geometry_id)
@@ -84,17 +91,22 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         polydata.SetPoints(points)
         polydata.SetPolys(cell_array)
 
+        # IFC tessellation already has authoritative winding and triangles.
+        # Reorienting and splitting every resource on each viewer open changes
+        # topology and dominates first-frame latency on large steel models.
+        # Exact cell normals preserve hard profile/plate edges, avoid smoothing
+        # across 90-degree corners and keep curved facets faithful to source.
         normals = vtk.vtkPolyDataNormals()
         normals.SetInputData(polydata)
-        normals.ConsistencyOn()
-        normals.AutoOrientNormalsOn()
-        normals.SplittingOn()
-        normals.SetFeatureAngle(self.FEATURE_ANGLE_DEG)
-        normals.ComputePointNormalsOn()
-        normals.ComputeCellNormalsOff()
+        normals.ConsistencyOff()
+        normals.AutoOrientNormalsOff()
+        normals.SplittingOff()
+        normals.ComputePointNormalsOff()
+        normals.ComputeCellNormalsOn()
         normals.Update()
         output = vtk.vtkPolyData()
         output.ShallowCopy(normals.GetOutput())
+        cache[geometry_id] = output
         return output
 
     def _feature_edges_polydata(self, source: Any, geometry_hash: str = ""):

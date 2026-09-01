@@ -1,0 +1,52 @@
+{
+  "schema": "cws.hvpc.exact-warmstart-closeout.v1",
+  "status": "PARTIAL",
+  "project": "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj",
+  "project_sha256": "ce91dd6862f74c49f0f2556c781bb3967c652b6a452deb9cb23923205643a84c",
+  "canonical_identity": {
+    "physical_objects": 5725,
+    "scene_nodes": 6621,
+    "unique_exact_geometry_resources": 1496,
+    "reused_instances": 4229,
+    "missing_geometry_hashes": 0,
+    "proxy_meshes": 0
+  },
+  "native_qt_vtk_acceptance": {
+    "status": "PASS",
+    "first_exact_frame_seconds": 3.2636148000019602,
+    "background_workspace_complete_seconds": 32.142113400041126,
+    "warmstart_restore_seconds": 0.4942758000106551,
+    "preview_total_seconds": 2.652318299980834,
+    "render_groups": 24,
+    "exact_meshes": 1496,
+    "wrong_instance_picks": 0,
+    "frame_p50_ms": 21.018049999838695,
+    "frame_p95_ms": 28.84637500392273,
+    "pick_p95_ms": 116.30785500165075,
+    "screenshot": "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png",
+    "result": "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.json"
+  },
+  "integrity": {
+    "scene_contract": "ProjectScene JSON with verified scene_hash",
+    "project_binding": "cwscproj manifest project_sha256",
+    "mesh_contract": "MeshCache V2 bundle with full SHA-256 verification",
+    "canonical_reconciliation": "project/model/node/transform/geometry identity checked before workspace reuse",
+    "silent_proxy_fallback": false
+  },
+  "cold_ifc_tessellation": {
+    "status": "FAIL",
+    "target_seconds_max": 5.0,
+    "measured_seconds": 7.93920550000621,
+    "evidence": "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+    "remaining": "A genuinely cacheless first IFC tessellation is not yet proven at or below 5 seconds."
+  },
+  "gates": {
+    "warm_exact_first_frame_3_to_5_seconds": "PASS",
+    "all_physical_objects_present": "PASS",
+    "exact_meshes_only": "PASS",
+    "source_table_instancing": "PASS",
+    "interaction_frame_p95_below_33_34_ms": "PASS",
+    "selection_identity": "PASS",
+    "cold_first_ifc_tessellation_below_5_seconds": "FAIL"
+  }
+}
