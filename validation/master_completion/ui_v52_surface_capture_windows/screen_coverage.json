@@ -1,0 +1,318 @@
+{
+  "schema": "cws-ui-v5.1-screen-coverage-1.0",
+  "visual_required": 25,
+  "visual_implemented": 25,
+  "support_surfaces": 6,
+  "screens": [
+    {
+      "screen_id": "01",
+      "title": "Start / Inlezen",
+      "reference_png": "01_PROJECT_Start_Inlezen.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\01_start_inlezen.png",
+      "screenshot_saved": true,
+      "required_controls": 8,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "02",
+      "title": "Projectoverzicht",
+      "reference_png": "02_PROJECT_Projectoverzicht.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\02_projectoverzicht.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "03",
+      "title": "Projectstructuur",
+      "reference_png": "03_PROJECT_Projectstructuur.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\03_projectstructuur.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "04",
+      "title": "Profielen & Materialen",
+      "reference_png": "04_PROJECT_Profielen_Materialen.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\04_profielen_materialen.png",
+      "screenshot_saved": true,
+      "required_controls": 5,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "05",
+      "title": "3D Viewer",
+      "reference_png": "05_VIEWER_3D_Cockpit.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\05_3d_viewer.png",
+      "screenshot_saved": true,
+      "required_controls": 14,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "06",
+      "title": "Selectie & Context",
+      "reference_png": "06_VIEWER_Selectie_Context.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\06_selectie_context.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "07",
+      "title": "Weergave & Meten",
+      "reference_png": "07_VIEWER_Weergave_Meten.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\07_weergave_meten.png",
+      "screenshot_saved": true,
+      "required_controls": 8,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "08",
+      "title": "Doorsnede & Isoleren",
+      "reference_png": "08_VIEWER_Doorsnede_Isoleren.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\08_doorsnede_isoleren.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "09",
+      "title": "Laadstatus & Prestaties",
+      "reference_png": "09_VIEWER_Laadstatus_Performance.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\09_laadstatus_prestaties.png",
+      "screenshot_saved": true,
+      "required_controls": 5,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "10",
+      "title": "Projectreviews",
+      "reference_png": "10_PROJECT_Projectreviews.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\10_projectreviews.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "11",
+      "title": "BOM & Machines — BOM",
+      "reference_png": "11_PRODUCTIE_BOM_Machines_BOM.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\11_bom_machines_bom.png",
+      "screenshot_saved": true,
+      "required_controls": 14,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "12",
+      "title": "Machine-indeling — Automatisch",
+      "reference_png": "12_PRODUCTIE_Machineindeling_Automatisch.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\12_machine_indeling_automatisch.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "13",
+      "title": "Machine-indeling — Handmatig",
+      "reference_png": "13_PRODUCTIE_Machineindeling_Handmatige_Override.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\13_machine_indeling_handmatig.png",
+      "screenshot_saved": true,
+      "required_controls": 5,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "14",
+      "title": "Optimalisatie — Profile Nesting",
+      "reference_png": "14_PRODUCTIE_Optimalisatie_Profile_Nesting.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\14_optimalisatie_profile_nesting.png",
+      "screenshot_saved": true,
+      "required_controls": 10,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "15",
+      "title": "Optimalisatie — Plate Nesting",
+      "reference_png": "15_PRODUCTIE_Optimalisatie_Plate_Nesting.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\15_optimalisatie_plate_nesting.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "16",
+      "title": "Bewerken — Workbench",
+      "reference_png": "16_PRODUCTIE_Bewerken_Workbench.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\16_bewerken_workbench.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "17",
+      "title": "Scribing",
+      "reference_png": "17_PRODUCTIE_Scribing.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\17_scribing.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "18",
+      "title": "Converteren",
+      "reference_png": "18_PRODUCTIE_Converteren.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\18_converteren.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "19",
+      "title": "Tekeningen / PDF",
+      "reference_png": "19_PRODUCTIE_Tekeningen_PDF.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\19_tekeningen_pdf.png",
+      "screenshot_saved": true,
+      "required_controls": 13,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "20",
+      "title": "Afdrukken / Print Center",
+      "reference_png": "20_UITVOER_Afdrukken_Print_Center.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\20_afdrukken_print_center.png",
+      "screenshot_saved": true,
+      "required_controls": 10,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "21",
+      "title": "Validatie",
+      "reference_png": "21_CONTROLE_Validatie.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\21_validatie.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "22",
+      "title": "Revisies / Compare",
+      "reference_png": "22_CONTROLE_Revisies_Compare.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\22_revisies_compare.png",
+      "screenshot_saved": true,
+      "required_controls": 8,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "23",
+      "title": "Maakbaarheid",
+      "reference_png": "23_CONTROLE_Maakbaarheid.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\23_maakbaarheid.png",
+      "screenshot_saved": true,
+      "required_controls": 5,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "24",
+      "title": "Export Center",
+      "reference_png": "24_UITVOER_Export_Center.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\24_export_center.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "25",
+      "title": "Rapport / Pakket",
+      "reference_png": "25_UITVOER_Rapport_Pakket.png",
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\25_rapport_pakket.png",
+      "screenshot_saved": true,
+      "required_controls": 5,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "26",
+      "title": "Machinebibliotheek",
+      "reference_png": null,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\26_machinebibliotheek.png",
+      "screenshot_saved": true,
+      "required_controls": 7,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "27",
+      "title": "PDF/Print & Tekeningtemplates",
+      "reference_png": null,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\27_pdf_print_tekeningtemplates.png",
+      "screenshot_saved": true,
+      "required_controls": 6,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "28",
+      "title": "Activity Center",
+      "reference_png": null,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\28_activity_center.png",
+      "screenshot_saved": true,
+      "required_controls": 4,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "29",
+      "title": "Problem / Status Center",
+      "reference_png": null,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\29_problem_status_center.png",
+      "screenshot_saved": true,
+      "required_controls": 4,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "30",
+      "title": "Los Viewer-venster",
+      "reference_png": null,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\30_los_viewer_venster.png",
+      "screenshot_saved": true,
+      "required_controls": 2,
+      "missing_controls": [],
+      "status": "PASS"
+    },
+    {
+      "screen_id": "31",
+      "title": "Snelactie / Command Palette",
+      "reference_png": null,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_surface_capture_windows\\screenshots\\31_snelactie_command_palette.png",
+      "screenshot_saved": true,
+      "required_controls": 3,
+      "missing_controls": [],
+      "status": "PASS"
+    }
+  ]
+}

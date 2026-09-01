@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "captured_commit": "1d5336e",
+  "runtime": "native Windows Qt",
+  "status": "PARTIAL",
+  "authority": {
+    "navigation": "Project | Viewer | Productie | Controle | Uitvoer",
+    "theme": "light professional V5.2",
+    "reference_pack": "25 supplied V5/V5.1/V5.2 reference images"
+  },
+  "results": {
+    "required_surfaces": 31,
+    "captured_surfaces": 31,
+    "required_controls": 226,
+    "missing_controls": 0,
+    "duplicate_controls": 0,
+    "screen_failures": 0,
+    "dpi_profiles": 4,
+    "dpi_failures": 0,
+    "reference_pairs": 25,
+    "paired_reference_images": 25,
+    "visual_review": "HUMAN_REVIEW_REQUIRED"
+  },
+  "evidence": {
+    "root": "validation/master_completion/ui_v52_surface_capture_windows",
+    "screenshots": "validation/master_completion/ui_v52_surface_capture_windows/screenshots",
+    "dpi": "validation/master_completion/ui_v52_surface_capture_windows/dpi",
+    "screen_coverage": "validation/master_completion/ui_v52_surface_capture_windows/screen_coverage.json",
+    "control_inventory": "validation/master_completion/ui_v52_surface_capture_windows/runtime_control_inventory.json",
+    "control_actions": "validation/master_completion/ui_v52_surface_capture_windows/control_action_results.json",
+    "missing_extra_controls": "validation/master_completion/ui_v52_surface_capture_windows/missing_extra_control_report.json",
+    "visual_pairs": "validation/master_completion/ui_v52_surface_capture_windows/visual_diff_report.json"
+  },
+  "remaining": [
+    "The repository has no HVPC CWS project container; IFC alone cannot populate all project-bound screens through the canonical open_project API.",
+    "The 25 paired captures require human visual review because several project-bound screens contain no loaded project data.",
+    "No visual PASS is claimed from pixel-difference output alone."
+  ]
+}

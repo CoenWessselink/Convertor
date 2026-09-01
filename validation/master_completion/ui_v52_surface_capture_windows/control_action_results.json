@@ -1,0 +1,2264 @@
+{
+  "controls": [
+    {
+      "test_id": "nav_project",
+      "screen_id": "GLOBAL",
+      "label": "Project",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "nav_viewer",
+      "screen_id": "GLOBAL",
+      "label": "Viewer",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "nav_productie",
+      "screen_id": "GLOBAL",
+      "label": "Productie",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "nav_controle",
+      "screen_id": "GLOBAL",
+      "label": "Controle",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "nav_uitvoer",
+      "screen_id": "GLOBAL",
+      "label": "Uitvoer",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_undo",
+      "screen_id": "GLOBAL",
+      "label": "Ongedaan maken",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_redo",
+      "screen_id": "GLOBAL",
+      "label": "Opnieuw",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_activity",
+      "screen_id": "GLOBAL",
+      "label": "Activiteit",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_problems",
+      "screen_id": "GLOBAL",
+      "label": "Problemen",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_settings",
+      "screen_id": "GLOBAL",
+      "label": "Instellingen",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_command",
+      "screen_id": "GLOBAL",
+      "label": "Snelactie",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "global_print",
+      "screen_id": "GLOBAL",
+      "label": "Afdrukken",
+      "service_contract": "",
+      "route": "",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "import_dropzone",
+      "screen_id": "01",
+      "label": "Sleep bestanden hierheen",
+      "service_contract": "ProjectImportService",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_open_file",
+      "screen_id": "01",
+      "label": "Bestand openen",
+      "service_contract": "ProjectImportService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_open_folder",
+      "screen_id": "01",
+      "label": "Map openen",
+      "service_contract": "ProjectImportService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_open_multiple",
+      "screen_id": "01",
+      "label": "Meerdere bestanden",
+      "service_contract": "ProjectImportService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_import_load",
+      "screen_id": "01",
+      "label": "Inladen",
+      "service_contract": "ProjectImportService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_import_cancel",
+      "screen_id": "01",
+      "label": "Annuleren",
+      "service_contract": "JobManager",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "recent_projects",
+      "screen_id": "01",
+      "label": "Recente projecten",
+      "service_contract": "ProjectService",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "import_options",
+      "screen_id": "01",
+      "label": "Importopties",
+      "service_contract": "ProjectImportService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_project_open_viewer",
+      "screen_id": "02",
+      "label": "Open Viewer",
+      "service_contract": "WorkspaceRouter",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_project_properties",
+      "screen_id": "02",
+      "label": "Projectgegevens",
+      "service_contract": "ProjectService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_project_save",
+      "screen_id": "02",
+      "label": "Opslaan",
+      "service_contract": "ProjectPersistence",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_project_save_as",
+      "screen_id": "02",
+      "label": "Opslaan als",
+      "service_contract": "ProjectPersistence",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_project_revisions",
+      "screen_id": "02",
+      "label": "Revisies",
+      "service_contract": "RevisionService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_project_validate",
+      "screen_id": "02",
+      "label": "Controleren",
+      "service_contract": "ValidationService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tree_project",
+      "screen_id": "03",
+      "label": "Projectstructuur",
+      "service_contract": "SelectionAuthority",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "txt_tree_search",
+      "screen_id": "03",
+      "label": "Zoeken",
+      "service_contract": "ProjectTreeModel",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_tree_expand",
+      "screen_id": "03",
+      "label": "Alles uitklappen",
+      "service_contract": "ProjectTreeModel",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_tree_collapse",
+      "screen_id": "03",
+      "label": "Alles inklappen",
+      "service_contract": "ProjectTreeModel",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_tree_show_viewer",
+      "screen_id": "03",
+      "label": "Toon in Viewer",
+      "service_contract": "ViewerHost",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_tree_isolate",
+      "screen_id": "03",
+      "label": "Isoleren",
+      "service_contract": "ViewerStateService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_tree_properties",
+      "screen_id": "03",
+      "label": "Eigenschappen",
+      "service_contract": "PropertiesService",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_profiles",
+      "screen_id": "04",
+      "label": "Profielen",
+      "service_contract": "ProjectQuantitiesService",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_materials",
+      "screen_id": "04",
+      "label": "Materialen",
+      "service_contract": "ProjectQuantitiesService",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "txt_pm_search",
+      "screen_id": "04",
+      "label": "Zoeken",
+      "service_contract": "ProjectQuantitiesService",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_pm_select_viewer",
+      "screen_id": "04",
+      "label": "Selecteer in Viewer",
+      "service_contract": "SelectionAuthority",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_pm_export",
+      "screen_id": "04",
+      "label": "Exporteren",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "viewer_canvas",
+      "screen_id": "05",
+      "label": "3D Viewer",
+      "service_contract": "ViewerHost",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_selection_level",
+      "screen_id": "05",
+      "label": "Selecteren",
+      "service_contract": "SelectionAuthority",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_fit_all",
+      "screen_id": "05",
+      "label": "Alles passend",
+      "service_contract": "ViewerNavigationService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_fit_selected",
+      "screen_id": "05",
+      "label": "Selectie passend",
+      "service_contract": "ViewerNavigationService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_front",
+      "screen_id": "05",
+      "label": "Voor",
+      "service_contract": "ViewerNavigationService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_top",
+      "screen_id": "05",
+      "label": "Boven",
+      "service_contract": "ViewerNavigationService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_iso",
+      "screen_id": "05",
+      "label": "ISO",
+      "service_contract": "ViewerNavigationService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_hide",
+      "screen_id": "05",
+      "label": "Verbergen",
+      "service_contract": "ViewerStateService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_show_all",
+      "screen_id": "05",
+      "label": "Alles tonen",
+      "service_contract": "ViewerStateService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_isolate",
+      "screen_id": "05",
+      "label": "Isoleren",
+      "service_contract": "ViewerStateService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ghost",
+      "screen_id": "05",
+      "label": "Ghost",
+      "service_contract": "ViewerStateService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_measure",
+      "screen_id": "05",
+      "label": "Meten",
+      "service_contract": "MeasurementService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_section",
+      "screen_id": "05",
+      "label": "Doorsnede",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_detach_viewer",
+      "screen_id": "05",
+      "label": "Los venster",
+      "service_contract": "ViewerWindowService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ctx_edit",
+      "screen_id": "06",
+      "label": "Bewerken",
+      "service_contract": "WorkspaceRouter",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ctx_drawing",
+      "screen_id": "06",
+      "label": "Tekening",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ctx_machine",
+      "screen_id": "06",
+      "label": "Machine",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ctx_optimize",
+      "screen_id": "06",
+      "label": "Optimaliseren",
+      "service_contract": "OptimizationRouter",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ctx_print",
+      "screen_id": "06",
+      "label": "Afdrukken",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_ctx_more",
+      "screen_id": "06",
+      "label": "Meer",
+      "service_contract": "ContextActionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_render_mode",
+      "screen_id": "07",
+      "label": "Weergave",
+      "service_contract": "ViewerDisplayService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_color_mode",
+      "screen_id": "07",
+      "label": "Kleuren",
+      "service_contract": "ViewerDisplayService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "sld_transparency",
+      "screen_id": "07",
+      "label": "Transparantie",
+      "service_contract": "ViewerDisplayService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_measure_distance",
+      "screen_id": "07",
+      "label": "Afstand",
+      "service_contract": "MeasurementService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_measure_angle",
+      "screen_id": "07",
+      "label": "Hoek",
+      "service_contract": "MeasurementService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_measure_radius",
+      "screen_id": "07",
+      "label": "Radius",
+      "service_contract": "MeasurementService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_measure_coordinates",
+      "screen_id": "07",
+      "label": "Coördinaten",
+      "service_contract": "MeasurementService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_measure_clear",
+      "screen_id": "07",
+      "label": "Metingen wissen",
+      "service_contract": "MeasurementService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_section_new",
+      "screen_id": "08",
+      "label": "Nieuwe doorsnede",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_section_from_face",
+      "screen_id": "08",
+      "label": "Vanaf vlak",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_section_flip",
+      "screen_id": "08",
+      "label": "Omkeren",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_section_toggle",
+      "screen_id": "08",
+      "label": "Aan/uit",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_section_remove",
+      "screen_id": "08",
+      "label": "Verwijderen",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_clip_box",
+      "screen_id": "08",
+      "label": "Clipbox",
+      "service_contract": "SectionService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_visibility_restore",
+      "screen_id": "08",
+      "label": "Weergave herstellen",
+      "service_contract": "ViewerStateService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_performance_preset",
+      "screen_id": "09",
+      "label": "Prestaties",
+      "service_contract": "ViewerPerformanceGovernor",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_load_cancel",
+      "screen_id": "09",
+      "label": "Laden annuleren",
+      "service_contract": "JobManager",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_load_retry",
+      "screen_id": "09",
+      "label": "Opnieuw proberen",
+      "service_contract": "GeometryLoadCoordinator",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_perf_details",
+      "screen_id": "09",
+      "label": "Details",
+      "service_contract": "ViewerDiagnostics",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "progress_geometry",
+      "screen_id": "09",
+      "label": "Geometrie",
+      "service_contract": "GeometryLoadCoordinator",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_create",
+      "screen_id": "10",
+      "label": "View opslaan",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_update",
+      "screen_id": "10",
+      "label": "View bijwerken",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_rename",
+      "screen_id": "10",
+      "label": "Naam wijzigen",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_view_delete",
+      "screen_id": "10",
+      "label": "Verwijderen",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_issue_new",
+      "screen_id": "10",
+      "label": "Nieuw reviewpunt",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_issue_open",
+      "screen_id": "10",
+      "label": "Openen",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_bom",
+      "screen_id": "11",
+      "label": "BOM",
+      "service_contract": "BomWorkspaceService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_machine_assignment",
+      "screen_id": "11",
+      "label": "Machine-indeling",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_optimization",
+      "screen_id": "11",
+      "label": "Optimalisatie",
+      "service_contract": "OptimizationRouter",
+      "route": "productie",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "txt_bom_search",
+      "screen_id": "11",
+      "label": "Zoeken",
+      "service_contract": "BomWorkspaceService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_filter",
+      "screen_id": "11",
+      "label": "Filter",
+      "service_contract": "BomWorkspaceService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_group",
+      "screen_id": "11",
+      "label": "Groeperen",
+      "service_contract": "BomWorkspaceService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_columns",
+      "screen_id": "11",
+      "label": "Kolommen",
+      "service_contract": "BomWorkspaceService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_edit",
+      "screen_id": "11",
+      "label": "Bewerken",
+      "service_contract": "WorkspaceRouter",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_drawing",
+      "screen_id": "11",
+      "label": "Tekening",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_machine",
+      "screen_id": "11",
+      "label": "Machine",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_optimize",
+      "screen_id": "11",
+      "label": "Optimaliseren",
+      "service_contract": "OptimizationRouter",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_print",
+      "screen_id": "11",
+      "label": "Afdrukken",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_more",
+      "screen_id": "11",
+      "label": "Meer",
+      "service_contract": "ContextActionService",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_bom_export",
+      "screen_id": "11",
+      "label": "Exporteren",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_route_recompute",
+      "screen_id": "12",
+      "label": "Opnieuw indelen",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_route_accept_all",
+      "screen_id": "12",
+      "label": "Voorstellen toepassen",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_route_show_reason",
+      "screen_id": "12",
+      "label": "Toon reden",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_route_machine_filter",
+      "screen_id": "12",
+      "label": "Machine",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_route_status_filter",
+      "screen_id": "12",
+      "label": "Status",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_route_manual",
+      "screen_id": "12",
+      "label": "Handmatig wijzigen",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_manual_machine",
+      "screen_id": "13",
+      "label": "Machine",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_manual_assign",
+      "screen_id": "13",
+      "label": "Toewijzen",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_manual_reset_auto",
+      "screen_id": "13",
+      "label": "Terug naar automatisch",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_manual_validate",
+      "screen_id": "13",
+      "label": "Controleren",
+      "service_contract": "MachineCapabilityService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_allow_review_override",
+      "screen_id": "13",
+      "label": "Alleen als reviewoverride opslaan",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_optimize",
+      "screen_id": "14",
+      "label": "Optimaliseren",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_compare",
+      "screen_id": "14",
+      "label": "Scenario's vergelijken",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_validate",
+      "screen_id": "14",
+      "label": "Controleren",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_accept",
+      "screen_id": "14",
+      "label": "Accepteren",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_reserve",
+      "screen_id": "14",
+      "label": "Reserveren",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_release",
+      "screen_id": "14",
+      "label": "Reservering vrijgeven",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_lock",
+      "screen_id": "14",
+      "label": "Vergrendelen",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_unlock",
+      "screen_id": "14",
+      "label": "Ontgrendelen",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_partial",
+      "screen_id": "14",
+      "label": "Gedeeltelijk heroptimaliseren",
+      "service_contract": "ProfileNestingCommandService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_profile_report",
+      "screen_id": "14",
+      "label": "Rapport",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_optimize",
+      "screen_id": "15",
+      "label": "Optimaliseren",
+      "service_contract": "PlateNestingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_rotate",
+      "screen_id": "15",
+      "label": "Roteren",
+      "service_contract": "PlateNestingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_lock",
+      "screen_id": "15",
+      "label": "Vergrendelen",
+      "service_contract": "PlateNestingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_unlock",
+      "screen_id": "15",
+      "label": "Ontgrendelen",
+      "service_contract": "PlateNestingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_validate",
+      "screen_id": "15",
+      "label": "Controleren",
+      "service_contract": "PlateNestingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_accept",
+      "screen_id": "15",
+      "label": "Accepteren",
+      "service_contract": "PlateNestingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_plate_report",
+      "screen_id": "15",
+      "label": "Rapport",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_wb_apply",
+      "screen_id": "16",
+      "label": "Toepassen",
+      "service_contract": "WorkbenchService",
+      "route": "edit",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_wb_validate",
+      "screen_id": "16",
+      "label": "Controleren",
+      "service_contract": "WorkbenchService",
+      "route": "edit",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_wb_cancel",
+      "screen_id": "16",
+      "label": "Annuleren",
+      "service_contract": "WorkbenchService",
+      "route": "edit",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_wb_undo",
+      "screen_id": "16",
+      "label": "Ongedaan maken",
+      "service_contract": "UnifiedApplicationContext",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_wb_redo",
+      "screen_id": "16",
+      "label": "Opnieuw",
+      "service_contract": "UnifiedApplicationContext",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_wb_rebuild",
+      "screen_id": "16",
+      "label": "Opnieuw opbouwen",
+      "service_contract": "WorkbenchService",
+      "route": "edit",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_scribe_marks",
+      "screen_id": "17",
+      "label": "Markeringen",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_scribe_holes",
+      "screen_id": "17",
+      "label": "Gatreferenties",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "tab_scribe_id",
+      "screen_id": "17",
+      "label": "Identificatie",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_scribe_generate",
+      "screen_id": "17",
+      "label": "Genereren",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_scribe_validate",
+      "screen_id": "17",
+      "label": "Controleren",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_scribe_apply",
+      "screen_id": "17",
+      "label": "Toepassen",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_scribe_clear",
+      "screen_id": "17",
+      "label": "Wissen",
+      "service_contract": "ScribingService",
+      "route": "scribing",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_convert_source",
+      "screen_id": "18",
+      "label": "Bron",
+      "service_contract": "ConversionCapabilityRegistry",
+      "route": "productie",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_convert_target",
+      "screen_id": "18",
+      "label": "Doel",
+      "service_contract": "ConversionCapabilityRegistry",
+      "route": "productie",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_convert_scope",
+      "screen_id": "18",
+      "label": "Scope",
+      "service_contract": "ExportScopeService",
+      "route": "export",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_convert_check",
+      "screen_id": "18",
+      "label": "Controleren",
+      "service_contract": "ConversionService",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_convert_run",
+      "screen_id": "18",
+      "label": "Converteren",
+      "service_contract": "ConversionService",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_convert_reimport",
+      "screen_id": "18",
+      "label": "Resultaat opnieuw inlezen en vergelijken",
+      "service_contract": "ConversionService",
+      "route": "productie",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_convert_output",
+      "screen_id": "18",
+      "label": "Doelmap",
+      "service_contract": "ConversionService",
+      "route": "productie",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_drawing_type",
+      "screen_id": "19",
+      "label": "Type",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_paper_size",
+      "screen_id": "19",
+      "label": "Papier",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_orientation",
+      "screen_id": "19",
+      "label": "Oriëntatie",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_scale",
+      "screen_id": "19",
+      "label": "Schaal",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_view_front",
+      "screen_id": "19",
+      "label": "Voor",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_view_top",
+      "screen_id": "19",
+      "label": "Boven",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_view_right",
+      "screen_id": "19",
+      "label": "Rechts",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_view_iso",
+      "screen_id": "19",
+      "label": "ISO",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_drawing_auto_layout",
+      "screen_id": "19",
+      "label": "Auto indelen",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_drawing_generate",
+      "screen_id": "19",
+      "label": "Genereren",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_drawing_edit",
+      "screen_id": "19",
+      "label": "Bewerken",
+      "service_contract": "DrawingService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_drawing_print",
+      "screen_id": "19",
+      "label": "Afdrukken",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_drawing_export_pdf",
+      "screen_id": "19",
+      "label": "PDF opslaan",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_print_content",
+      "screen_id": "20",
+      "label": "Inhoud",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_print_scope",
+      "screen_id": "20",
+      "label": "Scope",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_printer",
+      "screen_id": "20",
+      "label": "Printer",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_print_paper",
+      "screen_id": "20",
+      "label": "Papier",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_print_orientation",
+      "screen_id": "20",
+      "label": "Oriëntatie",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "spin_print_copies",
+      "screen_id": "20",
+      "label": "Aantal",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_print_preview",
+      "screen_id": "20",
+      "label": "Voorbeeld",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_print_run",
+      "screen_id": "20",
+      "label": "Afdrukken",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_print_pdf",
+      "screen_id": "20",
+      "label": "PDF opslaan",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_print_batch",
+      "screen_id": "20",
+      "label": "Batch",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_validation_run",
+      "screen_id": "21",
+      "label": "Opnieuw controleren",
+      "service_contract": "ValidationService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_validation_severity",
+      "screen_id": "21",
+      "label": "Ernst",
+      "service_contract": "ValidationService",
+      "route": "control",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_validation_domain",
+      "screen_id": "21",
+      "label": "Onderdeel",
+      "service_contract": "ValidationService",
+      "route": "control",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_validation_show",
+      "screen_id": "21",
+      "label": "Toon object",
+      "service_contract": "SelectionAuthority",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_validation_open",
+      "screen_id": "21",
+      "label": "Open oplossen",
+      "service_contract": "WorkspaceRouter",
+      "route": "controle",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_validation_evidence",
+      "screen_id": "21",
+      "label": "Evidence",
+      "service_contract": "ProofCenterService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_compare_a",
+      "screen_id": "22",
+      "label": "Revisie A",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_compare_b",
+      "screen_id": "22",
+      "label": "Revisie B",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_compare_run",
+      "screen_id": "22",
+      "label": "Vergelijken",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_compare_added",
+      "screen_id": "22",
+      "label": "Toegevoegd",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_compare_removed",
+      "screen_id": "22",
+      "label": "Verwijderd",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_compare_changed",
+      "screen_id": "22",
+      "label": "Gewijzigd",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "chk_compare_same",
+      "screen_id": "22",
+      "label": "Ongewijzigd",
+      "service_contract": "RevisionCompareService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_compare_issue",
+      "screen_id": "22",
+      "label": "Reviewpunt maken",
+      "service_contract": "ReviewService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_dfm_machine",
+      "screen_id": "23",
+      "label": "Machine",
+      "service_contract": "MachineCapabilityService",
+      "route": "production",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_dfm_run",
+      "screen_id": "23",
+      "label": "Controleren",
+      "service_contract": "DfmService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_dfm_show",
+      "screen_id": "23",
+      "label": "Toon probleem",
+      "service_contract": "SelectionAuthority",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_dfm_machine_route",
+      "screen_id": "23",
+      "label": "Andere machine",
+      "service_contract": "MachineRoutingService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_dfm_evidence",
+      "screen_id": "23",
+      "label": "Details",
+      "service_contract": "ProofCenterService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "cmb_export_scope",
+      "screen_id": "24",
+      "label": "Scope",
+      "service_contract": "ExportScopeService",
+      "route": "export",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_export_formats",
+      "screen_id": "24",
+      "label": "Formaten",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_export_preflight",
+      "screen_id": "24",
+      "label": "Controleren",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_export_generate",
+      "screen_id": "24",
+      "label": "Genereren",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_export_verify",
+      "screen_id": "24",
+      "label": "Verifiëren",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_export_package",
+      "screen_id": "24",
+      "label": "Pakket maken",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_export_folder",
+      "screen_id": "24",
+      "label": "Doelmap",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_report_refresh",
+      "screen_id": "25",
+      "label": "Status vernieuwen",
+      "service_contract": "ProofCenterService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_report_open_blocker",
+      "screen_id": "25",
+      "label": "Open blokkade",
+      "service_contract": "WorkspaceRouter",
+      "route": "uitvoer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_report_print",
+      "screen_id": "25",
+      "label": "Rapport afdrukken",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_report_export",
+      "screen_id": "25",
+      "label": "Rapport opslaan",
+      "service_contract": "DocumentOutputService",
+      "route": "output",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_report_package",
+      "screen_id": "25",
+      "label": "Productiepakket",
+      "service_contract": "ExportService",
+      "route": "export",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_new",
+      "screen_id": "26",
+      "label": "Nieuwe machine",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_duplicate",
+      "screen_id": "26",
+      "label": "Dupliceren",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_import",
+      "screen_id": "26",
+      "label": "Importeren",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_export",
+      "screen_id": "26",
+      "label": "Exporteren",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_test",
+      "screen_id": "26",
+      "label": "Configuratie testen",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_save",
+      "screen_id": "26",
+      "label": "Opslaan",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_machine_cancel",
+      "screen_id": "26",
+      "label": "Annuleren",
+      "service_contract": "MachineLibraryService",
+      "route": "production",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_template_new",
+      "screen_id": "27",
+      "label": "Nieuw",
+      "service_contract": "DocumentTemplateService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_template_duplicate",
+      "screen_id": "27",
+      "label": "Dupliceren",
+      "service_contract": "DocumentTemplateService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_template_logo",
+      "screen_id": "27",
+      "label": "Logo kiezen",
+      "service_contract": "DocumentTemplateService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_template_preview",
+      "screen_id": "27",
+      "label": "Voorbeeld",
+      "service_contract": "DocumentTemplateService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_template_save",
+      "screen_id": "27",
+      "label": "Opslaan",
+      "service_contract": "DocumentTemplateService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_template_reset",
+      "screen_id": "27",
+      "label": "Standaard herstellen",
+      "service_contract": "DocumentTemplateService",
+      "route": "pdf",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "activity_jobs",
+      "screen_id": "28",
+      "label": "Activiteiten",
+      "service_contract": "JobManager",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_activity_cancel",
+      "screen_id": "28",
+      "label": "Annuleren",
+      "service_contract": "JobManager",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_activity_open",
+      "screen_id": "28",
+      "label": "Openen",
+      "service_contract": "WorkspaceRouter",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_activity_clear_done",
+      "screen_id": "28",
+      "label": "Gereed wissen",
+      "service_contract": "JobManager",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "problem_list",
+      "screen_id": "29",
+      "label": "Problemen",
+      "service_contract": "ProblemCenterService",
+      "route": "controle",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_problem_open",
+      "screen_id": "29",
+      "label": "Openen",
+      "service_contract": "WorkspaceRouter",
+      "route": "controle",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_problem_show",
+      "screen_id": "29",
+      "label": "Toon object",
+      "service_contract": "SelectionAuthority",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_problem_rerun",
+      "screen_id": "29",
+      "label": "Opnieuw controleren",
+      "service_contract": "ValidationService",
+      "route": "control",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "detached_viewer_canvas",
+      "screen_id": "30",
+      "label": "Viewer",
+      "service_contract": "ViewerWindowService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_detached_attach",
+      "screen_id": "30",
+      "label": "Terugplaatsen",
+      "service_contract": "ViewerWindowService",
+      "route": "viewer",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "txt_command_search",
+      "screen_id": "31",
+      "label": "Zoek actie",
+      "service_contract": "CommandRegistry",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "list_commands",
+      "screen_id": "31",
+      "label": "Acties",
+      "service_contract": "CommandRegistry",
+      "route": "project",
+      "observed": true,
+      "verification": "state-control-binding",
+      "status": "PASS"
+    },
+    {
+      "test_id": "btn_command_execute",
+      "screen_id": "31",
+      "label": "Uitvoeren",
+      "service_contract": "CommandRegistry",
+      "route": "project",
+      "observed": true,
+      "verification": "authoritative-workspace-route-binding",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,13 +1,13 @@
 {
   "schema": "cws.codex-queue-state.v1",
-  "generated_at": "2026-09-01T01:58:31.270491+00:00",
+  "generated_at": "2026-09-01T02:08:00.339496+00:00",
   "repository": {
     "root": "C:\\CONVERTOR",
     "branch": "agent/cws-product-ui-reintegration-v1",
-    "head": "827a39c666a5f80cb25560e4aa98407cdad84e34",
-    "tree": "309df6febc7f127b96c01cef082214e7cc7de184",
+    "head": "1d5336e63acc40c8c92a78727ad6e78b8e20bea4",
+    "tree": "c987698a303027d3ae655bece34764f9e988d4ad",
     "remote_ref": "origin/agent/cws-product-ui-reintegration-v1",
-    "remote_head": "827a39c666a5f80cb25560e4aa98407cdad84e34",
+    "remote_head": "1d5336e63acc40c8c92a78727ad6e78b8e20bea4",
     "ahead": 0,
     "behind": 0,
     "app_version": "0.10.18-beta-dev",
