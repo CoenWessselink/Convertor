@@ -166,8 +166,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
-            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json", "QUEUE_COMPLETION_MATRIX.md"],
-            "remaining": ["HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds.", "Exact interactive rendering is 20.39 FPS / 50.66 ms p95 and does not meet the 30 FPS gate."],
+            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json", "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png", "QUEUE_COMPLETION_MATRIX.md"],
+            "remaining": ["A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."],
         },
         {
             "queue_id": "Q003",
@@ -193,8 +193,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
-            "evidence": ["validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json", "validation/master_completion/ui_v52_hvpc_surface_capture_final", "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json", "validation/final_4_phase/phase1", "validation/final_4_phase/phase3", "validation/final_4_phase/phase4"],
-            "remaining": ["All 31 native HVPC-populated surfaces and all 25 supplied reference pairs are captured, but pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED and the native VTK child needs separate framebuffer evidence."],
+            "evidence": ["validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json", "validation/master_completion/ui_v52_hvpc_surface_capture_final", "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png", "validation/final_4_phase/phase1", "validation/final_4_phase/phase3", "validation/final_4_phase/phase4"],
+            "remaining": ["All 31 native HVPC-populated surfaces, all 25 supplied reference pairs and a native exact VTK framebuffer are captured; pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED."],
         },
         {
             "queue_id": "Q006",

@@ -1,7 +1,7 @@
 {
   "schema": "cws.codex-queue-master.v1",
-  "generated_at": "2026-09-01T02:33:55.484944+00:00",
-  "repository_head": "bcb2c874aedbd03eb6ff180773ceb4a2fd0a54b1",
+  "generated_at": "2026-09-01T04:22:06.763301+00:00",
+  "repository_head": "9ed87cb4da73e3f893f69e875422d09cb02d01a4",
   "sources": [
     {
       "name": "CODEX_PROMPT_QUEUE_AUDIT_AND_AUTO_COMPLETE_100PCT_2026-08-31.md",
@@ -1506,11 +1506,13 @@
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
+        "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
+        "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.json",
+        "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png",
         "QUEUE_COMPLETION_MATRIX.md"
       ],
       "remaining": [
-        "HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds.",
-        "Exact interactive rendering is 20.39 FPS / 50.66 ms p95 and does not meet the 30 FPS gate."
+        "A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."
       ]
     },
     {
@@ -1556,12 +1558,13 @@
         "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
         "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
       ],
       "remaining": [
-        "All 31 native HVPC-populated surfaces and all 25 supplied reference pairs are captured, but pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED and the native VTK child needs separate framebuffer evidence."
+        "All 31 native HVPC-populated surfaces, all 25 supplied reference pairs and a native exact VTK framebuffer are captured; pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED."
       ]
     },
     {
