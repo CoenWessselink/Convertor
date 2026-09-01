@@ -1,6 +1,6 @@
 {
   "schema": "cws.queue-screenshot-acceptance.v1",
-  "generated_at": "2026-09-01T06:29:23.632768+00:00",
+  "generated_at": "2026-09-01T06:31:31.471049+00:00",
   "reference_authority": "Supplied V5/V5.1/V5.2 reference images; final master requires light primary UI.",
   "references": [
     {
@@ -206,17 +206,12 @@
     },
     {
       "phase": 4,
-      "declared_count": 5,
-      "verified_tracked_count": 5,
+      "declared_count": 4,
+      "verified_tracked_count": 4,
       "status": "NOT_PROVEN",
       "screenshots": [
         {
-          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\qt_progressive_exact_recheck.png",
-          "exists": true,
-          "tracked": true
-        },
-        {
-          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\qt_viewer_visual_recheck.png",
+          "path": "C:\\CONVERTOR\\validation\\master_completion\\QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png",
           "exists": true,
           "tracked": true
         },

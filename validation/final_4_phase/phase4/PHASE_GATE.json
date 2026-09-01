@@ -1,75 +1,83 @@
 {
   "phase": 4,
-  "name": "Total Product Acceptance and Exact-SHA Windows Release",
+  "name": "Final independent acceptance and exact-SHA Windows release",
   "status": "FAIL",
-  "packaged_proven": false,
+  "packaged_proven": true,
   "false_green_count": 0,
-  "source_commit": "61989ca35706a78edf000e979a6edbd17405a5d8",
+  "source_commit": "1513ae3ad91f8581ae41b435ec79a0cf5b1ba722",
   "acceptance": {
     "ui_and_function_inventory": "PASS",
     "real_geometry": "PASS",
-    "phase_gates": "PASS",
     "runtime_acceptance_evidence": "PASS",
-    "required_function_count": 5006,
+    "required_function_count": 5016,
     "uncovered_required_function_count": 0,
     "owned_source_control_count": 481,
     "runtime_control_count": 572
   },
-  "source_smokes": {
-    "passed": 174,
-    "failed": 0,
-    "timeout": 0,
-    "historical_dataset_skipped": 2,
-    "historical_dataset_scope": "OUT_OF_SCOPE_DATASET_UNAVAILABLE"
-  },
   "viewer_runtime": {
     "qt_progressive_exact": "PASS",
     "qt_visual": "PASS",
-    "first_frame_seconds": 2.268128,
-    "representative_exact_seconds": 4.647789,
-    "frame_p95_ms": 1.941,
-    "input_p95_ms": 16.883,
-    "pick_p95_ms": 24.824,
+    "first_exact_visible_seconds": 3.2636148,
+    "full_workspace_complete_seconds": 32.1421,
+    "mesh_cache_warm_seconds": 0.0751865,
+    "cacheless_ifc_exact_seconds": 7.9392055,
+    "frame_p95_ms": 28.846,
+    "pick_p95_ms": 116.308,
     "wrong_instance_picks": 0,
-    "rss_drift_percent": 1.568
+    "physical_objects": 5725,
+    "exact_geometry_resources": 1496,
+    "missing_objects": 0,
+    "proxy_objects": 0
   },
   "same_machine_comparison": {
-    "trimble_same_session_seconds": 3.551,
-    "cws_large_model_warm_mean_seconds": 0.24818291,
-    "status": "PASS_WITH_SCOPE"
+    "timing_evidence": "PASS_WITH_SCOPE",
+    "visual_object_by_object_evidence": "BLOCKED_EXTERNAL_EVIDENCE",
+    "reason": "Windows desktop capture APIs denied access to the open Trimble Connect session; no synthetic visual parity claim is permitted."
   },
   "release_blockers": [
     {
-      "id": "HVPC-FIRST-COLD-3-5S",
+      "id": "HVPC-CACHELESS-IFC-3-5S",
       "status": "FAIL",
-      "required": "The 5,725-request HVPC IFC must be fully visible from a cleared cache within 3-5 seconds.",
-      "measured_cold_mean_seconds": 71.04096764,
-      "measured_cold_min_seconds": 70.0586447,
-      "measured_cold_max_seconds": 71.8627779,
-      "reason": "The exact first-cold geometry conversion remains outside the requested target. Warm and representative exact loads pass, but they do not replace first-cold proof."
+      "required": "The cacheless HVPC IFC exact conversion must complete within 3-5 seconds.",
+      "measured_seconds": 7.9392055,
+      "reason": "Exact visible warmstart passes at 3.264 seconds, but the independent cacheless IFC conversion remains above 5 seconds."
+    },
+    {
+      "id": "UI-V52-PIXEL-FIDELITY",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "All 31 surfaces and 226 controls are present, but the active light-primary SSOT and supplied legacy dark crops require final human visual adjudication."
+    },
+    {
+      "id": "TRIMBLE-HVPC-OBJECT-VISUAL-PARITY",
+      "status": "BLOCKED_EXTERNAL_EVIDENCE",
+      "reason": "The open Trimble desktop surface cannot be captured by the available Windows automation session."
     }
   ],
   "windows_release": {
-    "status": "PENDING_EXACT_SHA_BUILD",
-    "one_folder": "NOT_TESTED",
-    "portable": "NOT_TESTED",
-    "installer": "NOT_TESTED",
-    "file_associations": "NOT_TESTED"
+    "status": "PASS",
+    "source_revision": "1513ae3ad91f8581ae41b435ec79a0cf5b1ba722",
+    "one_folder": "PASS",
+    "portable": "PASS",
+    "standalone": "PASS",
+    "installer": "PASS",
+    "file_associations": "PASS",
+    "uninstall": "PASS",
+    "no_external_python": "PASS",
+    "installer_sha256": "b17da5e8d26c584b527eacd03a06b428ca718231274219359f3d76cb7709604f",
+    "portable_sha256": "b02965c27e03c8dc45570a1fef7cde6f9fbfc7e580b5ebe2793dcc94b4781759"
   },
   "screenshots": [
-    "validation/final_4_phase/phase4/qt_progressive_exact_recheck.png",
-    "validation/final_4_phase/phase4/qt_viewer_visual_recheck.png",
+    "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png",
     "validation/final_4_phase/phase4/workspace_project_qt.png",
     "validation/final_4_phase/phase4/workspace_productie_qt.png",
     "validation/final_4_phase/phase4/workspace_uitvoer_qt.png"
   ],
   "evidence": [
-    "validation/full_acceptance/FULL_PRODUCT_ACCEPTANCE_SUMMARY.json",
-    "validation/full_acceptance/FULL_ACCEPTANCE_RUNTIME_EVIDENCE.json",
-    "validation/full_acceptance/DYNAMIC_UI_RUNTIME_COVERAGE.json",
-    "validation/phases/PHASE_1_SOURCE_TEST_EVIDENCE.json",
-    "validation/phases/PHASE_2_SOURCE_TEST_EVIDENCE.json",
-    "validation/phases/PHASE_3_SOURCE_TEST_EVIDENCE.json",
-    "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.json"
+    "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
+    "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+    "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+    "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
+    "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json",
+    "deliverables/CWS_Convertor_0.10.18-beta-dev_1513ae3/PHASE_3_RELEASE_MANIFEST.json"
   ]
 }

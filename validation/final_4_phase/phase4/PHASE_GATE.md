@@ -1,17 +1,23 @@
-# Phase 4 Gate
+# Fase 4 gate
 
-Status: **FAIL**
+Status: **FAIL**  
+False green: **0**  
+Packaged runtime: **PASS**  
+Releasebron: `1513ae3ad91f8581ae41b435ec79a0cf5b1ba722`
 
-The executable product acceptance is green: real geometry, runtime controls, all required functions, phase gates, Qt exact/visual checks, stress and persistence all pass. There are zero failed or timed-out active source smokes and zero uncovered required runtime functions.
+## Geslaagd
 
-## Release blocker
+- UI- en functie-inventaris: `PASS`
+- Echte geometrie: `PASS`
+- Runtime acceptance: `PASS`
+- Exacte HVPC-weergave: 5.725 fysieke objecten, 1.496 exacte geometriebronnen, 0 ontbrekend, 0 proxy
+- Eerste exact zichtbare frame: 3,264 s
+- Windows one-folder, portable, standalone, installer, associaties en uninstall: `PASS`
 
-`HVPC-FIRST-COLD-3-5S` remains failed. The real 5,725-request HVPC IFC measured 70.059-71.863 seconds after clearing the cache, against the requested 3-5 second fully-visible target. Warm large-model loading and the representative 1,000-part exact load pass, but are not substituted for first-cold proof.
+## Open releaseblokkades
 
-## Windows release
+- Cacheloze IFC-conversie: 7,939 s; doel maximaal 5 s: `FAIL`
+- UI V5.2 pixel-fidelity: `HUMAN_REVIEW_REQUIRED`
+- Trimble HVPC object-voor-object visueel bewijs: `BLOCKED_EXTERNAL_EVIDENCE`
 
-The exact-SHA one-folder, portable and installer builds are deliberately marked pending in this source gate. They are built and tested only after this releasefreeze commit. Their black-box evidence is emitted alongside the release candidate without rewriting source history.
-
-## Historical reference tests
-
-Two legacy tests require a retired 0.7.0 reference project that is not present locally. They are classified as `OUT_OF_SCOPE_DATASET_UNAVAILABLE`, not as a product pass and not as active missing coverage. Current canonical identity, grid and Viewer behavior is covered by the active full acceptance suite.
+De installer is technisch en cryptografisch bewezen, maar de totale productacceptatie blijft bewust rood totdat bovenstaande onafhankelijke verplichtingen zijn gesloten.
