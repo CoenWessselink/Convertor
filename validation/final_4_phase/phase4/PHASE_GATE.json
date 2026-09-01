@@ -20,7 +20,7 @@
     "first_exact_visible_seconds": 3.2636148,
     "full_workspace_complete_seconds": 32.1421,
     "mesh_cache_warm_seconds": 0.0751865,
-    "cacheless_ifc_exact_seconds": 7.9392055,
+    "cacheless_ifc_exact_seconds": 7.8385767,
     "frame_p95_ms": 28.846,
     "pick_p95_ms": 116.308,
     "wrong_instance_picks": 0,
@@ -39,7 +39,7 @@
       "id": "HVPC-CACHELESS-IFC-3-5S",
       "status": "FAIL",
       "required": "The cacheless HVPC IFC exact conversion must complete within 3-5 seconds.",
-      "measured_seconds": 7.9392055,
+      "measured_seconds": 7.8385767,
       "reason": "Exact visible warmstart passes at 3.264 seconds, but the independent cacheless IFC conversion remains above 5 seconds."
     },
     {
@@ -81,3 +81,4 @@
     "deliverables/CWS_Convertor_0.10.18-beta-dev_1513ae3/PHASE_3_RELEASE_MANIFEST.json"
   ]
 }
+
