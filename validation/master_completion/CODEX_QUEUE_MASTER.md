@@ -1,11 +1,11 @@
 # CODEX QUEUE MASTER
 
-Generated from `49c9374df67623930b6012bb4ec788139ea84266` on branch `agent/cws-product-ui-reintegration-v1`. This ledger never converts missing external evidence into PASS.
+Generated from `827a39c666a5f80cb25560e4aa98407cdad84e34` on branch `agent/cws-product-ui-reintegration-v1`. This ledger never converts missing external evidence into PASS.
 
 | ID | Queue item | Dependencies | Status | Remaining |
 |---|---|---|---|---|
 | Q001 | Canonical repository, requirement sources and authority reconciliation | - | PASS | None |
-| Q002 | Viewer Loader Engine V2 and cold-load performance closeout | Q001 | PARTIAL | HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds. |
+| Q002 | Viewer Loader Engine V2 and cold-load performance closeout | Q001 | PARTIAL | HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds. Exact interactive rendering is 20.39 FPS / 50.66 ms p95 and does not meet the 30 FPS gate. |
 | Q003 | HVPC exact object and geometry completeness | Q001 | PASS | None |
 | Q004 | Same-machine Trimble visual and object parity | Q002, Q003 | BLOCKED_EXTERNAL_EVIDENCE | Fresh desktop capture/control is unavailable; no fabricated visual comparison is accepted. |
 | Q005 | V5.2 light UI and reference-image visual fidelity | Q001 | PARTIAL | Per-surface paired image comparison against every supplied reference is not complete. |

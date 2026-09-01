@@ -193,7 +193,7 @@ def aa_benchmark(ifc,output,cache_root,screenshot_dir,limit):
     widget.resize(1440,900);widget.show();widget.load_scene(scene);widget.controller.fit_all();app.processEvents()
     captures=Path(screenshot_dir);captures.mkdir(parents=True,exist_ok=True);rows=[]
     render_window=widget.GetRenderWindow();renderer=render_window.GetRenderers().GetFirstRenderer()
-    for samples,fxaa in ((0,True),(2,False),(4,False),(8,False)):
+    for samples,fxaa in ((0,False),(0,True),(2,False),(4,False),(8,False)):
         render_window.SetMultiSamples(samples)
         if fxaa:renderer.UseFXAAOn()
         else:renderer.UseFXAAOff()

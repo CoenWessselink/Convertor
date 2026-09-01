@@ -159,8 +159,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
-            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "QUEUE_COMPLETION_MATRIX.md"],
-            "remaining": ["HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds."],
+            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json", "QUEUE_COMPLETION_MATRIX.md"],
+            "remaining": ["HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds.", "Exact interactive rendering is 20.39 FPS / 50.66 ms p95 and does not meet the 30 FPS gate."],
         },
         {
             "queue_id": "Q003",
@@ -177,7 +177,7 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q002", "Q003"],
             "status": "BLOCKED_EXTERNAL_EVIDENCE",
             "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
-            "evidence": ["validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.md"],
+            "evidence": ["validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json", "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"],
             "remaining": ["Fresh desktop capture/control is unavailable; no fabricated visual comparison is accepted."],
         },
         {

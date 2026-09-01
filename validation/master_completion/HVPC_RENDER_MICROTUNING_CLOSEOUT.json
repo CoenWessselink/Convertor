@@ -1,0 +1,42 @@
+{
+  "schema": "cws.hvpc.render_microtuning_closeout.v1",
+  "status": "PARTIAL",
+  "scene": {
+    "physical_nodes": 5725,
+    "geometry_resources": 1496,
+    "exact_triangles_unique": 1617736
+  },
+  "accepted_runtime": {
+    "interaction_mode": "exact consolidated shaded interaction actor",
+    "msaa_samples": 2,
+    "fxaa": false,
+    "fps_mean": 20.392432539276385,
+    "frame_ms_p95": 50.66107001330238,
+    "frame_ms_max": 51.57439998583868,
+    "visual_status": "PASS",
+    "performance_30fps_status": "FAIL"
+  },
+  "rejected_experiments": [
+    {
+      "name": "global quadric interaction decimation",
+      "fps_mean": 63.926544158487616,
+      "frame_ms_p95": 16.552589970524423,
+      "first_frame_max_ms": 32118.00499999663,
+      "reason": "Rejected: unacceptable first-interaction freeze and lost cell colours."
+    },
+    {
+      "name": "feature-outline interaction LOD",
+      "fps_mean": 26.15443306618863,
+      "frame_ms_p95": 39.81493499595672,
+      "first_frame_max_ms": 10589.572100026999,
+      "reason": "Rejected: below 30 FPS and unacceptable first-interaction build stall."
+    }
+  ],
+  "decision": "No experimental renderer was shipped. Exact visual correctness takes precedence until a precomputed or asynchronously generated closed-surface LOD can pass both the first-frame and 30 FPS gates.",
+  "evidence": [
+    "validation/master_completion/HVPC_AA_RUNTIME.json",
+    "validation/master_completion/hvpc_aa_runtime/msaa_2x_fxaa_0.png",
+    "validation/master_completion/hvpc_aa_runtime/msaa_4x_fxaa_0.png",
+    "validation/master_completion/hvpc_aa_runtime/msaa_8x_fxaa_0.png"
+  ]
+}

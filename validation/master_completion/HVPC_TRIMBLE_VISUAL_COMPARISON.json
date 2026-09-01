@@ -1,0 +1,28 @@
+{
+  "schema": "cws.hvpc.trimble_visual_comparison.v2",
+  "status": "BLOCKED_EXTERNAL_EVIDENCE",
+  "cws_capture": "validation/master_completion/hvpc_aa_runtime/msaa_8x_fxaa_0.png",
+  "trimble_capture": "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg",
+  "process_evidence": {
+    "cws_window": "CWS Convertor 0.10.18-beta-dev",
+    "trimble_window": "Trimble Connect",
+    "both_responding": true
+  },
+  "cws_object_evidence": {
+    "physical_ifc_objects": 5725,
+    "scene_nodes": 5725,
+    "unique_selectable_entity_ids": 5725,
+    "exact_geometry_resources": 1496,
+    "missing": 0,
+    "duplicates": 0
+  },
+  "visual_observations": {
+    "overall_hall_footprint": "CONSISTENT_AT_COARSE_VIEW",
+    "main_hall_frames": "VISIBLE_IN_BOTH",
+    "right_hand_annex": "VISIBLE_IN_BOTH",
+    "colour_parity": "NOT_PROVEN_SINGLE_STYLE_EVIDENCE_SCENE",
+    "camera_alignment": "NOT_SYNCHRONIZED",
+    "object_by_object_visual_parity": "NOT_PROVEN"
+  },
+  "blocker": "Fresh desktop capture/control is unavailable in this Codex session, so camera-synchronised live selection and object-by-object Trimble verification cannot be completed without fabricating evidence."
+}

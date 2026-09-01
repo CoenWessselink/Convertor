@@ -1,0 +1,201 @@
+{
+  "executable": "C:\\CONVERTOR\\.venv-build\\Scripts\\python.exe",
+  "frozen": false,
+  "generated_at_epoch": 1788227061.07482,
+  "ifc": "\\\\NAS\\project\\2026\\Project\\HVPC te Hengelo\\Productie\\Staalwerk [definitief 13-08-2026]\\IFC\\HVPC te Hengelo fasen totaal.ifc",
+  "loader": {
+    "cache": {
+      "async_persistence": {
+        "completed_meshes": 1496,
+        "errors": [],
+        "pending_batches": 0,
+        "submitted_meshes": 1496,
+        "writer_count": 4
+      },
+      "engine": "MeshCache V2",
+      "persist_seconds": 0.12493340001674369,
+      "root": "C:\\CONVERTOR\\validation\\hvpc_parallel_shard_probe\\cache_aa_runtime",
+      "storage_mode": "mmap"
+    },
+    "cold_seconds": 8.094951500010211,
+    "exact_mesh_count": 1496,
+    "physical_object_count": 5725,
+    "request_count": 1496,
+    "same_session_hit_count": 1496,
+    "same_session_runs_seconds": [
+      0.027520100004039705,
+      0.025933400029316545,
+      0.02904850000049919,
+      0.028968699974939227,
+      0.027413499949034303,
+      0.026813299977220595,
+      0.02677850000327453,
+      0.027058199979364872,
+      0.02670439996290952,
+      0.026582700025755912
+    ],
+    "same_session_seconds": 0.2575461000087671,
+    "scheduler": {
+      "authority": "dynamic_weighted_geometry_priority_v2",
+      "bands": {
+        "current_assembly": 250,
+        "large_silhouette": 249,
+        "near_camera": 249,
+        "selected": 1,
+        "under_cursor": 1,
+        "visible": 746
+      },
+      "hysteresis_score": 25.0,
+      "revision": 1,
+      "tracked_geometry": 1496
+    },
+    "tessellation": {
+      "angular_deflection_rad": 0.16,
+      "circle_segments": 48,
+      "linear_deflection_mm": 0.35
+    },
+    "warm_hit_count": 1496,
+    "warm_seconds": 0.0759097000118345,
+    "worker_pool": {
+      "active_process_count": 3,
+      "active_process_count_after_close": 0,
+      "active_process_ids": [
+        35376,
+        41704,
+        66984
+      ],
+      "active_process_ids_after_close": [],
+      "closed": true,
+      "completed_requests": 1496,
+      "dispatch_worker_count": 3,
+      "dispatcher": "bounded_thread_dispatcher",
+      "failed_requests": 0,
+      "last_errors": [],
+      "restarted_workers": 0,
+      "retry_successes": 0,
+      "session_shared": false,
+      "source_group_count": 1,
+      "source_shard_count": 3,
+      "split_source_group_count": 1,
+      "transport": "persistent_ifc_process_worker_pool_v3",
+      "worker_count": 3,
+      "worker_processes": [
+        {
+          "generation": 1,
+          "transport_mode": "multiprocessing_spawn",
+          "worker_alive": true,
+          "worker_pid": 66984
+        },
+        {
+          "generation": 1,
+          "transport_mode": "multiprocessing_spawn",
+          "worker_alive": true,
+          "worker_pid": 35376
+        },
+        {
+          "generation": 1,
+          "transport_mode": "multiprocessing_spawn",
+          "worker_alive": true,
+          "worker_pid": 41704
+        }
+      ]
+    }
+  },
+  "rows": [
+    {
+      "fxaa": true,
+      "metrics": {
+        "fps_mean": 11.163914185606354,
+        "frame_ms_max": 2753.291699977126,
+        "frame_ms_mean": 89.57431805497941,
+        "frame_ms_p50": 51.88604997238144,
+        "frame_ms_p95": 54.161604985711165,
+        "frame_ms_p99": 838.0450449709483,
+        "sample_count": 72,
+        "stalls_over_100ms": 1,
+        "stalls_over_33ms": 72,
+        "stalls_over_50ms": 72
+      },
+      "msaa_samples": 0,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\hvpc_aa_runtime\\msaa_0x_fxaa_1.png"
+    },
+    {
+      "fxaa": false,
+      "metrics": {
+        "fps_mean": 20.392432539276385,
+        "frame_ms_max": 51.57439998583868,
+        "frame_ms_mean": 49.037798608575635,
+        "frame_ms_p50": 48.82190001080744,
+        "frame_ms_p95": 50.66107001330238,
+        "frame_ms_p99": 51.18127300927881,
+        "sample_count": 72,
+        "stalls_over_100ms": 0,
+        "stalls_over_33ms": 72,
+        "stalls_over_50ms": 9
+      },
+      "msaa_samples": 2,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\hvpc_aa_runtime\\msaa_2x_fxaa_0.png"
+    },
+    {
+      "fxaa": false,
+      "metrics": {
+        "fps_mean": 19.39090892867009,
+        "frame_ms_max": 57.19419999513775,
+        "frame_ms_mean": 51.570558331150096,
+        "frame_ms_p50": 51.282650005305186,
+        "frame_ms_p95": 55.31006998207886,
+        "frame_ms_p99": 56.95464598946273,
+        "sample_count": 72,
+        "stalls_over_100ms": 0,
+        "stalls_over_33ms": 72,
+        "stalls_over_50ms": 72
+      },
+      "msaa_samples": 4,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\hvpc_aa_runtime\\msaa_4x_fxaa_0.png"
+    },
+    {
+      "fxaa": false,
+      "metrics": {
+        "fps_mean": 17.55455449729941,
+        "frame_ms_max": 64.18680003844202,
+        "frame_ms_mean": 56.96527360770334,
+        "frame_ms_p50": 56.772699987050146,
+        "frame_ms_p95": 58.052749998751096,
+        "frame_ms_p99": 59.941425988799935,
+        "sample_count": 72,
+        "stalls_over_100ms": 0,
+        "stalls_over_33ms": 72,
+        "stalls_over_50ms": 72
+      },
+      "msaa_samples": 8,
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\hvpc_aa_runtime\\msaa_8x_fxaa_0.png"
+    }
+  ],
+  "scene": {
+    "node_count": 5725,
+    "placed_node_count": 5725,
+    "world_extent_mm": [
+      57549.28215546526,
+      30125.629277691507,
+      10630.004608506286
+    ],
+    "world_max_mm": [
+      67461.03215546541,
+      39975.628341674026,
+      10370.0000004873
+    ],
+    "world_min_mm": [
+      9911.75000000015,
+      9849.99906398252,
+      -260.004608018986
+    ]
+  },
+  "schema": "cws.real_msaa_fxaa_matrix.v1",
+  "selected_policy": {
+    "idle_msaa": 2,
+    "interactive_fxaa": false,
+    "interactive_msaa": 2,
+    "recovery_msaa": 2
+  },
+  "status": "PASS"
+}
