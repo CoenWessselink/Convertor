@@ -139,6 +139,7 @@ def main() -> int:
     args = parser.parse_args()
     RELEASE.mkdir(parents=True, exist_ok=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
+    PHASES.mkdir(parents=True, exist_ok=True)
     commands: dict[str, object] = {}
     if not args.skip_build:
         commands["onedir_build"] = run(
