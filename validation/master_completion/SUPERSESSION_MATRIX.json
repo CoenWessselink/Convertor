@@ -1,0 +1,131 @@
+{
+  "schema": "cws.codex-supersession-matrix.v1",
+  "generated_at": "2026-09-01T00:20:56.627252+00:00",
+  "active_final_master": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+  "requirement_loss_allowed": false,
+  "sources": [
+    {
+      "source": "CODEX_PROMPT_QUEUE_AUDIT_AND_AUTO_COMPLETE_100PCT_2026-08-31.md",
+      "status": "PASS",
+      "superseded_by": null,
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_COMPLETION_100PCT_3_FASEN_2026-08-28.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "status": "PASS",
+      "superseded_by": null,
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_CONVERTOR_UNIFIED_3_FASEN_2026-08-27.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_FULL_PRODUCT_ACCEPTANCE_TEST_2026-08-28.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_GAP_CLOSURE_VIEWER_V5_3_FASEN_2026-08-31_V2_UI_CORRECTED.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_MANUFACTURING_GEOMETRY_INTERPRETER_V2_3_FASEN_2026-08-31.md",
+      "status": "PASS",
+      "superseded_by": null,
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_TRIMBLE_PARITY_BOM_PDF_ROUTING_3_FASEN_2026-08-30.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_UI_CONTROLS_VISUAL_FIDELITY_V5_1_2026-08-31.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_UI_MASTER_V5_1_FINAL_3_FASEN_2026-08-31.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_UI_MASTER_V5_COMPLETE_3_FASEN_2026-08-31.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_UI_V5_2_CONTROL_BUILD_3_FASEN_2026-08-31.md",
+      "status": "SUPERSEDED",
+      "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CODEX_SUPERPROMPT_CWS_VIEWER_PERFORMANCE_CLOSEOUT_V1_3_FASEN_2026-08-31.md",
+      "status": "PASS",
+      "superseded_by": null,
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CWS_CONVERTOR_COMPLETE_GAP_ANALYSIS_2026-08-31.md",
+      "status": "PASS",
+      "superseded_by": null,
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    },
+    {
+      "source": "CWS_CONVERTOR_COMPLETE_GAP_MATRIX_2026-08-31.json",
+      "status": "PASS",
+      "superseded_by": null,
+      "requirement_loss_allowed": false,
+      "rule": "Older wording is reconciled into the final master; unique requirements remain mapped in CODEX_QUEUE_REQUIREMENTS.json."
+    }
+  ],
+  "explicit_rules": [
+    {
+      "legacy": "12-item or V9 navigation",
+      "active": "Project | Viewer | Productie | Controle | Uitvoer"
+    },
+    {
+      "legacy": "dark-only default",
+      "active": "light primary; dark optional smoke"
+    },
+    {
+      "legacy": "fixed 51/51 acceptance",
+      "active": "dynamic master traceability"
+    },
+    {
+      "legacy": "raster drawing authority",
+      "active": "vector-native DrawingProjectionModel"
+    }
+  ]
+}

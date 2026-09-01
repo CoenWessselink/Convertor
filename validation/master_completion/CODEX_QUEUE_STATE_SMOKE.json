@@ -1,0 +1,15 @@
+{
+  "schema": "cws.codex-queue-state-smoke.v1",
+  "status": "PASS",
+  "checks": {
+    "required_outputs": true,
+    "stable_unique_ids": true,
+    "valid_statuses": true,
+    "valid_dependencies": true,
+    "queue_audit_source": true,
+    "central_output_tracked": true,
+    "central_output_import": true,
+    "requirements_decomposed": true,
+    "honest_nonpass": true
+  }
+}

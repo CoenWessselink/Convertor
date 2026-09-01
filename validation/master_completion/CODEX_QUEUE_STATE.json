@@ -1,0 +1,243 @@
+{
+  "schema": "cws.codex-queue-state.v1",
+  "generated_at": "2026-09-01T00:20:56.627252+00:00",
+  "repository": {
+    "root": "C:\\CONVERTOR",
+    "branch": "agent/cws-product-ui-reintegration-v1",
+    "head": "072f4d442c7b80090ab197bd8ace9273a43c686c",
+    "tree": "ea0929f7d43a33f2fcb0ba24df55c64d70c7032d",
+    "remote_ref": "origin/agent/cws-product-ui-reintegration-v1",
+    "remote_head": "dc4e3e2ec2f91c40aad271d985b3fe59a44c7325",
+    "ahead": 20,
+    "behind": 0,
+    "app_version": "0.10.18-beta-dev",
+    "project_schema": "2.25",
+    "canonical_part_schema": "1.1"
+  },
+  "allowed_statuses": [
+    "PASS",
+    "PARTIAL",
+    "NOT_IMPLEMENTED",
+    "NOT_INTEGRATED",
+    "FAIL",
+    "NOT_TESTED",
+    "BLOCKED",
+    "BLOCKED_EXTERNAL_EVIDENCE",
+    "BLOCKED_QUEUE_SOURCE_UNAVAILABLE",
+    "NOT_APPLICABLE",
+    "SUPERSEDED"
+  ],
+  "source_count": 15,
+  "master_requirement_status_counts": {
+    "FAIL": 26,
+    "PASS": 291
+  },
+  "queue_status_counts": {
+    "BLOCKED_EXTERNAL_EVIDENCE": 1,
+    "FAIL": 2,
+    "PARTIAL": 3,
+    "PASS": 6
+  },
+  "current_queue_item": "Q002",
+  "next_action": "HVPC first-cold exact load is circa 71 seconds and exceeds the 3-5 second target.",
+  "queue": [
+    {
+      "queue_id": "Q001",
+      "title": "Canonical repository, requirement sources and authority reconciliation",
+      "depends_on": [],
+      "status": "PASS",
+      "expected_result": "Alle actieve prompts, requirements en authorities zijn geversioneerd en zonder stil verlies gekoppeld.",
+      "evidence": [
+        "requirements/MASTER_REQUIREMENT_TRACEABILITY.json",
+        "requirements/sources/CODEX_PROMPT_QUEUE_AUDIT_AND_AUTO_COMPLETE_100PCT_2026-08-31.md"
+      ],
+      "remaining": []
+    },
+    {
+      "queue_id": "Q002",
+      "title": "Viewer Loader Engine V2 and cold-load performance closeout",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PARTIAL",
+      "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
+      "evidence": [
+        "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.json",
+        "QUEUE_COMPLETION_MATRIX.md"
+      ],
+      "remaining": [
+        "HVPC first-cold exact load is circa 71 seconds and exceeds the 3-5 second target."
+      ]
+    },
+    {
+      "queue_id": "Q003",
+      "title": "HVPC exact object and geometry completeness",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PASS",
+      "expected_result": "Alle 5.725 fysieke IFC-representaties zijn exact, uniek en zichtbaar zonder box/proxy-vervanging.",
+      "evidence": [
+        "validation/hvpc_trimble_completeness/HVPC_OBJECT_COMPLETENESS.json"
+      ],
+      "remaining": []
+    },
+    {
+      "queue_id": "Q004",
+      "title": "Same-machine Trimble visual and object parity",
+      "depends_on": [
+        "Q002",
+        "Q003"
+      ],
+      "status": "BLOCKED_EXTERNAL_EVIDENCE",
+      "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
+      "evidence": [
+        "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.md"
+      ],
+      "remaining": [
+        "Fresh desktop capture/control is unavailable; no fabricated visual comparison is accepted."
+      ]
+    },
+    {
+      "queue_id": "Q005",
+      "title": "V5.2 light UI and reference-image visual fidelity",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PARTIAL",
+      "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
+      "evidence": [
+        "validation/final_4_phase/phase1",
+        "validation/final_4_phase/phase3",
+        "validation/final_4_phase/phase4"
+      ],
+      "remaining": [
+        "Per-surface paired image comparison against every supplied reference is not complete."
+      ]
+    },
+    {
+      "queue_id": "Q006",
+      "title": "Production core, BOM, machines, workbench, nesting and converter",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PASS",
+      "expected_result": "Eén geïntegreerde productieauthority met fail-closed routing en concrete Qt workspaces.",
+      "evidence": [
+        "validation/final_4_phase/phase2/PHASE_GATE.json"
+      ],
+      "remaining": []
+    },
+    {
+      "queue_id": "Q007",
+      "title": "Manufacturing Geometry Interpreter V2 independent proof",
+      "depends_on": [
+        "Q006"
+      ],
+      "status": "PARTIAL",
+      "expected_result": "BREP-decompositie en onafhankelijke reconstructie zijn voor het volledige aangeleverde corpus bewezen.",
+      "evidence": [
+        "validation/manufacturing_interpreter",
+        "QUEUE_COMPLETION_MATRIX.md"
+      ],
+      "remaining": [
+        "Complete supplied-corpus parity is not proven by committed evidence."
+      ]
+    },
+    {
+      "queue_id": "Q008",
+      "title": "Drawings, PDF, Print Center, Controle, Quality, Planning and Uitvoer",
+      "depends_on": [
+        "Q006"
+      ],
+      "status": "PASS",
+      "expected_result": "Document-, control-, planning- en outputflows zijn geïntegreerd en evidence-bound.",
+      "evidence": [
+        "validation/final_4_phase/phase3/PHASE_GATE.json"
+      ],
+      "remaining": []
+    },
+    {
+      "queue_id": "Q009",
+      "title": "Fresh-checkout source and clean-runtime reproducibility",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PASS",
+      "expected_result": "Een schone exact-SHA checkout bevat alle runtime modules en draait zonder lokale ignored-source contamination.",
+      "evidence": [
+        "tests/final_gap_closure_smoke.py",
+        "cws_convertor/output/document_output.py"
+      ],
+      "remaining": []
+    },
+    {
+      "queue_id": "Q010",
+      "title": "Dynamic total product acceptance",
+      "depends_on": [
+        "Q002",
+        "Q003",
+        "Q005",
+        "Q006",
+        "Q007",
+        "Q008",
+        "Q009"
+      ],
+      "status": "FAIL",
+      "expected_result": "Alle actieve requirements zijn PASS met required FAIL/BLOCKED/NOT_TESTED en false green gelijk aan nul.",
+      "evidence": [
+        "requirements/MASTER_REQUIREMENT_TRACEABILITY.json",
+        "validation/final_4_phase/phase4/PHASE_GATE.json"
+      ],
+      "remaining": [
+        "Master traceability contains 26 FAIL requirements."
+      ]
+    },
+    {
+      "queue_id": "Q011",
+      "title": "Exact-SHA one-folder, portable and installer release",
+      "depends_on": [
+        "Q010"
+      ],
+      "status": "FAIL",
+      "expected_result": "Fresh release artifacts and packaged evidence bind to one exact commit.",
+      "evidence": [
+        "validation/final_4_phase/phase4/PHASE_GATE.json"
+      ],
+      "remaining": [
+        "Phase 4 gate and final Windows release are not PASS."
+      ]
+    },
+    {
+      "queue_id": "Q012",
+      "title": "Queue audit, resumable state and automatic continuation",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PASS",
+      "expected_result": "Een machineleesbare ledger toont actuele status, dependencies, evidence, volgende actie en blockers.",
+      "evidence": [
+        "validation/master_completion/CODEX_QUEUE_STATE.json"
+      ],
+      "remaining": []
+    }
+  ],
+  "external_blockers": [
+    {
+      "queue_id": "Q004",
+      "title": "Same-machine Trimble visual and object parity",
+      "depends_on": [
+        "Q002",
+        "Q003"
+      ],
+      "status": "BLOCKED_EXTERNAL_EVIDENCE",
+      "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
+      "evidence": [
+        "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.md"
+      ],
+      "remaining": [
+        "Fresh desktop capture/control is unavailable; no fabricated visual comparison is accepted."
+      ]
+    }
+  ]
+}

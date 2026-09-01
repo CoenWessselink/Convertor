@@ -10,6 +10,8 @@ __pycache__/
 *.log
 NC1_STEP_Output/
 output/
+!/cws_convertor/output/
+!/cws_convertor/output/*.py
 reference-models-local/
 reference-results-local/
 validation/results/windows-runtime/

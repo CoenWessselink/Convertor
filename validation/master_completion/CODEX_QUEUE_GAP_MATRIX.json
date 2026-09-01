@@ -1,0 +1,110 @@
+{
+  "schema": "cws.codex-queue-gap-matrix.v1",
+  "generated_at": "2026-09-01T00:20:56.627252+00:00",
+  "queue_nonpass_count": 6,
+  "first_nonpass": "Q002",
+  "gaps": [
+    {
+      "queue_id": "Q002",
+      "title": "Viewer Loader Engine V2 and cold-load performance closeout",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PARTIAL",
+      "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
+      "evidence": [
+        "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.json",
+        "QUEUE_COMPLETION_MATRIX.md"
+      ],
+      "remaining": [
+        "HVPC first-cold exact load is circa 71 seconds and exceeds the 3-5 second target."
+      ]
+    },
+    {
+      "queue_id": "Q004",
+      "title": "Same-machine Trimble visual and object parity",
+      "depends_on": [
+        "Q002",
+        "Q003"
+      ],
+      "status": "BLOCKED_EXTERNAL_EVIDENCE",
+      "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
+      "evidence": [
+        "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.md"
+      ],
+      "remaining": [
+        "Fresh desktop capture/control is unavailable; no fabricated visual comparison is accepted."
+      ]
+    },
+    {
+      "queue_id": "Q005",
+      "title": "V5.2 light UI and reference-image visual fidelity",
+      "depends_on": [
+        "Q001"
+      ],
+      "status": "PARTIAL",
+      "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
+      "evidence": [
+        "validation/final_4_phase/phase1",
+        "validation/final_4_phase/phase3",
+        "validation/final_4_phase/phase4"
+      ],
+      "remaining": [
+        "Per-surface paired image comparison against every supplied reference is not complete."
+      ]
+    },
+    {
+      "queue_id": "Q007",
+      "title": "Manufacturing Geometry Interpreter V2 independent proof",
+      "depends_on": [
+        "Q006"
+      ],
+      "status": "PARTIAL",
+      "expected_result": "BREP-decompositie en onafhankelijke reconstructie zijn voor het volledige aangeleverde corpus bewezen.",
+      "evidence": [
+        "validation/manufacturing_interpreter",
+        "QUEUE_COMPLETION_MATRIX.md"
+      ],
+      "remaining": [
+        "Complete supplied-corpus parity is not proven by committed evidence."
+      ]
+    },
+    {
+      "queue_id": "Q010",
+      "title": "Dynamic total product acceptance",
+      "depends_on": [
+        "Q002",
+        "Q003",
+        "Q005",
+        "Q006",
+        "Q007",
+        "Q008",
+        "Q009"
+      ],
+      "status": "FAIL",
+      "expected_result": "Alle actieve requirements zijn PASS met required FAIL/BLOCKED/NOT_TESTED en false green gelijk aan nul.",
+      "evidence": [
+        "requirements/MASTER_REQUIREMENT_TRACEABILITY.json",
+        "validation/final_4_phase/phase4/PHASE_GATE.json"
+      ],
+      "remaining": [
+        "Master traceability contains 26 FAIL requirements."
+      ]
+    },
+    {
+      "queue_id": "Q011",
+      "title": "Exact-SHA one-folder, portable and installer release",
+      "depends_on": [
+        "Q010"
+      ],
+      "status": "FAIL",
+      "expected_result": "Fresh release artifacts and packaged evidence bind to one exact commit.",
+      "evidence": [
+        "validation/final_4_phase/phase4/PHASE_GATE.json"
+      ],
+      "remaining": [
+        "Phase 4 gate and final Windows release are not PASS."
+      ]
+    }
+  ]
+}

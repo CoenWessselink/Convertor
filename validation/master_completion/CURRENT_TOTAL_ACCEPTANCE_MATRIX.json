@@ -1,0 +1,63 @@
+{
+  "schema": "cws.current-total-acceptance.v1",
+  "generated_at": "2026-09-01T00:20:56.627252+00:00",
+  "source_head": "072f4d442c7b80090ab197bd8ace9273a43c686c",
+  "status": "FAIL",
+  "status_counts": {
+    "BLOCKED_EXTERNAL_EVIDENCE": 1,
+    "FAIL": 3,
+    "PARTIAL": 2,
+    "PASS": 6
+  },
+  "checks": [
+    {
+      "check": "canonical_sources",
+      "status": "PASS"
+    },
+    {
+      "check": "fresh_checkout_runtime_source",
+      "status": "PASS"
+    },
+    {
+      "check": "phase1_gate",
+      "status": "PASS"
+    },
+    {
+      "check": "phase2_gate",
+      "status": "PASS"
+    },
+    {
+      "check": "phase3_gate",
+      "status": "PASS"
+    },
+    {
+      "check": "phase4_gate",
+      "status": "FAIL"
+    },
+    {
+      "check": "hvpc_object_completeness",
+      "status": "PASS"
+    },
+    {
+      "check": "hvpc_cold_3_to_5_seconds",
+      "status": "PARTIAL"
+    },
+    {
+      "check": "same_machine_trimble_visual",
+      "status": "BLOCKED_EXTERNAL_EVIDENCE"
+    },
+    {
+      "check": "all_reference_screens",
+      "status": "PARTIAL"
+    },
+    {
+      "check": "master_requirements",
+      "status": "FAIL"
+    },
+    {
+      "check": "exact_sha_windows_release",
+      "status": "FAIL"
+    }
+  ],
+  "false_green_count": 0
+}

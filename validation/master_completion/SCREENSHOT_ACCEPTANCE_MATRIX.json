@@ -1,0 +1,243 @@
+{
+  "schema": "cws.queue-screenshot-acceptance.v1",
+  "generated_at": "2026-09-01T00:20:56.627252+00:00",
+  "reference_authority": "Supplied V5/V5.1/V5.2 reference images; final master requires light primary UI.",
+  "references": [
+    {
+      "name": "01_PROJECT_Start_Inlezen.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\01_PROJECT_Start_Inlezen.png",
+      "available": true
+    },
+    {
+      "name": "02_PROJECT_Projectoverzicht.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\02_PROJECT_Projectoverzicht.png",
+      "available": true
+    },
+    {
+      "name": "03_PROJECT_Projectstructuur.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\03_PROJECT_Projectstructuur.png",
+      "available": true
+    },
+    {
+      "name": "04_PROJECT_Profielen_Materialen.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\04_PROJECT_Profielen_Materialen.png",
+      "available": true
+    },
+    {
+      "name": "05_VIEWER_3D_Cockpit.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\05_VIEWER_3D_Cockpit.png",
+      "available": true
+    },
+    {
+      "name": "06_VIEWER_Selectie_Context.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\06_VIEWER_Selectie_Context.png",
+      "available": true
+    },
+    {
+      "name": "07_VIEWER_Weergave_Meten.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\07_VIEWER_Weergave_Meten.png",
+      "available": true
+    },
+    {
+      "name": "08_VIEWER_Doorsnede_Isoleren.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\08_VIEWER_Doorsnede_Isoleren.png",
+      "available": true
+    },
+    {
+      "name": "09_VIEWER_Laadstatus_Performance.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\09_VIEWER_Laadstatus_Performance.png",
+      "available": true
+    },
+    {
+      "name": "10_PROJECT_Projectreviews.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\10_PROJECT_Projectreviews.png",
+      "available": true
+    },
+    {
+      "name": "11_PRODUCTIE_BOM_Machines_BOM.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\11_PRODUCTIE_BOM_Machines_BOM.png",
+      "available": true
+    },
+    {
+      "name": "12_PRODUCTIE_Machineindeling_Automatisch.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\12_PRODUCTIE_Machineindeling_Automatisch.png",
+      "available": true
+    },
+    {
+      "name": "13_PRODUCTIE_Machineindeling_Handmatige_Override.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\13_PRODUCTIE_Machineindeling_Handmatige_Override.png",
+      "available": true
+    },
+    {
+      "name": "14_PRODUCTIE_Optimalisatie_Profile_Nesting.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\14_PRODUCTIE_Optimalisatie_Profile_Nesting.png",
+      "available": true
+    },
+    {
+      "name": "15_PRODUCTIE_Optimalisatie_Plate_Nesting.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\15_PRODUCTIE_Optimalisatie_Plate_Nesting.png",
+      "available": true
+    },
+    {
+      "name": "16_PRODUCTIE_Bewerken_Workbench.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\16_PRODUCTIE_Bewerken_Workbench.png",
+      "available": true
+    },
+    {
+      "name": "17_PRODUCTIE_Scribing.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\17_PRODUCTIE_Scribing.png",
+      "available": true
+    },
+    {
+      "name": "18_PRODUCTIE_Converteren.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\18_PRODUCTIE_Converteren.png",
+      "available": true
+    },
+    {
+      "name": "19_PRODUCTIE_Tekeningen_PDF.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\19_PRODUCTIE_Tekeningen_PDF.png",
+      "available": true
+    },
+    {
+      "name": "20_UITVOER_Afdrukken_Print_Center.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\20_UITVOER_Afdrukken_Print_Center.png",
+      "available": true
+    },
+    {
+      "name": "21_CONTROLE_Validatie.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\21_CONTROLE_Validatie.png",
+      "available": true
+    },
+    {
+      "name": "22_CONTROLE_Revisies_Compare.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\22_CONTROLE_Revisies_Compare.png",
+      "available": true
+    },
+    {
+      "name": "23_CONTROLE_Maakbaarheid.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\23_CONTROLE_Maakbaarheid.png",
+      "available": true
+    },
+    {
+      "name": "24_UITVOER_Export_Center.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\24_UITVOER_Export_Center.png",
+      "available": true
+    },
+    {
+      "name": "25_UITVOER_Rapport_Pakket.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\25_UITVOER_Rapport_Pakket.png",
+      "available": true
+    },
+    {
+      "name": "CWS_UI_MASTER_V5_VOLLEDIG_OVERZICHT.png",
+      "path": "C:\\Users\\c.wesselink\\AppData\\Local\\Temp\\CWS_UI_MASTER_V5_VOLLEDIG_OVERZICHT.png",
+      "available": true
+    }
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "declared_count": 3,
+      "verified_tracked_count": 3,
+      "status": "PASS",
+      "screenshots": [
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase1\\01_project_start_light.png",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase1\\02_viewer_loaded_light.png",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase1\\03_project_overview_light.png",
+          "exists": true,
+          "tracked": true
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "declared_count": 3,
+      "verified_tracked_count": 3,
+      "status": "PASS",
+      "screenshots": [
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase2\\01_bom_machines_light.jpg",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase2\\02_profile_nesting_controls_light.jpg",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase2\\03_plate_nesting_light.jpg",
+          "exists": true,
+          "tracked": true
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "declared_count": 3,
+      "verified_tracked_count": 3,
+      "status": "PASS",
+      "screenshots": [
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase3\\01_drawings_pdf_light.jpg",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase3\\02_manufacturability_light.jpg",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase3\\03_print_center_light.jpg",
+          "exists": true,
+          "tracked": true
+        }
+      ]
+    },
+    {
+      "phase": 4,
+      "declared_count": 5,
+      "verified_tracked_count": 5,
+      "status": "NOT_PROVEN",
+      "screenshots": [
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\qt_progressive_exact_recheck.png",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\qt_viewer_visual_recheck.png",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\workspace_project_qt.png",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\workspace_productie_qt.png",
+          "exists": true,
+          "tracked": true
+        },
+        {
+          "path": "C:\\CONVERTOR\\validation\\final_4_phase\\phase4\\workspace_uitvoer_qt.png",
+          "exists": true,
+          "tracked": true
+        }
+      ]
+    }
+  ],
+  "fresh_live_comparison_status": "BLOCKED_EXTERNAL_EVIDENCE",
+  "fresh_live_comparison_reason": "Windows desktop capture/control returned access/argument errors; no mock screenshot is accepted."
+}

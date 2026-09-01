@@ -1,0 +1,79 @@
+{
+  "schema": "cws-hvpc-trimble-object-completeness-1.0",
+  "source_ifc": "P:/2026/Project/HVPC te Hengelo/Productie/Staalwerk [definitief 13-08-2026]/IFC/HVPC te Hengelo fasen totaal.ifc",
+  "source_bytes": 9773658,
+  "data_completeness_status": "PASS",
+  "live_side_by_side_status": "BLOCKED_DESKTOP_CAPTURE",
+  "ifc": {
+    "product_records": 6626,
+    "represented_products": 5733,
+    "physical_represented_products": 5725,
+    "grid_products": 8,
+    "assembly_groups_without_representation": 890,
+    "spatial_containers_without_representation": 3
+  },
+  "physical_geometry": {
+    "expected": 5725,
+    "exact_meshes": 5725,
+    "unique_source_entity_ids": 5725,
+    "scene_bundle_items": 5725,
+    "missing": 0,
+    "duplicates": 0,
+    "empty_meshes": 0,
+    "legacy_or_box_fallbacks": 0,
+    "coverage_percent": 100.0,
+    "vertices": 2941456,
+    "triangles": 5774396,
+    "types": {
+      "IfcPlate": 2332,
+      "IfcMechanicalFastener": 2306,
+      "IfcBeam": 771,
+      "IfcColumn": 191,
+      "IfcMember": 125
+    }
+  },
+  "assembly_structure": {
+    "assembly_count": 890,
+    "assemblies_without_represented_descendants": 0,
+    "minimum_represented_descendants": 1,
+    "maximum_represented_descendants": 96,
+    "total_descendant_links": 5725
+  },
+  "grid_overlay": {
+    "grid_count": 8,
+    "axis_count": 192,
+    "axes_per_grid": 24,
+    "warnings": [],
+    "levels": [
+      "-300",
+      "+0",
+      "+2025",
+      "+4670",
+      "+6802",
+      "+6976",
+      "+7700",
+      "+9710"
+    ],
+    "viewer_default_visible": true,
+    "viewer_shortcut": "Ctrl+G"
+  },
+  "viewer_visibility_reset": {
+    "command": "Alles tonen",
+    "shortcut": "Ctrl+Shift+A",
+    "effects": [
+      "show_all",
+      "clear_transparency",
+      "fit_all"
+    ]
+  },
+  "trimble_reference": {
+    "screenshot": "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg",
+    "visual_model_observed": true,
+    "machine_session_seconds": 3.551
+  },
+  "desktop_blocker": {
+    "capture_error": "IGraphicsCaptureItemInterop.CreateForMonitor failed (0x80070057)",
+    "input_error": "GetCursorPos failed: access denied (0x80070005)",
+    "impact": "The currently open CWS and Trimble windows could not be freshly captured or controlled, so a current pixel-level side-by-side verdict is not claimed."
+  }
+}
