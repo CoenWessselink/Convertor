@@ -159,8 +159,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
-            "evidence": ["validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.json", "QUEUE_COMPLETION_MATRIX.md"],
-            "remaining": ["HVPC first-cold exact load is circa 71 seconds and exceeds the 3-5 second target."],
+            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "QUEUE_COMPLETION_MATRIX.md"],
+            "remaining": ["HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds."],
         },
         {
             "queue_id": "Q003",

@@ -21,9 +21,11 @@ def _sha(path):
 
 def build_requests(path,limit=96):
     import ifcopenshell
+    from cws_convertor.importers.p21 import P21Document
+    from cws_viewer.adapters.source_geometry import ProjectGeometryCatalog
     from ifcopenshell.util.placement import get_local_placement
     from ifcopenshell.util.unit import calculate_unit_scale
-    source=Path(path).resolve(strict=True);source_hash=_sha(source);model=ifcopenshell.open(str(source));result=[]
+    source=Path(path).resolve(strict=True);source_hash=_sha(source);model=ifcopenshell.open(str(source));document=P21Document.load(source);groups={};physical_count=0
     translation_scale=float(calculate_unit_scale(model))*1000.0
     for entity in model.by_type('IfcProduct'):
         if getattr(entity,'Representation',None) is None:continue
@@ -31,17 +33,27 @@ def build_requests(path,limit=96):
         representation_types={str(getattr(value,'RepresentationType','') or '').lower() for value in representations}
         if representation_types and representation_types <= {'geometriccurveset','curve2d','curve3d'}:continue
         entity_id=str(entity.id());global_id=str(getattr(entity,'GlobalId','') or '')
-        geometry_id=f'{global_id}#{entity_id}' if global_id else f'ifc-{entity_id}'
-        geometry_hash=hashlib.sha256(f'{source_hash}:{entity_id}'.encode('ascii')).hexdigest()
+        _representation_id,_item_ids,geometry_hash=ProjectGeometryCatalog._ifc_items(document,entity_id)
+        if not geometry_hash:
+            geometry_hash=hashlib.sha256(f'{source_hash}:{entity_id}'.encode('ascii')).hexdigest()
         placement=get_local_placement(getattr(entity,'ObjectPlacement',None))
         rows=[[float(placement[row][column]) for column in range(4)] for row in range(4)]
         for axis in range(3):rows[axis][3]*=translation_scale
         transform=tuple(value for row in rows for value in row)
-        result.append(GeometryRequest(geometry_id,geometry_hash,'IFC',source_hash,str(source),source_hash,entity_id,
-                                      metadata=(('ifc_type',str(entity.is_a())),
-                                                ('ifc_transform_mm',json.dumps(transform,separators=(',',':')))),
+        group=groups.setdefault(geometry_hash,{'entity_id':entity_id,'global_id':global_id,'ifc_type':str(entity.is_a()),'instances':[]})
+        group['instances'].append({'entity_id':entity_id,'global_id':global_id,'transform':transform})
+        physical_count+=1
+        if physical_count>=max(1,int(limit)):break
+    result=[]
+    for geometry_hash,group in groups.items():
+        geometry_id=f'geometry:{geometry_hash}'
+        representative=group['instances'][0]
+        result.append(GeometryRequest(geometry_id,geometry_hash,'IFC',source_hash,str(source),source_hash,group['entity_id'],
+                                      metadata=(('ifc_type',group['ifc_type']),
+                                                ('ifc_transform_mm',json.dumps(representative['transform'],separators=(',',':'))),
+                                                ('ifc_instances_json',json.dumps(group['instances'],separators=(',',':'))),
+                                                ('physical_instance_count',str(len(group['instances'])))),
                                       source_path_verified=True))
-        if len(result)>=max(1,int(limit)):break
     if not result:raise RuntimeError(f'Geen IFC-producten met representatie: {source}')
     return tuple(result)
 
@@ -81,7 +93,8 @@ def _load(requests,cache_root):
         started=time.perf_counter();values=[disk.get(value.cache_key(settings,version)) for value in ordered]
         same_runs.append(time.perf_counter()-started)
         if sum(value is not None for value in values)!=len(ordered):raise RuntimeError('MeshCache V2 same-session miss')
-    return meshes,{'request_count':len(requests),'exact_mesh_count':len(meshes),'cold_seconds':cold,'warm_seconds':warm_s,
+    physical_count=sum(int(value.metadata_dict.get('physical_instance_count','1') or 1) for value in requests)
+    return meshes,{'request_count':len(requests),'physical_object_count':physical_count,'exact_mesh_count':len(meshes),'cold_seconds':cold,'warm_seconds':warm_s,
         'same_session_seconds':same_s,'same_session_runs_seconds':same_runs,
         'warm_hit_count':sum(v is not None for v in warm),'same_session_hit_count':sum(v is not None for v in same),
         'worker_pool':workers,'scheduler':scheduler.diagnostics(),
@@ -141,18 +154,24 @@ def _rss():
 def _scene(requests,meshes):
     repository=MeshRepository();nodes=[];resources=[];roots=[];identity=Matrix4.identity();placed=0
     world_min=[float('inf')]*3;world_max=[float('-inf')]*3
+    node_index=0
     for index,request in enumerate(requests):
         mesh=meshes.get(request.geometry_id)
         if mesh is None or mesh.bounds is None:continue
-        encoded=dict(request.metadata).get('ifc_transform_mm')
-        transform=Matrix4(tuple(float(value) for value in json.loads(encoded))) if encoded else identity
-        if any(abs(left-right)>1e-9 for left,right in zip(transform.values,identity.values)):placed+=1
-        world=mesh.bounds.transformed(transform)
-        for axis,value in enumerate((world.minimum.x,world.minimum.y,world.minimum.z)):world_min[axis]=min(world_min[axis],value)
-        for axis,value in enumerate((world.maximum.x,world.maximum.y,world.maximum.z)):world_max[axis]=max(world_max[axis],value)
-        repository.put(request.geometry_id,mesh);node_id=f'n-{index}-{request.geometry_id}';roots.append(node_id)
-        nodes.append(SceneNode(node_id,request.geometry_id,request.source_entity_id,None,NodeKind.PART,request.geometry_id,
-                               transform,mesh.bounds,request.geometry_id,geometry_hash=mesh.mesh_hash,style_id='ifc'))
+        metadata=dict(request.metadata);encoded_instances=metadata.get('ifc_instances_json')
+        instances=json.loads(encoded_instances) if encoded_instances else [{'entity_id':request.source_entity_id,'global_id':'','transform':json.loads(metadata.get('ifc_transform_mm') or json.dumps(identity.values))}]
+        repository.put(request.geometry_id,mesh)
+        for instance in instances:
+            transform=Matrix4(tuple(float(value) for value in instance['transform']))
+            if any(abs(left-right)>1e-9 for left,right in zip(transform.values,identity.values)):placed+=1
+            world=mesh.bounds.transformed(transform)
+            for axis,value in enumerate((world.minimum.x,world.minimum.y,world.minimum.z)):world_min[axis]=min(world_min[axis],value)
+            for axis,value in enumerate((world.maximum.x,world.maximum.y,world.maximum.z)):world_max[axis]=max(world_max[axis],value)
+            source_entity_id=str(instance.get('entity_id') or request.source_entity_id)
+            entity_id=str(instance.get('global_id') or f'ifc-step-{source_entity_id}')
+            node_id=f'n-{node_index}-{entity_id}';node_index+=1;roots.append(node_id)
+            nodes.append(SceneNode(node_id,entity_id,source_entity_id,None,NodeKind.PART,request.geometry_id,
+                                   transform,mesh.bounds,request.geometry_id,geometry_hash=mesh.mesh_hash,style_id='ifc'))
         payload_ref=f'memory://mesh/{request.geometry_id}'
         lod=MeshLod(0,mesh.mesh_hash,payload_ref,mesh.vertex_count,mesh.triangle_count,mesh.byte_length,None)
         resources.append(GeometryResource(request.geometry_id,GeometryRepresentation.MESH_LOD,mesh.mesh_hash,'mm',payload_ref,lods=(lod,),byte_length=mesh.byte_length))

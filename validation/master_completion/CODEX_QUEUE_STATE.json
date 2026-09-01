@@ -1,14 +1,14 @@
 {
   "schema": "cws.codex-queue-state.v1",
-  "generated_at": "2026-09-01T00:20:56.627252+00:00",
+  "generated_at": "2026-09-01T01:40:59.602228+00:00",
   "repository": {
     "root": "C:\\CONVERTOR",
     "branch": "agent/cws-product-ui-reintegration-v1",
-    "head": "072f4d442c7b80090ab197bd8ace9273a43c686c",
-    "tree": "ea0929f7d43a33f2fcb0ba24df55c64d70c7032d",
+    "head": "49c9374df67623930b6012bb4ec788139ea84266",
+    "tree": "b29baa21c1d64e47c5536b906d602f41870b5fbf",
     "remote_ref": "origin/agent/cws-product-ui-reintegration-v1",
-    "remote_head": "dc4e3e2ec2f91c40aad271d985b3fe59a44c7325",
-    "ahead": 20,
+    "remote_head": "49c9374df67623930b6012bb4ec788139ea84266",
+    "ahead": 0,
     "behind": 0,
     "app_version": "0.10.18-beta-dev",
     "project_schema": "2.25",
@@ -39,7 +39,7 @@
     "PASS": 6
   },
   "current_queue_item": "Q002",
-  "next_action": "HVPC first-cold exact load is circa 71 seconds and exceeds the 3-5 second target.",
+  "next_action": "HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds.",
   "queue": [
     {
       "queue_id": "Q001",
@@ -62,11 +62,12 @@
       "status": "PARTIAL",
       "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
       "evidence": [
-        "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.json",
+        "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "QUEUE_COMPLETION_MATRIX.md"
       ],
       "remaining": [
-        "HVPC first-cold exact load is circa 71 seconds and exceeds the 3-5 second target."
+        "HVPC first-cold exact load is 7.939 seconds and still exceeds the 3-5 second target; warm load is 0.075 seconds."
       ]
     },
     {

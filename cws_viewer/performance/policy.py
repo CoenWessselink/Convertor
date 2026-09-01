@@ -63,8 +63,11 @@ class LoadingPerformancePolicy:
             desired = 1
         elif count < 300:
             desired = 2
-        elif count < 1500:
-            desired = 4
+        elif count < 2000:
+            # Medium/large IFC models are normally reduced to reusable geometry
+            # resources before dispatch. Three source shards outperformed both
+            # two and four on the 5,725-object HVPC acceptance model.
+            desired = 3
         else:
             desired = 6
         if format_name not in {"IFC", "MIXED"}:

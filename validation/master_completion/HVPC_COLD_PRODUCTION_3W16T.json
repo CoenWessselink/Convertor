@@ -1,0 +1,117 @@
+{
+  "executable": "C:\\CONVERTOR\\.venv-build\\Scripts\\python.exe",
+  "frozen": false,
+  "gates": {
+    "mesh_cache_v2_same_session": true,
+    "mesh_cache_v2_warm": true,
+    "persistent_process_workers": true,
+    "real_ifc_exact_geometry": true,
+    "same_session_faster_than_cold": true,
+    "seven_tier_priority_scheduler": true,
+    "worker_delivery_complete": true,
+    "worker_pool_clean_run": true,
+    "worker_recovery_complete": true
+  },
+  "generated_at_epoch": 1788226189.5579262,
+  "ifc": "\\\\NAS\\project\\2026\\Project\\HVPC te Hengelo\\Productie\\Staalwerk [definitief 13-08-2026]\\IFC\\HVPC te Hengelo fasen totaal.ifc",
+  "measurements": {
+    "cache": {
+      "async_persistence": {
+        "completed_meshes": 1496,
+        "errors": [],
+        "pending_batches": 0,
+        "submitted_meshes": 1496,
+        "writer_count": 4
+      },
+      "engine": "MeshCache V2",
+      "persist_seconds": 0.13622569997096434,
+      "root": "C:\\CONVERTOR\\validation\\hvpc_parallel_shard_probe\\cache_production_merkle_3w_16t",
+      "storage_mode": "mmap"
+    },
+    "cold_seconds": 8.164212700037751,
+    "exact_mesh_count": 1496,
+    "physical_object_count": 5725,
+    "request_count": 1496,
+    "same_session_hit_count": 1496,
+    "same_session_runs_seconds": [
+      0.017887099995277822,
+      0.017504499992355704,
+      0.017277800012379885,
+      0.01724870002362877,
+      0.017288500035647303,
+      0.017153299995698035,
+      0.01786510000238195,
+      0.017040699953213334,
+      0.022441299981437624,
+      0.0264601000235416
+    ],
+    "same_session_seconds": 0.2270651999861002,
+    "scheduler": {
+      "authority": "dynamic_weighted_geometry_priority_v2",
+      "bands": {
+        "current_assembly": 250,
+        "large_silhouette": 249,
+        "near_camera": 249,
+        "selected": 1,
+        "under_cursor": 1,
+        "visible": 746
+      },
+      "hysteresis_score": 25.0,
+      "revision": 1,
+      "tracked_geometry": 1496
+    },
+    "tessellation": {
+      "angular_deflection_rad": 0.16,
+      "circle_segments": 48,
+      "linear_deflection_mm": 0.35
+    },
+    "warm_hit_count": 1496,
+    "warm_seconds": 0.0873147000093013,
+    "worker_pool": {
+      "active_process_count": 3,
+      "active_process_count_after_close": 0,
+      "active_process_ids": [
+        55992,
+        62308,
+        64056
+      ],
+      "active_process_ids_after_close": [],
+      "closed": true,
+      "completed_requests": 1496,
+      "dispatch_worker_count": 3,
+      "dispatcher": "bounded_thread_dispatcher",
+      "failed_requests": 0,
+      "last_errors": [],
+      "restarted_workers": 0,
+      "retry_successes": 0,
+      "session_shared": false,
+      "source_group_count": 1,
+      "source_shard_count": 3,
+      "split_source_group_count": 1,
+      "transport": "persistent_ifc_process_worker_pool_v3",
+      "worker_count": 3,
+      "worker_processes": [
+        {
+          "generation": 1,
+          "transport_mode": "multiprocessing_spawn",
+          "worker_alive": true,
+          "worker_pid": 62308
+        },
+        {
+          "generation": 1,
+          "transport_mode": "multiprocessing_spawn",
+          "worker_alive": true,
+          "worker_pid": 64056
+        },
+        {
+          "generation": 1,
+          "transport_mode": "multiprocessing_spawn",
+          "worker_alive": true,
+          "worker_pid": 55992
+        }
+      ]
+    }
+  },
+  "schema": "cws.real_packaged_performance.v2",
+  "status": "PASS"
+}

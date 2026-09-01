@@ -99,6 +99,20 @@ class PerformanceLoadingV2Smoke(unittest.TestCase):
         finally:
             coordinator.close()
 
+    def test_large_single_source_is_sharded_across_workers(self):
+        pool = PersistentGeometryWorkerPool(4, provider_factory=FakeProvider)
+        values = tuple(request(f"large-{index}") for index in range(2048))
+        try:
+            meshes = pool.load_many(values, TessellationSettings())
+            diagnostics = pool.diagnostics()
+            self.assertEqual(len(values), len(meshes))
+            self.assertEqual(4, diagnostics["dispatch_worker_count"])
+            self.assertEqual(1, diagnostics["source_group_count"])
+            self.assertEqual(4, diagnostics["source_shard_count"])
+            self.assertEqual(1, diagnostics["split_source_group_count"])
+        finally:
+            pool.close(force=True)
+
     def test_cancel_is_visible_and_fail_closed(self):
         token = CancellationToken()
         token.cancel()
@@ -126,6 +140,53 @@ class PerformanceLoadingV2Smoke(unittest.TestCase):
         self.assertFalse(first.diagnostics()["closed"])
         PersistentGeometryWorkerPool.shutdown_shared()
         self.assertTrue(first.diagnostics()["closed"])
+
+
+class RealPerformanceSceneInstancingSmoke(unittest.TestCase):
+    def test_shared_mesh_instances_keep_unique_selectable_entity_ids(self) -> None:
+        import json
+
+        import numpy as np
+
+        from cws_viewer.contracts.geometry import GeometryRequest, MeshData
+        from cws_viewer.contracts.scene import BoundingBox, Matrix4, Vector3
+        from cws_viewer.core.real_performance_evidence import _scene
+
+        identity = Matrix4.identity().values
+        translated = list(identity)
+        translated[3] = 1000.0
+        instances = (
+            {"entity_id": "10", "global_id": "gid-a", "transform": identity},
+            {"entity_id": "11", "global_id": "gid-b", "transform": translated},
+        )
+        request = GeometryRequest(
+            "geometry:test",
+            "1" * 64,
+            "IFC",
+            "source",
+            r"C:\test.ifc",
+            "0" * 64,
+            "10",
+            metadata=(("ifc_instances_json", json.dumps(instances)),),
+            source_path_verified=True,
+        )
+        vertices = np.asarray(((0, 0, 0), (1, 0, 0), (0, 1, 0)), dtype=np.float64)
+        triangles = np.asarray(((0, 1, 2),), dtype=np.int32)
+        mesh = MeshData(
+            vertices,
+            triangles,
+            "1" * 64,
+            "test",
+            mesh_hash=MeshData.compute_hash(vertices, triangles),
+            bounds=BoundingBox(Vector3(0, 0, 0), Vector3(1, 1, 0)),
+        )
+
+        scene, _repository, metrics = _scene((request,), {request.geometry_id: mesh})
+
+        self.assertEqual(2, metrics["node_count"])
+        self.assertEqual(2, len(scene.nodes))
+        self.assertEqual(2, len({node.entity_id for node in scene.nodes}))
+        self.assertEqual({"10", "11"}, {node.source_entity_id for node in scene.nodes})
 
 
 if __name__ == "__main__":

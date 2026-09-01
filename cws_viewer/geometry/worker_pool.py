@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import atexit
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import replace
+import math
 import threading
 from typing import Callable, Iterable
 
@@ -47,6 +49,9 @@ class PersistentGeometryWorkerPool:
         self.retry_successes = 0
         self.last_errors: list[str] = []
         self._last_dispatch_worker_count = 0
+        self._last_source_group_count = 0
+        self._last_source_shard_count = 0
+        self._last_split_source_group_count = 0
 
     def _record_error(self, exc: BaseException) -> None:
         message = f"{type(exc).__name__}: {exc}"
@@ -218,10 +223,46 @@ class PersistentGeometryWorkerPool:
             source_groups.setdefault(key, []).append(request)
         chunks: list[list[GeometryRequest]] = [[] for _ in range(self.worker_count)]
         loads = [0 for _ in range(self.worker_count)]
+        shard_count = 0
+        split_group_count = 0
         for group in sorted(source_groups.values(), key=lambda item: (-len(item), item[0].source_path)):
-            index = min(range(self.worker_count), key=lambda value: (loads[value], value))
-            chunks[index].extend(group)
-            loads[index] += len(group)
+            # A single large IFC is the common production case. Keeping that
+            # source as one indivisible group left five of six isolated workers
+            # idle while one child tessellated every product. Split only large
+            # groups; small sources still benefit from one parsed model/session.
+            desired_shards = 1
+            if self.worker_count > 1 and len(group) >= 384:
+                desired_shards = min(
+                    self.worker_count,
+                    max(2, math.ceil(len(group) / 384)),
+                )
+            shard_size = math.ceil(len(group) / desired_shards)
+            shards = [
+                group[index * shard_size : min(len(group), (index + 1) * shard_size)]
+                for index in range(desired_shards)
+            ]
+            shards = [shard for shard in shards if shard]
+            shard_count += len(shards)
+            if len(shards) > 1:
+                split_group_count += 1
+            for shard in shards:
+                index = min(range(self.worker_count), key=lambda value: (loads[value], value))
+                chunks[index].extend(shard)
+                loads[index] += len(shard)
+        self._last_source_group_count = len(source_groups)
+        self._last_source_shard_count = shard_count
+        self._last_split_source_group_count = split_group_count
+        active_chunk_count = sum(bool(chunk) for chunk in chunks)
+        dispatch_chunks = []
+        for chunk in chunks:
+            annotated = []
+            for request in chunk:
+                if request.source_format.upper() == "IFC":
+                    metadata = dict(request.metadata)
+                    metadata["ifc_dispatch_shards"] = str(active_chunk_count)
+                    request = replace(request, metadata=tuple(sorted(metadata.items())))
+                annotated.append(request)
+            dispatch_chunks.append(annotated)
         futures = [
             self._executor.submit(
                 self._load_many_on_worker,
@@ -230,7 +271,7 @@ class PersistentGeometryWorkerPool:
                 settings,
                 cancel_check=cancel_check,
             )
-            for index, chunk in enumerate(chunks)
+            for index, chunk in enumerate(dispatch_chunks)
             if chunk
         ]
         self._last_dispatch_worker_count = len(futures)
@@ -256,6 +297,9 @@ class PersistentGeometryWorkerPool:
             "dispatcher": "bounded_thread_dispatcher",
             "worker_count": self.worker_count,
             "dispatch_worker_count": int(self._last_dispatch_worker_count),
+            "source_group_count": int(self._last_source_group_count),
+            "source_shard_count": int(self._last_source_shard_count),
+            "split_source_group_count": int(self._last_split_source_group_count),
             "active_process_count": len(process_ids),
             "active_process_ids": process_ids,
             "worker_processes": worker_processes,

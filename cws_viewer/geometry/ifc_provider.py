@@ -494,10 +494,22 @@ def _cws_ifcopenshell_load_many(
     output = {}
     completed = 0
     total = sum(len(group) for group in grouped.values())
+
     for (source_path, source_sha256), group in grouped.items():
         if cancel_check is not None:
             cancel_check()
-        model = ifcopenshell.open(source_path)
+        model_key = (str(source_path), str(source_sha256))
+        model_cache = getattr(self, "_cws_ifcopenshell_batch_models", None)
+        if model_cache is None:
+            model_cache = {}
+            self._cws_ifcopenshell_batch_models = model_cache
+        model = model_cache.get(model_key)
+        model_session_reused = model is not None
+        if model is None:
+            model = ifcopenshell.open(source_path)
+            while len(model_cache) >= 2:
+                model_cache.pop(next(iter(model_cache)))
+            model_cache[model_key] = model
         by_entity_id = defaultdict(list)
         entities = []
         for request in group:
@@ -536,10 +548,21 @@ def _cws_ifcopenshell_load_many(
                 geom_settings.set(key, value)
             except Exception:
                 pass
+        available_cores = max(1, int(os.cpu_count() or 1))
+        requested_threads = str(os.environ.get("CWS_VIEWER_IFC_ITERATOR_THREADS", "")).strip()
+        if requested_threads:
+            iterator_threads = max(1, min(24, int(requested_threads), available_cores))
+        else:
+            metadata = group[0].metadata_dict if group else {}
+            dispatch_shards = max(1, int(metadata.get("ifc_dispatch_shards", "1") or 1))
+            iterator_threads = max(
+                1,
+                min(16, ((available_cores * 2) + dispatch_shards - 1) // dispatch_shards),
+            )
         iterator = ifcopenshell.geom.iterate(
             geom_settings,
             model,
-            num_threads=max(1, min(24, int(os.cpu_count() or 1))),
+            num_threads=iterator_threads,
             include=entities,
         )
         for shape in iterator:
@@ -566,6 +589,8 @@ def _cws_ifcopenshell_load_many(
                         "visual_fastener_curves": True,
                         "legacy_fallback": False,
                         "batch_tessellation": True,
+                        "iterator_threads": iterator_threads,
+                        "model_session_reused": model_session_reused,
                     }
                 )
                 mesh = MeshData(

@@ -1,0 +1,51 @@
+{
+  "schema": "cws.hvpc.persistent_worker_source_cache.v1",
+  "status": "PASS",
+  "physical_object_count": 5725,
+  "geometry_resource_count": 1496,
+  "first_session_tessellation_seconds": 7.93920550000621,
+  "repeated_session_tessellation_seconds": 5.37996499997098,
+  "reused_model_meshes": 1496,
+  "worker_pool": {
+    "transport": "persistent_ifc_process_worker_pool_v3",
+    "dispatcher": "bounded_thread_dispatcher",
+    "worker_count": 3,
+    "dispatch_worker_count": 3,
+    "source_group_count": 1,
+    "source_shard_count": 3,
+    "split_source_group_count": 1,
+    "active_process_count": 3,
+    "active_process_ids": [
+      15132,
+      41256,
+      64400
+    ],
+    "worker_processes": [
+      {
+        "transport_mode": "multiprocessing_spawn",
+        "generation": 1,
+        "worker_pid": 15132,
+        "worker_alive": true
+      },
+      {
+        "transport_mode": "multiprocessing_spawn",
+        "generation": 1,
+        "worker_pid": 64400,
+        "worker_alive": true
+      },
+      {
+        "transport_mode": "multiprocessing_spawn",
+        "generation": 1,
+        "worker_pid": 41256,
+        "worker_alive": true
+      }
+    ],
+    "completed_requests": 2992,
+    "failed_requests": 0,
+    "restarted_workers": 0,
+    "retry_successes": 0,
+    "last_errors": [],
+    "session_shared": false,
+    "closed": false
+  }
+}

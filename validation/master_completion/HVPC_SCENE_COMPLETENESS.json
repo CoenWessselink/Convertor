@@ -1,0 +1,125 @@
+{
+  "status": "PASS",
+  "physical_nodes": 5725,
+  "unique_selectable_entity_ids": 5725,
+  "source_entity_ids": 5725,
+  "geometry_resources": 1496,
+  "repository_meshes": 1496,
+  "scene_metrics": {
+    "node_count": 5725,
+    "placed_node_count": 5725,
+    "world_min_mm": [
+      9911.75000000015,
+      9849.99906398252,
+      -260.004608018986
+    ],
+    "world_max_mm": [
+      67461.03215546541,
+      39975.628341674026,
+      10370.0000004873
+    ],
+    "world_extent_mm": [
+      57549.28215546526,
+      30125.629277691507,
+      10630.004608506286
+    ]
+  },
+  "loader": {
+    "request_count": 1496,
+    "physical_object_count": 5725,
+    "exact_mesh_count": 1496,
+    "cold_seconds": 13.76064569997834,
+    "warm_seconds": 0.0740976000088267,
+    "same_session_seconds": 0.020728099974803627,
+    "same_session_runs_seconds": [
+      0.026410499995108694,
+      0.026247399975545704,
+      0.02671459998236969,
+      0.02752509998390451,
+      0.02248920005513355,
+      0.01781779999146238,
+      0.023190399981103837,
+      0.020963900024071336,
+      0.018008200044278055,
+      0.02362720004748553
+    ],
+    "warm_hit_count": 1496,
+    "same_session_hit_count": 1496,
+    "worker_pool": {
+      "transport": "persistent_ifc_process_worker_pool_v3",
+      "dispatcher": "bounded_thread_dispatcher",
+      "worker_count": 3,
+      "dispatch_worker_count": 3,
+      "source_group_count": 1,
+      "source_shard_count": 3,
+      "split_source_group_count": 1,
+      "active_process_count": 3,
+      "active_process_ids": [
+        30944,
+        43944,
+        53236
+      ],
+      "worker_processes": [
+        {
+          "transport_mode": "multiprocessing_spawn",
+          "generation": 1,
+          "worker_pid": 53236,
+          "worker_alive": true
+        },
+        {
+          "transport_mode": "multiprocessing_spawn",
+          "generation": 1,
+          "worker_pid": 43944,
+          "worker_alive": true
+        },
+        {
+          "transport_mode": "multiprocessing_spawn",
+          "generation": 1,
+          "worker_pid": 30944,
+          "worker_alive": true
+        }
+      ],
+      "completed_requests": 1496,
+      "failed_requests": 0,
+      "restarted_workers": 0,
+      "retry_successes": 0,
+      "last_errors": [],
+      "session_shared": false,
+      "closed": true,
+      "active_process_count_after_close": 0,
+      "active_process_ids_after_close": []
+    },
+    "scheduler": {
+      "revision": 1,
+      "authority": "dynamic_weighted_geometry_priority_v2",
+      "tracked_geometry": 1496,
+      "hysteresis_score": 25.0,
+      "bands": {
+        "selected": 1,
+        "under_cursor": 1,
+        "visible": 746,
+        "near_camera": 249,
+        "large_silhouette": 249,
+        "current_assembly": 250
+      }
+    },
+    "cache": {
+      "engine": "MeshCache V2",
+      "root": "C:\\CONVERTOR\\validation\\hvpc_parallel_shard_probe\\cache_scene_complete",
+      "storage_mode": "mmap",
+      "persist_seconds": 0.13576489995466545,
+      "async_persistence": {
+        "writer_count": 4,
+        "submitted_meshes": 1496,
+        "completed_meshes": 1496,
+        "pending_batches": 0,
+        "errors": []
+      }
+    },
+    "tessellation": {
+      "linear_deflection_mm": 0.35,
+      "angular_deflection_rad": 0.16,
+      "circle_segments": 48
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "cws.hvpc.load_closeout.v2",
+  "status": "PARTIAL",
+  "target": {
+    "cold_complete_seconds_max": 5.0,
+    "warm_complete_seconds_max": 5.0
+  },
+  "baseline": {
+    "artificial_request_count": 5725,
+    "cold_seconds": 71.04096764
+  },
+  "production_identity": {
+    "physical_object_count": 5725,
+    "geometry_resource_count": 1496,
+    "reused_instance_count": 4229,
+    "missing_object_count": 0,
+    "duplicate_object_count": 0
+  },
+  "automatic_policy": {
+    "process_workers": 3,
+    "iterator_threads_per_shard": 16,
+    "source_shards": 3,
+    "tessellation": {
+      "linear_deflection_mm": 0.35,
+      "angular_deflection_rad": 0.16,
+      "circle_segments": 48
+    }
+  },
+  "measurements": {
+    "first_persistent_session_exact_seconds": 7.93920550000621,
+    "repeated_persistent_session_exact_seconds": 5.37996499997098,
+    "mesh_cache_warm_seconds": 0.07518650003476068,
+    "mesh_cache_same_session_seconds": 0.020728099974803627,
+    "cold_improvement_percent": 88.82,
+    "failed_geometry_requests": 0
+  },
+  "scene_acceptance": {
+    "status": "PASS",
+    "physical_nodes": 5725,
+    "unique_selectable_entity_ids": 5725,
+    "unique_source_entity_ids": 5725,
+    "geometry_resources": 1496,
+    "world_extent_mm": [57549.28215546526, 30125.629277691507, 10630.004608506286]
+  },
+  "geometry_reuse_validation": {
+    "semantic_groups_with_multiple_raw_hashes": 10,
+    "array_order_only_groups": 7,
+    "subnanometer_triangulation_groups": 3,
+    "maximum_hausdorff_delta_mm": 8.3e-10,
+    "engineering_equivalence": "PASS"
+  },
+  "gates": {
+    "all_objects_visible_and_selectable": "PASS",
+    "exact_meshes_only": "PASS",
+    "persistent_ifc_process_pool": "PASS",
+    "persistent_open_model_reuse": "PASS",
+    "mesh_cache_v2": "PASS",
+    "cold_3_to_5_seconds": "FAIL",
+    "warm_3_to_5_seconds": "PASS"
+  },
+  "evidence": [
+    "validation/master_completion/HVPC_COLD_PRODUCTION_3W16T.json",
+    "validation/master_completion/HVPC_PERSISTENT_SOURCE_CACHE.json",
+    "validation/master_completion/HVPC_SCENE_COMPLETENESS.json"
+  ]
+}
