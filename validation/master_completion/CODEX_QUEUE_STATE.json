@@ -1,13 +1,13 @@
 {
   "schema": "cws.codex-queue-state.v1",
-  "generated_at": "2026-09-01T06:31:31.471049+00:00",
+  "generated_at": "2026-09-01T06:35:17.475525+00:00",
   "repository": {
     "root": "C:\\CONVERTOR",
     "branch": "agent/cws-product-ui-reintegration-v1",
-    "head": "c3f7acef42d1cd67ab32721038749d0979e4996d",
-    "tree": "5041a026a74d1da00167a8e2bbb2ac99765ee7e5",
+    "head": "1adbfd57400e0ade62ed87fbe2bd0b1bc98759e1",
+    "tree": "8d1856e38969aa82b57704379e9bc0f7592b07d4",
     "remote_ref": "origin/agent/cws-product-ui-reintegration-v1",
-    "remote_head": "c3f7acef42d1cd67ab32721038749d0979e4996d",
+    "remote_head": "1adbfd57400e0ade62ed87fbe2bd0b1bc98759e1",
     "ahead": 0,
     "behind": 0,
     "app_version": "0.10.18-beta-dev",
@@ -39,7 +39,7 @@
     "PASS": 8
   },
   "current_queue_item": "Q002",
-  "next_action": "A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95.",
+  "next_action": "A genuinely cacheless first IFC tessellation is 7.839 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95.",
   "queue": [
     {
       "queue_id": "Q001",
@@ -63,6 +63,7 @@
       "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -71,7 +72,7 @@
         "QUEUE_COMPLETION_MATRIX.md"
       ],
       "remaining": [
-        "A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."
+        "A genuinely cacheless first IFC tessellation is 7.839 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."
       ]
     },
     {

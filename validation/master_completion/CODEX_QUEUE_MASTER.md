@@ -1,11 +1,11 @@
 # CODEX QUEUE MASTER
 
-Generated from `c3f7acef42d1cd67ab32721038749d0979e4996d` on branch `agent/cws-product-ui-reintegration-v1`. This ledger never converts missing external evidence into PASS.
+Generated from `1adbfd57400e0ade62ed87fbe2bd0b1bc98759e1` on branch `agent/cws-product-ui-reintegration-v1`. This ledger never converts missing external evidence into PASS.
 
 | ID | Queue item | Dependencies | Status | Remaining |
 |---|---|---|---|---|
 | Q001 | Canonical repository, requirement sources and authority reconciliation | - | PASS | None |
-| Q002 | Viewer Loader Engine V2 and cold-load performance closeout | Q001 | PARTIAL | A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95. |
+| Q002 | Viewer Loader Engine V2 and cold-load performance closeout | Q001 | PARTIAL | A genuinely cacheless first IFC tessellation is 7.839 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95. |
 | Q003 | HVPC exact object and geometry completeness | Q001 | PASS | None |
 | Q004 | Same-machine Trimble visual and object parity | Q002, Q003 | BLOCKED_EXTERNAL_EVIDENCE | Fresh desktop capture/control is blocked by Windows Graphics Capture access/monitor errors; no fabricated visual comparison is accepted. |
 | Q005 | V5.2 light UI and reference-image visual fidelity | Q001 | PARTIAL | All 31 native HVPC-populated surfaces, all 25 supplied reference pairs and a native exact VTK framebuffer are captured; pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED. |

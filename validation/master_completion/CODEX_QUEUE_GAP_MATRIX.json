@@ -1,6 +1,6 @@
 {
   "schema": "cws.codex-queue-gap-matrix.v1",
-  "generated_at": "2026-09-01T06:31:31.471049+00:00",
+  "generated_at": "2026-09-01T06:35:17.475525+00:00",
   "queue_nonpass_count": 4,
   "first_nonpass": "Q002",
   "gaps": [
@@ -14,6 +14,7 @@
       "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -22,7 +23,7 @@
         "QUEUE_COMPLETION_MATRIX.md"
       ],
       "remaining": [
-        "A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."
+        "A genuinely cacheless first IFC tessellation is 7.839 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."
       ]
     },
     {

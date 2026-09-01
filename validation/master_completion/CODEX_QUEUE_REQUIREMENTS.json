@@ -1,6 +1,6 @@
 {
   "schema": "cws.codex-queue-requirements.v1",
-  "generated_at": "2026-09-01T06:31:31.471049+00:00",
+  "generated_at": "2026-09-01T06:35:17.475525+00:00",
   "required_total": 1655,
   "status_counts": {
     "BLOCKED_EXTERNAL_EVIDENCE": 138,
@@ -1910,6 +1910,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -1971,6 +1972,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -1990,6 +1992,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -2023,6 +2026,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -2056,6 +2060,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -2620,6 +2625,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -3981,6 +3987,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -4567,6 +4574,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -5027,6 +5035,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -5201,6 +5210,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -5262,6 +5272,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -5970,6 +5981,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -12196,6 +12208,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -12313,6 +12326,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -14881,6 +14895,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -14998,6 +15013,7 @@
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18295,6 +18311,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18595,6 +18612,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18614,6 +18632,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18661,6 +18680,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18708,6 +18728,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18741,6 +18762,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18802,6 +18824,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -18821,6 +18844,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",
@@ -19308,6 +19332,7 @@
       "superseded_by": null,
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+        "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
         "validation/master_completion/HVPC_SCENE_COMPLETENESS.json",
         "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
         "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json",

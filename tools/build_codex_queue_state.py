@@ -166,8 +166,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
-            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json", "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png", "QUEUE_COMPLETION_MATRIX.md"],
-            "remaining": ["A genuinely cacheless first IFC tessellation is 7.939 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."],
+            "evidence": ["validation/master_completion/HVPC_LOAD_CLOSEOUT.json", "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json", "validation/master_completion/HVPC_SCENE_COMPLETENESS.json", "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json", "validation/master_completion/HVPC_EXACT_WARMSTART_CLOSEOUT.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.json", "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png", "QUEUE_COMPLETION_MATRIX.md"],
+            "remaining": ["A genuinely cacheless first IFC tessellation is 7.839 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."],
         },
         {
             "queue_id": "Q003",
@@ -486,3 +486,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
