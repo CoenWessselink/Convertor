@@ -33,7 +33,7 @@
       "title": "Same-machine Trimble visual and object parity"
     }
   ],
-  "generated_at": "2026-09-01T08:31:55.760628+00:00",
+  "generated_at": "2026-09-01T09:15:44.921140+00:00",
   "master_requirement_status_counts": {
     "FAIL": 26,
     "PASS": 291
@@ -209,14 +209,13 @@
         "Q010"
       ],
       "evidence": [
-        "validation/final_4_phase/phase4/PHASE_GATE.json",
-        "validation/master_completion/EXACT_SHA_WINDOWS_RELEASE_1513ae3.json"
+        "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json",
+        "release/phase3/PHASE_3_RELEASE_MANIFEST.json",
+        "validation/manufacturing_interpreter_v3/release_2feea49/FINAL_EXACT_SHA_ACCEPTANCE.json"
       ],
       "expected_result": "Fresh release artifacts and packaged evidence bind to one exact commit.",
       "queue_id": "Q011",
-      "remaining": [
-        "Phase 4 gate and final Windows release are not PASS."
-      ],
+      "remaining": [],
       "remaining_work": [],
       "status": "PASS",
       "title": "Exact-SHA one-folder, portable and installer release"

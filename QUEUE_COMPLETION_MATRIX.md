@@ -18,8 +18,8 @@ Recente commits: 9ed87cb perf(viewer): render exact HVPC within warmstart gate<b
 | Tekeningen en PDF | Vectorprojectie, maten en PDF | DrawingProjectionModel en vector-native PDF met gedeelde outputservice | 3fa0136 | final gap closure en A-Z acceptance | COMPLETE |
 | Print Center en uitvoer | Eén DocumentOutputService | Singleton DocumentOutputService en concreet Print Center | 3fa0136 | final gap closure en A-Z acceptance | COMPLETE |
 | Manufacturing Geometry Interpreter V3 | Volledige V2-gap closure, 45 categorieen en exact-SHA package | Feature-aware pipeline, compound proof, fail-closed routing, transactionele promotie en Controle-workspace | aee2466, f740daf, 661cf7e, aea07b4 | V3 fase 1/2/3, final acceptance en packaged runtime | COMPLETE |
-| Release en installer | Nieuwe EXE, portable en installer met packaged bewijs | Eerdere packages zijn bewezen, maar een fresh release voor de actuele exact-SHA en finale gate ontbreekt | d9cc741, eb9f4eb, bdc449c | installed packaged runtime en association smoke | PARTIAL |
+| Release en installer | Exact-SHA one-folder, portable, standalone en installer | Canonical Phase-3 gate PASS op exacte release-SHA met install, associaties, uninstall en nul leftovers | 2feea49 | PHASE_3_WINDOWS_RUNTIME_EVIDENCE en packaged MGI batch | COMPLETE |
 
 ## Gate
 
-De native exacte Viewer-warmstart en interactierendering zijn groen. De totale opdracht blijft PARTIAL zolang de cacheloze eerste IFC-tessellatie niet 3-5 seconden haalt, dezelfde-machine Trimble-pariteit niet gepaard is gemeten, 100% visuele UI-pariteit niet onafhankelijk is bewezen en geen fresh exact-SHA releasegate bestaat.
+De native exacte Viewer-warmstart en interactierendering zijn groen. De totale opdracht blijft PARTIAL zolang de cacheloze eerste IFC-tessellatie niet 3-5 seconden haalt, dezelfde-machine Trimble-pariteit niet gepaard is gemeten, 100% visuele UI-pariteit niet onafhankelijk is bewezen.
