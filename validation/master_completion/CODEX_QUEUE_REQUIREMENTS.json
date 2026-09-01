@@ -1,13 +1,13 @@
 {
   "schema": "cws.codex-queue-requirements.v1",
-  "generated_at": "2026-09-01T02:08:00.339496+00:00",
+  "generated_at": "2026-09-01T02:17:12.918421+00:00",
   "required_total": 1655,
   "status_counts": {
     "BLOCKED_EXTERNAL_EVIDENCE": 138,
     "FAIL": 104,
     "NOT_TESTED": 1,
-    "PARTIAL": 281,
-    "PASS": 1131
+    "PARTIAL": 182,
+    "PASS": 1230
   },
   "requirements": [
     {
@@ -1280,6 +1280,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -1456,6 +1458,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -1791,6 +1795,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -1848,6 +1854,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -2083,6 +2091,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -2123,11 +2133,14 @@
       "source_sha256": "48583ca864042590214d5d08b58a774fe1e7b61f69995292aece09a56c1a28dd",
       "source_heading": "FASE 2 — PRODUCTIEHART: BOM/MACHINES + WORKBENCH + INTERPRETER + NESTING",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -2203,11 +2216,14 @@
       "source_sha256": "48583ca864042590214d5d08b58a774fe1e7b61f69995292aece09a56c1a28dd",
       "source_heading": "22. MANUFACTURING GEOMETRY INTERPRETER V2",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -2528,6 +2544,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -4527,6 +4545,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -5316,6 +5336,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -5359,6 +5381,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -5443,6 +5467,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -6184,11 +6210,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "CODEX MASTER-SUPERPROMPT",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6198,11 +6227,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "CWS CONVERTOR — MANUFACTURING GEOMETRY INTERPRETER V2",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6212,11 +6244,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "Exact BREP → manufacturing decomposition → independent reconstruction → geometry proof → representability",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6226,11 +6261,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "Exact 3 grote bouwfasen — evidence-first — false READY/GREEN = 0",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6240,11 +6278,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "0. HOOFDDOEL",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6254,11 +6295,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "1. REPOSITORY PREFLIGHT — VERPLICHT",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6268,11 +6312,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "2. BESTAANDE AUTHORITIES — NIET DUPLICEREN",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6282,11 +6329,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "3. POSITIONERING IN DE ARCHITECTUUR",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6296,11 +6346,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "4. CIRCULAR PROOF — ABSOLUUT VERBODEN",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6310,11 +6363,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "5. GEOMETRY TRUTH — GEBRUIK BESTAANDE AUTHORITY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6324,11 +6380,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "Huidige harde consequentie",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6338,11 +6397,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "STEP",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6352,11 +6414,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "IFC",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6366,11 +6431,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "6. SOURCE SHAPE IMMUTABILITY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6380,11 +6448,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "7. CENTRALE TOLERANCE POLICY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6394,11 +6465,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "8. NIEUWE CORE CONTRACTS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6408,11 +6482,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "9. STABIELE IDs — DETERMINISTISCH",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6422,11 +6499,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "10. SOURCE FACE / EDGE SIGNATURES",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6436,11 +6516,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "11. TOPOLOGY ANALYZER / FACE ADJACENCY GRAPH",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6450,11 +6533,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "12. ANALYTIC FACE GROUPING",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6464,11 +6550,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "13. KANDIDAATASSEN",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6478,11 +6567,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "14. PRODUCTIEFRAME",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6492,11 +6584,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "15. CROSS SECTION ENGINE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6506,11 +6601,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "16. INTERVAL / EVENT ANALYSIS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6520,11 +6618,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "17. LINEAR EXTRUSION CANDIDATE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6534,11 +6635,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "18. PROFILE GEOMETRY RECOGNITION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6548,11 +6652,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "19. SCORE VERSUS CONFIDENCE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6562,11 +6669,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "20. FEATURE TYPES — GEOMETRIE EERST",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6576,11 +6686,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "21. HOLE RECOGNITION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6590,11 +6703,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "22. SLOT RECOGNITION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6604,11 +6720,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "23. COPE / NOTCH / CUT",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6618,11 +6737,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "24. MITER / SAW CUT",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6632,11 +6754,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "25. ADDITIVE GEOMETRY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6646,11 +6771,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "26. MULTI-EXTRUSION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6660,11 +6788,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "27. RESIDUAL — TWO-WAY MODEL",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6674,11 +6805,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "28. RESIDUAL-DRIVEN SEARCH",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6688,11 +6822,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "29. FEATURE DEPENDENCIES",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6702,11 +6839,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "30. HYPOTHESIS SOLVER",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6716,11 +6856,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "31. HYPOTHESIS RANKING — GEOMETRY EERST",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6730,11 +6873,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "32. AMBIGUITY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6744,11 +6890,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "33. PURE HYPOTHESIS RECONSTRUCTION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6758,11 +6907,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "34. GEOMETRY EQUIVALENCE PROOF",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6772,11 +6924,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "35. BOOLEAN KERNEL FAILURE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6786,11 +6941,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "36. INTERPRETATION ARTIFACT",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6800,11 +6958,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "37. STORAGE — DERIVED ARTIFACT",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6814,11 +6975,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "38. PROMOTION NAAR WORKBENCH",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6828,11 +6992,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "39. HUMAN CONFIRMATION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6842,11 +7009,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "40. READINESS — GEEN VRIJE GREEN STATUS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6856,11 +7026,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "41. REPRESENTABILITY IS APART",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6870,11 +7043,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "42. NC1 REPRESENTABILITY MATRIX",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6884,11 +7060,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "43. MACHINE REPRESENTABILITY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6898,11 +7077,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "44. ROUNDTRIP",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6912,11 +7094,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "45. VIEWER / V5.2 UI INTEGRATIE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6926,11 +7111,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "46. NORMALE UI",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6940,11 +7128,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "47. ADVANCED / EVIDENCE UI",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6954,11 +7145,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "48. FEATURE SELECTION ZONDER TWEEDE PROJECTSELECTIE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6968,11 +7162,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "49. VIEWER DEBUG OVERLAYS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6982,11 +7179,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "50. JOBMANAGER / NATIVE PROCESS SAFETY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -6996,11 +7196,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "51. CACHE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7010,11 +7213,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "52. DETERMINISME",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7024,11 +7230,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "53. PERFORMANCE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7038,11 +7247,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "54. STRUCTURED DIAGNOSTICS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7052,11 +7264,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "55. CORPUS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7066,11 +7281,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "56. ADVERSARIAL / FALSE READY",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7080,11 +7298,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "57. BENCHMARK METRICS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7094,11 +7315,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "58. CLI / BATCH",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7108,11 +7332,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "59. VERSIONING / PROVENANCE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7122,11 +7349,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "60. EXACT DRIE BOUWFASEN",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7136,11 +7366,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "======================================================================",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7150,11 +7383,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "FASE 1 — EXACT SOURCE TOPOLOGY + EXTRUSION/PROFILE + PROOF FOUNDATION",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7164,11 +7400,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "======================================================================",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7178,11 +7417,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "61. Scope",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7192,11 +7434,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "62. Fase 1 fixtures",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7206,11 +7451,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "63. Fase 1 gate",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7220,11 +7468,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "======================================================================",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7234,11 +7485,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "FASE 2 — FEATURE DECOMPOSITION + MULTI-EXTRUSION + SEMANTICS",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7248,11 +7502,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "======================================================================",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7262,11 +7519,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "64. Scope",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7276,11 +7536,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "65. Circularity test",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7290,11 +7553,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "66. Promotion test",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7304,11 +7570,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "67. Fase 2 gate",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7318,11 +7587,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "======================================================================",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7332,11 +7604,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "FASE 3 — VIEWER/V5.2 + REAL CORPUS + PERFORMANCE + FULL ACCEPTANCE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7346,11 +7621,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "======================================================================",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7360,11 +7638,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "68. Scope",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7374,11 +7655,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "69. UI gate",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7388,11 +7672,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "70. Persistence",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7402,11 +7689,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "71. Real model tests",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7416,11 +7706,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "72. Windows packaging",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7430,11 +7723,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "73. Fase 3 gate",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7444,11 +7740,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "74. ACCEPTANCE STATUSMODEL",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7458,11 +7757,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "75. VERPLICHTE EVIDENCE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7472,11 +7774,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "76. FINAL DEFINITION OF DONE",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7486,11 +7791,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "77. STARTREGEL VOOR CODEX",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -7500,11 +7808,14 @@
       "source_sha256": "5bd07b11cc3da79a7b60c3de8b66fbc75892a838c6855b3624405b9e6daa0d96",
       "source_heading": "78. SLOTREGEL",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -9141,6 +9452,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9156,6 +9469,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9171,6 +9486,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9186,6 +9503,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9201,6 +9520,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9216,6 +9537,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9231,6 +9554,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9246,6 +9571,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9261,6 +9588,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9276,6 +9605,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9291,6 +9622,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9306,6 +9639,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9321,6 +9656,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9336,6 +9673,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9351,6 +9690,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9366,6 +9707,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9381,6 +9724,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9396,6 +9741,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9411,6 +9758,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9426,6 +9775,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9441,6 +9792,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9456,6 +9809,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9471,6 +9826,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9486,6 +9843,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9501,6 +9860,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9516,6 +9877,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9531,6 +9894,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9546,6 +9911,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9561,6 +9928,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9576,6 +9945,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9591,6 +9962,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9606,6 +9979,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9621,6 +9996,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9636,6 +10013,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9651,6 +10030,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9666,6 +10047,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9681,6 +10064,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9696,6 +10081,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9711,6 +10098,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9726,6 +10115,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9741,6 +10132,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9756,6 +10149,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9771,6 +10166,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9786,6 +10183,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9801,6 +10200,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9816,6 +10217,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9831,6 +10234,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9846,6 +10251,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9861,6 +10268,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9876,6 +10285,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9891,6 +10302,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9906,6 +10319,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9921,6 +10336,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9936,6 +10353,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9951,6 +10370,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9966,6 +10387,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9981,6 +10404,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9996,6 +10421,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10011,6 +10438,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10026,6 +10455,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10041,6 +10472,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10056,6 +10489,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10071,6 +10506,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10086,6 +10523,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10101,6 +10540,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10116,6 +10557,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10131,6 +10574,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10146,6 +10591,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10161,6 +10608,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10176,6 +10625,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10191,6 +10642,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10206,6 +10659,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10221,6 +10676,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10236,6 +10693,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10251,6 +10710,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10266,6 +10727,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10281,6 +10744,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10296,6 +10761,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10311,6 +10778,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10326,6 +10795,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10341,6 +10812,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10356,6 +10829,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10371,6 +10846,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10386,6 +10863,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10401,6 +10880,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10416,6 +10897,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10431,6 +10914,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10446,6 +10931,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10461,6 +10948,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10476,6 +10965,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10491,6 +10982,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10506,6 +10999,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10521,6 +11016,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10536,6 +11033,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10551,6 +11050,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10566,6 +11067,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10581,6 +11084,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10596,6 +11101,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10611,6 +11118,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10626,6 +11135,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10641,6 +11152,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10656,6 +11169,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10671,6 +11186,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10686,6 +11203,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10839,6 +11358,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11473,6 +11994,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12251,6 +12774,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12266,6 +12791,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12309,6 +12836,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12781,6 +13310,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12824,6 +13355,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12839,6 +13372,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12952,6 +13487,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13250,6 +13787,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13292,6 +13831,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13307,6 +13848,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13460,6 +14003,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -14094,6 +14639,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -14872,6 +15419,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -14887,6 +15436,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -14930,6 +15481,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15402,6 +15955,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15459,6 +16014,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15474,6 +16031,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15489,6 +16048,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15714,6 +16275,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15939,6 +16502,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15954,6 +16519,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15983,6 +16550,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15998,6 +16567,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16152,6 +16723,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16524,6 +17097,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16621,6 +17196,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16636,6 +17213,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16707,6 +17286,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16806,6 +17387,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16891,6 +17474,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16934,6 +17519,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16991,6 +17578,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17090,6 +17679,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17147,6 +17738,8 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18042,11 +18635,14 @@
       "source_sha256": "37c62f1b44e26148c54ba8e7bd8d79685e30dbef2a211aa6af666d100a788be7",
       "source_heading": "D. Manufacturing foundation zonder interpreter",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -18085,6 +18681,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18212,6 +18810,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18227,6 +18827,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18305,11 +18907,14 @@
       "source_sha256": "37c62f1b44e26148c54ba8e7bd8d79685e30dbef2a211aa6af666d100a788be7",
       "source_heading": "D15 — Manufacturing Geometry Interpreter V2",
       "queue_id": "Q007",
-      "status": "PARTIAL",
+      "status": "PASS",
       "superseded_by": null,
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ]
     },
     {
@@ -18496,6 +19101,8 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"

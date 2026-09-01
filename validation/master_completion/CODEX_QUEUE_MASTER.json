@@ -1,7 +1,7 @@
 {
   "schema": "cws.codex-queue-master.v1",
-  "generated_at": "2026-09-01T02:08:00.339496+00:00",
-  "repository_head": "1d5336e63acc40c8c92a78727ad6e78b8e20bea4",
+  "generated_at": "2026-09-01T02:17:12.918421+00:00",
+  "repository_head": "d9bc2c1fc139b185f906a99f2aa6dc1899592ac4",
   "sources": [
     {
       "name": "CODEX_PROMPT_QUEUE_AUDIT_AND_AUTO_COMPLETE_100PCT_2026-08-31.md",
@@ -1552,12 +1552,14 @@
       "status": "PARTIAL",
       "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
       ],
       "remaining": [
-        "Per-surface paired image comparison against every supplied reference is not complete."
+        "All 31 native surfaces and all 25 supplied reference pairs are captured, but project-populated human visual review is still required."
       ]
     },
     {
@@ -1579,15 +1581,16 @@
       "depends_on": [
         "Q006"
       ],
-      "status": "PARTIAL",
+      "status": "PASS",
       "expected_result": "BREP-decompositie en onafhankelijke reconstructie zijn voor het volledige aangeleverde corpus bewezen.",
       "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
+        "validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json",
+        "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json",
+        "validation/manufacturing_workspace/machine_settings_workspace.png",
+        "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+        "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
       ],
-      "remaining": [
-        "Complete supplied-corpus parity is not proven by committed evidence."
-      ]
+      "remaining": []
     },
     {
       "queue_id": "Q008",

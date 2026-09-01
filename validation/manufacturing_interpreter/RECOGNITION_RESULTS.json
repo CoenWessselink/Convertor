@@ -1,0 +1,125 @@
+{
+  "rows": [
+    {
+      "case": "plate",
+      "false_ready": false,
+      "family": "B",
+      "profile": "PL100X10",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "db371e725db833badc69f14c842a0346e969bf3f7d033b6dbee91fd1085de093",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "flat",
+      "false_ready": false,
+      "family": "B",
+      "profile": "FL50X8",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "13997499efb334048f0110e8fbedef701d0d624cad900f3e8ab89d6bbf90bcea",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "round",
+      "false_ready": false,
+      "family": "RU",
+      "profile": "RO40",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "7a82aabaafae0552dc35bc722df8fb0c6a69d057d5357d04d1dbd06e0446eb9c",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "rhs",
+      "false_ready": false,
+      "family": "M",
+      "profile": "RHS100X60X5",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "51e15f21dd5d38569522ac00303dbb69d10e3f55874c3f586aa04893fb4666fe",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "chs",
+      "false_ready": false,
+      "family": "RO",
+      "profile": "CHS100X5",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "da2c9cc0b672b4dcb8019620b80ce9f8ab435a05cf7de471383306c324da98bc",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "hea",
+      "false_ready": false,
+      "family": "I",
+      "profile": "HEA300_FIXTURE",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "2bb9aa4bd8cee62362912fa6f89ff44fa86ce7069b89d8fc5c6d3d7fc699214b",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "heb",
+      "false_ready": false,
+      "family": "I",
+      "profile": "HEB300_FIXTURE",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "33b7754f5dae389341cdc8082c78b4ebbc134fd8b096546875806cd6d64b1090",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "ipe",
+      "false_ready": false,
+      "family": "I",
+      "profile": "IPE300_FIXTURE",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "26075a638804bca848bb971d35b093749dd36c97964d87f4ed4e7e4f0dc87cca",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "upn",
+      "false_ready": false,
+      "family": "U",
+      "profile": "UPN300_FIXTURE",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "cba0bbeb7230e52a7fc8f6f511db9f24e5c96b139578886159bc66500331c515",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "angle",
+      "false_ready": false,
+      "family": "L",
+      "profile": "L300X200_FIXTURE",
+      "profile_status": "PROVEN_WITHIN_POLICY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY",
+      "semantic_sha256": "bbcbcba814eef66f96d2b8c5d88e607bda403dd82972a8b050f94f74d634c5a1",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "custom",
+      "false_ready": false,
+      "family": "B",
+      "profile": "",
+      "profile_status": "RECOGNITION_INCOMPLETE",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "REVIEW_REQUIRED",
+      "semantic_sha256": "a29122f74da4c740b900fd9687b7097f93fe97bae696058a12e42ca4640a0627",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    }
+  ]
+}

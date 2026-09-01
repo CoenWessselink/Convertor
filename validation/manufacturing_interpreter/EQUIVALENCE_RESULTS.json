@@ -1,0 +1,48 @@
+{
+  "rows": [
+    {
+      "case": "plate",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "flat",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "round",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "rhs",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "chs",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "hea",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "heb",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "ipe",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "upn",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "angle",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    },
+    {
+      "case": "custom",
+      "proof": "PROVEN_BREP_EQUIVALENT"
+    }
+  ]
+}

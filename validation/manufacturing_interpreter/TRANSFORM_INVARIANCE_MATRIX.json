@@ -1,0 +1,22 @@
+{
+  "rows": [
+    {
+      "case": "rotated",
+      "profile": "PL100X10",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY"
+    },
+    {
+      "case": "translated",
+      "profile": "PL100X10",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY"
+    },
+    {
+      "case": "mirrored_l",
+      "profile": "L300X200_FIXTURE",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "READY"
+    }
+  ]
+}

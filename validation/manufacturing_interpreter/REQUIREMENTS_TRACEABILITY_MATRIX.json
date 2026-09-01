@@ -1,0 +1,17 @@
+{
+  "deferred_by_prompt_dependency": [
+    "Phase 2 feature stack",
+    "Phase 3 UI/corpus/release gate"
+  ],
+  "implemented": [
+    "exact source gate",
+    "content-addressed FAG",
+    "axis and section",
+    "catalog profile match",
+    "pure reconstruction",
+    "two-way proof",
+    "cache",
+    "CLI"
+  ],
+  "phase": 1
+}

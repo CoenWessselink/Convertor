@@ -1,7 +1,7 @@
 {
   "schema": "cws.codex-queue-gap-matrix.v1",
-  "generated_at": "2026-09-01T02:08:00.339496+00:00",
-  "queue_nonpass_count": 6,
+  "generated_at": "2026-09-01T02:17:12.918421+00:00",
+  "queue_nonpass_count": 5,
   "first_nonpass": "Q002",
   "gaps": [
     {
@@ -49,28 +49,14 @@
       "status": "PARTIAL",
       "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
       "evidence": [
+        "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
+        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
       ],
       "remaining": [
-        "Per-surface paired image comparison against every supplied reference is not complete."
-      ]
-    },
-    {
-      "queue_id": "Q007",
-      "title": "Manufacturing Geometry Interpreter V2 independent proof",
-      "depends_on": [
-        "Q006"
-      ],
-      "status": "PARTIAL",
-      "expected_result": "BREP-decompositie en onafhankelijke reconstructie zijn voor het volledige aangeleverde corpus bewezen.",
-      "evidence": [
-        "validation/manufacturing_interpreter",
-        "QUEUE_COMPLETION_MATRIX.md"
-      ],
-      "remaining": [
-        "Complete supplied-corpus parity is not proven by committed evidence."
+        "All 31 native surfaces and all 25 supplied reference pairs are captured, but project-populated human visual review is still required."
       ]
     },
     {

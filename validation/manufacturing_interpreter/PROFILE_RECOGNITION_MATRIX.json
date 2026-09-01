@@ -1,0 +1,70 @@
+{
+  "rows": [
+    {
+      "case": "plate",
+      "family": "B",
+      "profile": "PL100X10",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "flat",
+      "family": "B",
+      "profile": "FL50X8",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "round",
+      "family": "RU",
+      "profile": "RO40",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "rhs",
+      "family": "M",
+      "profile": "RHS100X60X5",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "chs",
+      "family": "RO",
+      "profile": "CHS100X5",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "hea",
+      "family": "I",
+      "profile": "HEA300_FIXTURE",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "heb",
+      "family": "I",
+      "profile": "HEB300_FIXTURE",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "ipe",
+      "family": "I",
+      "profile": "IPE300_FIXTURE",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "upn",
+      "family": "U",
+      "profile": "UPN300_FIXTURE",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "angle",
+      "family": "L",
+      "profile": "L300X200_FIXTURE",
+      "status": "PROVEN_WITHIN_POLICY"
+    },
+    {
+      "case": "custom",
+      "family": "B",
+      "profile": "",
+      "status": "RECOGNITION_INCOMPLETE"
+    }
+  ]
+}

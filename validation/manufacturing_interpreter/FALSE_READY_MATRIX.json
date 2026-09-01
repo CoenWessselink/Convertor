@@ -1,0 +1,26 @@
+{
+  "false_ready_count": 0,
+  "negative": [
+    {
+      "case": "approximate_ifc",
+      "profile_status": "BLOCKED_SOURCE_NOT_EXACT",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "readiness": "BLOCKED",
+      "source_gate": "BLOCKED_SOURCE_NOT_EXACT"
+    },
+    {
+      "case": "invalid_brep",
+      "profile_status": "BLOCKED_SOURCE_NOT_EXACT",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "readiness": "BLOCKED",
+      "source_gate": "BLOCKED_SOURCE_NOT_EXACT"
+    },
+    {
+      "case": "almost_profile",
+      "profile_status": "RECOGNITION_INCOMPLETE",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "readiness": "REVIEW_REQUIRED",
+      "source_gate": "PROVEN_WITHIN_POLICY"
+    }
+  ]
+}

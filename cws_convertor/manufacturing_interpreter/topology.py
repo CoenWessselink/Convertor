@@ -282,7 +282,14 @@ def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEv
         helper = (1.0, 0.0, 0.0) if abs(normal[0]) < 0.9 else (0.0, 1.0, 0.0)
         u = _unit(_cross(normal, helper))
     v = _unit(_cross(normal, u))
-    if points:
+    circle_radii = [
+        abs(float(edge.radius()))
+        for edge in outer_edges
+        if str(edge.geomType()).upper() == "CIRCLE" and hasattr(edge, "radius")
+    ]
+    if circle_radii:
+        width = height = 2.0 * max(circle_radii)
+    elif points:
         pu = [_dot(point, u) for point in points]
         pv = [_dot(point, v) for point in points]
         width = max(pu) - min(pu)
@@ -328,4 +335,3 @@ def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEv
         "inferred_family": family,
     }
     return CrossSectionSignature(section_id=stable_id("section", payload), **payload)
-

@@ -1,0 +1,9 @@
+{
+  "model": "immutable derived evidence",
+  "mutates_part_workbench": false,
+  "mutates_project_model": false,
+  "mutates_steel_model": false,
+  "proof": "independent reconstruction plus two-way BREP residual",
+  "schema": "cws-manufacturing-interpreter-architecture-v1",
+  "service": "cws_convertor.manufacturing_interpreter.ManufacturingGeometryInterpreter"
+}

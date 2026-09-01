@@ -1,0 +1,7 @@
+{
+  "profile_database": "profile_database.ProfileDatabase",
+  "project_model": "existing authority, not duplicated",
+  "source_geometry": "cws_convertor.project.source_geometry",
+  "steel_model": "existing authority, not duplicated",
+  "tolerance_policy": "cws_convertor.steel_model.tolerances.DEFAULT_TOLERANCE_POLICY"
+}

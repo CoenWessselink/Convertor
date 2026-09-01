@@ -1,0 +1,25 @@
+{
+  "fixtures": [
+    "plate",
+    "flat",
+    "round",
+    "rhs",
+    "chs",
+    "hea",
+    "heb",
+    "ipe",
+    "upn",
+    "angle",
+    "custom"
+  ],
+  "negative": [
+    "approximate_ifc",
+    "invalid_brep",
+    "almost_profile"
+  ],
+  "transforms": [
+    "rotated",
+    "translated",
+    "mirrored_l"
+  ]
+}

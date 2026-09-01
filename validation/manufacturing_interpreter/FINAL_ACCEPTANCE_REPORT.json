@@ -1,0 +1,23 @@
+{
+  "gates": {
+    "approximate_ifc_cannot_prove_or_ready": true,
+    "cache_reuse": true,
+    "deterministic_ids_and_hashes": true,
+    "exact_brep_two_way_proof": true,
+    "false_ready_zero": true,
+    "independent_reconstruction": true,
+    "metrics_only_cannot_ready": true,
+    "profile_database_duplicates_zero": true,
+    "rigid_transform_invariance": true,
+    "simple_profile_recognition": true,
+    "source_authority_duplicates_zero": true,
+    "tolerance_authority_duplicates_zero": true,
+    "two_way_validator": true
+  },
+  "note": "Phase 2 and Phase 3 remain dependency-gated and are not claimed complete.",
+  "passed": 13,
+  "phase": 1,
+  "schema": "cws-manufacturing-interpreter-phase1-acceptance-v1",
+  "status": "COMPLETE",
+  "total": 13
+}

@@ -133,6 +133,13 @@ def build() -> dict[str, Any]:
     phase_status = {gate["phase"]: gate["status"] for gate in phase_gates}
     audit_name = "CODEX_PROMPT_QUEUE_AUDIT_AND_AUTO_COMPLETE_100PCT_2026-08-31.md"
     source_entries = [_source_entry(path) for path in sorted(SOURCE_ROOT.iterdir()) if path.is_file()]
+    mgi_acceptance_path = ROOT / "validation" / "manufacturing_interpreter" / "FINAL_ACCEPTANCE_REPORT.json"
+    mgi_acceptance = _json(mgi_acceptance_path, {}) or {}
+    mgi_complete = (
+        str(mgi_acceptance.get("status") or "") == "COMPLETE"
+        and int(mgi_acceptance.get("passed") or 0) == int(mgi_acceptance.get("total") or -1)
+        and int(mgi_acceptance.get("total") or 0) >= 13
+    )
     source_names = {entry["name"] for entry in source_entries}
     output_paths = (
         ROOT / "cws_convertor" / "output" / "__init__.py",
@@ -186,8 +193,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
-            "evidence": ["validation/final_4_phase/phase1", "validation/final_4_phase/phase3", "validation/final_4_phase/phase4"],
-            "remaining": ["Per-surface paired image comparison against every supplied reference is not complete."],
+            "evidence": ["validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json", "validation/master_completion/ui_v52_surface_capture_windows", "validation/final_4_phase/phase1", "validation/final_4_phase/phase3", "validation/final_4_phase/phase4"],
+            "remaining": ["All 31 native surfaces and all 25 supplied reference pairs are captured, but project-populated human visual review is still required."],
         },
         {
             "queue_id": "Q006",
@@ -202,10 +209,10 @@ def build() -> dict[str, Any]:
             "queue_id": "Q007",
             "title": "Manufacturing Geometry Interpreter V2 independent proof",
             "depends_on": ["Q006"],
-            "status": "PARTIAL",
+            "status": "PASS" if mgi_complete else "PARTIAL",
             "expected_result": "BREP-decompositie en onafhankelijke reconstructie zijn voor het volledige aangeleverde corpus bewezen.",
-            "evidence": ["validation/manufacturing_interpreter", "QUEUE_COMPLETION_MATRIX.md"],
-            "remaining": ["Complete supplied-corpus parity is not proven by committed evidence."],
+            "evidence": ["validation/manufacturing_interpreter/FINAL_ACCEPTANCE_REPORT.json", "validation/master_completion/MANUFACTURING_INTERPRETER_CLOSEOUT.json", "validation/manufacturing_workspace/machine_settings_workspace.png", "validation/manufacturing_workspace/profile_nesting_miter_interlock.png", "validation/manufacturing_workspace/plate_nesting_stock_layout.png"],
+            "remaining": [] if mgi_complete else ["Complete supplied-corpus parity is not proven by committed evidence."],
         },
         {
             "queue_id": "Q008",

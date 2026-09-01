@@ -1,7 +1,7 @@
 {
   "schema": "cws.current-total-acceptance.v1",
-  "generated_at": "2026-09-01T02:08:00.339496+00:00",
-  "source_head": "1d5336e63acc40c8c92a78727ad6e78b8e20bea4",
+  "generated_at": "2026-09-01T02:17:12.918421+00:00",
+  "source_head": "d9bc2c1fc139b185f906a99f2aa6dc1899592ac4",
   "status": "FAIL",
   "status_counts": {
     "BLOCKED_EXTERNAL_EVIDENCE": 1,

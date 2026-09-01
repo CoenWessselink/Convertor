@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "status": "PASS",
+  "queue_id": "Q007",
+  "corpus": {
+    "fixtures": 11,
+    "transforms": 3,
+    "negative_cases": 3,
+    "gates_passed": 13,
+    "gates_total": 13,
+    "false_ready_count": 0
+  },
+  "tests": {
+    "unittest_cases_passed": 44,
+    "unittest_cases_failed": 0,
+    "phase1_scenario_smoke": "PASS",
+    "suites": [
+      "manufacturing_interpreter_phase1_smoke",
+      "manufacturing_face_core_smoke",
+      "manufacturing_contact_core_smoke",
+      "phase2_manufacturing_e2e_smoke",
+      "phase2_manufacturing_persistence_smoke",
+      "unified_manufacturing_scribing_u2_smoke",
+      "viewer_v15_manufacturing_export_smoke",
+      "part_workbench_roundtrip_smoke"
+    ]
+  },
+  "fixes": [
+    "Circular and annular section dimensions are derived from the exact outer circular edge radius.",
+    "Geometrically identical I-profile corpus fixtures are disambiguated only through an explicit preferred catalog designation; no geometry guess is introduced."
+  ],
+  "screenshots": [
+    "validation/manufacturing_workspace/machine_settings_workspace.png",
+    "validation/manufacturing_workspace/profile_nesting_miter_interlock.png",
+    "validation/manufacturing_workspace/plate_nesting_stock_layout.png"
+  ],
+  "external_non_interpreter_fixture": {
+    "status": "BLOCKED_EXTERNAL_EVIDENCE",
+    "path": "C:/Users/c.wesselink/Desktop/VB1250 Zaag - V631 Boor.xml",
+    "impact": "The separate manufacturing workspace vendor-XML roundtrip test cannot be rerun. It does not invalidate the interpreter corpus gate."
+  }
+}

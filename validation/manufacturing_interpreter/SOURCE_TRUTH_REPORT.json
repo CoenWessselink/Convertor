@@ -1,0 +1,10 @@
+{
+  "approximate_ifc": {
+    "case": "approximate_ifc",
+    "profile_status": "BLOCKED_SOURCE_NOT_EXACT",
+    "proof": "BLOCKED_SOURCE_NOT_EXACT",
+    "readiness": "BLOCKED",
+    "source_gate": "BLOCKED_SOURCE_NOT_EXACT"
+  },
+  "exact_gate": "native single-solid BREP only"
+}

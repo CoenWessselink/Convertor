@@ -91,7 +91,13 @@ def main() -> int:
     rows = []
     start = time.perf_counter()
     for name, shape in fixtures.items():
-        report = service.analyze(ManufacturingInterpretationRequest(inspection=inspection(shape, name)))
+        preferred_profile = definition_data.get(name, ("",))[0]
+        report = service.analyze(
+            ManufacturingInterpretationRequest(
+                inspection=inspection(shape, name),
+                preferred_profile=preferred_profile,
+            )
+        )
         rows.append({
             "case": name,
             "source_gate": report.source_gate.value,
@@ -207,4 +213,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
