@@ -250,6 +250,7 @@ class ManufacturingInterpretationReport:
     section_stations: tuple["SectionStation", ...] = ()
     section_intervals: tuple["SectionInterval", ...] = ()
     extrusion_regions: tuple["ExtrusionRegionCandidate", ...] = ()
+    profile_candidates: tuple["ProfileMatchCandidate", ...] = ()
     features: tuple["RecognizedGeometricFeature", ...] = ()
     feature_graph: "FeatureGraph | None" = None
     hypotheses: tuple["DecompositionHypothesis", ...] = ()
@@ -457,6 +458,9 @@ class TargetRepresentability:
     lossless: bool = False
     roundtrip_available: bool = False
     blockers: tuple[str, ...] = ()
+    required_faces: tuple[str, ...] = ()
+    machine_dependencies: tuple[str, ...] = ()
+    rules_hash: str = ""
 
 
 @dataclass(frozen=True)

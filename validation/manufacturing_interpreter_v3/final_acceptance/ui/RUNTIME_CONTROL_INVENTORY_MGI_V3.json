@@ -1,0 +1,11 @@
+{
+  "schema": "cws-runtime-control-inventory-v1",
+  "runtime": "PySide6 CWSMainWindow",
+  "expected": 7,
+  "found": 7,
+  "missing": 0,
+  "duplicates": 0,
+  "dead": 0,
+  "ui_test_ids": ["mgi.source.open","mgi.analyze","mgi.cancel","mgi.retry","mgi.evidence.save","mgi.features.table","mgi.promote"],
+  "status": "PASS"
+}

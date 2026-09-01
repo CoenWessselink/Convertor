@@ -1,0 +1,8 @@
+{
+  "schema": "cws-screen-manifest-v1",
+  "workspace": "Controle > Manufacturing Geometry",
+  "global_domain_tab": "Controle",
+  "adds_global_tab": false,
+  "viewer_host": "permanent canonical ViewerHost",
+  "status": "PASS"
+}

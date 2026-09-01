@@ -17,6 +17,7 @@ from .recognition_cache import RecognitionCacheV3, stable_sha256
 from .reconstruction import reconstruct_prismatic
 from .service import ManufacturingGeometryInterpreter as _FoundationInterpreter
 from .phase2 import enrich_phase2
+from .profile_geometry import match_full_profile_geometry
 
 
 def _database_hash(database: Any) -> str:
@@ -41,6 +42,20 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         self.recognition_cache = RecognitionCacheV3(cache_root)
         self.persistent_cache_hits = 0
         self.persistent_cache_misses = 0
+        self._final_cache: dict[str, Any] = {}
+        self.final_cache_hits = 0
+        self.final_cache_misses = 0
+        self._database_revision = self._profile_database_revision()
+        self._database_hash = _database_hash(self.profile_database)
+
+    def _profile_database_revision(self) -> tuple[Any, ...]:
+        path = getattr(self.profile_database, "path", None)
+        try:
+            stat = path.stat()
+            file_revision = (stat.st_mtime_ns, stat.st_size)
+        except (AttributeError, OSError):
+            file_revision = (None, None)
+        return (*file_revision, len(getattr(self.profile_database, "profiles", ())))
 
     def analyze(self, request: Any) -> Any:
         inspection = request.inspection
@@ -48,7 +63,12 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         policy_hash = str(policy_hash_value() if callable(policy_hash_value) else policy_hash_value)
         if not policy_hash:
             policy_hash = stable_sha256(self.tolerance_policy)
-        database_hash = _database_hash(self.profile_database)
+        database_revision = self._profile_database_revision()
+        if database_revision != self._database_revision:
+            self._database_revision = database_revision
+            self._database_hash = _database_hash(self.profile_database)
+            self._final_cache.clear()
+        database_hash = self._database_hash
         cache_key = RecognitionCacheV3.key(
             source_sha256=str(getattr(inspection, "source_sha256", "")),
             source_geometry_hash=str(getattr(inspection, "source_geometry_hash", "")),
@@ -59,6 +79,12 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             preferred_profile=str(getattr(request, "preferred_profile", "")),
             requested_outputs=tuple(getattr(request, "requested_outputs", ())),
         )
+        final_cached = self._final_cache.get(cache_key)
+        if final_cached is not None:
+            self.final_cache_hits += 1
+            self.persistent_cache_hits += 1
+            return final_cached
+        self.final_cache_misses += 1
         if self.recognition_cache.load_evidence(cache_key) is None:
             self.persistent_cache_misses += 1
         else:
@@ -77,6 +103,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
                 evidence=tuple(base.evidence) + (("recognition_cache_key", cache_key),),
             )
             self.recognition_cache.store_evidence(cache_key, enriched)
+            self._final_cache[cache_key] = enriched
             return enriched
 
         topology = group_analytic_faces(base.topology)
@@ -84,6 +111,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         if selected_axis is None:
             enriched = replace(base, topology=topology, readiness=InterpretationReadiness.BLOCKED)
             self.recognition_cache.store_evidence(cache_key, enriched)
+            self._final_cache[cache_key] = enriched
             return enriched
 
         selected_axis = refine_axis_from_shape(getattr(inspection, "native_shape", None), selected_axis)
@@ -130,7 +158,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         readiness = base.readiness
         if blockers and readiness == InterpretationReadiness.READY:
             readiness = InterpretationReadiness.REVIEW_REQUIRED
-        candidates = profile_candidates(base.profile, base.section)
+        candidates = match_full_profile_geometry(base.section, self.profile_database, self.tolerance_policy)
         evidence = tuple(base.evidence) + (
             ("recognition_cache_key", cache_key),
             ("analytic_face_groups", str(len(topology.analytic_groups))),
@@ -152,6 +180,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             section_stations=stations,
             section_intervals=intervals,
             extrusion_regions=regions,
+            profile_candidates=candidates,
             residual_report=residual,
             algorithm_versions=ALGORITHM_VERSIONS,
             tolerance_policy_id=str(getattr(self.tolerance_policy, "policy_id", "")),
@@ -166,6 +195,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             tuple(getattr(request, "requested_outputs", ())),
         )
         self.recognition_cache.store_evidence(cache_key, enriched)
+        self._final_cache[cache_key] = enriched
         return enriched
 
 

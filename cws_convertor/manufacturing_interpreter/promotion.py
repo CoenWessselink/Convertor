@@ -14,8 +14,25 @@ class WorkbenchPromotionCoordinator:
         confirmation: InterpretationConfirmation | None,
         project: Any,
         user: str,
+        current_source_geometry_hash: str | None = None,
+        current_tolerance_policy_hash: str | None = None,
+        current_profile_database_hash: str | None = None,
     ) -> WorkbenchPromotionResult:
         report_hash = stable_sha256(report)
+        stale = []
+        if current_source_geometry_hash is not None and current_source_geometry_hash != report.source_geometry_hash:
+            stale.append("SOURCE_GEOMETRY_HASH_CHANGED")
+        if current_tolerance_policy_hash is not None and current_tolerance_policy_hash != report.tolerance_policy_hash:
+            stale.append("TOLERANCE_POLICY_HASH_CHANGED")
+        if current_profile_database_hash is not None and current_profile_database_hash != report.profile_database_hash:
+            stale.append("PROFILE_DATABASE_HASH_CHANGED")
+        if stale:
+            return WorkbenchPromotionResult(
+                status="BLOCKED",
+                report_hash=report_hash,
+                hypothesis_id=getattr(confirmation, "hypothesis_id", "") if confirmation else "",
+                blockers=tuple(f"STALE_REPORT:{reason}" for reason in stale),
+            )
         if report.readiness != InterpretationReadiness.READY:
             return WorkbenchPromotionResult(
                 status="BLOCKED",
@@ -59,6 +76,12 @@ class WorkbenchPromotionCoordinator:
                 reason="MGI V3 confirmed interpretation promotion",
             )
         except Exception as exc:
+            try:
+                from cws_convertor.project.workbench import undo_part_workbench
+
+                undo_part_workbench(project, report.part_id, user=user)
+            except Exception:
+                pass
             return WorkbenchPromotionResult(
                 status="BLOCKED",
                 report_hash=report_hash,

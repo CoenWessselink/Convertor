@@ -1,0 +1,12 @@
+{
+  "schema": "cws-control-inventory-v1",
+  "controls": [
+    {"ui_test_id":"mgi.source.open","label":"Open STEP","icon_id":"folder-open","handler":"_choose_source","service":"QFileDialog + source inspection","enabled_rule":"workspace active","disabled_reason":"","tooltip":"Selecteer exact STEP-bronbestand","shortcut":"","test":"test_runtime_owned_control_contract"},
+    {"ui_test_id":"mgi.analyze","label":"Analyseer","icon_id":"play","handler":"_analyze","service":"JobManager + isolated native worker","enabled_rule":"exact source selected and no active job","disabled_reason":"Geen exacte bron of analyse actief","tooltip":"Analyseer maakgeometrie","shortcut":"","test":"test_phase3_async_ui_job_and_viewer_host"},
+    {"ui_test_id":"mgi.cancel","label":"Annuleren","icon_id":"stop","handler":"_cancel","service":"JobManager cancel token","enabled_rule":"active job","disabled_reason":"Geen actieve analyse","tooltip":"Annuleer analyse","shortcut":"","test":"test_phase3_job_manager_cancel_retry_and_stale_generation"},
+    {"ui_test_id":"mgi.retry","label":"Opnieuw","icon_id":"refresh","handler":"_retry","service":"JobManager generation retry","enabled_rule":"source available and no active job","disabled_reason":"Geen bron of analyse actief","tooltip":"Voer analyse opnieuw uit","shortcut":"","test":"test_phase3_job_manager_cancel_retry_and_stale_generation"},
+    {"ui_test_id":"mgi.evidence.save","label":"Bewijs opslaan","icon_id":"save","handler":"_save_report","service":"ManufacturingInterpretationReportStore","enabled_rule":"report available","disabled_reason":"Nog geen rapport","tooltip":"Sla afgeleide interpretatie-evidence op","shortcut":"","test":"test_phase3_report_persistence_and_stale_invalidation"},
+    {"ui_test_id":"mgi.features.table","label":"Features","icon_id":"table","handler":"_feature_selected","service":"canonical ViewerHost highlight","enabled_rule":"report features available","disabled_reason":"Geen herkende features","tooltip":"Selecteer feature voor viewer-overlay","shortcut":"","test":"test_phase3_async_ui_job_and_viewer_host"},
+    {"ui_test_id":"mgi.promote","label":"Promoveer naar Workbench","icon_id":"check","handler":"_promote_report","service":"WorkbenchPromotionCoordinator","enabled_rule":"READY report and active project","disabled_reason":"Proof niet READY of geen actief project","tooltip":"Transactioneel promoveren naar canonical Workbench","shortcut":"","test":"test_stale_promotion_is_blocked_before_canonical_mutation"}
+  ]
+}

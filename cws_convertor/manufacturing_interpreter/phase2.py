@@ -19,7 +19,13 @@ def enrich_phase2(report: Any, source_shape: Any, policy: Any, requested_outputs
         return report
     try:
         base_shape = reconstruct_prismatic(source_shape, selected_axis)
-        features = recognize_features(source_shape, report.topology, report.residual_report, policy)
+        features = recognize_features(
+            source_shape,
+            report.topology,
+            report.residual_report,
+            policy,
+            base_shape=base_shape,
+        )
         graph = feature_graph(features)
         outcome = solve_hypotheses(
             source_shape=source_shape,
@@ -50,12 +56,18 @@ def enrich_phase2(report: Any, source_shape: Any, policy: Any, requested_outputs
         if target.status == RepresentabilityStatus.UNSUPPORTED
     ]
     blockers.extend(f"TARGET_UNSUPPORTED:{target}" for target in unsupported)
+    review_targets = [
+        target.target
+        for target in representability.targets
+        if target.status in {RepresentabilityStatus.REVIEW, RepresentabilityStatus.NOT_EVALUATED}
+    ]
+    blockers.extend(f"TARGET_REVIEW_REQUIRED:{target}" for target in review_targets)
     unknown = any(hypothesis.unknown_region_ids for hypothesis in outcome.hypotheses[:1])
     if unknown:
         blockers.append("UNKNOWN_RESIDUAL_REGIONS")
 
     readiness = report.readiness
-    if proven and not outcome.ambiguous and not unsupported and not unknown:
+    if proven and not outcome.ambiguous and not unsupported and not review_targets and not unknown:
         readiness = InterpretationReadiness.READY if not blockers else InterpretationReadiness.REVIEW_REQUIRED
     elif blockers:
         readiness = InterpretationReadiness.REVIEW_REQUIRED

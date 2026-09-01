@@ -1,0 +1,1361 @@
+{
+  "categories": [
+    {
+      "adversarial": false,
+      "blockers": [
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "plate",
+      "cold_seconds": 0.137408,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "01",
+      "profile": "FLAT120x12",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000312,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "flat bar",
+      "cold_seconds": 0.13107,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "02",
+      "profile": "FLAT50x10",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000285,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "round bar",
+      "cold_seconds": 0.102062,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.HOLE"
+      ],
+      "hypotheses_explored": 1,
+      "id": "03",
+      "profile": "ROUND70",
+      "profile_candidate_count": 12,
+      "profile_family": "ROUND",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000284,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "HEA",
+      "cold_seconds": 0.480468,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 5,
+      "id": "04",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "L",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000315,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "HEB",
+      "cold_seconds": 0.482763,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 5,
+      "id": "05",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "L",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000301,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "IPE",
+      "cold_seconds": 0.591315,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 5,
+      "id": "06",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "L",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000503,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "UPN/UPE",
+      "cold_seconds": 0.607571,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 5,
+      "id": "07",
+      "profile": "FLAT12x10",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000437,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "angle",
+      "cold_seconds": 0.332649,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 3,
+      "id": "08",
+      "profile": "FLAT10x10",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000447,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "RHS",
+      "cold_seconds": 0.243166,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "09",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "M",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000454,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "SHS",
+      "cold_seconds": 0.241354,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "10",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "M",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00047,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "CHS",
+      "cold_seconds": 0.178715,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.COUNTERBORE"
+      ],
+      "hypotheses_explored": 1,
+      "id": "11",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "RO",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000436,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "custom extrusion",
+      "cold_seconds": 0.193493,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "12",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "U",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000415,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "one hole",
+      "cold_seconds": 0.237529,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.HOLE"
+      ],
+      "hypotheses_explored": 2,
+      "id": "13",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "HOLE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00044,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "many holes",
+      "cold_seconds": 1.319203,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.HOLE"
+      ],
+      "hypotheses_explored": 9,
+      "id": "14",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "HOLE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00047,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "slot",
+      "cold_seconds": 0.34457,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.OBROUND_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.SLOT"
+      ],
+      "hypotheses_explored": 2,
+      "id": "15",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "SLOT"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000496,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "elongated slot",
+      "cold_seconds": 0.342661,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.OBROUND_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.SLOT"
+      ],
+      "hypotheses_explored": 2,
+      "id": "16",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "SLOT"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000446,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "cope",
+      "cold_seconds": 0.270999,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 2,
+      "id": "17",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "NOTCH"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.0005,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "notch",
+      "cold_seconds": 0.254469,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 2,
+      "id": "18",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "NOTCH"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000473,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "miter",
+      "cold_seconds": 0.231858,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.PRISMATIC_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.POCKET"
+      ],
+      "hypotheses_explored": 2,
+      "id": "19",
+      "profile": "FLAT120x20",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "END_CUT"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000447,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "arbitrary end cut",
+      "cold_seconds": 0.225312,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.PRISMATIC_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.POCKET"
+      ],
+      "hypotheses_explored": 2,
+      "id": "20",
+      "profile": "FLAT120x20",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "END_CUT"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000423,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "HYPOTHESIS_AMBIGUOUS",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "profile + holes + cope",
+      "cold_seconds": 8.732036,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME",
+        "MANUFACTURINGSEMANTICTYPE.HOLE"
+      ],
+      "hypotheses_explored": 14,
+      "id": "21",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "L",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "HOLE",
+        "NOTCH"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000434,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "positive extrusion",
+      "cold_seconds": 0.265294,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 2,
+      "id": "22",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "POSITIVE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000433,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "intersecting positive extrusions",
+      "cold_seconds": 0.769025,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 6,
+      "id": "23",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "POSITIVE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000501,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "HYPOTHESIS_AMBIGUOUS",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "positive + negative",
+      "cold_seconds": 3.246591,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME",
+        "MANUFACTURINGSEMANTICTYPE.HOLE"
+      ],
+      "hypotheses_explored": 14,
+      "id": "24",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "HOLE",
+        "POSITIVE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000435,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "HYPOTHESIS_AMBIGUOUS",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "three axes",
+      "cold_seconds": 8.576604,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 21,
+      "id": "25",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000481,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "overlapping removals",
+      "cold_seconds": 0.475335,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.PRISMATIC_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.POCKET"
+      ],
+      "hypotheses_explored": 4,
+      "id": "26",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000439,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "crossing removals",
+      "cold_seconds": 0.839519,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.PRISMATIC_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.POCKET"
+      ],
+      "hypotheses_explored": 6,
+      "id": "27",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000468,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "rib/boss geometry",
+      "cold_seconds": 0.772716,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 6,
+      "id": "28",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "POSITIVE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000452,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "ambiguous",
+      "cold_seconds": 0.187154,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "29",
+      "profile": "FLAT100x100",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000432,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Geen deterministische extrusie-as gevonden"
+      ],
+      "category": "non-extrudable",
+      "cold_seconds": 0.008931,
+      "deterministic_identity": true,
+      "equivalence": "RECOGNITION_INCOMPLETE",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "30",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "RECOGNITION_INCOMPLETE",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00041,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Geen deterministische extrusie-as gevonden"
+      ],
+      "category": "revolution",
+      "cold_seconds": 0.009034,
+      "deterministic_identity": true,
+      "equivalence": "RECOGNITION_INCOMPLETE",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "31",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "RECOGNITION_INCOMPLETE",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000394,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Geen deterministische extrusie-as gevonden"
+      ],
+      "category": "sweep",
+      "cold_seconds": 0.009305,
+      "deterministic_identity": true,
+      "equivalence": "RECOGNITION_INCOMPLETE",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "32",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "RECOGNITION_INCOMPLETE",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00041,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Geen deterministische extrusie-as gevonden"
+      ],
+      "category": "curved/bent",
+      "cold_seconds": 0.009338,
+      "deterministic_identity": true,
+      "equivalence": "RECOGNITION_INCOMPLETE",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "33",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "RECOGNITION_INCOMPLETE",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000415,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ],
+      "category": "approximate IFC",
+      "cold_seconds": 0.004208,
+      "deterministic_identity": true,
+      "equivalence": "BLOCKED_SOURCE_NOT_EXACT",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "34",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "BLOCKED_SOURCE_NOT_EXACT",
+      "source_mode": "approximate",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00041,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ],
+      "category": "proxy",
+      "cold_seconds": 0.00454,
+      "deterministic_identity": true,
+      "equivalence": "BLOCKED_SOURCE_NOT_EXACT",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "35",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "BLOCKED_SOURCE_NOT_EXACT",
+      "source_mode": "proxy",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000425,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ],
+      "category": "invalid BREP",
+      "cold_seconds": 0.004489,
+      "deterministic_identity": true,
+      "equivalence": "BLOCKED_SOURCE_NOT_EXACT",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "36",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "BLOCKED_SOURCE_NOT_EXACT",
+      "source_mode": "invalid",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00045,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "tolerance edge case",
+      "cold_seconds": 0.194331,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [],
+      "hypotheses_explored": 1,
+      "id": "37",
+      "profile": "FLAT50x10",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000453,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "almost-profile wrong dimensions",
+      "cold_seconds": 0.625724,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 5,
+      "id": "38",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "L",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000473,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "Bron-BREP is ongeldig of bevat niet exact een solid"
+      ],
+      "category": "duplicate geometry",
+      "cold_seconds": 0.005238,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [],
+      "hypotheses_explored": 0,
+      "id": "39",
+      "profile": "",
+      "profile_candidate_count": 0,
+      "profile_family": "",
+      "readiness": "BLOCKED",
+      "residual_components": 0,
+      "source_gate": "FAILED",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000443,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "HYPOTHESIS_AMBIGUOUS",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "mirrored/rotated profile",
+      "cold_seconds": 9.526739,
+      "deterministic_identity": true,
+      "equivalence": "FAILED",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 7,
+      "id": "40",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "L",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000444,
+      "warnings": []
+    },
+    {
+      "adversarial": false,
+      "blockers": [
+        "TARGET_REVIEW_REQUIRED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "split-cylinder hole",
+      "cold_seconds": 0.33993,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.CYLINDRICAL_SUBTRACTION",
+        "GEOMETRICFEATURETYPE.PRISMATIC_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.COUNTERBORE",
+        "MANUFACTURINGSEMANTICTYPE.NOTCH"
+      ],
+      "hypotheses_explored": 3,
+      "id": "41",
+      "profile": "FLAT120x20",
+      "profile_candidate_count": 12,
+      "profile_family": "FLAT",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "COUNTERBORE"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.00043,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "BOUNDARY_DISTANCE_EXCEEDS_POLICY",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "split-coplanar faces",
+      "cold_seconds": 0.243622,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 2,
+      "id": "42",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000425,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "BOUNDARY_DISTANCE_EXCEEDS_POLICY",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "exporter face fragmentation",
+      "cold_seconds": 0.244597,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 2,
+      "id": "43",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000426,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "hole intersecting cope",
+      "cold_seconds": 0.255379,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.POSITIVE_PRISM",
+        "MANUFACTURINGSEMANTICTYPE.ATTACHMENT_VOLUME"
+      ],
+      "hypotheses_explored": 2,
+      "id": "44",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [
+        "HOLE",
+        "NOTCH"
+      ],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000455,
+      "warnings": []
+    },
+    {
+      "adversarial": true,
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_REVIEW_REQUIRED:MACHINE",
+        "TARGET_REVIEW_REQUIRED:NEUTRAL_JOB"
+      ],
+      "category": "tiny residual/sliver",
+      "cold_seconds": 0.270994,
+      "deterministic_identity": true,
+      "equivalence": "PROVEN_BREP_EQUIVALENT",
+      "features": [
+        "GEOMETRICFEATURETYPE.PRISMATIC_SUBTRACTION",
+        "MANUFACTURINGSEMANTICTYPE.POCKET"
+      ],
+      "hypotheses_explored": 2,
+      "id": "45",
+      "profile": "",
+      "profile_candidate_count": 12,
+      "profile_family": "B",
+      "readiness": "REVIEW_REQUIRED",
+      "residual_components": 0,
+      "source_gate": "PROVEN_WITHIN_POLICY",
+      "source_mode": "exact",
+      "truth": [],
+      "unsafe_ready": false,
+      "warm_seconds": 0.000459,
+      "warnings": []
+    }
+  ],
+  "summary": {
+    "adversarial_count": 18,
+    "blocked_count": 8,
+    "cache_hit_rate": 0.5,
+    "cache_hits": 45,
+    "cache_misses": 45,
+    "category_count": 45,
+    "cold_runtime_seconds": {
+      "max": 9.526739,
+      "p50": 0.254469,
+      "p95": 8.576604
+    },
+    "deterministic_repeat_failures": 0,
+    "errors": [],
+    "false_green": 0,
+    "false_negative": 7,
+    "false_positive": 0,
+    "false_ready": 0,
+    "generated_step_count": 45,
+    "pass": true,
+    "peak_memory_mib": 4.473,
+    "precision": 1.0,
+    "ready_count": 0,
+    "recall": 0.611111,
+    "required_category_count": 45,
+    "review_count": 37,
+    "schema": "cws-mgi-v3-acceptance-corpus-v1",
+    "true_positive": 11,
+    "warm_runtime_seconds": {
+      "max": 0.000503,
+      "p50": 0.000439,
+      "p95": 0.0005
+    }
+  }
+}

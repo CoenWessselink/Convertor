@@ -28,7 +28,10 @@ NC1_SEMANTICS = {
 def evaluate_representability(
     features: tuple[RecognizedGeometricFeature, ...],
     targets: tuple[str, ...],
+    *,
+    capability_evidence: dict[str, Any] | None = None,
 ) -> RepresentabilityReport:
+    capability_evidence = capability_evidence or {}
     reports = []
     for requested in targets:
         target = requested.upper()
@@ -50,10 +53,23 @@ def evaluate_representability(
             status = RepresentabilityStatus.SUPPORTED
             blockers = ()
             lossless = True
-        elif target in {"NC1", "PDF"}:
+        elif target == "NC1":
+            nc1_verified = bool(capability_evidence.get("nc1_serializer_reimport_verified"))
+            status = RepresentabilityStatus.SUPPORTED_WITH_LIMITS if nc1_verified else RepresentabilityStatus.REVIEW
+            blockers = () if nc1_verified else ("NC1_SERIALIZER_REIMPORT_EVIDENCE_REQUIRED",)
+            lossless = nc1_verified
+        elif target == "PDF":
             status = RepresentabilityStatus.SUPPORTED_WITH_LIMITS
             blockers = ()
-            lossless = target == "NC1"
+            lossless = False
+        elif target == "NEUTRAL_MANUFACTURING_JOB":
+            status = RepresentabilityStatus.SUPPORTED_WITH_LIMITS
+            blockers = ()
+            lossless = False
+        elif target == "MACHINE_ROUTE":
+            status = RepresentabilityStatus.REVIEW
+            blockers = ("EXTERNAL_MACHINE_QUALIFICATION_REQUIRED", "MACHINE_TRANSFER_FALSE")
+            lossless = False
         else:
             status = RepresentabilityStatus.REVIEW
             blockers = ("TARGET_POLICY_NOT_DEFINED",)
@@ -69,6 +85,8 @@ def evaluate_representability(
                 lossless=lossless,
                 roundtrip_available=target in {"STEP", "IFC", "NC1", "PDF"},
                 blockers=blockers,
+                machine_dependencies=("MachineCapabilityEvaluator",) if target == "MACHINE_ROUTE" else (),
+                rules_hash=stable_sha256((target, sorted(capability_evidence.items()))),
             )
         )
     return RepresentabilityReport(
@@ -96,4 +114,22 @@ def validate_existing_roundtrips(
     )
 
 
-__all__ = ["evaluate_representability", "validate_existing_roundtrips"]
+def evaluate_machine_capability(
+    *,
+    machine_profile: Any,
+    part: Any,
+    face_report: Any,
+    mark_set: Any = None,
+    identification_set: Any = None,
+) -> Any:
+    from cws_convertor.manufacturing.machine_capability import MachineCapabilityEvaluator
+
+    return MachineCapabilityEvaluator(machine_profile).evaluate(
+        part,
+        face_report,
+        mark_set=mark_set,
+        identification_set=identification_set,
+    )
+
+
+__all__ = ["evaluate_machine_capability", "evaluate_representability", "validate_existing_roundtrips"]

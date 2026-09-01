@@ -44,11 +44,12 @@ def main() -> int:
     request = ManufacturingInterpretationRequest(inspection=inspection(shape, "plate"))
     first = service.analyze(request)
     second = service.analyze(request)
-    assert first.readiness == InterpretationReadiness.READY, first.to_dict()
+    assert first.readiness == InterpretationReadiness.REVIEW_REQUIRED, first.to_dict()
+    assert "TARGET_REVIEW_REQUIRED:NC1" in first.blockers
     assert first.equivalence.status == GeometryProofStatus.PROVEN_BREP_EQUIVALENT
     assert first.profile.designation == "PL100X10"
     assert first.semantic_sha256 == second.semantic_sha256
-    assert service.cache_hits == 1
+    assert service.final_cache_hits == 1
 
     rotated = cq.Workplane(obj=shape).rotate((0, 0, 0), (0, 1, 0), 31).val()
     rotated_report = service.analyze(
@@ -75,4 +76,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

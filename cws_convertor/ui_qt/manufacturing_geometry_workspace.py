@@ -10,7 +10,11 @@ from cws_convertor.manufacturing_interpreter import (
     ManufacturingInterpretationRequest,
 )
 from cws_convertor.manufacturing_interpreter.cli import _step_inspection
+from cws_convertor.manufacturing_interpreter.contracts import InterpretationConfirmation
+from cws_convertor.manufacturing_interpreter.promotion import WorkbenchPromotionCoordinator
+from cws_convertor.manufacturing_interpreter.isolated import analyze_step_isolated
 from cws_convertor.manufacturing_interpreter.report_store import save_report
+from cws_convertor.manufacturing_interpreter.recognition_cache import stable_sha256
 from cws_convertor.project.jobs import JobManager
 
 
@@ -38,6 +42,8 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self._completed_report: Any = None
         self.current_source = Path()
         self.current_job_id = ""
+        self._submitted_source = ""
+        self._submitted_generation = 0
         self._build_ui()
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(100)
@@ -63,21 +69,32 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         source_bar = QtWidgets.QHBoxLayout()
         self.source_edit = QtWidgets.QLineEdit()
         self.source_edit.setPlaceholderText("Selecteer een exacte STEP/STP BREP-bron...")
-        browse = QtWidgets.QPushButton("Bron openen")
-        browse.clicked.connect(self._browse)
+        self.browse_button = QtWidgets.QPushButton("Bron openen")
+        self.browse_button.setProperty("ui_test_id", "mgi.source.open")
+        self.browse_button.setToolTip("Open een exacte STEP/STP BREP-bron")
+        self.browse_button.clicked.connect(self._browse)
         self.analyze_button = QtWidgets.QPushButton("Analyseren")
         self.analyze_button.setObjectName("cwsPrimaryButton")
+        self.analyze_button.setProperty("ui_test_id", "mgi.analyze")
+        self.analyze_button.setToolTip("Start read-only manufacturing geometry analysis")
         self.analyze_button.clicked.connect(self.analyze_current_source)
         self.cancel_button = QtWidgets.QPushButton("Annuleren")
+        self.cancel_button.setProperty("ui_test_id", "mgi.cancel")
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self.cancel_analysis)
+        self.retry_button = QtWidgets.QPushButton("Opnieuw")
+        self.retry_button.setProperty("ui_test_id", "mgi.retry")
+        self.retry_button.setEnabled(False)
+        self.retry_button.clicked.connect(self.retry_analysis)
         self.save_button = QtWidgets.QPushButton("Evidence opslaan")
+        self.save_button.setProperty("ui_test_id", "mgi.evidence.save")
         self.save_button.setEnabled(False)
         self.save_button.clicked.connect(self._save)
         source_bar.addWidget(self.source_edit, 1)
-        source_bar.addWidget(browse)
+        source_bar.addWidget(self.browse_button)
         source_bar.addWidget(self.analyze_button)
         source_bar.addWidget(self.cancel_button)
+        source_bar.addWidget(self.retry_button)
         source_bar.addWidget(self.save_button)
         root.addLayout(source_bar)
 
@@ -96,6 +113,8 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.tabs = QtWidgets.QTabWidget()
         self.foundation_table = self._table(["Evidence", "Waarde"])
         self.feature_table = self._table(["Feature", "Geometrie", "Semantiek", "Confidence", "Proof"])
+        self.feature_table.setProperty("ui_test_id", "mgi.features.table")
+        self.feature_table.itemSelectionChanged.connect(self._feature_selected)
         self.hypothesis_table = self._table(["Hypothese", "Features", "Unknown", "Proof", "Score"])
         self.output_table = self._table(["Target", "Status", "Lossless", "Roundtrip", "Blockers"])
         self.proof_table = self._table(["Proof metric", "Waarde"])
@@ -113,7 +132,10 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.cache_label = QtWidgets.QLabel("Cache: 0 warm / 0 cold")
         self.source_gate_label = QtWidgets.QLabel("Bron-gate: niet uitgevoerd")
         self.promote_button = QtWidgets.QPushButton("Bevestigen en naar Part Workbench")
+        self.promote_button.setProperty("ui_test_id", "mgi.promote")
+        self.promote_button.setToolTip("Promoveer uitsluitend een bevestigde, actuele en bewezen hypothese")
         self.promote_button.setEnabled(False)
+        self.promote_button.clicked.connect(self._promote)
         footer.addWidget(self.cache_label)
         footer.addWidget(self.source_gate_label)
         footer.addStretch(1)
@@ -169,6 +191,7 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Bron vereist", "Selecteer een bestaande STEP/STP-bron.")
             return
         self.current_source = source
+        self._submitted_source = str(source.resolve())
         self.current_job_id = self.job_manager.submit(
             "manufacturing-geometry-interpretation-v3",
             self._analyze_job,
@@ -178,16 +201,21 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             max_retries=1,
             resource_budget={"workers": 1, "memory_mb": 2048},
         )
+        self._submitted_generation = self.job_manager.get(self.current_job_id).generation
         self.analyze_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
+        self.retry_button.setEnabled(False)
         self.progress.setRange(0, 0)
         self.progress.setFormat("Analytische topologie, secties en feature-hypotheses...")
         self.status_badge.setText("ANALYSEERT")
         self._timer.start()
 
     def _analyze_job(self, context: Any, source: Path) -> Any:
-        inspection = _step_inspection(source)
-        report = self.interpreter.analyze(ManufacturingInterpretationRequest(inspection=inspection))
+        report = analyze_step_isolated(
+            source,
+            timeout_seconds=120.0,
+            cancel_check=context.is_cancelled,
+        )
         self._completed_report = report
         return report.to_dict()
 
@@ -201,6 +229,18 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.progress.setRange(0, 100)
         self.analyze_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
+        self.retry_button.setEnabled(record.status in {"failed", "cancelled", "timed_out"})
+        current_source = str(Path(self.source_edit.text().strip()).resolve()) if self.source_edit.text().strip() else ""
+        if (
+            record.generation != self._submitted_generation
+            or not self.job_manager.is_current_generation(self.current_job_id)
+            or current_source != self._submitted_source
+        ):
+            self._completed_report = None
+            self.progress.setValue(0)
+            self.progress.setFormat("Verouderd jobresultaat genegeerd")
+            self.status_badge.setText("STALE")
+            return
         if record.status == "completed" and record.result is not None:
             report = self._completed_report
             self._completed_report = None
@@ -219,10 +259,24 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         if self.current_job_id:
             self.job_manager.cancel(self.current_job_id)
 
+    def retry_analysis(self) -> None:
+        if not self.current_job_id:
+            return
+        self.current_job_id = self.job_manager.retry(self.current_job_id)
+        record = self.job_manager.get(self.current_job_id)
+        self._submitted_generation = record.generation
+        self._completed_report = None
+        self.retry_button.setEnabled(False)
+        self.cancel_button.setEnabled(True)
+        self.analyze_button.setEnabled(False)
+        self.progress.setRange(0, 0)
+        self.progress.setFormat("Analyse opnieuw gestart...")
+        self._timer.start()
+
     def set_report(self, report: Any) -> None:
         self.current_report = report
         self.save_button.setEnabled(True)
-        self.promote_button.setEnabled(report.readiness.value == "READY")
+        self.promote_button.setEnabled(report.readiness.value == "READY" and self.project is not None)
         self.progress.setValue(100)
         self.progress.setFormat(f"Analyse voltooid: {report.readiness.value}")
         self.status_badge.setText(report.readiness.value)
@@ -304,6 +358,49 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         visible = getattr(viewer, "set_overlay_visible", None) or getattr(viewer, "set_overlay_enabled", None)
         if callable(visible):
             visible(True)
+
+    def _feature_selected(self) -> None:
+        row = self.feature_table.currentRow()
+        if row < 0 or self.current_report is None or row >= len(self.current_report.features):
+            return
+        feature_id = self.current_report.features[row].feature_id
+        viewer = getattr(self.viewer_host, "viewer", self.viewer_host)
+        highlighter = getattr(viewer, "set_manufacturing_overlay_highlight", None)
+        if callable(highlighter):
+            highlighter({"active_interpretation_feature_id": feature_id})
+
+    def _promote(self) -> None:
+        if self.current_report is None or self.project is None or not self.current_report.hypotheses:
+            QtWidgets.QMessageBox.warning(self, "Promotie geblokkeerd", "Een actief project en bewezen hypothese zijn vereist.")
+            return
+        hypothesis = self.current_report.hypotheses[0]
+        report_hash = stable_sha256(self.current_report)
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Hypothese bevestigen",
+            f"Bevestig hypothese {hypothesis.hypothesis_id} en neem deze transactioneel over in de Part Workbench?",
+        )
+        if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        confirmation = InterpretationConfirmation(
+            confirmation_id=f"confirmation-{report_hash[:20]}",
+            report_hash=report_hash,
+            hypothesis_id=hypothesis.hypothesis_id,
+            user="interactive-user",
+        )
+        result = WorkbenchPromotionCoordinator().promote(
+            report=self.current_report,
+            confirmation=confirmation,
+            project=self.project,
+            user="interactive-user",
+            current_source_geometry_hash=self.current_report.source_geometry_hash,
+            current_tolerance_policy_hash=self.current_report.tolerance_policy_hash,
+            current_profile_database_hash=self.current_report.profile_database_hash,
+        )
+        if result.status == "PROMOTED":
+            QtWidgets.QMessageBox.information(self, "Promotie voltooid", f"Workbench revisie: {result.revision_hash}")
+        else:
+            QtWidgets.QMessageBox.warning(self, "Promotie geblokkeerd", "\n".join(result.blockers))
 
     def _save(self) -> None:
         if self.current_report is None:
