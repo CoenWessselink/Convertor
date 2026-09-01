@@ -162,6 +162,18 @@ def test_45_category_acceptance_artifact_has_no_false_green() -> None:
     assert payload["summary"]["errors"] == []
 
 
+def test_canonical_cli_exposes_project_batch_contract() -> None:
+    from cli import build_parser
+
+    args = build_parser().parse_args(
+        ["analyze-manufacturing", "--project", "sample.cwscproj", "--parts", "P1", "--all", "--benchmark"]
+    )
+    assert args.command == "analyze-manufacturing"
+    assert args.project == "sample.cwscproj"
+    assert args.parts == ["P1"]
+    assert args.all and args.benchmark
+
+
 if __name__ == "__main__":
     test_final_cache_reuses_complete_immutable_report()
     test_cache_key_invalidates_every_bound_authority()
@@ -170,4 +182,5 @@ if __name__ == "__main__":
     test_failed_promotion_rolls_back_transaction()
     test_runtime_owned_control_contract()
     test_45_category_acceptance_artifact_has_no_false_green()
+    test_canonical_cli_exposes_project_batch_contract()
     print("manufacturing interpreter V3 final acceptance tests: PASS")

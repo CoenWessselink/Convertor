@@ -500,7 +500,11 @@ def build_parser() -> argparse.ArgumentParser:
         "analyze-manufacturing",
         help="Analyseer exacte STEP-geometrie met de Manufacturing Geometry Interpreter",
     )
-    p.add_argument("inputs", nargs="+", help="Een of meer STEP/STP-bestanden")
+    p.add_argument("inputs", nargs="*", help="Een of meer STEP/STP-bestanden")
+    p.add_argument("--project", help="CWS-projectbestand voor read-only batch discovery")
+    p.add_argument("--parts", nargs="*", default=(), help="Optionele onderdeel-/bronfilters")
+    p.add_argument("--all", action="store_true", help="Analyseer alle exacte STEP-bronnen in het project")
+    p.add_argument("--benchmark", action="store_true", help="Schrijf bounded batch-timing evidence")
     p.add_argument(
         "-o",
         "--output",
@@ -557,9 +561,9 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("een command is verplicht, behalve bij --quick-self-test of --version")
 
     if args.command == "analyze-manufacturing":
-        from cws_convertor.manufacturing_interpreter.cli import run_cli
+        from cws_convertor.manufacturing_interpreter.batch_cli import run_batch
 
-        return run_cli(args)
+        return run_batch(args)
 
     if args.command == "loader-engine-v2-probe":
         from cws_viewer.core.loader_v2_probe import run_probe

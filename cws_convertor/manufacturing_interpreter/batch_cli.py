@@ -48,8 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+def run_batch(args: Any) -> int:
     inputs = list(args.inputs)
     if args.project:
         inputs.extend(discover_project_sources(args.project, tuple(args.parts)))
@@ -82,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
     return exit_code
+
+
+def main(argv: list[str] | None = None) -> int:
+    return run_batch(build_parser().parse_args(argv))
 
 
 if __name__ == "__main__":
