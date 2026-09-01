@@ -15,6 +15,7 @@ from .foundation import (
 from .recognition_cache import RecognitionCacheV3, stable_sha256
 from .reconstruction import reconstruct_prismatic
 from .service import ManufacturingGeometryInterpreter as _FoundationInterpreter
+from .phase2 import enrich_phase2
 
 
 def _database_hash(database: Any) -> str:
@@ -150,6 +151,12 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             tolerance_policy_version=str(getattr(recognition, "version", "")),
             tolerance_policy_hash=policy_hash,
             profile_database_hash=database_hash,
+        )
+        enriched = enrich_phase2(
+            enriched,
+            shape,
+            self.tolerance_policy,
+            tuple(getattr(request, "requested_outputs", ())),
         )
         self.recognition_cache.store_evidence(cache_key, enriched)
         return enriched
