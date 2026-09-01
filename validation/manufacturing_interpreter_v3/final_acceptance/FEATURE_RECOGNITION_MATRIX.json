@@ -1,0 +1,213 @@
+{
+  "items": [
+    {
+      "description": "Hole recognition",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-17",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Split-cylinder grouping",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-18",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Slot recognition",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-19",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Countersink and counterbore candidates",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-20",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Prismatic negative features",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-21",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Cope and notch",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-22",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Miter and end cut",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-23",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Positive features",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-24",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Multi-extrusion",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-25",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

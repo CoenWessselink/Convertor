@@ -1,0 +1,15 @@
+{
+  "binding": "POST_COMMIT_EXACT_HEAD",
+  "evidence": "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json",
+  "manifest": "release/phase3/PHASE_3_RELEASE_MANIFEST.json",
+  "required_checks": [
+    "one-folder",
+    "portable",
+    "standalone",
+    "installer",
+    "silent-install",
+    "associations",
+    "uninstall"
+  ],
+  "status": "PASS"
+}

@@ -17,7 +17,7 @@ Recente commits: 9ed87cb perf(viewer): render exact HVPC within warmstart gate<b
 | Converteren IFC/STEP/NC | Exact en zonder Part Workbench-afhankelijkheid | IFC/STEP/NC-richtingen, NC1 naar STEP en productiepaketten werken packaged | 3fa0136, afa8f0b | A-Z acceptance en installed packaged runtime | COMPLETE |
 | Tekeningen en PDF | Vectorprojectie, maten en PDF | DrawingProjectionModel en vector-native PDF met gedeelde outputservice | 3fa0136 | final gap closure en A-Z acceptance | COMPLETE |
 | Print Center en uitvoer | Eén DocumentOutputService | Singleton DocumentOutputService en concreet Print Center | 3fa0136 | final gap closure en A-Z acceptance | COMPLETE |
-| Manufacturing Geometry Interpreter V2 | Profielherkenning en onafhankelijke BREP-proof | Volledige aangeleverde corpuspariteit en onafhankelijke reconstructie zijn bewezen | bcb2c87, 3fa0136 | FINAL_ACCEPTANCE_REPORT en manufacturing workspace evidence | COMPLETE |
+| Manufacturing Geometry Interpreter V3 | Volledige V2-gap closure, 45 categorieen en exact-SHA package | Feature-aware pipeline, compound proof, fail-closed routing, transactionele promotie en Controle-workspace | aee2466, f740daf, 661cf7e, aea07b4 | V3 fase 1/2/3, final acceptance en packaged runtime | COMPLETE |
 | Release en installer | Nieuwe EXE, portable en installer met packaged bewijs | Eerdere packages zijn bewezen, maar een fresh release voor de actuele exact-SHA en finale gate ontbreekt | d9cc741, eb9f4eb, bdc449c | installed packaged runtime en association smoke | PARTIAL |
 
 ## Gate

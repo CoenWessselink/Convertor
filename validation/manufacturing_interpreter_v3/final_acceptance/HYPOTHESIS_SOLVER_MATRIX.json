@@ -1,0 +1,98 @@
+{
+  "items": [
+    {
+      "description": "Residual-driven solver",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-27",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Multiple hypotheses",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-28",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Bounded search",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-29",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Ambiguity handling",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-30",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

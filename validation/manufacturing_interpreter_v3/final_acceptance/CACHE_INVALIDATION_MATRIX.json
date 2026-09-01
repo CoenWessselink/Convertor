@@ -1,0 +1,53 @@
+{
+  "items": [
+    {
+      "description": "Derived artifact persistence",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-50",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Cache invalidation correct",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-51",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

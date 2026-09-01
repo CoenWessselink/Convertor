@@ -1,0 +1,121 @@
+{
+  "items": [
+    {
+      "description": "Same permanent ViewerHost",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-45",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Manufacturing Geometry workspace functional",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-46",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Diagnostic overlays functional",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-47",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "No second SelectionAuthority",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-48",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "JobManager cancel and stale protection",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-49",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

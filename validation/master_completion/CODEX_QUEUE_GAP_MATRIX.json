@@ -1,17 +1,10 @@
 {
-  "schema": "cws.codex-queue-gap-matrix.v1",
-  "generated_at": "2026-09-01T06:35:17.475525+00:00",
-  "queue_nonpass_count": 4,
   "first_nonpass": "Q002",
   "gaps": [
     {
-      "queue_id": "Q002",
-      "title": "Viewer Loader Engine V2 and cold-load performance closeout",
       "depends_on": [
         "Q001"
       ],
-      "status": "PARTIAL",
-      "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
       "evidence": [
         "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
         "validation/master_completion/HVPC_CURRENT_EXACT_FULL_BENCHMARK_1513ae3.json",
@@ -22,36 +15,36 @@
         "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.png",
         "QUEUE_COMPLETION_MATRIX.md"
       ],
+      "expected_result": "Exact HVPC is koud in 3-5 seconden zichtbaar, met workerpool, priority, Cache V2, uploadbudget en packaged metrics.",
+      "queue_id": "Q002",
       "remaining": [
         "A genuinely cacheless first IFC tessellation is 7.839 seconds and still exceeds the 3-5 second target. The checksum-bound exact warmstart is PASS at 3.264 seconds and native interaction is PASS at 28.85 ms p95."
-      ]
+      ],
+      "status": "PARTIAL",
+      "title": "Viewer Loader Engine V2 and cold-load performance closeout"
     },
     {
-      "queue_id": "Q004",
-      "title": "Same-machine Trimble visual and object parity",
       "depends_on": [
         "Q002",
         "Q003"
       ],
-      "status": "BLOCKED_EXTERNAL_EVIDENCE",
-      "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
       "evidence": [
         "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ],
+      "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
+      "queue_id": "Q004",
       "remaining": [
         "Fresh desktop capture/control is blocked by Windows Graphics Capture access/monitor errors; no fabricated visual comparison is accepted."
-      ]
+      ],
+      "status": "BLOCKED_EXTERNAL_EVIDENCE",
+      "title": "Same-machine Trimble visual and object parity"
     },
     {
-      "queue_id": "Q005",
-      "title": "V5.2 light UI and reference-image visual fidelity",
       "depends_on": [
         "Q001"
       ],
-      "status": "PARTIAL",
-      "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
       "evidence": [
         "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
         "validation/master_completion/ui_v52_hvpc_surface_capture_final",
@@ -61,13 +54,15 @@
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
       ],
+      "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
+      "queue_id": "Q005",
       "remaining": [
         "All 31 native HVPC-populated surfaces, all 25 supplied reference pairs and a native exact VTK framebuffer are captured; pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED."
-      ]
+      ],
+      "status": "PARTIAL",
+      "title": "V5.2 light UI and reference-image visual fidelity"
     },
     {
-      "queue_id": "Q010",
-      "title": "Dynamic total product acceptance",
       "depends_on": [
         "Q002",
         "Q003",
@@ -77,15 +72,20 @@
         "Q008",
         "Q009"
       ],
-      "status": "FAIL",
-      "expected_result": "Alle actieve requirements zijn PASS met required FAIL/BLOCKED/NOT_TESTED en false green gelijk aan nul.",
       "evidence": [
         "requirements/MASTER_REQUIREMENT_TRACEABILITY.json",
         "validation/final_4_phase/phase4/PHASE_GATE.json"
       ],
+      "expected_result": "Alle actieve requirements zijn PASS met required FAIL/BLOCKED/NOT_TESTED en false green gelijk aan nul.",
+      "queue_id": "Q010",
       "remaining": [
         "Master traceability contains 26 FAIL requirements."
-      ]
+      ],
+      "status": "FAIL",
+      "title": "Dynamic total product acceptance"
     }
-  ]
+  ],
+  "generated_at": "2026-09-01T08:31:55.760628+00:00",
+  "queue_nonpass_count": 4,
+  "schema": "cws.codex-queue-gap-matrix.v1"
 }

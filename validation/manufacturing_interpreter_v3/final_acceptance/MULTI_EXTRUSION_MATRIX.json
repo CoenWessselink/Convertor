@@ -1,0 +1,97 @@
+{
+  "items": [
+    {
+      "description": "Multi-region extrusion candidates",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-14",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Positive features",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-24",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Multi-extrusion",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-25",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Independent compound reconstruction",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-31",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

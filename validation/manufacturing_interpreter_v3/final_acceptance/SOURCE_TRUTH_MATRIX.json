@@ -1,0 +1,116 @@
+{
+  "items": [
+    {
+      "description": "Duplicate authorities equal zero",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-03",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Exact source gate correct",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-04",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Approximate IFC and proxy never READY",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-05",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Immutable source proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-06",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Central tolerance policy",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-07",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

@@ -1,0 +1,32 @@
+{
+  "compound_proof": "PROVEN_BREP_EQUIVALENT",
+  "false_ready": 0,
+  "feature_count": 3,
+  "hypothesis_count": 4,
+  "internal_failures": 0,
+  "not_implemented": 0,
+  "not_integrated": 0,
+  "not_tested": 0,
+  "partial": 0,
+  "phase": 2,
+  "runtime_evidence": [
+    "01_phase2_feature_graph.png",
+    "02_phase2_solver_proof.png",
+    "03_phase2_representability_promotion.png"
+  ],
+  "status": "PASS",
+  "tests": [
+    {
+      "command": "python tests/test_manufacturing_interpreter_v3_phase2.py",
+      "status": "PASS"
+    },
+    {
+      "command": "python tests/test_manufacturing_interpreter_v3_phase1.py",
+      "status": "PASS"
+    },
+    {
+      "command": "python tests/manufacturing_interpreter_phase1_smoke.py",
+      "status": "PASS"
+    }
+  ]
+}

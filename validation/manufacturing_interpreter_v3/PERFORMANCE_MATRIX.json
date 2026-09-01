@@ -1,0 +1,15 @@
+{
+  "cache_hit_rate": 0.5,
+  "cold_runtime_seconds": {
+    "max": 9.526739,
+    "p50": 0.254469,
+    "p95": 8.576604
+  },
+  "peak_memory_mib": 4.473,
+  "status": "PASS",
+  "warm_runtime_seconds": {
+    "max": 0.000503,
+    "p50": 0.000439,
+    "p95": 0.0005
+  }
+}

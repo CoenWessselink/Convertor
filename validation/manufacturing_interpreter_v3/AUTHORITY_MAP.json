@@ -1,0 +1,11 @@
+{
+  "authorities": {
+    "profiles": "profile_database.ProfileDatabase",
+    "selection": "canonical SelectionAuthority",
+    "source": "cws_convertor.project.source_geometry",
+    "tolerance": "cws_convertor.steel_model.tolerances",
+    "viewer": "permanent ViewerHost"
+  },
+  "duplicates": 0,
+  "status": "PASS"
+}

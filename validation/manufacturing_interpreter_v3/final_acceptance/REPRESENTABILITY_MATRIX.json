@@ -1,0 +1,98 @@
+{
+  "items": [
+    {
+      "description": "Representability per target",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-37",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "NC1 support tied to serializer and reimport evidence",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-38",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "NC1 remains REVIEW unless serializer/reimport capability evidence is supplied.",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Machine representability uses capability authority",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-39",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Machine transfer remains false without external proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-40",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "External machine qualification is intentionally not claimed; machine_transfer.allowed remains false.",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}

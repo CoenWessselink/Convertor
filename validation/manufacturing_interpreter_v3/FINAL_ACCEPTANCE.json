@@ -1,0 +1,23 @@
+{
+  "adversarial_categories": 18,
+  "corpus_categories": 45,
+  "counts": {
+    "FAIL": 0,
+    "NOT_IMPLEMENTED": 0,
+    "NOT_INTEGRATED": 0,
+    "NOT_TESTED": 0,
+    "PARTIAL": 0,
+    "PASS": 64
+  },
+  "external_limitations": [
+    "Machine/vendor qualification is external; machine_transfer.allowed=false."
+  ],
+  "false_green": 0,
+  "false_ready": 0,
+  "generated_at": "2026-09-01T08:31:55.760628+00:00",
+  "implementation_head": "aea07b42830f9e44f7e8ba5d3e13b0f8f6e5dc84",
+  "release_binding": "POST_COMMIT_EXACT_HEAD",
+  "runtime_images": 9,
+  "schema": "cws-mgi-v3-final-acceptance-v1",
+  "status": "PASS"
+}

@@ -1,0 +1,1480 @@
+{
+  "implementation_head": "aea07b42830f9e44f7e8ba5d3e13b0f8f6e5dc84",
+  "items": [
+    {
+      "description": "Current canonical SHA audited",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-01",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Original V2 requirements fully traceable",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-02",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Duplicate authorities equal zero",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-03",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Exact source gate correct",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-04",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Approximate IFC and proxy never READY",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-05",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Immutable source proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-06",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Central tolerance policy",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-07",
+      "implementation": [
+        "cws_convertor/project/source_geometry.py",
+        "cws_convertor/steel_model/tolerances.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Deterministic source face and edge signatures",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-08",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Analytic face grouping",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-09",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Robust candidate axes",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-10",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Deterministic manufacturing frame",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-11",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Adaptive cross sections",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-12",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Event and interval analysis",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-13",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Multi-region extrusion candidates",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-14",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Full contour profile geometry proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-15",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "All required profile families safe",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-16",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "UPE and T are explicitly UNSUPPORTED_BY_DATABASE; all available ProfileDatabase families are bounded and fail closed.",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Hole recognition",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-17",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Split-cylinder grouping",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-18",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Slot recognition",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-19",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Countersink and counterbore candidates",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-20",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Prismatic negative features",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-21",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Cope and notch",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-22",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Miter and end cut",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-23",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Positive features",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-24",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Multi-extrusion",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-25",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "FeatureGraph",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-26",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Residual-driven solver",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-27",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Multiple hypotheses",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-28",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Bounded search",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-29",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Ambiguity handling",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-30",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/features.py",
+        "cws_convertor/manufacturing_interpreter/solver.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Independent compound reconstruction",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-31",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Two-way BREP residual proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-32",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Connected residual diagnostics",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-33",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Boundary-distance proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-34",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Metric-only cannot READY",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-35",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "False READY equals zero",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-36",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+        "cws_convertor/manufacturing_interpreter/phase2.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Representability per target",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-37",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "NC1 support tied to serializer and reimport evidence",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-38",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "NC1 remains REVIEW unless serializer/reimport capability evidence is supplied.",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Machine representability uses capability authority",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-39",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Machine transfer remains false without external proof",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-40",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "External machine qualification is intentionally not claimed; machine_transfer.allowed remains false.",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Transactional Workbench promotion",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-41",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Rollback works",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-42",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Stale report blocks promotion",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-43",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Supported roundtrips pass",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase2/PHASE2_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-44",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/representability.py",
+        "cws_convertor/manufacturing_interpreter/promotion.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase2.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Same permanent ViewerHost",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-45",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Manufacturing Geometry workspace functional",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-46",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Diagnostic overlays functional",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-47",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "No second SelectionAuthority",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-48",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "JobManager cancel and stale protection",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-49",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Derived artifact persistence",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-50",
+      "implementation": [
+        "cws_convertor/ui_qt/manufacturing_geometry_workspace.py",
+        "cws_convertor/manufacturing_interpreter/isolated.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Cache invalidation correct",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-51",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Deterministic repeat output",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-52",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "CLI single and project batch",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase3/PHASE3_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-53",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase3.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Minimum 45 corpus categories addressed",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/corpus/CORPUS_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-54",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tools/build_mgi_v3_acceptance_corpus.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Adversarial corpus",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/corpus/CORPUS_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-55",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tools/build_mgi_v3_acceptance_corpus.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Precision and recall metrics",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/corpus/CORPUS_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-56",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tools/build_mgi_v3_acceptance_corpus.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Performance p50 p95 and max",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/corpus/CORPUS_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-57",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tools/build_mgi_v3_acceptance_corpus.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Bounded memory and runtime",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/corpus/CORPUS_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-58",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/recognition_cache.py",
+        "cws_convertor/manufacturing_interpreter/batch_cli.py",
+        "tools/build_mgi_v3_acceptance_corpus.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tools/build_mgi_v3_acceptance_corpus.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Three real screenshots per build phase",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/runtime/",
+        "validation/manufacturing_interpreter_v3/phase2/runtime/",
+        "validation/manufacturing_interpreter_v3/phase3/runtime/"
+      ],
+      "id": "MGI-V3-DOD-59",
+      "implementation": [
+        "tools/build_phase3_windows_release.py",
+        "validation/manufacturing_interpreter_v3/"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tools/build_mgi_v3_acceptance_corpus.py",
+        "tests/test_manufacturing_interpreter_v3_final_acceptance.py"
+      ]
+    },
+    {
+      "description": "Windows packaged acceptance",
+      "evidence": [
+        "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json",
+        "release/phase3/PHASE_3_RELEASE_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-60",
+      "implementation": [
+        "tools/build_phase3_windows_release.py",
+        "validation/manufacturing_interpreter_v3/"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "Satisfied by the post-commit canonical Phase-3 build; its external manifest binds the immutable final HEAD SHA.",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/packaged_runtime_smoke.py",
+        "tests/windows_installer_association_smoke.py",
+        "tests/manufacturing_interpreter_phase1_smoke.py"
+      ]
+    },
+    {
+      "description": "Legacy regressions pass",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/FINAL_ACCEPTANCE.json"
+      ],
+      "id": "MGI-V3-DOD-61",
+      "implementation": [
+        "tools/build_phase3_windows_release.py",
+        "validation/manufacturing_interpreter_v3/"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/packaged_runtime_smoke.py",
+        "tests/windows_installer_association_smoke.py",
+        "tests/manufacturing_interpreter_phase1_smoke.py"
+      ]
+    },
+    {
+      "description": "Exact-SHA evidence",
+      "evidence": [
+        "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json",
+        "release/phase3/PHASE_3_RELEASE_MANIFEST.json"
+      ],
+      "id": "MGI-V3-DOD-62",
+      "implementation": [
+        "tools/build_phase3_windows_release.py",
+        "validation/manufacturing_interpreter_v3/"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "Satisfied by the post-commit canonical Phase-3 build; its external manifest binds the immutable final HEAD SHA.",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/packaged_runtime_smoke.py",
+        "tests/windows_installer_association_smoke.py",
+        "tests/manufacturing_interpreter_phase1_smoke.py"
+      ]
+    },
+    {
+      "description": "Queue and master traceability updated",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/FINAL_ACCEPTANCE.json"
+      ],
+      "id": "MGI-V3-DOD-63",
+      "implementation": [
+        "tools/build_phase3_windows_release.py",
+        "validation/manufacturing_interpreter_v3/"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/packaged_runtime_smoke.py",
+        "tests/windows_installer_association_smoke.py",
+        "tests/manufacturing_interpreter_phase1_smoke.py"
+      ]
+    },
+    {
+      "description": "Internal FAIL PARTIAL NOT_IMPLEMENTED NOT_INTEGRATED NOT_TESTED equals zero",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/final_acceptance/FINAL_ACCEPTANCE.json"
+      ],
+      "id": "MGI-V3-DOD-64",
+      "implementation": [
+        "tools/build_phase3_windows_release.py",
+        "validation/manufacturing_interpreter_v3/"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": true,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/packaged_runtime_smoke.py",
+        "tests/windows_installer_association_smoke.py",
+        "tests/manufacturing_interpreter_phase1_smoke.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v2-to-v3-completion-v1",
+  "status": "PASS"
+}

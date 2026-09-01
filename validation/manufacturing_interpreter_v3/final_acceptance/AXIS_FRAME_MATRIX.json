@@ -1,0 +1,50 @@
+{
+  "items": [
+    {
+      "description": "Robust candidate axes",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-10",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    },
+    {
+      "description": "Deterministic manufacturing frame",
+      "evidence": [
+        "validation/manufacturing_interpreter_v3/phase1/PHASE1_GATE.json"
+      ],
+      "id": "MGI-V3-DOD-11",
+      "implementation": [
+        "cws_convertor/manufacturing_interpreter/foundation.py",
+        "cws_convertor/manufacturing_interpreter/profile_geometry.py"
+      ],
+      "implemented": true,
+      "integrated": true,
+      "note": "",
+      "packaged_proven": false,
+      "remaining": [],
+      "source_section": "V3 section 72 Final Definition of Done",
+      "status": "PASS",
+      "tested": true,
+      "tests": [
+        "tests/test_manufacturing_interpreter_v3_phase1.py"
+      ]
+    }
+  ],
+  "schema": "cws-mgi-v3-matrix-v1",
+  "status": "PASS"
+}
