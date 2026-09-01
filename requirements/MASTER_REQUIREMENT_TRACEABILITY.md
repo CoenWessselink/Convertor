@@ -1,6 +1,6 @@
 # CWS Convertor Master Requirement Traceability
 
-Generated: `2026-08-31T21:53:18.816412+00:00`
+Generated: `2026-09-01T00:07:04.409115+00:00`
 
 Active requirements: **317**
 
@@ -8,7 +8,7 @@ Active requirements: **317**
 
 | Status | Count |
 |---|---:|
-| NOT_TESTED | 26 |
+| FAIL | 26 |
 | PASS | 291 |
 
 ## Requirement sources
@@ -78,17 +78,17 @@ Active requirements: **317**
 | F3-014 | 3 | PASS | Export uses Scope to Formats to Preflight to Generate to Verify to Package without scope broadening |
 | F3-015 | 3 | PASS | Readiness joins geometry, manufacturing, routing, nesting, drawing, quality and planning gates |
 | F3-016 | 3 | PASS | All 25 reference and 6 support surfaces are functional in the real Qt runtime |
-| F4-001 | 4 | NOT_TESTED | Dynamic full acceptance is generated from this master traceability |
-| F4-002 | 4 | NOT_TESTED | Runtime owned-control scan proves no missing, duplicate, dead or wrong-handler controls |
-| F4-003 | 4 | NOT_TESTED | Visual acceptance covers required resolutions and DPI with light primary and dark smoke |
-| F4-004 | 4 | NOT_TESTED | Full IFC, STEP, NC1, Trusted PDF and External PDF workflows are tested end to end |
-| F4-005 | 4 | NOT_TESTED | Negative file, cache, worker, cancellation, stale-state and capacity paths fail closed |
-| F4-006 | 4 | NOT_TESTED | Stress suite proves bounded workspace, selection, camera, save, import/export and optimization behavior |
-| F4-007 | 4 | NOT_TESTED | Final Viewer cold/warm/same-session, interaction and resource metrics are packaged evidence |
-| F4-008 | 4 | NOT_TESTED | One-folder black-box runtime works without developer Python PATH |
-| F4-009 | 4 | NOT_TESTED | Fresh portable black-box runtime works without developer Python PATH |
-| F4-010 | 4 | NOT_TESTED | Fresh installer black-box runtime works and preserves file associations |
-| F4-011 | 4 | NOT_TESTED | Source zip, git bundle, checksums, SBOM and manifests bind to one exact source SHA |
-| F4-012 | 4 | NOT_TESTED | Required FAIL, BLOCKED and NOT_TESTED counts are zero with false green zero |
-| F4-013 | 4 | NOT_TESTED | Physical machine transfer remains blocked pending external qualification |
-| F4-014 | 4 | NOT_TESTED | Release evidence and binaries are rebuilt after every code change and name the exact SHA |
+| F4-001 | 4 | FAIL | Dynamic full acceptance is generated from this master traceability |
+| F4-002 | 4 | FAIL | Runtime owned-control scan proves no missing, duplicate, dead or wrong-handler controls |
+| F4-003 | 4 | FAIL | Visual acceptance covers required resolutions and DPI with light primary and dark smoke |
+| F4-004 | 4 | FAIL | Full IFC, STEP, NC1, Trusted PDF and External PDF workflows are tested end to end |
+| F4-005 | 4 | FAIL | Negative file, cache, worker, cancellation, stale-state and capacity paths fail closed |
+| F4-006 | 4 | FAIL | Stress suite proves bounded workspace, selection, camera, save, import/export and optimization behavior |
+| F4-007 | 4 | FAIL | Final Viewer cold/warm/same-session, interaction and resource metrics are packaged evidence |
+| F4-008 | 4 | FAIL | One-folder black-box runtime works without developer Python PATH |
+| F4-009 | 4 | FAIL | Fresh portable black-box runtime works without developer Python PATH |
+| F4-010 | 4 | FAIL | Fresh installer black-box runtime works and preserves file associations |
+| F4-011 | 4 | FAIL | Source zip, git bundle, checksums, SBOM and manifests bind to one exact source SHA |
+| F4-012 | 4 | FAIL | Required FAIL, BLOCKED and NOT_TESTED counts are zero with false green zero |
+| F4-013 | 4 | FAIL | Physical machine transfer remains blocked pending external qualification |
+| F4-014 | 4 | FAIL | Release evidence and binaries are rebuilt after every code change and name the exact SHA |

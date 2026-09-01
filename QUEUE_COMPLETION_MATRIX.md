@@ -2,7 +2,7 @@
 
 Gereconstrueerd uit prompts, overdrachten, broncode, git-history en echte validatiebestanden. Niet uitgevoerde externe proeven zijn niet groen gemaakt.
 
-Recente commits: bdc449c Ignore untracked evidence in release preflight<br>9a51606 Measure worker speedup across independent IFC sources<br>122804e Prove complete geometry worker recovery<br>f62f897 Separate explicit transitions from soak stalls<br>7e0aa56 Use scene bundles in packaged warm probes
+Recente commits: 61989ca fix(viewer): close final acceptance regressions<br>2ab80df test(phase4): enforce master release gate<br>06a69fb test(phase3): bind output and quality gate evidence<br>682948e feat(phase3): integrate planning controls and output evidence<br>db3ed7e test(phase2): bind production gate evidence
 
 | Opdracht/milestone | Verwacht resultaat | Gevonden implementatie | Relevante commit(s) | Relevante tests | Status |
 |---|---|---|---|---|---|

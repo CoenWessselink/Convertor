@@ -1,0 +1,75 @@
+{
+  "phase": 4,
+  "name": "Total Product Acceptance and Exact-SHA Windows Release",
+  "status": "FAIL",
+  "packaged_proven": false,
+  "false_green_count": 0,
+  "source_commit": "61989ca35706a78edf000e979a6edbd17405a5d8",
+  "acceptance": {
+    "ui_and_function_inventory": "PASS",
+    "real_geometry": "PASS",
+    "phase_gates": "PASS",
+    "runtime_acceptance_evidence": "PASS",
+    "required_function_count": 5006,
+    "uncovered_required_function_count": 0,
+    "owned_source_control_count": 481,
+    "runtime_control_count": 572
+  },
+  "source_smokes": {
+    "passed": 174,
+    "failed": 0,
+    "timeout": 0,
+    "historical_dataset_skipped": 2,
+    "historical_dataset_scope": "OUT_OF_SCOPE_DATASET_UNAVAILABLE"
+  },
+  "viewer_runtime": {
+    "qt_progressive_exact": "PASS",
+    "qt_visual": "PASS",
+    "first_frame_seconds": 2.268128,
+    "representative_exact_seconds": 4.647789,
+    "frame_p95_ms": 1.941,
+    "input_p95_ms": 16.883,
+    "pick_p95_ms": 24.824,
+    "wrong_instance_picks": 0,
+    "rss_drift_percent": 1.568
+  },
+  "same_machine_comparison": {
+    "trimble_same_session_seconds": 3.551,
+    "cws_large_model_warm_mean_seconds": 0.24818291,
+    "status": "PASS_WITH_SCOPE"
+  },
+  "release_blockers": [
+    {
+      "id": "HVPC-FIRST-COLD-3-5S",
+      "status": "FAIL",
+      "required": "The 5,725-request HVPC IFC must be fully visible from a cleared cache within 3-5 seconds.",
+      "measured_cold_mean_seconds": 71.04096764,
+      "measured_cold_min_seconds": 70.0586447,
+      "measured_cold_max_seconds": 71.8627779,
+      "reason": "The exact first-cold geometry conversion remains outside the requested target. Warm and representative exact loads pass, but they do not replace first-cold proof."
+    }
+  ],
+  "windows_release": {
+    "status": "PENDING_EXACT_SHA_BUILD",
+    "one_folder": "NOT_TESTED",
+    "portable": "NOT_TESTED",
+    "installer": "NOT_TESTED",
+    "file_associations": "NOT_TESTED"
+  },
+  "screenshots": [
+    "validation/final_4_phase/phase4/qt_progressive_exact_recheck.png",
+    "validation/final_4_phase/phase4/qt_viewer_visual_recheck.png",
+    "validation/final_4_phase/phase4/workspace_project_qt.png",
+    "validation/final_4_phase/phase4/workspace_productie_qt.png",
+    "validation/final_4_phase/phase4/workspace_uitvoer_qt.png"
+  ],
+  "evidence": [
+    "validation/full_acceptance/FULL_PRODUCT_ACCEPTANCE_SUMMARY.json",
+    "validation/full_acceptance/FULL_ACCEPTANCE_RUNTIME_EVIDENCE.json",
+    "validation/full_acceptance/DYNAMIC_UI_RUNTIME_COVERAGE.json",
+    "validation/phases/PHASE_1_SOURCE_TEST_EVIDENCE.json",
+    "validation/phases/PHASE_2_SOURCE_TEST_EVIDENCE.json",
+    "validation/phases/PHASE_3_SOURCE_TEST_EVIDENCE.json",
+    "validation/final_4_phase/phase4/TRIMBLE_SAME_MACHINE_COMPARISON.json"
+  ]
+}

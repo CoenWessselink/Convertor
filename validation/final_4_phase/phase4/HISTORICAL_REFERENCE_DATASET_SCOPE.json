@@ -1,0 +1,22 @@
+{
+  "schema": "cws-historical-reference-dataset-scope-1.0",
+  "status": "OUT_OF_SCOPE_DATASET_UNAVAILABLE",
+  "tests": [
+    "tests/viewer_v8_real_project_grid_smoke.py",
+    "tests/viewer_v9_reference_project_smoke.py"
+  ],
+  "required_fixture": "CWS_Convertor_v0.7.0-alpha_REFERENCE_PROJECT.cwscproj",
+  "searched_locations": [
+    "C:/CONVERTOR",
+    "C:/Users/c.wesselink/Downloads",
+    "C:/Users/c.wesselink/Documents",
+    "C:/Users/c.wesselink/Desktop"
+  ],
+  "active_requirement_impact": "NONE",
+  "reason": "The tests assert exact historical counts and LO4 identities from a retired 0.7.0 fixture. Replacing that fixture with generated data would be false evidence. The current canonical project, grid, identity and Viewer contracts are covered by the active full acceptance suite.",
+  "replacement_evidence": [
+    "validation/results/phase4/source-smokes/VIEWER_V9_FULL_SMOKE_SUMMARY.json",
+    "validation/full_acceptance/REAL_GEOMETRY_EVIDENCE.json",
+    "validation/full_acceptance/DYNAMIC_UI_RUNTIME_COVERAGE.json"
+  ]
+}

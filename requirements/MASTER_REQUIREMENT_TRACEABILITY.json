@@ -1,6 +1,6 @@
 {
   "schema": "cws-master-requirement-traceability-2.0",
-  "generated_at": "2026-08-31T21:53:18.816412+00:00",
+  "generated_at": "2026-09-01T00:07:04.409115+00:00",
   "source_authority": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
   "sources": [
     {
@@ -90,7 +90,7 @@
   ],
   "required_total": 317,
   "status_counts": {
-    "NOT_TESTED": 26,
+    "FAIL": 26,
     "PASS": 291
   },
   "requirements": [
@@ -1187,7 +1187,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-002",
@@ -1210,7 +1210,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-003",
@@ -1233,7 +1233,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-004",
@@ -1256,7 +1256,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-005",
@@ -1279,7 +1279,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-006",
@@ -1302,7 +1302,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-007",
@@ -1325,7 +1325,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-008",
@@ -1348,7 +1348,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-009",
@@ -1371,7 +1371,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-010",
@@ -1394,7 +1394,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-011",
@@ -1417,7 +1417,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-012",
@@ -1440,7 +1440,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-013",
@@ -1463,7 +1463,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "F4-014",
@@ -1486,7 +1486,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-SCREEN-01",
@@ -2222,7 +2222,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-nav_viewer",
@@ -2245,7 +2245,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-nav_productie",
@@ -2268,7 +2268,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-nav_controle",
@@ -2291,7 +2291,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-nav_uitvoer",
@@ -2314,7 +2314,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_undo",
@@ -2337,7 +2337,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_redo",
@@ -2360,7 +2360,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_activity",
@@ -2383,7 +2383,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_problems",
@@ -2406,7 +2406,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_settings",
@@ -2429,7 +2429,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_command",
@@ -2452,7 +2452,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-global_print",
@@ -2475,7 +2475,7 @@
       "integrated": false,
       "tested": false,
       "packaged_proven": false,
-      "status": "NOT_TESTED"
+      "status": "FAIL"
     },
     {
       "requirement_id": "UI-CONTROL-import_dropzone",
