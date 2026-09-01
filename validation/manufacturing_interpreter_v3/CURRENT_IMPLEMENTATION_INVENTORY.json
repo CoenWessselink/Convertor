@@ -1,0 +1,41 @@
+{
+  "schema": "cws.mgi.v3.inventory.v1",
+  "engine": "mgi-v2-phase1",
+  "source_files": [
+    "contracts.py",
+    "topology.py",
+    "profiles.py",
+    "reconstruction.py",
+    "service.py",
+    "cli.py"
+  ],
+  "existing": [
+    "exact source gate",
+    "content-addressed IDs",
+    "edge adjacency",
+    "candidate axis foundation",
+    "end-face section signature",
+    "dimension/area profile matcher",
+    "pure prismatic reconstruction",
+    "two-way volume boolean proof",
+    "fail-closed readiness",
+    "in-memory cache",
+    "STEP CLI"
+  ],
+  "existing_test": "tests/manufacturing_interpreter_phase1_smoke.py",
+  "deferred": [
+    "rich topology/grouping",
+    "adaptive sections/intervals",
+    "features",
+    "multi-extrusion",
+    "FeatureGraph",
+    "bounded solver",
+    "boundary distance",
+    "promotion",
+    "representability",
+    "UI/overlays",
+    "45+ corpus",
+    "packaged exact-SHA"
+  ],
+  "status": "PARTIAL"
+}

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import Enum
 import math
 from typing import Any, Iterable
+import hashlib
+import json
 
 
 TOLERANCE_POLICY_SCHEMA_VERSION = "1.0"
@@ -18,6 +20,32 @@ ANGLE_ABSOLUTE_TOLERANCE_DEG = 0.01
 METRIC_RELATIVE_TOLERANCE = 0.001
 AREA_RELATIVE_TOLERANCE = METRIC_RELATIVE_TOLERANCE
 VOLUME_RELATIVE_TOLERANCE = METRIC_RELATIVE_TOLERANCE
+
+
+@dataclass(frozen=True, slots=True)
+class RecognitionTolerancePolicy:
+    version: str = "mgi-recognition-v3"
+    axis_angle_deg: float = 0.15
+    section_linear_mm: float = 0.05
+    section_area_relative: float = 0.001
+    surface_group_mm: float = 0.05
+    profile_dimension_mm: float = 0.15
+    profile_contour_mm: float = 0.20
+    profile_radius_mm: float = 0.15
+    boolean_sliver_mm3: float = 0.01
+    boundary_distance_mm: float = 0.10
+    residual_volume_relative: float = 0.0005
+    feature_merge_mm: float = 0.10
+    feature_axis_mm: float = 0.10
+    ambiguity_margin: float = 0.02
+
+    def to_dict(self) -> dict[str, Any]:
+        return {name: getattr(self, name) for name in self.__dataclass_fields__}
+
+    @property
+    def semantic_sha256(self) -> str:
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("ascii")).hexdigest()
 
 
 class ComparisonMode(str, Enum):
@@ -131,6 +159,7 @@ class TolerancePolicy:
     schema_version: str = TOLERANCE_POLICY_SCHEMA_VERSION
     policy_id: str = DEFAULT_TOLERANCE_POLICY_ID
     rules: tuple[ComparisonRule, ...] = DEFAULT_COMPARISON_RULES
+    recognition: RecognitionTolerancePolicy = RecognitionTolerancePolicy()
 
     def __post_init__(self) -> None:
         if self.schema_version != TOLERANCE_POLICY_SCHEMA_VERSION:
@@ -160,6 +189,7 @@ class TolerancePolicy:
             "schema_version": self.schema_version,
             "policy_id": self.policy_id,
             "rules": [rule.to_dict() for rule in self.rules],
+            "recognition": self.recognition.to_dict(),
         }
 
     @classmethod
@@ -176,11 +206,34 @@ class TolerancePolicy:
                     notes=str(item.get("notes") or ""),
                 )
             )
+        recognition_value = dict(value.get("recognition") or {})
+        recognition = RecognitionTolerancePolicy(**{
+            name: recognition_value.get(name, getattr(RecognitionTolerancePolicy(), name))
+            for name in RecognitionTolerancePolicy.__dataclass_fields__
+        })
         return cls(
             schema_version=str(value.get("schema_version") or ""),
             policy_id=str(value.get("policy_id") or ""),
             rules=tuple(rules),
+            recognition=recognition,
         )
+
+    @property
+    def semantic_sha256(self) -> str:
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("ascii")).hexdigest()
+
+    @property
+    def linear_mm(self) -> float:
+        return self.recognition.section_linear_mm
+
+    @property
+    def relative(self) -> float:
+        return self.recognition.residual_volume_relative
+
+    @property
+    def angle_degrees(self) -> float:
+        return self.recognition.axis_angle_deg
 
 
 DEFAULT_TOLERANCE_POLICY = TolerancePolicy()
@@ -203,6 +256,7 @@ __all__ = [
     "MATRIX_ROW_TOLERANCE",
     "METRIC_RELATIVE_TOLERANCE",
     "ROTATION_TOLERANCE",
+    "RecognitionTolerancePolicy",
     "TOLERANCE_POLICY_SCHEMA_VERSION",
     "TolerancePolicy",
     "VOLUME_RELATIVE_TOLERANCE",

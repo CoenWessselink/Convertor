@@ -1,0 +1,46 @@
+{
+  "audit_date": "2026-09-01",
+  "audit_head": "5faaea4e8ba109aaf9ef0b8d628c80c7abc62286",
+  "prompt_source": "CODEX_SUPERPROMPT_CWS_MANUFACTURING_GEOMETRY_INTERPRETER_V2_3_FASEN_2026-08-31",
+  "strict_completion_estimate_percent": 42.5,
+  "foundation_including_existing_cws_services_percent": 57.5,
+  "phase_estimates": {
+    "phase_1_foundation": 67.5,
+    "phase_2_feature_solver": 12.5,
+    "phase_3_ui_corpus_packaging": 22.5
+  },
+  "confirmed_existing": [
+    "exact source gate",
+    "content-addressed topology IDs",
+    "edge-based face adjacency",
+    "candidate axis foundation",
+    "cross-section signature foundation",
+    "ProfileDatabase matching foundation",
+    "pure prismatic reconstruction",
+    "two-way source/reconstruction boolean proof",
+    "fail-closed approximate source behavior",
+    "basic cache",
+    "basic STEP CLI"
+  ],
+  "critical_remaining": [
+    "analytic face grouping",
+    "adaptive cross-section stations",
+    "event/interval analysis",
+    "full contour profile equivalence",
+    "feature recognition",
+    "multi-extrusion",
+    "FeatureGraph",
+    "hypothesis solver",
+    "residual-driven iteration",
+    "connected residual/boundary distance proof",
+    "transactional Workbench promotion",
+    "target-specific representability",
+    "roundtrip integration",
+    "Manufacturing Geometry UI",
+    "Viewer overlays",
+    "45+ case corpus",
+    "adversarial false-ready corpus",
+    "Windows packaged acceptance"
+  ],
+  "important_consistency_issue": "General queue can say Q007 PASS while interpreter-specific traceability still says Phase 2 feature stack and Phase 3 UI/corpus/release are deferred."
+}

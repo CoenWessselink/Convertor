@@ -1,0 +1,15 @@
+{
+  "schema": "cws.mgi.v3.preflight.v1",
+  "branch": "agent/cws-product-ui-reintegration-v1",
+  "commit40": "f331b419399ff6fa256661d44e1ea319f40ba838",
+  "tree_sha": "933d5f4d1547d0c1bf747b2cc2af140c33906503",
+  "app_version": "0.10.18-beta-dev",
+  "project_schema": "2.25",
+  "part_schema": "1.1",
+  "worktree_tracked_clean": true,
+  "audit_baseline": "5faaea4e8ba109aaf9ef0b8d628c80c7abc62286",
+  "baseline_delta_commits": 6,
+  "prompt_sha256": "08571a5d906b722f49323e316def74533a83970cdde504f5740c7a85cc6152fa",
+  "baseline_sha256": "3c6af3ef09820dbeb2f886b38d5bad169eabc16ca85f5615e5c000d64814ede7",
+  "status": "PASS"
+}

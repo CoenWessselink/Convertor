@@ -12,7 +12,7 @@ from .contracts import (
     ManufacturingInterpretationReport,
     ManufacturingInterpretationRequest,
 )
-from .service import ManufacturingGeometryInterpreter
+from .pipeline import ManufacturingGeometryInterpreter
 
 __all__ = [
     "GeometryProofStatus",
@@ -21,4 +21,3 @@ __all__ = [
     "ManufacturingInterpretationReport",
     "ManufacturingInterpretationRequest",
 ]
-

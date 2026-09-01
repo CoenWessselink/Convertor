@@ -1,0 +1,53 @@
+{
+  "schema": "cws.mgi.v3.gap_matrix.v1",
+  "baseline_strict_percent": 42.5,
+  "phases": [
+    {
+      "phase": 1,
+      "status": "PARTIAL",
+      "pass": [
+        "exact source gate",
+        "stable IDs foundation",
+        "prismatic proof"
+      ],
+      "remaining": [
+        "contracts",
+        "analytic grouping",
+        "frame",
+        "adaptive sections",
+        "profile contour",
+        "residual boundary",
+        "cache V2"
+      ]
+    },
+    {
+      "phase": 2,
+      "status": "NOT_IMPLEMENTED",
+      "remaining": [
+        "features",
+        "multi-extrusion",
+        "FeatureGraph",
+        "solver",
+        "promotion",
+        "representability",
+        "roundtrip"
+      ]
+    },
+    {
+      "phase": 3,
+      "status": "NOT_INTEGRATED",
+      "remaining": [
+        "UI",
+        "Viewer overlays",
+        "JobManager",
+        "persistence",
+        "CLI batch",
+        "corpus",
+        "performance",
+        "packaged release"
+      ]
+    }
+  ],
+  "false_ready": 0,
+  "overall": "PARTIAL"
+}

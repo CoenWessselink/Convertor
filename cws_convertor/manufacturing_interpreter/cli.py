@@ -10,7 +10,7 @@ import cadquery as cq
 from cws_convertor.project.source_geometry import SourceGeometryInspection
 
 from .contracts import InterpretationReadiness, ManufacturingInterpretationRequest
-from .service import ManufacturingGeometryInterpreter
+from .pipeline import ManufacturingGeometryInterpreter
 
 
 def _sha256(path: Path) -> str:
@@ -88,4 +88,3 @@ def run_cli(args: Any) -> int:
         target.write_text(json.dumps(aggregate, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(aggregate, ensure_ascii=False, indent=2, sort_keys=True))
     return 1 if failures else 0
-
