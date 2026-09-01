@@ -1,0 +1,42 @@
+{
+  "phase": 3,
+  "status": "PASS",
+  "shell_import": "PASS",
+  "controle_tab_index": 3,
+  "same_viewer_host": true,
+  "job_manager": "cws_convertor.project.jobs.JobManager",
+  "report_schema": "cws-manufacturing-interpretation-v3",
+  "cli_schema": "cws-manufacturing-interpreter-cli-v3",
+  "corpus_cases": 50,
+  "corpus_pass": 50,
+  "corpus_fail": 0,
+  "false_ready": 0,
+  "runtime_evidence": [
+    "01_phase3_controle_foundation.png",
+    "02_phase3_features_hypotheses.png",
+    "03_phase3_representability_proof.png"
+  ],
+  "tests": [
+    {
+      "command": "python tests/test_manufacturing_interpreter_v3_phase3.py (async JobManager + ViewerHost + persistence)",
+      "status": "PASS"
+    },
+    {
+      "command": "python tools/build_mgi_v3_corpus.py",
+      "status": "PASS"
+    },
+    {
+      "command": "run_cli STEP -> cws-manufacturing-interpreter-cli-v3",
+      "status": "PASS"
+    },
+    {
+      "command": "CWSMainWindow production instantiation",
+      "status": "PASS"
+    }
+  ],
+  "internal_failures": 0,
+  "partial": 0,
+  "not_implemented": 0,
+  "not_integrated": 0,
+  "not_tested": 0
+}

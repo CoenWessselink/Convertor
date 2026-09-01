@@ -10,6 +10,7 @@ from .foundation import (
     build_sections_and_regions,
     group_analytic_faces,
     profile_candidates,
+    refine_axis_from_shape,
     select_axis,
 )
 from .recognition_cache import RecognitionCacheV3, stable_sha256
@@ -85,6 +86,11 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             self.recognition_cache.store_evidence(cache_key, enriched)
             return enriched
 
+        selected_axis = refine_axis_from_shape(getattr(inspection, "native_shape", None), selected_axis)
+        refined_axes = tuple(
+            selected_axis if axis.axis_id == selected_axis.axis_id else axis
+            for axis in base.axis_candidates
+        )
         frame = build_manufacturing_frame(selected_axis)
         recognition = getattr(self.tolerance_policy, "recognition", self.tolerance_policy)
         stations, intervals, regions = build_sections_and_regions(
@@ -137,6 +143,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             base,
             engine_version=ENGINE_VERSION,
             topology=topology,
+            axis_candidates=refined_axes,
             equivalence=proof,
             readiness=readiness,
             blockers=tuple(dict.fromkeys(blockers)),

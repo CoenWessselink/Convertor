@@ -77,7 +77,7 @@ def run_cli(args: Any) -> int:
             results.append({"input": str(source), "status": "FAILED", "reason": f"{type(exc).__name__}: {exc}"})
 
     aggregate = {
-        "schema": "cws-manufacturing-interpreter-cli-v1",
+        "schema": "cws-manufacturing-interpreter-cli-v3",
         "results": results,
         "summary": {"inputs": len(args.inputs), "failures": failures},
     }

@@ -1,0 +1,789 @@
+{
+  "schema": "cws-mgi-v3-corpus-v1",
+  "case_count": 50,
+  "pass_count": 50,
+  "fail_count": 0,
+  "false_ready": 0,
+  "adversarial_count": 15,
+  "performance_seconds": {
+    "median": 0.115151,
+    "p95": 0.202058,
+    "max": 0.203979,
+    "total": 5.013958
+  },
+  "results": [
+    {
+      "case_id": "plain-00",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.059635,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "plain-01",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.05519,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-02",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.054935,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-03",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.055242,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-04",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.056331,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-05",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.05573,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-06",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.055589,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-07",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.055106,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-08",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.055931,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "plain-09",
+      "category": "plain_extrusion",
+      "status": "PASS",
+      "duration_seconds": 0.054498,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 0,
+      "assertions": {
+        "compound_proof": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-00",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.082594,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-01",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.117306,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 2,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-02",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.164864,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 3,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-03",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.082356,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-04",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.117131,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 2,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-05",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.167641,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 3,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-06",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.096516,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-07",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.146075,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 2,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-08",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.203979,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 3,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-09",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.102309,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-10",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.145045,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 2,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-11",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.202058,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 3,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-12",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.103353,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-13",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.144875,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 2,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "holes-14",
+      "category": "cylindrical_subtractions",
+      "status": "PASS",
+      "duration_seconds": 0.202777,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 3,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": [
+        "CATALOG_PROFILE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "rotated-hole-00",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.114818,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-01",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.11318,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-02",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.111961,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-03",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.115141,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-04",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.11613,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-05",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.116239,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-06",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.121837,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-07",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.115666,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-08",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.116612,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "rotated-hole-09",
+      "category": "rotated_compound",
+      "status": "PASS",
+      "duration_seconds": 0.116365,
+      "readiness": "READY",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "feature_count": 1,
+      "assertions": {
+        "compound_proof": true,
+        "hole_count": true
+      },
+      "blockers": []
+    },
+    {
+      "case_id": "counterbore-00",
+      "category": "compound_counterbore",
+      "status": "PASS",
+      "duration_seconds": 0.115162,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "counterbore-01",
+      "category": "compound_counterbore",
+      "status": "PASS",
+      "duration_seconds": 0.11584,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "counterbore-02",
+      "category": "compound_counterbore",
+      "status": "PASS",
+      "duration_seconds": 0.114992,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "counterbore-03",
+      "category": "compound_counterbore",
+      "status": "PASS",
+      "duration_seconds": 0.115415,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "counterbore-04",
+      "category": "compound_counterbore",
+      "status": "PASS",
+      "duration_seconds": 0.115388,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN"
+      ]
+    },
+    {
+      "case_id": "notch-00",
+      "category": "unknown_prismatic_residual",
+      "status": "PASS",
+      "duration_seconds": 0.120744,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:STEP",
+        "TARGET_UNSUPPORTED:IFC",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_UNSUPPORTED:PDF"
+      ]
+    },
+    {
+      "case_id": "notch-01",
+      "category": "unknown_prismatic_residual",
+      "status": "PASS",
+      "duration_seconds": 0.119691,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:STEP",
+        "TARGET_UNSUPPORTED:IFC",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_UNSUPPORTED:PDF"
+      ]
+    },
+    {
+      "case_id": "notch-02",
+      "category": "unknown_prismatic_residual",
+      "status": "PASS",
+      "duration_seconds": 0.120905,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:STEP",
+        "TARGET_UNSUPPORTED:IFC",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_UNSUPPORTED:PDF"
+      ]
+    },
+    {
+      "case_id": "notch-03",
+      "category": "unknown_prismatic_residual",
+      "status": "PASS",
+      "duration_seconds": 0.119592,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:STEP",
+        "TARGET_UNSUPPORTED:IFC",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_UNSUPPORTED:PDF"
+      ]
+    },
+    {
+      "case_id": "notch-04",
+      "category": "unknown_prismatic_residual",
+      "status": "PASS",
+      "duration_seconds": 0.119887,
+      "readiness": "REVIEW_REQUIRED",
+      "proof": "FAILED",
+      "feature_count": 1,
+      "assertions": {
+        "not_false_ready": true
+      },
+      "blockers": [
+        "COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN",
+        "TARGET_UNSUPPORTED:STEP",
+        "TARGET_UNSUPPORTED:IFC",
+        "TARGET_UNSUPPORTED:NC1",
+        "TARGET_UNSUPPORTED:PDF"
+      ]
+    },
+    {
+      "case_id": "mesh-00",
+      "category": "non_exact_source",
+      "status": "PASS",
+      "duration_seconds": 0.008128,
+      "readiness": "BLOCKED",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "feature_count": 0,
+      "assertions": {
+        "source_gate_blocked": true
+      },
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ]
+    },
+    {
+      "case_id": "mesh-01",
+      "category": "non_exact_source",
+      "status": "PASS",
+      "duration_seconds": 0.008134,
+      "readiness": "BLOCKED",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "feature_count": 0,
+      "assertions": {
+        "source_gate_blocked": true
+      },
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ]
+    },
+    {
+      "case_id": "mesh-02",
+      "category": "non_exact_source",
+      "status": "PASS",
+      "duration_seconds": 0.008088,
+      "readiness": "BLOCKED",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "feature_count": 0,
+      "assertions": {
+        "source_gate_blocked": true
+      },
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ]
+    },
+    {
+      "case_id": "mesh-03",
+      "category": "non_exact_source",
+      "status": "PASS",
+      "duration_seconds": 0.008552,
+      "readiness": "BLOCKED",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "feature_count": 0,
+      "assertions": {
+        "source_gate_blocked": true
+      },
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ]
+    },
+    {
+      "case_id": "mesh-04",
+      "category": "non_exact_source",
+      "status": "PASS",
+      "duration_seconds": 0.008426,
+      "readiness": "BLOCKED",
+      "proof": "BLOCKED_SOURCE_NOT_EXACT",
+      "feature_count": 0,
+      "assertions": {
+        "source_gate_blocked": true
+      },
+      "blockers": [
+        "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen"
+      ]
+    }
+  ]
+}

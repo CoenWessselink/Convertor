@@ -530,6 +530,13 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.plate_nesting_page = PlateNestingPanel(self)
             self.print_center_page = PrintCenterPanel(self)
             self.manufacturability_page = ManufacturabilityPanel(self)
+            from .manufacturing_geometry_workspace import ManufacturingGeometryWorkspace
+            self.manufacturing_geometry_page = ManufacturingGeometryWorkspace(
+                self.viewer_host,
+                getattr(self, "project", None),
+                job_manager=getattr(self, "job_manager", None),
+                parent=self,
+            )
             project_profiles_index = self.tabs.indexOf(self.project_profiles_page)
             if project_profiles_index >= 0:
                 self.tabs.removeTab(project_profiles_index)
@@ -555,6 +562,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.optimization_page = self.profiles_page
             if isinstance(self.control_page, QtWidgets.QTabWidget):
                 self.control_page.addTab(self.manufacturability_page, "Maakbaarheid")
+                self.control_page.addTab(self.manufacturing_geometry_page, "Manufacturing Geometry")
             self.production_workflow_page = ProductionWorkflowPanel(self)
             self.production_workflow_page.setProperty(U4_WORKFLOW_PROPERTY, U4_WORKFLOW_TOKEN)
             export_index = self.tabs.indexOf(self.export_page)
@@ -708,6 +716,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 ("pdf", self.pdf_page, "production", self.production_workspace_page, self.production_workspace_page),
                 ("print_center", self.print_center_page, "output", self.output_workspace_page, self.output_workspace_page),
                 ("manufacturability", self.manufacturability_page, "control", self.control_workspace_page, self.control_page),
+                ("manufacturing_geometry", self.manufacturing_geometry_page, "control", self.control_workspace_page, self.control_page),
                 ("export", self.export_page, "output", self.output_workspace_page, self.output_workspace_page),
             ):
                 self.workspace_router.register(name, page, primary=primary, primary_page=primary_page, host=host)

@@ -72,6 +72,49 @@ def select_axis(axes: tuple[AxisCandidate, ...], selected_axis_id: str = "") -> 
     return max(axes, key=lambda axis: (axis.score, axis.length_mm, axis.axis_id), default=None)
 
 
+def refine_axis_from_shape(shape: Any, axis: AxisCandidate) -> AxisCandidate:
+    requested = _unit(axis.direction)
+    candidates = []
+    try:
+        edges = tuple(shape.Edges())
+    except Exception:
+        return axis
+    for edge in edges:
+        try:
+            if str(edge.geomType()).upper() != "LINE":
+                continue
+            vertices = tuple(edge.Vertices())
+            if len(vertices) != 2:
+                continue
+            start = _vector(vertices[0].Center())
+            end = _vector(vertices[1].Center())
+            delta = tuple(end[index] - start[index] for index in range(3))
+            length = math.sqrt(_dot(delta, delta))
+            if length <= 1e-9:
+                continue
+            direction = _unit(delta)
+            alignment = _dot(direction, requested)
+            if abs(alignment) < math.cos(math.radians(0.5)):
+                continue
+            if alignment < 0.0:
+                start, end = end, start
+                direction = tuple(-value for value in direction)
+            candidates.append((length, start, end, direction))
+        except Exception:
+            continue
+    if not candidates:
+        return axis
+    length, start, end, direction = max(candidates, key=lambda item: item[0])
+    return replace(
+        axis,
+        direction=direction,
+        origin_mm=start,
+        end_mm=end,
+        length_mm=length,
+        signal_scores=tuple(axis.signal_scores) + (("exact_edge_refinement", 1.0),),
+    )
+
+
 def build_manufacturing_frame(axis: AxisCandidate) -> ManufacturingFrame:
     z_axis = _unit(axis.direction)
     reference = min(
@@ -252,5 +295,6 @@ __all__ = [
     "build_sections_and_regions",
     "group_analytic_faces",
     "profile_candidates",
+    "refine_axis_from_shape",
     "select_axis",
 ]

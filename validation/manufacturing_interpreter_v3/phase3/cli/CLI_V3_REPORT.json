@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "input": "C:\\CONVERTOR\\validation\\manufacturing_interpreter_v3\\phase3\\cli\\cli-v3.step",
+      "output": "C:\\CONVERTOR\\validation\\manufacturing_interpreter_v3\\phase3\\cli\\out\\cli-v3.manufacturing.json",
+      "proof": "PROVEN_BREP_EQUIVALENT",
+      "semantic_sha256": "21d7bf6754e4eb02f68d44b7b774876641a53bd2ee98a53c8b54a1db35de1d01",
+      "status": "READY"
+    }
+  ],
+  "schema": "cws-manufacturing-interpreter-cli-v3",
+  "summary": {
+    "failures": 0,
+    "inputs": 1
+  }
+}
