@@ -28,28 +28,28 @@ MAIN_LABELS = ("Project", "Viewer", "Productie", "Controle", "Uitvoer")
 DOMAIN_INDEX = {label: index for index, label in enumerate(MAIN_LABELS)}
 SCREEN_ROUTES = {
     "01": "import",
-    "02": "project",
-    "03": "viewer",
-    "04": "settings",
+    "02": "project_overview",
+    "03": "project_structure",
+    "04": "project_profiles",
     "05": "viewer",
     "06": "viewer",
     "07": "viewer",
     "08": "viewer",
     "09": "viewer",
-    "10": "report",
+    "10": "project_reviews",
     "11": "bom",
-    "12": "production",
+    "12": "production_workflow",
     "13": "production_workflow",
     "14": "profile_nesting",
-    "15": "production_workflow",
+    "15": "plate_nesting",
     "16": "edit",
     "17": "scribing",
     "18": "converter",
     "19": "pdf",
-    "20": "output",
+    "20": "print_center",
     "21": "control",
     "22": "control",
-    "23": "control",
+    "23": "manufacturability",
     "24": "export",
     "25": "report",
     "26": "settings",
@@ -865,12 +865,14 @@ if QtWidgets is not None:
                 widget.setProperty("test_id", test_id)
                 seen.add(test_id)
 
-        def _activate_route(self, route: str) -> None:
+        def _activate_route(self, route: str) -> bool:
             if not route:
-                return
+                return False
+            open_workspace = getattr(self.router, "open_workspace", None)
             activate = getattr(self.router, "activate", None)
-            if not callable(activate):
-                return
+            handler = open_workspace if callable(open_workspace) else activate
+            if not callable(handler):
+                return False
             fallbacks = {
                 "production": ("production", "production_workflow", "profile_nesting", "edit"),
                 "project": ("project", "import"),
@@ -883,11 +885,14 @@ if QtWidgets is not None:
             }
             for candidate in (route, *fallbacks.get(route, ())):
                 try:
-                    result = activate(candidate)
+                    result = handler(candidate)
                 except (KeyError, ValueError):
                     continue
-                if result is not None:
-                    break
+                succeeded = bool(result) if handler is open_workspace else result is not None
+                if succeeded:
+                    self.window.setProperty("v51_active_route", candidate)
+                    return True
+            return False
 
         def _show_activity(self) -> None:
             if self.activity_dock is not None:
@@ -1012,12 +1017,22 @@ if QtWidgets is not None:
                     app.processEvents()
                 screen_id = str(screen["screen_id"])
                 target = screenshots / f"{screen_id}_{_plain(screen['title']).replace(' ', '_')}.png"
-                saved = self.window.grab().save(str(target), "PNG")
+                pixmap = None
+                handle = self.window.windowHandle()
+                native_screen = handle.screen() if handle is not None else None
+                if native_screen is not None:
+                    pixmap = native_screen.grabWindow(int(self.window.winId()))
+                if pixmap is None or pixmap.isNull():
+                    pixmap = self.window.grab()
+                saved = pixmap.save(str(target), "PNG")
                 inventory = self.runtime_inventory()
                 for item in inventory:
                     aggregate[item["test_id"]] = item
                 expected = {str(item["test_id"]) for item in self._screen_records(screen_id)}
                 actual = {item["test_id"] for item in inventory}
+                expected_route = SCREEN_ROUTES.get(screen_id, _screen_domain(screen_id).casefold())
+                active_route = str(self.window.property("v51_active_route") or "")
+                route_ok = expected_route in {"activity", "problems", "command"} or active_route == expected_route
                 coverage.append({
                     "screen_id": screen_id,
                     "title": screen["title"],
@@ -1026,7 +1041,10 @@ if QtWidgets is not None:
                     "screenshot_saved": bool(saved),
                     "required_controls": len(expected),
                     "missing_controls": sorted(expected - actual),
-                    "status": "PASS" if saved and not (expected - actual) else "FAIL",
+                    "expected_route": expected_route,
+                    "active_route": active_route,
+                    "route_ok": route_ok,
+                    "status": "PASS" if saved and not (expected - actual) and route_ok else "FAIL",
                 })
             expected_all = {str(item["test_id"]) for item in self.records}
             actual_all = set(aggregate)

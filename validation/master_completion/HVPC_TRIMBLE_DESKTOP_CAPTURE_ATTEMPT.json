@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "status": "BLOCKED_EXTERNAL_EVIDENCE",
+  "same_machine_windows": {
+    "cws": {
+      "count": 1,
+      "title": "CWS Convertor 0.10.18-beta-dev"
+    },
+    "trimble": {
+      "count": 1,
+      "title": "Trimble Connect"
+    }
+  },
+  "capture_attempts": [
+    {
+      "operation": "activate and capture CWS window",
+      "result": "FAILED",
+      "error": "GetCursorPos failed: Toegang geweigerd. (0x80070005)"
+    },
+    {
+      "operation": "fresh window selection and capture without activation",
+      "result": "FAILED",
+      "error": "IGraphicsCaptureItemInterop.CreateForMonitor failed: Could not capture the given monitor. (0x80070057)"
+    }
+  ],
+  "independent_cws_evidence": {
+    "ifc_physical_objects": 5725,
+    "cws_exact_objects": 5725,
+    "missing": 0,
+    "duplicates": 0,
+    "project_container": "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj",
+    "vtk_framebuffer": "validation/master_completion/hvpc_aa_runtime/msaa_2x_fxaa_0.png"
+  },
+  "not_proven": [
+    "live synchronized camera",
+    "object-by-object live Trimble visibility",
+    "material and color parity",
+    "same-frame visual identity"
+  ]
+}

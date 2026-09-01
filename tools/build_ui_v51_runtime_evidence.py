@@ -22,6 +22,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "validation" / "ui_v5" / "runtime")
     parser.add_argument("--references", type=Path)
+    parser.add_argument("--project", type=Path)
+    parser.add_argument("--project-timeout-ms", type=int, default=300000)
     args = parser.parse_args()
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("CWS Convertor UI V5.1 acceptance")
@@ -35,6 +37,22 @@ def main() -> int:
     binding = getattr(window, "_v51_binding", None)
     if binding is None:
         raise RuntimeError("V5.1 binding controller ontbreekt in de U4-shell")
+    if args.project:
+        project_path = args.project.resolve()
+        if not project_path.is_file():
+            raise FileNotFoundError(project_path)
+        window.project_page.open_project(project_path)
+        project_deadline = QtCore.QDeadlineTimer(max(1, int(args.project_timeout_ms)))
+        while (
+            not project_deadline.hasExpired()
+            and getattr(window.project_page, "workspace", None) is None
+        ):
+            app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 50)
+        if getattr(window.project_page, "workspace", None) is None:
+            raise RuntimeError(
+                f"Projectworkspace niet geladen binnen {args.project_timeout_ms} ms: {project_path}"
+            )
+        app.processEvents()
     report = binding.capture_evidence(args.output.resolve(), args.references.resolve() if args.references else None)
     window.close()
     print(f"CWS_UI_V5_1_BINDING = {report['status']}")

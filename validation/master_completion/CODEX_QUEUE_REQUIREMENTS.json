@@ -1,6 +1,6 @@
 {
   "schema": "cws.codex-queue-requirements.v1",
-  "generated_at": "2026-09-01T02:17:12.918421+00:00",
+  "generated_at": "2026-09-01T02:33:55.484944+00:00",
   "required_total": 1655,
   "status_counts": {
     "BLOCKED_EXTERNAL_EVIDENCE": 138,
@@ -1280,8 +1280,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -1458,8 +1459,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -1795,8 +1797,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -1854,8 +1857,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -2091,8 +2095,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -2544,8 +2549,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -4545,8 +4551,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -4742,6 +4749,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -4924,6 +4932,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -5122,6 +5131,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -5280,6 +5290,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -5336,8 +5347,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -5381,8 +5393,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -5467,8 +5480,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -7828,6 +7842,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7842,6 +7857,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7856,6 +7872,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7870,6 +7887,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7884,6 +7902,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7898,6 +7917,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7912,6 +7932,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7926,6 +7947,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7940,6 +7962,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7954,6 +7977,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7968,6 +7992,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7982,6 +8007,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -7996,6 +8022,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8010,6 +8037,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8024,6 +8052,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8038,6 +8067,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8052,6 +8082,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8066,6 +8097,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8080,6 +8112,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8094,6 +8127,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8108,6 +8142,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8122,6 +8157,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8136,6 +8172,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8150,6 +8187,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8164,6 +8202,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8178,6 +8217,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8192,6 +8232,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8206,6 +8247,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8220,6 +8262,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8234,6 +8277,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8248,6 +8292,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8262,6 +8307,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8276,6 +8322,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8290,6 +8337,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8304,6 +8352,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8318,6 +8367,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8332,6 +8382,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8346,6 +8397,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8360,6 +8412,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8374,6 +8427,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8388,6 +8442,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8402,6 +8457,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8416,6 +8472,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8430,6 +8487,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8444,6 +8502,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8458,6 +8517,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8472,6 +8532,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8486,6 +8547,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8500,6 +8562,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8514,6 +8577,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8528,6 +8592,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8542,6 +8607,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8556,6 +8622,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8570,6 +8637,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8584,6 +8652,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8598,6 +8667,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8612,6 +8682,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8626,6 +8697,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8640,6 +8712,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8654,6 +8727,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8668,6 +8742,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8682,6 +8757,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8696,6 +8772,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8710,6 +8787,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8724,6 +8802,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8738,6 +8817,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8752,6 +8832,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8766,6 +8847,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8780,6 +8862,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8794,6 +8877,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8808,6 +8892,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8822,6 +8907,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8836,6 +8922,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8850,6 +8937,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8864,6 +8952,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8878,6 +8967,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8892,6 +8982,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8906,6 +8997,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8920,6 +9012,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8934,6 +9027,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8948,6 +9042,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8962,6 +9057,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8976,6 +9072,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -8990,6 +9087,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9004,6 +9102,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9018,6 +9117,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9032,6 +9132,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9046,6 +9147,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9060,6 +9162,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9074,6 +9177,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9088,6 +9192,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9102,6 +9207,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9116,6 +9222,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9130,6 +9237,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9144,6 +9252,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9158,6 +9267,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9172,6 +9282,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9186,6 +9297,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9200,6 +9312,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9214,6 +9327,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9228,6 +9342,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9242,6 +9357,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9256,6 +9372,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9270,6 +9387,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9284,6 +9402,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9298,6 +9417,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9312,6 +9432,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9326,6 +9447,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9340,6 +9462,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9354,6 +9477,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9368,6 +9492,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9382,6 +9507,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9396,6 +9522,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9410,6 +9537,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9424,6 +9552,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9438,6 +9567,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -9452,8 +9582,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9469,8 +9600,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9486,8 +9618,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9503,8 +9636,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9520,8 +9654,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9537,8 +9672,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9554,8 +9690,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9571,8 +9708,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9588,8 +9726,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9605,8 +9744,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9622,8 +9762,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9639,8 +9780,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9656,8 +9798,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9673,8 +9816,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9690,8 +9834,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9707,8 +9852,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9724,8 +9870,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9741,8 +9888,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9758,8 +9906,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9775,8 +9924,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9792,8 +9942,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9809,8 +9960,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9826,8 +9978,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9843,8 +9996,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9860,8 +10014,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9877,8 +10032,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9894,8 +10050,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9911,8 +10068,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9928,8 +10086,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9945,8 +10104,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9962,8 +10122,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9979,8 +10140,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -9996,8 +10158,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10013,8 +10176,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10030,8 +10194,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10047,8 +10212,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10064,8 +10230,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10081,8 +10248,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10098,8 +10266,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10115,8 +10284,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10132,8 +10302,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10149,8 +10320,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10166,8 +10338,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10183,8 +10356,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10200,8 +10374,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10217,8 +10392,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10234,8 +10410,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10251,8 +10428,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10268,8 +10446,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10285,8 +10464,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10302,8 +10482,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10319,8 +10500,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10336,8 +10518,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10353,8 +10536,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10370,8 +10554,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10387,8 +10572,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10404,8 +10590,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10421,8 +10608,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10438,8 +10626,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10455,8 +10644,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10472,8 +10662,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10489,8 +10680,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10506,8 +10698,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10523,8 +10716,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10540,8 +10734,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10557,8 +10752,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10574,8 +10770,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10591,8 +10788,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10608,8 +10806,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10625,8 +10824,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10642,8 +10842,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10659,8 +10860,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10676,8 +10878,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10693,8 +10896,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10710,8 +10914,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10727,8 +10932,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10744,8 +10950,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10761,8 +10968,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10778,8 +10986,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10795,8 +11004,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10812,8 +11022,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10829,8 +11040,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10846,8 +11058,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10863,8 +11076,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10880,8 +11094,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10897,8 +11112,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10914,8 +11130,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10931,8 +11148,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10948,8 +11166,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10965,8 +11184,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10982,8 +11202,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -10999,8 +11220,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11016,8 +11238,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11033,8 +11256,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11050,8 +11274,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11067,8 +11292,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11084,8 +11310,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11101,8 +11328,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11118,8 +11346,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11135,8 +11364,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11152,8 +11382,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11169,8 +11400,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11186,8 +11418,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11203,8 +11436,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11220,6 +11454,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -11276,6 +11511,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -11358,8 +11594,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -11556,6 +11793,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -11584,6 +11822,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -11598,6 +11837,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -11640,6 +11880,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -11994,8 +12235,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12774,8 +13016,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12791,8 +13034,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -12836,8 +13080,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13310,8 +13555,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13355,8 +13601,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13372,8 +13619,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13403,6 +13651,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -13487,8 +13736,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13787,8 +14037,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13831,8 +14082,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13848,8 +14100,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -13865,6 +14118,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -13921,6 +14175,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -14003,8 +14258,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -14201,6 +14457,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -14229,6 +14486,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -14243,6 +14501,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -14285,6 +14544,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -14639,8 +14899,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15419,8 +15680,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15436,8 +15698,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15481,8 +15744,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -15955,8 +16219,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16014,8 +16279,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16031,8 +16297,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16048,8 +16315,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16275,8 +16543,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16502,8 +16771,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16519,8 +16789,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16550,8 +16821,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16567,8 +16839,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -16723,8 +16996,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17097,8 +17371,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17196,8 +17471,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17213,8 +17489,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17286,8 +17563,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17387,8 +17665,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17474,8 +17753,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17519,8 +17799,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17578,8 +17859,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17679,8 +17961,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -17738,8 +18021,9 @@
       "status": "PARTIAL",
       "superseded_by": "CODEX_SUPERPROMPT_CWS_CONVERTOR_100PCT_FINAL_4_FASEN_2026-08-31.md",
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18079,6 +18363,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -18331,6 +18616,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -18345,6 +18631,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -18681,8 +18968,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18796,6 +19084,7 @@
       "status": "BLOCKED_EXTERNAL_EVIDENCE",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json",
         "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json",
         "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"
       ]
@@ -18810,8 +19099,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -18827,8 +19117,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"
@@ -19101,8 +19392,9 @@
       "status": "PARTIAL",
       "superseded_by": null,
       "evidence": [
+        "validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json",
+        "validation/master_completion/ui_v52_hvpc_surface_capture_final",
         "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json",
-        "validation/master_completion/ui_v52_surface_capture_windows",
         "validation/final_4_phase/phase1",
         "validation/final_4_phase/phase3",
         "validation/final_4_phase/phase4"

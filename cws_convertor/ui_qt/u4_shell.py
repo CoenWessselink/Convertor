@@ -692,6 +692,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 ("control", self.control_page, "control", self.control_workspace_page, None),
                 ("project_overview", self.project_overview_page, "project", self.project_workspace_page, self.project_workspace_page),
                 ("project_structure", self.project_structure_page, "project", self.project_workspace_page, self.project_workspace_page),
+                ("project_profiles", self.project_profiles_page, "project", self.project_workspace_page, self.project_workspace_page),
                 ("project_reviews", self.project_reviews_page, "project", self.project_workspace_page, self.project_workspace_page),
                 ("viewer", self.project_page, "viewer", self.project_page, None),
                 ("edit", self.edit_page, "production", self.edit_workspace_page, self._edit_subworkspace_host),
@@ -1009,7 +1010,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             workspace = self.workspace if snapshot.project_attached else None
             self.edit_page.set_context(self.workspace, snapshot.selection)
             self.pdf_page.set_context(self.workspace, snapshot.selection)
-            for page in (self.project_overview_page, self.project_structure_page, self.project_reviews_page, self.plate_nesting_page, self.print_center_page, self.manufacturability_page):
+            for page in (self.project_overview_page, self.project_structure_page, self.project_profiles_page, self.project_reviews_page, self.profiles_page, self.plate_nesting_page, self.print_center_page, self.manufacturability_page):
                 page.set_context(workspace, selection)
             self.bom_excel_page.set_context(workspace, selection)
             self.production_workflow_page.set_context(workspace, selection)

@@ -1,0 +1,230 @@
+{
+  "screens": [
+    {
+      "screen_id": "01",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\01_PROJECT_Start_Inlezen.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\01_start_inlezen.png",
+      "normalized_pixel_mae": 0.75955,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\01_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "02",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\02_PROJECT_Projectoverzicht.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\02_projectoverzicht.png",
+      "normalized_pixel_mae": 0.715144,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\02_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "03",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\03_PROJECT_Projectstructuur.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\03_projectstructuur.png",
+      "normalized_pixel_mae": 0.594036,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\03_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "04",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\04_PROJECT_Profielen_Materialen.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\04_profielen_materialen.png",
+      "normalized_pixel_mae": 0.738467,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\04_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "05",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\05_VIEWER_3D_Cockpit.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\05_3d_viewer.png",
+      "normalized_pixel_mae": 0.668935,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\05_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "06",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\06_VIEWER_Selectie_Context.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\06_selectie_context.png",
+      "normalized_pixel_mae": 0.673026,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\06_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "07",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\07_VIEWER_Weergave_Meten.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\07_weergave_meten.png",
+      "normalized_pixel_mae": 0.509351,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\07_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "08",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\08_VIEWER_Doorsnede_Isoleren.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\08_doorsnede_isoleren.png",
+      "normalized_pixel_mae": 0.688111,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\08_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "09",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\09_VIEWER_Laadstatus_Performance.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\09_laadstatus_prestaties.png",
+      "normalized_pixel_mae": 0.673429,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\09_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "10",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\10_PROJECT_Projectreviews.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\10_projectreviews.png",
+      "normalized_pixel_mae": 0.685496,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\10_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "11",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\11_PRODUCTIE_BOM_Machines_BOM.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\11_bom_machines_bom.png",
+      "normalized_pixel_mae": 0.745341,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\11_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "12",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\12_PRODUCTIE_Machineindeling_Automatisch.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\12_machine_indeling_automatisch.png",
+      "normalized_pixel_mae": 0.730906,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\12_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "13",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\13_PRODUCTIE_Machineindeling_Handmatige_Override.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\13_machine_indeling_handmatig.png",
+      "normalized_pixel_mae": 0.765768,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\13_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "14",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\14_PRODUCTIE_Optimalisatie_Profile_Nesting.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\14_optimalisatie_profile_nesting.png",
+      "normalized_pixel_mae": 0.757287,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\14_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "15",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\15_PRODUCTIE_Optimalisatie_Plate_Nesting.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\15_optimalisatie_plate_nesting.png",
+      "normalized_pixel_mae": 0.73774,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\15_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "16",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\16_PRODUCTIE_Bewerken_Workbench.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\16_bewerken_workbench.png",
+      "normalized_pixel_mae": 0.6388,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\16_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "17",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\17_PRODUCTIE_Scribing.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\17_scribing.png",
+      "normalized_pixel_mae": 0.667196,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\17_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "18",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\18_PRODUCTIE_Converteren.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\18_converteren.png",
+      "normalized_pixel_mae": 0.754395,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\18_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "19",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\19_PRODUCTIE_Tekeningen_PDF.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\19_tekeningen_pdf.png",
+      "normalized_pixel_mae": 0.588606,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\19_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "20",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\20_UITVOER_Afdrukken_Print_Center.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\20_afdrukken_print_center.png",
+      "normalized_pixel_mae": 0.767579,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\20_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "21",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\21_CONTROLE_Validatie.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\21_validatie.png",
+      "normalized_pixel_mae": 0.761554,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\21_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "22",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\22_CONTROLE_Revisies_Compare.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\22_revisies_compare.png",
+      "normalized_pixel_mae": 0.737295,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\22_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "23",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\23_CONTROLE_Maakbaarheid.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\23_maakbaarheid.png",
+      "normalized_pixel_mae": 0.692823,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\23_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "24",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\24_UITVOER_Export_Center.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\24_export_center.png",
+      "normalized_pixel_mae": 0.74515,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\24_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    },
+    {
+      "screen_id": "25",
+      "reference": "C:\\CONVERTOR\\validation\\ui_v5\\references\\25_UITVOER_Rapport_Pakket.png",
+      "runtime": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\screenshots\\25_rapport_pakket.png",
+      "normalized_pixel_mae": 0.679255,
+      "diff": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\visual_diff\\25_diff.png",
+      "status": "HUMAN_REVIEW_REQUIRED",
+      "reason": "References contain designed example data/crops; structural parity requires human review."
+    }
+  ],
+  "status": "HUMAN_REVIEW_REQUIRED"
+}

@@ -597,6 +597,11 @@ if qt_available():
                 self._demand_report = None
                 self.demand.clear()
                 self._refresh_runs()
+                if workspace is None:
+                    self.status.setText("Open een project om profielonderdelen te analyseren.")
+                else:
+                    self.status.setText("Project geladen; profielgeschiktheid wordt geanalyseerd.")
+                    QtCore.QTimer.singleShot(0, self._analyse)
 
         def _analyse(self) -> None:
             self.demand.clear()

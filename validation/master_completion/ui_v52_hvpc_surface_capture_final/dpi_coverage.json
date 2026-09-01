@@ -1,0 +1,49 @@
+{
+  "cases": [
+    {
+      "scale_percent": 100,
+      "resolution": [
+        1366,
+        768
+      ],
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\dpi\\dpi_100_1366x768.png",
+      "screenshot_saved": true,
+      "clipped_core_controls": [],
+      "status": "PASS"
+    },
+    {
+      "scale_percent": 125,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\dpi\\dpi_125_1920x1080.png",
+      "screenshot_saved": true,
+      "clipped_core_controls": [],
+      "status": "PASS"
+    },
+    {
+      "scale_percent": 150,
+      "resolution": [
+        2560,
+        1440
+      ],
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\dpi\\dpi_150_2560x1440.png",
+      "screenshot_saved": true,
+      "clipped_core_controls": [],
+      "status": "PASS"
+    },
+    {
+      "scale_percent": 200,
+      "resolution": [
+        3840,
+        2160
+      ],
+      "screenshot": "C:\\CONVERTOR\\validation\\master_completion\\ui_v52_hvpc_surface_capture_final\\dpi\\dpi_200_3840x2160.png",
+      "screenshot_saved": true,
+      "clipped_core_controls": [],
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

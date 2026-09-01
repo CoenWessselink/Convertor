@@ -1,0 +1,13 @@
+{
+  "schema": "cws-ui-v5.1-binding-acceptance-1.0",
+  "required_controls": 226,
+  "missing_controls": [],
+  "duplicate_test_ids": [],
+  "wrong_labels": [],
+  "screen_failures": [],
+  "status": "PASS",
+  "functional_scope": "UI binding and authoritative workspace routing; domain mutations remain covered by their existing service tests.",
+  "action_binding_failures": [],
+  "dpi_failures": [],
+  "visual_review_status": "HUMAN_REVIEW_REQUIRED"
+}

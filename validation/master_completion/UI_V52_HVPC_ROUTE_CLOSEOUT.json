@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "queue_id": "Q005",
+  "status": "PARTIAL",
+  "project": {
+    "name": "HVPC te Hengelo fasen totaal",
+    "container": "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj",
+    "thumbnail": "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.thumbnail.png",
+    "assemblies": 890,
+    "parts": 3419,
+    "fasteners": 2306,
+    "total_materialised": 6615,
+    "physical_geometry_objects": 5725
+  },
+  "runtime_acceptance": {
+    "platform": "native Windows Qt",
+    "required_surfaces": 31,
+    "captured_surfaces": 31,
+    "route_failures": 0,
+    "required_controls": 226,
+    "missing_controls": 0,
+    "duplicate_controls": 0,
+    "screen_failures": 0,
+    "dpi_failures": 0,
+    "reference_pairs": 25,
+    "visual_review": "HUMAN_REVIEW_REQUIRED"
+  },
+  "repairs": [
+    "The V5.1 controller now delegates to the canonical WorkspaceRouter.open_workspace API.",
+    "Project overview, project structure, profiles/materials, project reviews, plate nesting, Print Center and manufacturability use their real routes.",
+    "Project profiles is registered as a canonical project subworkspace.",
+    "Profile nesting receives project context and automatically performs fail-closed demand analysis on project change.",
+    "Runtime evidence records expected and active routes and fails on a route mismatch."
+  ],
+  "tests": {
+    "suites": 3,
+    "cases_passed": 6,
+    "cases_failed": 0
+  },
+  "evidence": {
+    "surface_root": "validation/master_completion/ui_v52_hvpc_surface_capture_final",
+    "screenshots": "validation/master_completion/ui_v52_hvpc_surface_capture_final/screenshots",
+    "visual_diffs": "validation/master_completion/ui_v52_hvpc_surface_capture_final/visual_diff",
+    "vtk_framebuffer": "validation/master_completion/hvpc_aa_runtime/msaa_2x_fxaa_0.png"
+  },
+  "remaining": [
+    "Automated pixel differences are not accepted as proof of visual identity; the 25 reference pairs remain HUMAN_REVIEW_REQUIRED.",
+    "Qt window capture cannot reliably compose the native QVTK child. The real exact VTK framebuffer is committed as separate evidence.",
+    "Live CWS and Trimble camera synchronization is blocked because Windows desktop capture failed with access-denied and monitor-capture errors."
+  ]
+}

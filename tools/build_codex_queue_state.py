@@ -184,8 +184,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q002", "Q003"],
             "status": "BLOCKED_EXTERNAL_EVIDENCE",
             "expected_result": "CWS en Trimble tonen dezelfde HVPC-objecten in een gepaarde, live, dezelfde-machine vergelijking.",
-            "evidence": ["validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json", "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"],
-            "remaining": ["Fresh desktop capture/control is unavailable; no fabricated visual comparison is accepted."],
+            "evidence": ["validation/master_completion/HVPC_TRIMBLE_DESKTOP_CAPTURE_ATTEMPT.json", "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.json", "validation/final_4_phase/phase4/trimble_hvpc_same_machine.jpg"],
+            "remaining": ["Fresh desktop capture/control is blocked by Windows Graphics Capture access/monitor errors; no fabricated visual comparison is accepted."],
         },
         {
             "queue_id": "Q005",
@@ -193,8 +193,8 @@ def build() -> dict[str, Any]:
             "depends_on": ["Q001"],
             "status": "PARTIAL",
             "expected_result": "Project | Viewer | Productie | Controle | Uitvoer en alle 31 surfaces matchen de bindende lichte V5.2 SSOT.",
-            "evidence": ["validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json", "validation/master_completion/ui_v52_surface_capture_windows", "validation/final_4_phase/phase1", "validation/final_4_phase/phase3", "validation/final_4_phase/phase4"],
-            "remaining": ["All 31 native surfaces and all 25 supplied reference pairs are captured, but project-populated human visual review is still required."],
+            "evidence": ["validation/master_completion/UI_V52_HVPC_ROUTE_CLOSEOUT.json", "validation/master_completion/ui_v52_hvpc_surface_capture_final", "validation/master_completion/UI_V52_SURFACE_ACCEPTANCE.json", "validation/final_4_phase/phase1", "validation/final_4_phase/phase3", "validation/final_4_phase/phase4"],
+            "remaining": ["All 31 native HVPC-populated surfaces and all 25 supplied reference pairs are captured, but pixel-level SSOT fidelity remains HUMAN_REVIEW_REQUIRED and the native VTK child needs separate framebuffer evidence."],
         },
         {
             "queue_id": "Q006",
