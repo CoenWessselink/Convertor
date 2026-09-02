@@ -1,0 +1,650 @@
+{
+  "schema": "cws.viewer.gap-analysis.v1",
+  "generated_at": "2026-09-02T00:00:00Z",
+  "title": "CWS Convertor complete Viewer gap matrix",
+  "scope": "Complete Viewer functionality and its Project, Production, Control and Output integrations",
+  "audit": {
+    "repository": "CoenWessselink/Convertor",
+    "branch": "agent/cws-product-ui-reintegration-v1",
+    "head": "a2cd946d1c2eef9ea454c2feebd4770f87600576",
+    "head_commit_date": "2026-09-02T07:39:23+02:00",
+    "head_subject": "feat: complete converter routes in one phase",
+    "product_version": "0.10.18-beta-dev",
+    "project_model": "2.25",
+    "canonical_part": "1.1",
+    "latest_release_evidence_commit": "1513ae3ad91f",
+    "commits_after_latest_release_evidence": 11,
+    "source_compileall": "PASS",
+    "local_native_test_environment": "BLOCKED_MISSING_CADQUERY_VTK"
+  },
+  "summary": {
+    "release_ready": false,
+    "source_functionality_percent": 92,
+    "integration_percent": 90,
+    "traceability_evidence_percent": 78,
+    "large_model_performance_percent": 58,
+    "visual_ux_parity_percent": 48,
+    "current_exact_head_release_proof_percent": 0,
+    "active_requirements": 317,
+    "traceability_pass": 291,
+    "traceability_fail": 26,
+    "runtime_controls_tested": 226,
+    "runtime_controls_pass": 226,
+    "primary_conclusion": "Functionally advanced but not demonstrably 100 percent release ready."
+  },
+  "status_definitions": {
+    "PASS": "Implementation and relevant evidence are available.",
+    "PARTIAL": "Implemented, but evidence, user experience or representative-scale proof is incomplete.",
+    "FAIL": "A hard requirement or measured threshold is not met.",
+    "BLOCKED_EXTERNAL_EVIDENCE": "Closure requires an external reference, machine or qualification source.",
+    "NOT_VERIFIABLE": "A claim exists but the referenced evidence is unavailable on the audited branch.",
+    "OUT_OF_SCOPE": "Formally approved exclusion from the release scope."
+  },
+  "performance": {
+    "hvpc": {
+      "ifc_records": 6626,
+      "physical_objects": 5725,
+      "represented_physical_objects": 5725,
+      "geometry_resources": 1496,
+      "reused_instances": 4229,
+      "missing_objects": 0,
+      "duplicate_objects": 0,
+      "empty_objects": 0,
+      "box_fallback_objects": 0,
+      "levels": 8,
+      "axes": 192
+    },
+    "load_seconds": {
+      "first_persistent_exact": {
+        "measured": 7.939,
+        "maximum": 5.0,
+        "status": "FAIL"
+      },
+      "repeated_persistent_exact": {
+        "measured": 5.38,
+        "maximum": 5.0,
+        "status": "FAIL"
+      },
+      "mesh_cache_warm": {
+        "measured": 0.075,
+        "maximum": 1.0,
+        "status": "PASS"
+      },
+      "same_session": {
+        "measured": 0.0207,
+        "maximum": 0.5,
+        "status": "PASS"
+      },
+      "first_exact_interactive_frame": {
+        "measured": 3.264,
+        "preferred_maximum": 3.0,
+        "status": "PARTIAL"
+      },
+      "background_exact_complete": {
+        "measured": 32.142,
+        "requirement": "Must not block interaction",
+        "status": "PARTIAL"
+      }
+    },
+    "interaction": {
+      "mean_fps": {
+        "measured": 20.392,
+        "minimum": 30.0,
+        "status": "FAIL"
+      },
+      "frame_p95_ms": {
+        "measured": 50.661,
+        "maximum": 33.0,
+        "status": "FAIL"
+      },
+      "input_to_render_p95_ms": {
+        "measured": 269.676,
+        "maximum": 35.0,
+        "status": "FAIL"
+      },
+      "input_to_render_p99_ms": {
+        "measured": 783.575,
+        "maximum": 50.0,
+        "status": "FAIL"
+      },
+      "pick_p95_ms": {
+        "measured": 116.308,
+        "maximum": 150.0,
+        "status": "PASS"
+      },
+      "selection_p95_ms": {
+        "measured": 100.873,
+        "maximum": 150.0,
+        "status": "PASS"
+      },
+      "wrong_picks": {
+        "measured": 0,
+        "maximum": 0,
+        "status": "PASS"
+      },
+      "freezes_over_100_ms": {
+        "measured": 1,
+        "maximum": 0,
+        "status": "FAIL"
+      },
+      "rss_drift_percent": {
+        "measured": 11.519,
+        "maximum_exclusive": 10.0,
+        "status": "FAIL"
+      }
+    },
+    "synthetic_1000_node_fixture": {
+      "frame_p95_ms": 1.94,
+      "input_p95_ms": 16.88,
+      "pick_p95_ms": 24.82,
+      "rss_drift_percent": 1.57,
+      "status": "PASS_NON_REPRESENTATIVE",
+      "note": "Useful controller baseline, not a substitute for real HVPC acceptance."
+    }
+  },
+  "visual_evidence": {
+    "captured_surfaces": 31,
+    "reference_paired_surfaces": 25,
+    "support_surfaces": 6,
+    "screen_coverage": "PASS",
+    "dpi_scales_passed": [
+      100,
+      125,
+      150,
+      200
+    ],
+    "visual_review_status": "HUMAN_REVIEW_REQUIRED",
+    "viewer_normalized_pixel_mae": {
+      "screen_05": 0.668935,
+      "screen_06": 0.673026,
+      "screen_07": 0.509351,
+      "screen_08": 0.688111,
+      "screen_09": 0.673429,
+      "average": 0.64257
+    },
+    "native_qvtk_in_qt_capture": false,
+    "primary_gap": "The runtime UI is denser and less model-dominant than the reference, and the full Qt plus native VTK window is not captured as one evidence image."
+  },
+  "feature_groups": [
+    {
+      "id": "FG-01",
+      "name": "Architecture and canonical state",
+      "status": "PASS",
+      "implemented": [
+        "single persistent Viewer intent",
+        "canonical Project Model",
+        "global selection state",
+        "stable object and source IDs",
+        "transactional workbench"
+      ],
+      "remaining": [
+        "current packaged restart proof",
+        "remove authority and version drift"
+      ]
+    },
+    {
+      "id": "FG-02",
+      "name": "Import and exact geometry",
+      "status": "PASS",
+      "implemented": [
+        "IFC exact geometry",
+        "STEP exact geometry",
+        "proxy provenance",
+        "worker pool",
+        "MeshCache V2",
+        "progressive exact load"
+      ],
+      "remaining": [
+        "current-head packaged matrix for every intake type"
+      ]
+    },
+    {
+      "id": "FG-03",
+      "name": "Navigation and camera",
+      "status": "PARTIAL",
+      "implemented": [
+        "orbit",
+        "pan",
+        "zoom",
+        "fit",
+        "standard views",
+        "perspective and orthographic",
+        "world-up",
+        "roll suppression",
+        "pivot"
+      ],
+      "remaining": [
+        "observable Trimble-feel acceptance"
+      ]
+    },
+    {
+      "id": "FG-04",
+      "name": "Selection and synchronization",
+      "status": "PASS",
+      "implemented": [
+        "whole-object selection",
+        "Ctrl multi-select",
+        "object, part and assembly levels",
+        "box selection",
+        "crossing selection",
+        "tree, grid and BOM synchronization",
+        "select all and clear"
+      ],
+      "remaining": [
+        "repeat large-selection packaged performance on current HEAD"
+      ]
+    },
+    {
+      "id": "FG-05",
+      "name": "Visibility and render modes",
+      "status": "PARTIAL",
+      "implemented": [
+        "hide",
+        "show",
+        "show all",
+        "isolate",
+        "ghost",
+        "transparency",
+        "shaded",
+        "shaded with edges",
+        "wireframe",
+        "source colors"
+      ],
+      "remaining": [
+        "true hidden-line removal"
+      ]
+    },
+    {
+      "id": "FG-06",
+      "name": "Measurements",
+      "status": "PASS",
+      "implemented": [
+        "distance",
+        "angle",
+        "radius",
+        "coordinates",
+        "from and to markers",
+        "live preview",
+        "foreground labels",
+        "exact, verified and proxy proof classes",
+        "JSON, CSV and PDF export"
+      ],
+      "remaining": [
+        "bind complete packaged evidence to current HEAD"
+      ]
+    },
+    {
+      "id": "FG-07",
+      "name": "Sections, clipbox and explode",
+      "status": "PASS",
+      "implemented": [
+        "X, Y and Z sections",
+        "section from face",
+        "flip",
+        "toggle",
+        "remove",
+        "clipbox",
+        "explode",
+        "undo and redo"
+      ],
+      "remaining": [
+        "repeat exact HVPC packaged regression on current HEAD"
+      ]
+    },
+    {
+      "id": "FG-08",
+      "name": "Saved views and review",
+      "status": "PARTIAL",
+      "implemented": [
+        "saved views",
+        "groups",
+        "slideshow",
+        "markups",
+        "issues",
+        "ToDos",
+        "comments",
+        "stale references",
+        "portable .cwsreview package"
+      ],
+      "remaining": [
+        "schema-certified BCF or formal out-of-scope decision"
+      ]
+    },
+    {
+      "id": "FG-09",
+      "name": "Revision comparison and model control",
+      "status": "PARTIAL",
+      "implemented": [
+        "revision compare",
+        "deviation",
+        "impact",
+        "broad-phase clash",
+        "exact selected-pair check"
+      ],
+      "remaining": [
+        "representative current-head packaged scale evidence"
+      ]
+    },
+    {
+      "id": "FG-10",
+      "name": "UI, properties and search",
+      "status": "PARTIAL",
+      "implemented": [
+        "properties",
+        "search",
+        "filter",
+        "virtual grids",
+        "five main workspaces",
+        "226 stable runtime controls",
+        "31 captured surfaces",
+        "multi-DPI validation"
+      ],
+      "remaining": [
+        "model-dominant layout",
+        "full Qt plus VTK capture",
+        "human visual acceptance",
+        "complete accessibility and keyboard proof"
+      ]
+    },
+    {
+      "id": "FG-11",
+      "name": "Performance",
+      "status": "FAIL",
+      "implemented": [
+        "bounded worker pool",
+        "cache",
+        "warmstart",
+        "progressive exact load",
+        "performance governor"
+      ],
+      "remaining": [
+        "cold exact maximum 5 seconds",
+        "mean minimum 30 FPS",
+        "frame p95 maximum 33 ms",
+        "input-to-render p95 maximum 35 ms",
+        "zero freezes over 100 ms",
+        "RSS drift below 10 percent",
+        "reproducible ten-minute soak"
+      ]
+    },
+    {
+      "id": "FG-12",
+      "name": "Packaging and release",
+      "status": "FAIL",
+      "implemented": [
+        "historical one-folder proof",
+        "historical portable proof",
+        "historical installer and uninstall proof",
+        "release workflow"
+      ],
+      "remaining": [
+        "exact current-head Windows proof",
+        "dynamic 317-requirement gate",
+        "current-head artifacts and hashes",
+        "multi-hardware qualification",
+        "canonical branch and release PR"
+      ]
+    },
+    {
+      "id": "FG-13",
+      "name": "Safety",
+      "status": "PASS",
+      "implemented": [
+        "fail-closed behavior",
+        "machine transfer blocked unless qualified",
+        "analysis separated from physical action"
+      ],
+      "remaining": [
+        "preserve false machine_transfer.allowed in every release fixture"
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-V-001",
+      "priority": "P0",
+      "title": "No full release evidence on exact current HEAD",
+      "status": "FAIL",
+      "evidence": "Final phase-4 evidence is bound to 1513ae3ad91f; audited HEAD is a2cd946d1c2eef9ea454c2feebd4770f87600576, eleven commits later.",
+      "acceptance": "Every release artifact, test report and manifest identifies the same current commit."
+    },
+    {
+      "id": "GAP-V-002",
+      "priority": "P0",
+      "title": "Real HVPC interaction frame rate is below target",
+      "status": "FAIL",
+      "evidence": "Mean 20.392 FPS; frame p95 50.661 ms.",
+      "acceptance": "Mean at least 30 FPS and frame p95 at most 33 ms on the reference machine without loss of IDs, colors or Viewer functions."
+    },
+    {
+      "id": "GAP-V-003",
+      "priority": "P0",
+      "title": "Input response is visibly delayed",
+      "status": "FAIL",
+      "evidence": "Input-to-render p95 269.676 ms and p99 783.575 ms.",
+      "acceptance": "Input-to-render p95 at most 35 ms and p99 at most 50 ms."
+    },
+    {
+      "id": "GAP-V-004",
+      "priority": "P0",
+      "title": "Cold exact load exceeds five seconds",
+      "status": "FAIL",
+      "evidence": "First persistent exact load 7.939 seconds.",
+      "acceptance": "Cold exact load at most 5.0 seconds and first usable preferably at most 3.0 seconds."
+    },
+    {
+      "id": "GAP-V-005",
+      "priority": "P0",
+      "title": "Freeze-free interaction is not proven",
+      "status": "FAIL",
+      "evidence": "One freeze above 100 ms in the representative run.",
+      "acceptance": "Zero freezes above 100 ms during a real ten-minute Viewer soak."
+    },
+    {
+      "id": "GAP-V-006",
+      "priority": "P0",
+      "title": "Memory drift exceeds target",
+      "status": "FAIL",
+      "evidence": "RSS drift 11.519 percent against a less-than-10-percent target.",
+      "acceptance": "RSS drift below 10 percent with bounded actors, workers and processes."
+    },
+    {
+      "id": "GAP-V-007",
+      "priority": "P0",
+      "title": "Viewer visual parity is not accepted",
+      "status": "FAIL",
+      "evidence": "All reference diffs remain HUMAN_REVIEW_REQUIRED; Viewer average normalized pixel MAE is approximately 0.643.",
+      "acceptance": "Every required reference pair is manually approved and no core visual or ergonomic mismatch remains."
+    },
+    {
+      "id": "GAP-V-008",
+      "priority": "P0",
+      "title": "Evidence capture omits the native VTK child",
+      "status": "FAIL",
+      "evidence": "Qt surface screenshots do not composite the native QVTK renderer.",
+      "acceptance": "A deterministic full-window capture shows Qt chrome and native VTK exactly as the user sees them, supplemented by a renderer-native capture."
+    },
+    {
+      "id": "GAP-V-009",
+      "priority": "P0",
+      "title": "Release CI validates an obsolete requirement count",
+      "status": "FAIL",
+      "evidence": "Workflow step says Full Product Acceptance 51 of 51 while active traceability contains 317 requirements.",
+      "acceptance": "CI derives the active requirement count dynamically and fails on any unapproved non-PASS item."
+    },
+    {
+      "id": "GAP-V-010",
+      "priority": "P0",
+      "title": "Current-head Windows package matrix is missing",
+      "status": "FAIL",
+      "evidence": "One-folder, portable, installer, associations and uninstall PASS evidence belongs to an older commit.",
+      "acceptance": "All package modes pass on clean Windows VMs from the exact release SHA."
+    },
+    {
+      "id": "GAP-V-011",
+      "priority": "P0",
+      "title": "Object-by-object Trimble parity remains external",
+      "status": "BLOCKED_EXTERNAL_EVIDENCE",
+      "evidence": "Same-machine timing comparison exists, but current visual and behavioral parity is blocked.",
+      "acceptance": "Same model, camera, viewport and actions compared object-by-object with captured, reviewed evidence."
+    },
+    {
+      "id": "GAP-V-012",
+      "priority": "P1",
+      "title": "True hidden-line rendering is unavailable",
+      "status": "FAIL",
+      "evidence": "The persisted HIDDEN_LINE enum is explicitly rejected by the controller.",
+      "acceptance": "Depth-aware hidden-line rendering works for representative models and passes selection, section and performance regressions."
+    },
+    {
+      "id": "GAP-V-013",
+      "priority": "P1",
+      "title": "BCF export is not schema-certified",
+      "status": "FAIL",
+      "evidence": "The implementation explicitly returns CWS-BCF-EXPORT-NOT-CERTIFIED and directs users to .cwsreview.",
+      "acceptance": "A validated BCF 2.x package is emitted or BCF is formally approved as out of scope."
+    },
+    {
+      "id": "GAP-V-014",
+      "priority": "P1",
+      "title": "Viewer layout is too dense",
+      "status": "FAIL",
+      "evidence": "Runtime captures show competing panels and grids with less model area than the references.",
+      "acceptance": "The model is visually dominant by default, secondary panels are contextual and human UX review passes."
+    },
+    {
+      "id": "GAP-V-015",
+      "priority": "P1",
+      "title": "Referenced ten-minute soak evidence is unavailable",
+      "status": "NOT_VERIFIABLE",
+      "evidence": "Traceability marks F1-009 PASS but its referenced REAL_10MIN_SOAK.json is not present in the audited branch.",
+      "acceptance": "A fresh real OpenGL ten-minute soak report is committed and bound to the release SHA."
+    },
+    {
+      "id": "GAP-V-016",
+      "priority": "P1",
+      "title": "Product authority and version identities drift",
+      "status": "FAIL",
+      "evidence": "Application 0.10.18-beta-dev, Viewer package 1.0.0-dev0 and preview contract 1.4.0-v15-preview.2 coexist; authority docs are in progress or outdated.",
+      "acceptance": "One manifest generates consistent product, Viewer, schema, authority and evidence versions."
+    },
+    {
+      "id": "GAP-V-017",
+      "priority": "P1",
+      "title": "Canonical branch governance is unresolved",
+      "status": "FAIL",
+      "evidence": "Default main is a stale placeholder and current authority work has no discovered open release PR.",
+      "acceptance": "One reviewed canonical release PR lands on the designated release branch and stale PRs are closed or labelled historical."
+    },
+    {
+      "id": "GAP-V-018",
+      "priority": "P1",
+      "title": "Light contract tests depend on native CAD and render imports",
+      "status": "PARTIAL",
+      "evidence": "Local discovery is blocked without CadQuery and VTK because package imports are eager.",
+      "acceptance": "Pure contracts, state and controller logic are importable and testable without native CAD/render dependencies."
+    },
+    {
+      "id": "GAP-V-019",
+      "priority": "P1",
+      "title": "Multi-hardware Viewer qualification is incomplete",
+      "status": "FAIL",
+      "evidence": "No current-head matrix covers both integrated and discrete GPU classes and multiple display resolutions.",
+      "acceptance": "Reference tests pass on at least one iGPU, one mid-range dGPU, 1080p and 4K."
+    },
+    {
+      "id": "GAP-V-020",
+      "priority": "P1",
+      "title": "Accessibility and keyboard-depth proof is incomplete",
+      "status": "PARTIAL",
+      "evidence": "Stable test IDs and controls exist, but a full focus, shortcut, contrast and assistive-technology matrix is not demonstrated.",
+      "acceptance": "Keyboard-only, focus order, shortcut, contrast and screen-reader checks are all evidenced."
+    },
+    {
+      "id": "GAP-V-021",
+      "priority": "P2",
+      "title": "Compatibility layers and duplicate constants increase drift risk",
+      "status": "PARTIAL",
+      "evidence": "Legacy, preview and current contracts coexist.",
+      "acceptance": "Compatibility paths are minimized, versioned and covered by explicit migration tests."
+    },
+    {
+      "id": "GAP-V-022",
+      "priority": "P2",
+      "title": "Revision and clash scale proof is incomplete",
+      "status": "PARTIAL",
+      "evidence": "Functions are implemented but current-head packaged proof on multiple representative large models is incomplete.",
+      "acceptance": "HVPC and a second large regression model pass revision, deviation, broad-phase and exact selected-pair checks."
+    }
+  ],
+  "closure_order": [
+    "Freeze one authority commit and release PR.",
+    "Close HVPC load, frame and input latency gaps without identity or color loss.",
+    "Make the Viewer model-dominant and implement full Qt plus VTK evidence capture.",
+    "Resolve hidden-line and BCF scope decisions.",
+    "Regenerate all functional and visual evidence on exact current HEAD.",
+    "Replace the hard-coded 51-check gate with dynamic 317-requirement acceptance.",
+    "Build and verify one-folder, portable and installer artifacts on clean Windows systems.",
+    "Publish only when no P0 or P1 gap remains."
+  ],
+  "definition_of_done": {
+    "functional": [
+      "All feature matrix items PASS or formally approved OUT_OF_SCOPE.",
+      "No critical stub, placeholder or silent fallback.",
+      "Whole-object selection and cross-view synchronization remain stable after edit, reload and workspace changes."
+    ],
+    "correctness": [
+      "5725 of 5725 physical HVPC objects represented.",
+      "Zero missing, duplicate, empty or box fallback objects.",
+      "Zero wrong picks.",
+      "Exact and proxy provenance always visible and exportable."
+    ],
+    "performance": [
+      "Cold exact at most 5.0 seconds.",
+      "First usable preferably at most 3.0 seconds.",
+      "Warm cache at most 1.0 second.",
+      "Same-session at most 0.5 seconds.",
+      "Mean at least 30 FPS.",
+      "Frame p95 at most 33 ms.",
+      "Input-to-render p95 at most 35 ms and p99 at most 50 ms.",
+      "Pick p95 at most 150 ms.",
+      "Zero freezes above 100 ms.",
+      "RSS drift below 10 percent after ten minutes."
+    ],
+    "visual_and_ux": [
+      "31 of 31 surfaces present.",
+      "226 of 226 controls executable.",
+      "25 of 25 reference pairs manually approved.",
+      "Full Qt plus native VTK capture matches the user-visible window.",
+      "DPI 100, 125, 150 and 200 percent pass.",
+      "The model is visually dominant."
+    ],
+    "release": [
+      "All 317 active requirements evaluated dynamically.",
+      "Evidence and artifacts identify one exact commit.",
+      "One-folder, portable, installer, associations, upgrade and uninstall pass.",
+      "No unqualified physical machine action.",
+      "No open P0 or P1 gaps."
+    ]
+  },
+  "evidence_paths": [
+    "requirements/MASTER_REQUIREMENT_TRACEABILITY.md",
+    "requirements/MASTER_REQUIREMENT_TRACEABILITY.json",
+    "validation/master_completion/HVPC_LOAD_CLOSEOUT.json",
+    "validation/master_completion/QT_PROGRESSIVE_EXACT_WARMSTART_PASS.json",
+    "validation/master_completion/HVPC_RENDER_MICROTUNING_CLOSEOUT.json",
+    "validation/master_completion/HVPC_TRIMBLE_VISUAL_COMPARISON.md",
+    "validation/master_completion/TRIMBLE_SAME_MACHINE_COMPARISON.md",
+    "validation/master_completion/ui_v52_hvpc_surface_capture_final/control_action_results.json",
+    "validation/master_completion/ui_v52_hvpc_surface_capture_final/UI_BINDING_ACCEPTANCE.md",
+    "validation/master_completion/ui_v52_hvpc_surface_capture_final/UI_VISUAL_DIFF_REPORT.md",
+    "validation/master_completion/FINAL_PHASE4_GATE.json",
+    ".github/workflows/final-release-proof.yml",
+    "docs/CURRENT_PRODUCT_AUTHORITY.md",
+    "docs/CODEX_HANDOVER_STATUS.md",
+    "cws_convertor/product.py",
+    "cws_viewer/version.py",
+    "cws_viewer/core/controller.py",
+    "cws_viewer/review/bcf.py"
+  ]
+}

@@ -190,6 +190,17 @@ jobs:
             throw "Acceptance changed tracked source"
           }
 
+      - name: Build independent Viewer release audit
+        id: viewer_release_audit
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Copy-Item "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj" build/hvpc-audit-project.zip
+          Expand-Archive build/hvpc-audit-project.zip build/hvpc-audit-project -Force
+          $ifc = (Get-ChildItem build/hvpc-audit-project -Recurse -Filter *.ifc | Select-Object -First 1).FullName
+          if (-not $ifc) { throw "HVPC IFC audit fixture not found" }
+          python tools/build_viewer_release_audit.py --ifc $ifc --strict
+
       - name: Upload exact-SHA final release
         uses: actions/upload-artifact@v4
         with:
@@ -206,8 +217,20 @@ jobs:
             validation/full_acceptance/conversion_packaged_matrix_evidence/**
             validation/full_acceptance/master_traceability/**
             validation/full_acceptance/release_traceability/**
+            release_audit/**
           if-no-files-found: error
           retention-days: 90
+
+      - name: Enforce independent Viewer release verdict
+        if: always()
+        shell: pwsh
+        run: |
+          $path = "release_audit/${{ github.sha }}/VIEWER_RELEASE_GAP_MATRIX.json"
+          if (-not (Test-Path $path)) { throw "Independent Viewer audit matrix is missing" }
+          $audit = Get-Content $path -Raw | ConvertFrom-Json
+          if ($audit.release_verdict -ne "100% RELEASEGEREED") {
+            throw "Independent Viewer audit verdict: $($audit.release_verdict)"
+          }
 
       - name: Upload final release diagnostics on failure
         if: failure()
@@ -219,7 +242,7 @@ jobs:
             validation/phases/PHASE_*_CHECKLIST.json
             validation/phases/PHASE_*_CHECKLIST.md
             validation/full_acceptance/**
+            release_audit/**
             release/phase1/PHASE_1_WINDOWS_MANIFEST.json
           if-no-files-found: warn
           retention-days: 30
-
