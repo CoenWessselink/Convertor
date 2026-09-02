@@ -1,6 +1,6 @@
 # Codex Windows release-runbook
 
-Dit document is het uitvoercontract voor CWS Convertor `0.10.20-beta-dev`.
+Dit document is het uitvoercontract voor CWS Convertor `0.10.21-beta-dev`.
 Een release is alleen geslaagd wanneer `release/CODEX_RELEASE_MANIFEST.json`
 `"status": "passed"` bevat. Een losse EXE, ZIP of screenshot is geen releasebewijs.
 
@@ -11,7 +11,7 @@ Een release is alleen geslaagd wanneer `release/CODEX_RELEASE_MANIFEST.json`
    handmatig op die commit.
 2. Wacht tot job `build-windows-x64` groen is.
 3. Download artifact
-   `CWS_Convertor_0.10.20-beta-dev_Windows_x64`.
+   `CWS_Convertor_0.10.21-beta-dev_Windows_x64`.
 4. Pak het artifact uit en voer in PowerShell uit:
 
    ```powershell
@@ -55,7 +55,7 @@ en voert dezelfde eindgate uit als CI. De eindgebruiker heeft geen Python nodig.
 | Fase 1 | reproduceerbare 5.000-objecten-IFC, alle uniforme brongates |
 | Fase 2 | alle 16 uniforme integratiegates |
 | Fase 3 | volledige regression en minimaal 600 seconden soak |
-| BOM | echte `BomWorkspacePanel`, HVPC-project, vijf PNG-captures met SHA-256 |
+| BOM | echte `BomWorkspacePanel`, HVPC-project, acht PNG-captures met SHA-256, 37 kolommen en minimaal 75 matrixacties |
 | Dist | PyInstaller onedir, native inventory, GUI/CLI/conversie/project-roundtrip zonder externe Python |
 | Portable | schoon uitgepakte ZIP, volledige packaged-runtime-smoke zonder externe Python |
 | Installer | stille per-user-installatie, volledige packaged-runtime-smoke, zes associaties en PDF-contextactie |
@@ -66,13 +66,13 @@ en voert dezelfde eindgate uit als CI. De eindgebruiker heeft geen Python nodig.
 
 Voor commit `<sha7>` bevat `release/` minimaal:
 
-- `CWS_Convertor_Setup_0.10.20-beta-dev_<sha7>_x64.exe`;
-- `CWS_Convertor_Portable_0.10.20-beta-dev_<sha7>_x64.zip`;
-- `CWS_Convertor_Source_0.10.20-beta-dev_<sha7>.zip`;
-- `CWS_Convertor_0.10.20-beta-dev_<sha7>.bundle`;
-- `CWS_Convertor_SBOM_0.10.20-beta-dev_<sha7>.cdx.json`;
+- `CWS_Convertor_Setup_0.10.21-beta-dev_<sha7>_x64.exe`;
+- `CWS_Convertor_Portable_0.10.21-beta-dev_<sha7>_x64.zip`;
+- `CWS_Convertor_Source_0.10.21-beta-dev_<sha7>.zip`;
+- `CWS_Convertor_0.10.21-beta-dev_<sha7>.bundle`;
+- `CWS_Convertor_SBOM_0.10.21-beta-dev_<sha7>.cdx.json`;
 - `CODEX_RELEASE_MANIFEST.json` en `SHA256SUMS.txt`;
-- `BOM_EVIDENCE/` met vijf werkelijke GUI-afbeeldingen en capturemanifest;
+- `BOM_EVIDENCE/` met acht werkelijke GUI-afbeeldingen en capturemanifest;
 - `TEST_EVIDENCE/` met fase- en soakrapporten;
 - de runtime-JSON-rapporten en `WINDOWS_RUNTIME_VALIDATION.md`.
 

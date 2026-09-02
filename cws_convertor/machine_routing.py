@@ -1,7 +1,7 @@
 """Deterministic, fail-closed machine routing and assignment authority."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Iterable, Mapping
 
 from cws_convertor.project.model import stable_sha256, utc_now_iso
@@ -331,6 +331,46 @@ class MachineRoutingService:
                 "ready_count": sum(item.routing_status == "ready" for item in changed),
                 "blocked_count": sum(item.routing_status != "ready" for item in changed),
                 "manual_lock_count": sum(item.manual_lock for item in changed),
+                "routing_snapshot_sha256": snapshot.snapshot_sha256,
+            },
+        )
+        return tuple(changed)
+
+    def set_manual_lock(
+        self,
+        project: Any,
+        part_ids: Iterable[str],
+        *,
+        locked: bool,
+        user: str,
+        reason: str,
+    ) -> tuple[MachineAssignment, ...]:
+        """Lock or unlock existing manual choices without bypassing revalidation."""
+        ids = tuple(dict.fromkeys(str(value) for value in part_ids if str(value)))
+        if not ids:
+            raise ValueError("Selecteer minimaal één onderdeel")
+        explanation = str(reason or "").strip()
+        if not explanation:
+            raise ValueError("Een reden is verplicht voor wijziging van de machinevergrendeling")
+        existing = self.assignments(project)
+        changed: list[MachineAssignment] = []
+        for part_id in ids:
+            assignment = existing.get(part_id)
+            if assignment is None or assignment.assignment_source != "MANUAL":
+                raise ValueError(f"Onderdeel {part_id} heeft geen handmatige machinekeuze")
+            updated = replace(
+                assignment, manual_lock=bool(locked), reason=explanation,
+                assigned_by=str(user or "operator"), assigned_at=utc_now_iso(),
+            )
+            existing[part_id] = updated
+            changed.append(updated)
+        snapshot = self._persist(project, existing)
+        project.audit(
+            "project.machine_assignment_lock_changed", user=str(user or "operator"),
+            after_hash=snapshot.snapshot_sha256,
+            details={
+                "part_ids": list(ids), "manual_lock": bool(locked),
+                "reason": explanation,
                 "routing_snapshot_sha256": snapshot.snapshot_sha256,
             },
         )

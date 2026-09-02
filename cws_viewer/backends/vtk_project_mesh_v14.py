@@ -28,6 +28,7 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
         super().__init__(repository, render_window=render_window, offscreen=offscreen)
         self._grid_actors: list[Any] = []
         self._measurement_actors: list[Any] = []
+        self._revision_removed_actors: list[Any] = []
 
     def capabilities(self) -> ViewerCapabilities:
         base = super().capabilities()
@@ -68,7 +69,46 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
     def clear_scene(self) -> None:
         self._remove_overlay_actors(self._grid_actors)
         self._remove_overlay_actors(self._measurement_actors)
+        self._remove_overlay_actors(self._revision_removed_actors)
         super().clear_scene()
+
+    def set_revision_removed_bounds(self, items: tuple[dict[str, Any], ...]) -> None:
+        """Show removed baseline objects as red translucent 3D tombstones."""
+        self._ensure_initialized()
+        self._remove_overlay_actors(self._revision_removed_actors)
+        if self._renderer is None or self._vtk is None:
+            return
+        vtk = self._vtk
+        for item in items:
+            raw = dict(item.get("bounds") or {})
+            minimum = raw.get("minimum") or raw.get("min") or ()
+            maximum = raw.get("maximum") or raw.get("max") or ()
+            if isinstance(minimum, dict):
+                minimum = (minimum.get("x"), minimum.get("y"), minimum.get("z"))
+            if isinstance(maximum, dict):
+                maximum = (maximum.get("x"), maximum.get("y"), maximum.get("z"))
+            if len(minimum) != 3 or len(maximum) != 3:
+                continue
+            lo = tuple(float(value) for value in minimum)
+            hi = tuple(float(value) for value in maximum)
+            cube = vtk.vtkCubeSource()
+            cube.SetCenter(*tuple((lo[i] + hi[i]) * 0.5 for i in range(3)))
+            cube.SetXLength(max(hi[0] - lo[0], 0.1))
+            cube.SetYLength(max(hi[1] - lo[1], 0.1))
+            cube.SetZLength(max(hi[2] - lo[2], 0.1))
+            mapper = vtk.vtkPolyDataMapper()
+            mapper.SetInputConnection(cube.GetOutputPort())
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            prop = actor.GetProperty()
+            prop.SetColor(0.90, 0.10, 0.13)
+            prop.SetOpacity(0.24)
+            prop.EdgeVisibilityOn()
+            prop.SetEdgeColor(0.75, 0.02, 0.04)
+            prop.SetLineWidth(2.0)
+            self._renderer.AddActor(actor)
+            self._revision_removed_actors.append(actor)
+        self.render()
 
     @staticmethod
     def _distance_sq_to_bounds(point: Vector3, minimum: Vector3, maximum: Vector3) -> float:
@@ -191,6 +231,48 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
             else:
                 selected = bx0 >= lo_x and bx1 <= hi_x and by0 >= lo_y and by1 <= hi_y
             if selected:
+                hits.append(node_id)
+        return tuple(hits)
+
+    @staticmethod
+    def _point_in_polygon(point: tuple[float, float], polygon: tuple[tuple[float, float], ...]) -> bool:
+        x, y = point
+        inside = False
+        previous = polygon[-1]
+        for current in polygon:
+            x1, y1 = previous
+            x2, y2 = current
+            if (y1 > y) != (y2 > y):
+                crossing = (x2 - x1) * (y - y1) / ((y2 - y1) or 1e-12) + x1
+                if x < crossing:
+                    inside = not inside
+            previous = current
+        return inside
+
+    def nodes_in_screen_polygon(
+        self,
+        points: tuple[tuple[int, int], ...],
+        index: SceneIndex,
+    ) -> tuple[str, ...]:
+        """Select visible nodes by an arbitrary freehand screen-space lasso."""
+        self._ensure_initialized()
+        polygon = tuple((float(x), float(y)) for x, y in points)
+        if len(polygon) < 3:
+            return ()
+        state = self._state
+        if state is None:
+            return ()
+        hits: list[str] = []
+        for node_id in index.renderable_node_ids:
+            if node_id not in state.visible_set:
+                continue
+            bounds = index.world_bounds_by_node[node_id]
+            offset = state.explode_offsets.get(node_id, Vector3.zero())
+            screen = tuple(self.world_to_display(corner + offset)[:2] for corner in bounds.corners())
+            center = self.world_to_display(bounds.center + offset)[:2]
+            if self._point_in_polygon(center, polygon) or any(
+                self._point_in_polygon(point, polygon) for point in screen
+            ):
                 hits.append(node_id)
         return tuple(hits)
 

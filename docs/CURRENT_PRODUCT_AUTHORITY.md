@@ -8,7 +8,7 @@ value but are `historical_frozen_source` and `superseded_for_current_status`.
 ## Product identity
 
 - Product: CWS Convertor
-- Version: 0.10.20-beta-dev
+- Version: 0.10.21-beta-dev
 - Project Model: 2.25
 - Canonical Part: 1.1
 - Active phase: Exact-SHA BOM Productiehub release acceptance

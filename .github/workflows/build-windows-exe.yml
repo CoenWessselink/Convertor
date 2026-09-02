@@ -21,6 +21,7 @@ on:
       - "assets/**"
       - "installer/**"
       - "tests/**"
+      - "tools/**"
       - "validation/**"
       - "requirements*.txt"
       - "CWS_Convertor.spec"
@@ -34,7 +35,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.10.20-beta-dev
+      CWS_VERSION: 0.10.21-beta-dev
       RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:
@@ -105,6 +106,9 @@ jobs:
         shell: pwsh
         run: |
           $project = "validation\master_completion\hvpc_project\HVPC te Hengelo fasen totaal.cwscproj"
+          python tools/verify_bom_completion.py `
+            --output "$env:RUNTIME_RESULTS\bom-completion-acceptance.json"
+          if ($LASTEXITCODE -ne 0) { throw "BOM completion acceptance faalde" }
           python tools/capture_bom_production_hub.py `
             --project $project `
             --output "$env:RUNTIME_RESULTS\bom-production-hub"

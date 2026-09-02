@@ -13,6 +13,7 @@ import math
 from typing import Any
 
 from cws_viewer.backends.vtk_project import VtkProjectBackend, _ActorGroup
+from cws_viewer.cache.render_resource_cache import SharedRenderResourceCache
 from cws_viewer.contracts.enums import MeasurementKind, NodeKind, RenderMode
 from cws_viewer.contracts.state import PickResult, ViewerCapabilities
 from cws_viewer.core.scene_index import SceneIndex
@@ -151,6 +152,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         """
         self._discard_interaction_actor()
         requested = None if geometry_ids is None else {str(value) for value in geometry_ids}
+        SharedRenderResourceCache.invalidate(self.repository, requested)
         polydata_cache = getattr(self, "_cws_polydata_cache", None)
         previous_sources = (
             {}
@@ -303,46 +305,47 @@ class VtkProjectMeshBackend(VtkProjectBackend):
     def _mesh_polydata(self, geometry_id: str):
         vtk = self._vtk
         assert vtk is not None
-        cache = getattr(self, "_cws_polydata_cache", None)
-        if cache is None:
-            cache = {}
-            self._cws_polydata_cache = cache
-        cached = cache.get(geometry_id)
-        if cached is not None:
-            return cached
-        mesh = self.repository.require(geometry_id)
-        from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
-        import numpy as np
+        def build():
+            mesh = self.repository.require(geometry_id)
+            from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
+            import numpy as np
 
-        points = vtk.vtkPoints()
-        points.SetData(numpy_to_vtk(mesh.vertices, deep=True))
-        cells = mesh.triangles.astype("int64", copy=False)
-        connectivity = numpy_to_vtkIdTypeArray(cells.ravel(), deep=True)
-        offsets = numpy_to_vtkIdTypeArray(
-            np.arange(0, (len(cells) + 1) * 3, 3, dtype=np.int64), deep=True
+            points = vtk.vtkPoints()
+            points.SetData(numpy_to_vtk(mesh.vertices, deep=True))
+            cells = mesh.triangles.astype("int64", copy=False)
+            connectivity = numpy_to_vtkIdTypeArray(cells.ravel(), deep=True)
+            offsets = numpy_to_vtkIdTypeArray(
+                np.arange(0, (len(cells) + 1) * 3, 3, dtype=np.int64), deep=True
+            )
+            cell_array = vtk.vtkCellArray()
+            cell_array.SetData(offsets, connectivity)
+            polydata = vtk.vtkPolyData()
+            polydata.SetPoints(points)
+            polydata.SetPolys(cell_array)
+            normals = vtk.vtkPolyDataNormals()
+            normals.SetInputData(polydata)
+            normals.ComputePointNormalsOn()
+            normals.ComputeCellNormalsOff()
+            normals.SplittingOn()
+            normals.SetFeatureAngle(32.0)
+            normals.ConsistencyOn()
+            normals.AutoOrientNormalsOff()
+            normals.NonManifoldTraversalOn()
+            normals.Update()
+            output = vtk.vtkPolyData()
+            output.ShallowCopy(normals.GetOutput())
+            return output
+
+        output = SharedRenderResourceCache.get_or_create(
+            self.repository, "polydata", f"mesh-v3|{geometry_id}", build
         )
-        cell_array = vtk.vtkCellArray()
-        cell_array.SetData(offsets, connectivity)
-        polydata = vtk.vtkPolyData()
-        polydata.SetPoints(points)
-        polydata.SetPolys(cell_array)
-        # Point normals smooth radii while splitting at a small feature angle
-        # keeps fabricated steel edges crisp. Auto-orientation remains off: it
-        # traverses whole IFC shells and previously blocked the Qt GUI.
-        normals = vtk.vtkPolyDataNormals()
-        normals.SetInputData(polydata)
-        normals.ComputePointNormalsOn()
-        normals.ComputeCellNormalsOff()
-        normals.SplittingOn()
-        normals.SetFeatureAngle(32.0)
-        normals.ConsistencyOn()
-        normals.AutoOrientNormalsOff()
-        normals.NonManifoldTraversalOn()
-        normals.Update()
-        output = vtk.vtkPolyData()
-        output.ShallowCopy(normals.GetOutput())
-        cache[geometry_id] = output
+        self._cws_polydata_cache = getattr(self, "_cws_polydata_cache", {})
+        self._cws_polydata_cache[str(geometry_id)] = output
         return output
+
+    @property
+    def shared_render_cache_stats(self):
+        return SharedRenderResourceCache.stats(self.repository)
 
     def _build_static_mesh_group(
         self,

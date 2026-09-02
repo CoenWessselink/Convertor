@@ -414,6 +414,71 @@ class V14ViewerCoreController(ViewerCoreController):
         self.set_selection(tuple(requested), mode=operation.value)
         return tuple(requested)
 
+    def select_polygon(
+        self,
+        points: Iterable[tuple[int, int]],
+        *,
+        mode: str = "replace",
+    ) -> tuple[str, ...]:
+        index = self.index
+        selector = getattr(self._backend, "nodes_in_screen_polygon", None)
+        if not callable(selector):
+            raise ViewerError(
+                "Lassoselectie wordt niet door deze renderer ondersteund",
+                code=ViewerErrorCode.RENDERER_CAPABILITY_MISSING,
+            )
+        raw = tuple(selector(tuple((int(x), int(y)) for x, y in points), index))
+        requested: list[str] = []
+        for node_id in raw:
+            selectable = index.selectable_node_for_level(node_id, self.session.selection_level)
+            if selectable not in requested:
+                requested.append(selectable)
+        self.set_selection(tuple(requested), mode=SelectionOperation(mode).value)
+        return tuple(requested)
+
+    def select_same_display_color(
+        self,
+        seed_node_id: str | None = None,
+        *,
+        tolerance: float = 0.015,
+        mode: str = "replace",
+    ) -> tuple[str, ...]:
+        """Select visible objects whose effective rendered colour matches the seed."""
+        index = self.index
+        seed = str(seed_node_id or (self.session.render_selection(index)[-1] if self.session.render_selection(index) else ""))
+        if not seed or seed not in index.nodes_by_id:
+            return ()
+
+        def effective(node_id: str):
+            override = self.session.colors.get(node_id)
+            if override is not None:
+                return override
+            node = index.node(node_id)
+            style = index.styles_by_id.get(str(node.style_id or ""))
+            return None if style is None else style.color
+
+        target = effective(seed)
+        if target is None:
+            return ()
+        visible, ghosted = self.session.visible_and_ghosted(index)
+        selectable: list[str] = []
+        for node_id in visible:
+            if node_id in ghosted:
+                continue
+            colour = effective(node_id)
+            if colour is None:
+                continue
+            distance = sum(abs(float(a) - float(b)) for a, b in zip(
+                (colour.red, colour.green, colour.blue, colour.alpha),
+                (target.red, target.green, target.blue, target.alpha),
+            ))
+            if distance <= float(tolerance):
+                semantic = index.selectable_node_for_level(node_id, self.session.selection_level)
+                if semantic not in selectable:
+                    selectable.append(semantic)
+        self.set_selection(tuple(selectable), mode=SelectionOperation(mode).value)
+        return tuple(selectable)
+
     def clear_measurements(self) -> None:
         self._ensure_index()
         if not self._measurements.records:

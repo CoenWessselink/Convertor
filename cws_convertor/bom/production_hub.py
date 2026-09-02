@@ -10,6 +10,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import math
 from typing import Any, Callable, Iterable, Mapping
 from uuid import uuid4
 
@@ -22,6 +23,411 @@ HUB_SETTINGS_KEY = "bom_production_hub"
 SELECTION_BASES = (
     "group", "profile", "material", "machine", "status", "phase", "delivery",
 )
+QUERY_FIELDS = (
+    "family", "mark", "description", "profile", "material", "machine",
+    "status", "phase", "delivery", "release_status", "nesting_status",
+    "production_status", "stock_status", "document_status", "geometry_status",
+    "machine_status", "nc_status", "scribing_status", "conflict_status",
+    "delivery_status", "revision_status", "shortage_mm", "quantity",
+    "available_stock_mm", "assigned_stock", "assigned_remnant",
+    "expected_delivery", "supplier", "purchase_status",
+    "purchase_release_status", "alternative_material", "total_price",
+    "total_mass_kg", "length_mm",
+)
+QUERY_OPERATORS = (
+    "equals", "not_equals", "contains", "not_contains", "is_empty",
+    "is_not_empty", "greater_than", "less_than",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BOMQueryClause:
+    field: str
+    operator: str
+    value: str = ""
+
+    def __post_init__(self) -> None:
+        if self.field not in QUERY_FIELDS:
+            raise ValueError(f"Onbekend BOM-queryveld: {self.field}")
+        if self.operator not in QUERY_OPERATORS:
+            raise ValueError(f"Onbekende BOM-queryoperator: {self.operator}")
+
+    def to_dict(self) -> dict[str, str]:
+        return {"field": self.field, "operator": self.operator, "value": self.value}
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "BOMQueryClause":
+        return cls(
+            field=str(value.get("field") or "status"),
+            operator=str(value.get("operator") or "equals"),
+            value=str(value.get("value") or ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class BOMSmartQuery:
+    query_id: str
+    name: str
+    family: str
+    match: str
+    clauses: tuple[BOMQueryClause, ...]
+    created_at: str = field(default_factory=lambda: _utc_now())
+
+    def __post_init__(self) -> None:
+        if self.match not in {"all", "any"}:
+            raise ValueError("Een slimme selectie gebruikt 'all' of 'any'")
+        if not self.clauses:
+            raise ValueError("Een slimme selectie vereist minimaal één voorwaarde")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "cws-bom-smart-query-1.0", "query_id": self.query_id,
+            "name": self.name, "family": self.family, "match": self.match,
+            "clauses": [clause.to_dict() for clause in self.clauses],
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "BOMSmartQuery":
+        return cls(
+            query_id=str(value.get("query_id") or uuid4()),
+            name=str(value.get("name") or "Slimme selectie"),
+            family=str(value.get("family") or "parts"),
+            match=str(value.get("match") or "all"),
+            clauses=tuple(BOMQueryClause.from_dict(item) for item in value.get("clauses") or ()),
+            created_at=str(value.get("created_at") or _utc_now()),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class BOMRevisionDelta:
+    group_id: str
+    family: str
+    status: str
+    changed_fields: tuple[str, ...] = ()
+    before: Mapping[str, Any] = field(default_factory=dict)
+    after: Mapping[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "group_id": self.group_id, "family": self.family,
+            "status": self.status, "changed_fields": list(self.changed_fields),
+            "before": deepcopy(dict(self.before)), "after": deepcopy(dict(self.after)),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BOMActionDefinition:
+    action_id: str
+    label: str
+    category: str
+    families: tuple[str, ...]
+    route: str
+    mutating: bool = False
+    allow_blocked: bool = False
+    requires_production_ready: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class BOMBatchResult:
+    transaction_id: str
+    action: str
+    status: str
+    snapshot_sha256: str
+    preflight_sha256: str
+    before_hash: str
+    after_hash: str
+    eligible_group_ids: tuple[str, ...]
+    blocked_group_ids: tuple[str, ...]
+    changed_entity_ids: tuple[str, ...] = ()
+    outputs: tuple[str, ...] = ()
+    messages: tuple[str, ...] = ()
+    undo_available: bool = False
+    release_id: str = ""
+    created_at: str = field(default_factory=lambda: _utc_now())
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema": "cws-bom-batch-result-1.0",
+            "transaction_id": self.transaction_id, "action": self.action,
+            "status": self.status, "snapshot_sha256": self.snapshot_sha256,
+            "preflight_sha256": self.preflight_sha256,
+            "before_hash": self.before_hash, "after_hash": self.after_hash,
+            "eligible_group_ids": list(self.eligible_group_ids),
+            "blocked_group_ids": list(self.blocked_group_ids),
+            "changed_entity_ids": list(self.changed_entity_ids),
+            "outputs": list(self.outputs), "messages": list(self.messages),
+            "undo_available": self.undo_available, "release_id": self.release_id,
+            "created_at": self.created_at,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BOMTransactionExecution:
+    value: Any
+    result: BOMBatchResult
+
+
+@dataclass(frozen=True, slots=True)
+class BOMStockSourceOption:
+    source_type: str
+    source_id: str
+    source_length_mm: float
+    cut_plan: tuple[tuple[float, ...], ...]
+    kerf_mm: float
+
+    @property
+    def source_quantity(self) -> int:
+        return len(self.cut_plan)
+
+    @property
+    def net_length_mm(self) -> float:
+        return sum(sum(values) for values in self.cut_plan)
+
+
+class BOMStockAllocator:
+    """Deterministic physical stock/remnant matching and reservation."""
+
+    @staticmethod
+    def cut_plan(
+        lengths: Iterable[float], source_length_mm: float, kerf_mm: float
+    ) -> tuple[tuple[float, ...], ...]:
+        bins: list[list[float]] = []
+        source_length = float(source_length_mm)
+        kerf = max(0.0, float(kerf_mm))
+        for length in sorted((float(value) for value in lengths), reverse=True):
+            if length <= 0.0 or length > source_length:
+                return ()
+            placed = False
+            for values in bins:
+                used = sum(values) + max(0, len(values) - 1) * kerf
+                if used + kerf + length <= source_length + 1e-6:
+                    values.append(length)
+                    placed = True
+                    break
+            if not placed:
+                bins.append([length])
+        return tuple(tuple(values) for values in bins)
+
+    @staticmethod
+    def piece_lengths(rows: Iterable[BOMWorkspaceRow]) -> tuple[float, ...]:
+        return tuple(
+            float(row.length_mm)
+            for row in rows
+            for _ in range(max(1, int(round(float(row.quantity or 1.0)))))
+        )
+
+    def options(
+        self,
+        project: Any,
+        rows: Iterable[BOMWorkspaceRow],
+        *,
+        kerf_mm: float = 3.0,
+    ) -> tuple[BOMStockSourceOption, ...]:
+        selected = tuple(rows)
+        if not selected or any(row.family != "parts" for row in selected):
+            raise ValueError("Voorraadtoewijzing accepteert uitsluitend onderdeelregels")
+        identities = {(row.profile.casefold(), row.material.casefold()) for row in selected}
+        if len(identities) != 1:
+            raise ValueError("Een reservering vereist één profiel/materiaalcombinatie")
+        profile_key, material_key = next(iter(identities))
+        pieces = self.piece_lengths(selected)
+        options: list[BOMStockSourceOption] = []
+        for stock in project.stock_items.values():
+            free = int(max(0.0, float(stock.available_quantity) - float(stock.reserved_quantity)))
+            stock_materials = {
+                str(value).casefold() for value in (stock.material, stock.grade) if str(value)
+            }
+            if (
+                str(stock.status).casefold() not in {"available", "reserved"}
+                or str(stock.profile).casefold() != profile_key
+                or (bool(material_key) and bool(stock_materials) and material_key not in stock_materials)
+                or free < 1
+            ):
+                continue
+            plan = self.cut_plan(pieces, float(stock.stock_length_mm), kerf_mm)
+            if plan and len(plan) <= free:
+                options.append(BOMStockSourceOption(
+                    "full_stock", stock.internal_id, float(stock.stock_length_mm),
+                    plan, float(kerf_mm),
+                ))
+        for remnant in project.remnants.values():
+            remnant_materials = {
+                str(value).casefold() for value in (remnant.material, remnant.grade) if str(value)
+            }
+            if (
+                str(remnant.status).casefold() != "available"
+                or remnant.reservation_ids
+                or str(remnant.profile).casefold() != profile_key
+                or (bool(material_key) and bool(remnant_materials) and material_key not in remnant_materials)
+            ):
+                continue
+            plan = self.cut_plan(pieces, float(remnant.remaining_length_mm), kerf_mm)
+            if len(plan) == 1:
+                options.append(BOMStockSourceOption(
+                    "remnant", remnant.internal_id, float(remnant.remaining_length_mm),
+                    plan, float(kerf_mm),
+                ))
+        return tuple(sorted(options, key=lambda item: (
+            item.source_quantity * item.source_length_mm - item.net_length_mm,
+            item.source_type, item.source_id,
+        )))
+
+    @staticmethod
+    def reserve(
+        project: Any,
+        hub_data: dict[str, Any],
+        rows: Iterable[BOMWorkspaceRow],
+        option: BOMStockSourceOption,
+        preflight: "BOMBatchPreflight",
+        *,
+        user: str = "bom-operator",
+    ) -> Any:
+        from cws_convertor.optimization.profile_nesting.models import ReservationRequest
+        from cws_convertor.optimization.profile_nesting.reservation import reserve_physical_stock
+
+        selected = tuple(rows)
+        source = (
+            project.stock_items.get(option.source_id)
+            if option.source_type == "full_stock"
+            else project.remnants.get(option.source_id)
+        )
+        if source is None:
+            raise ValueError(f"Fysieke bron {option.source_id} bestaat niet")
+        record = reserve_physical_stock(
+            project,
+            (ReservationRequest(
+                source_type=option.source_type, source_id=option.source_id,
+                quantity=option.source_quantity if option.source_type == "full_stock" else 1,
+                expected_reservation_revision=int(source.reservation_revision),
+            ),),
+            run_id=f"bom-{preflight.preflight_sha256[:16]}", user=user,
+        )
+        assignments = hub_data.setdefault("stock_assignments", {})
+        for row in selected:
+            assignments[row.group_id] = {
+                "source_type": option.source_type, "source_id": option.source_id,
+                "reservation_id": record.reservation_id,
+                "reserved_source_quantity": option.source_quantity,
+                "kerf_mm": option.kerf_mm,
+                "piece_lengths_mm": [
+                    float(row.length_mm)
+                    for _ in range(max(1, int(round(float(row.quantity or 1.0)))))
+                ],
+                "cut_plan": [list(values) for values in option.cut_plan],
+                "preflight_sha256": preflight.preflight_sha256,
+            }
+        return record
+
+
+class BOMProcurementService:
+    """Canonical purchase-need creation, editing and release authority."""
+
+    @staticmethod
+    def generate_needs(
+        project: Any,
+        hub_data: dict[str, Any],
+        rows: Iterable[BOMWorkspaceRow],
+        preflight: "BOMBatchPreflight",
+        *,
+        user: str = "bom-operator",
+    ) -> tuple[str, ...]:
+        from cws_convertor.project import PurchasedItem
+
+        created: list[str] = []
+        orders = hub_data.setdefault("purchase_orders", [])
+        for row in rows:
+            shortage = float(row.shortage_mm or 0.0)
+            required = (
+                shortage if shortage > 0.001
+                else float(row.length_mm or 0.0) * float(row.quantity or 1.0)
+            )
+            if required <= 0.0:
+                continue
+            entity_id = str(uuid4())
+            piece_length = max(float(row.length_mm or required), 1.0)
+            quantity = max(1.0, math.ceil(required / piece_length))
+            supplier = row.supplier if row.supplier not in {"", "-", "Gemengd"} else ""
+            item = PurchasedItem(
+                internal_id=entity_id,
+                name=f"Inkoopbehoefte {row.profile or row.mark or row.group_id}",
+                article_number=f"AUTO-{entity_id[:8].upper()}",
+                supplier=supplier,
+                description=row.description or row.profile,
+                material=row.material,
+                grade=row.material,
+                dimensions={"profile": row.profile, "required_length_mm": required},
+                quantity=quantity,
+                unit="piece",
+                unit_price=float(row.unit_price or 0.0),
+                lead_time_days=int(row.lead_time_days or 0),
+                purchase_status="review_required",
+                properties={
+                    "source_bom_group": row.group_id,
+                    "expected_delivery": row.expected_delivery,
+                    "purchase_release_status": "draft",
+                    "required_length_mm": required,
+                },
+            )
+            project.add_entity(item, user=user)
+            created.append(entity_id)
+            orders.append({
+                "purchase_item_id": entity_id, "source_group_id": row.group_id,
+                "status": "draft", "preflight_sha256": preflight.preflight_sha256,
+            })
+        if not created:
+            raise ValueError("De selectie bevat geen berekenbare inkoopbehoefte")
+        return tuple(created)
+
+    @staticmethod
+    def edit(
+        project: Any,
+        purchase_ids: Iterable[str],
+        field_name: str,
+        value: str,
+    ) -> int:
+        ids = _unique(purchase_ids)
+        for entity_id in ids:
+            item = project.purchased_items.get(entity_id)
+            if item is None:
+                raise KeyError(f"Onbekende inkoopregel {entity_id}")
+            if field_name == "supplier":
+                item.supplier = str(value).strip()
+            elif field_name == "unit_price":
+                item.unit_price = float(str(value).replace(",", "."))
+            elif field_name == "lead_time_days":
+                item.lead_time_days = int(value)
+            elif field_name == "expected_delivery":
+                item.properties["expected_delivery"] = str(value).strip()
+            elif field_name == "alternative":
+                alternative = str(value).strip()
+                if alternative and alternative not in item.alternatives:
+                    item.alternatives.append(alternative)
+            elif field_name == "purchase_status":
+                item.purchase_status = str(value).strip()
+            else:
+                raise ValueError(f"Onbekend inkoopveld {field_name}")
+        return len(ids)
+
+    @staticmethod
+    def release(
+        project: Any,
+        hub_data: dict[str, Any],
+        purchase_ids: Iterable[str],
+    ) -> int:
+        ids = _unique(purchase_ids)
+        for entity_id in ids:
+            item = project.purchased_items.get(entity_id)
+            if item is None:
+                raise KeyError(f"Onbekende inkoopregel {entity_id}")
+            if not item.supplier or float(item.quantity or 0.0) <= 0.0:
+                raise ValueError(f"Inkoopregel {entity_id} mist leverancier of hoeveelheid")
+            item.purchase_status = "released"
+            item.properties["purchase_release_status"] = "released"
+            for order in hub_data.setdefault("purchase_orders", []):
+                if order.get("purchase_item_id") == entity_id:
+                    order["status"] = "released"
+        return len(ids)
 
 
 def _utc_now() -> str:
@@ -59,6 +465,167 @@ def _row_fingerprint(row: BOMWorkspaceRow, project: Any) -> str:
         "production": row.production_status, "stock": row.stock_status,
         "supplier": row.supplier, "entity_evidence": entity_evidence,
     })
+
+
+def _row_payload(
+    row: BOMWorkspaceRow,
+    project: Any,
+    *,
+    bounds_by_entity: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    fields = {
+        name: deepcopy(getattr(row, name, None))
+        for name in (
+            "family", "group_id", "entity_ids", "mark", "description", "profile",
+            "material", "length_mm", "quantity", "total_mass_kg", "total_surface_m2",
+            "machine", "document_status", "phase", "delivery", "release_status",
+            "nesting_status", "production_status", "stock_status", "supplier",
+            "available_stock_mm", "shortage_mm", "unit_price", "total_price",
+            "lead_time_days", "expected_delivery", "purchase_status", "status",
+            "blocked", "blocking_reasons", "geometry_status", "material_status",
+            "machine_status", "nc_status", "scribing_status", "conflict_status",
+            "delivery_status", "assigned_stock", "assigned_remnant",
+            "alternative_material", "purchase_release_status",
+        )
+        if hasattr(row, name)
+    }
+    fields["entity_ids"] = list(row.entity_ids)
+    fields["blocking_reasons"] = list(row.blocking_reasons)
+    fields["entity_evidence"] = []
+    for entity_id in row.entity_ids:
+        entity = project.get_entity(entity_id) if hasattr(project, "get_entity") else None
+        evidence = {
+            "entity_id": entity_id,
+            "entity_type": str(getattr(entity, "entity_type", "") or ""),
+            "geometry_hash": str(getattr(entity, "geometry_hash", "") or ""),
+            "manufacturing_hash": str(getattr(entity, "manufacturing_hash", "") or ""),
+            "production_features": deepcopy(getattr(entity, "production_features", ()) or ()),
+        }
+        if bounds_by_entity and entity_id in bounds_by_entity:
+            evidence["world_bounds"] = deepcopy(bounds_by_entity[entity_id])
+        fields["entity_evidence"].append(evidence)
+    fields["fingerprint"] = stable_sha256(fields)
+    return fields
+
+
+_ALL_FAMILIES = ("parts", "assemblies", "purchase", "fasteners", "welds", "materials", "conflicts")
+_MODEL_FAMILIES = ("parts", "assemblies", "purchase", "fasteners", "welds")
+ACTION_DEFINITIONS = (
+    # Bekijken en controleren
+    BOMActionDefinition("viewer.zoom", "Zoom naar selectie", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("viewer.fit", "Passend in beeld", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("viewer.isolate", "Isoleren", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("viewer.ghost", "Andere objecten ghosten", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("viewer.hide", "Verbergen", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("viewer.show_all", "Alles opnieuw tonen", "Bekijken en controleren", _ALL_FAMILIES, "viewer", allow_blocked=True),
+    BOMActionDefinition("viewer.section", "Doorsnede rond selectie", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("viewer.measure", "Meten", "Bekijken en controleren", _MODEL_FAMILIES, "viewer"),
+    BOMActionDefinition("inspect.properties", "Eigenschappen openen", "Bekijken en controleren", _ALL_FAMILIES, "inspect", allow_blocked=True),
+    BOMActionDefinition("inspect.source", "Bronobject tonen", "Bekijken en controleren", _MODEL_FAMILIES, "inspect", allow_blocked=True),
+    BOMActionDefinition("inspect.assembly", "Assemblycontext tonen", "Bekijken en controleren", _MODEL_FAMILIES, "inspect", allow_blocked=True),
+    BOMActionDefinition("inspect.hashes", "Geometrie/productiehash bekijken", "Bekijken en controleren", _MODEL_FAMILIES, "inspect", allow_blocked=True),
+    BOMActionDefinition("inspect.blockers", "Conflicten en blockers tonen", "Bekijken en controleren", _ALL_FAMILIES, "inspect", allow_blocked=True),
+    # Bewerken
+    BOMActionDefinition("edit.profile", "Profiel aanpassen", "Bewerken", ("parts",), "edit", True),
+    BOMActionDefinition("edit.material", "Materiaal aanpassen", "Bewerken", ("parts", "purchase"), "edit", True),
+    BOMActionDefinition("edit.length", "Lengte aanpassen", "Bewerken", ("parts", "purchase"), "edit", True),
+    BOMActionDefinition("edit.mark", "Merk/positie aanpassen", "Bewerken", ("parts", "assemblies"), "edit", True),
+    BOMActionDefinition("edit.phase", "Fase wijzigen", "Bewerken", _MODEL_FAMILIES, "edit", True),
+    BOMActionDefinition("edit.classification", "Classificatie wijzigen", "Bewerken", ("parts", "purchase"), "edit", True),
+    BOMActionDefinition("edit.assembly_add", "Aan assembly toevoegen", "Bewerken", ("parts", "purchase"), "edit", True),
+    BOMActionDefinition("edit.assembly_remove", "Uit assembly verwijderen", "Bewerken", ("parts", "purchase"), "edit", True),
+    BOMActionDefinition("edit.orientation", "Productieoriëntatie aanpassen", "Bewerken", ("parts",), "edit", True),
+    BOMActionDefinition("edit.revision", "Revisiestatus aanpassen", "Bewerken", _MODEL_FAMILIES, "edit", True),
+    BOMActionDefinition("edit.comment", "Opmerking toevoegen", "Bewerken", _ALL_FAMILIES, "edit", True, True),
+    # Tekening en documenten
+    BOMActionDefinition("drawing.open_part", "Onderdeeltekening openen", "Tekening en documenten", ("parts",), "drawings"),
+    BOMActionDefinition("drawing.generate", "Tekening genereren", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.regenerate", "Tekening opnieuw genereren", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.open_assembly", "Assemblytekening openen", "Tekening en documenten", ("assemblies",), "drawings"),
+    BOMActionDefinition("drawing.preview", "PDF-preview", "Tekening en documenten", ("parts", "assemblies"), "drawings"),
+    BOMActionDefinition("drawing.setup", "Formaat, schaal en aanzichten instellen", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.format", "Formaat kiezen (A4 t/m A0)", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.scale", "Schaal automatisch of handmatig", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.views", "Aanzichten kiezen", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.dimension_check", "Maatvoering controleren", "Tekening en documenten", ("parts", "assemblies"), "drawings"),
+    BOMActionDefinition("drawing.revision", "Tekeningrevisie toevoegen", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.approve", "Tekening goedkeuren", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
+    BOMActionDefinition("drawing.batch_pdf", "Batch-PDF maken", "Tekening en documenten", ("parts", "assemblies"), "drawings"),
+    BOMActionDefinition("drawing.print", "Printen", "Tekening en documenten", ("parts", "assemblies"), "print"),
+    # Machine en productie
+    BOMActionDefinition("machine.recommend", "Aanbevolen machine bekijken", "Machine en productie", ("parts",), "machine"),
+    BOMActionDefinition("machine.explain", "Waarom deze machine?", "Machine en productie", ("parts",), "machine", allow_blocked=True),
+    BOMActionDefinition("machine.assign", "Machine toewijzen", "Machine en productie", ("parts",), "machine", True),
+    BOMActionDefinition("machine.auto_accept", "Automatische toewijzing accepteren", "Machine en productie", ("parts",), "machine", True),
+    BOMActionDefinition("machine.manual_lock", "Handmatige toewijzing vergrendelen", "Machine en productie", ("parts",), "machine", True),
+    BOMActionDefinition("machine.reset", "Machinekeuze resetten", "Machine en productie", ("parts",), "machine", True),
+    BOMActionDefinition("machine.validate", "Geschiktheid opnieuw controleren", "Machine en productie", ("parts",), "machine"),
+    BOMActionDefinition("machine.alternatives", "Alternatieve machine tonen", "Machine en productie", ("parts",), "machine"),
+    BOMActionDefinition("machine.blocker", "Productieblokker bekijken", "Machine en productie", ("parts",), "inspect", allow_blocked=True),
+    BOMActionDefinition("production.route", "Productieroute bekijken", "Machine en productie", ("parts", "assemblies"), "production"),
+    BOMActionDefinition("production.operations", "Bewerkingen bekijken", "Machine en productie", ("parts",), "production"),
+    BOMActionDefinition("production.nc_preview", "NC1/DSTV-preview", "Machine en productie", ("parts",), "export"),
+    BOMActionDefinition("production.release", "Vrijgeven voor productie", "Machine en productie", ("parts", "assemblies"), "production", True, False, True),
+    BOMActionDefinition("production.withdraw", "Productievrijgave intrekken", "Machine en productie", ("parts", "assemblies"), "production", True),
+    # Optimalisatie en voorraad
+    BOMActionDefinition("optimize.profile", "Profielnesting starten", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.plate", "Plaatnesting starten", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.trade_length", "Optimaliseren op handelslengte", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.stock", "Optimaliseren op aanwezige voorraad", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.remnants_include", "Reststukken meenemen", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.remnants_exclude", "Reststukken uitsluiten", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.kerf", "Zaagverlies instellen", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("stock.assign", "Toewijzen aan voorraadstuk", "Optimalisatie en voorraad", ("parts",), "stock", True),
+    BOMActionDefinition("stock.shortage", "Materiaaltekort berekenen", "Optimalisatie en voorraad", ("parts", "materials"), "stock"),
+    BOMActionDefinition("purchase.generate", "Inkoopbehoefte genereren", "Optimalisatie en voorraad", ("parts", "materials", "purchase"), "purchase", True),
+    BOMActionDefinition("purchase.edit", "Inkoopgegevens bewerken", "Optimalisatie en voorraad", ("purchase",), "purchase", True),
+    BOMActionDefinition("purchase.release", "Inkoop vrijgeven", "Optimalisatie en voorraad", ("purchase",), "purchase", True),
+    BOMActionDefinition("optimize.alternatives", "Alternatieve profielen/materialen", "Optimalisatie en voorraad", ("parts", "purchase", "materials"), "optimize"),
+    BOMActionDefinition("optimize.compare", "Vergelijken met vorige optimalisatie", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    # Export
+    BOMActionDefinition("export.production", "NC1/STEP/IFC/DXF/productie-PDF", "Export", ("parts", "assemblies"), "export"),
+    BOMActionDefinition("export.review", "XLSX/CSV/JSON/PDF/BOM-package", "Export", _ALL_FAMILIES, "review_export", allow_blocked=True),
+    BOMActionDefinition("export.grouping", "Groeperen per onderdeel/merk/assembly/machine/fase/levering", "Export", _ALL_FAMILIES, "export"),
+    BOMActionDefinition("export.nc1", "NC1/DSTV", "Export", ("parts",), "export"),
+    BOMActionDefinition("export.step", "STEP", "Export", ("parts", "assemblies"), "export"),
+    BOMActionDefinition("export.ifc", "IFC", "Export", ("parts", "assemblies"), "export"),
+    BOMActionDefinition("export.dxf", "DXF", "Export", ("parts", "assemblies"), "export"),
+    BOMActionDefinition("export.pdf", "PDF", "Export", _MODEL_FAMILIES, "export"),
+    BOMActionDefinition("export.xlsx", "XLSX", "Export", _ALL_FAMILIES, "review_export", allow_blocked=True),
+    BOMActionDefinition("export.csv", "CSV", "Export", _ALL_FAMILIES, "review_export", allow_blocked=True),
+    BOMActionDefinition("export.json", "JSON", "Export", _ALL_FAMILIES, "review_export", allow_blocked=True),
+    BOMActionDefinition("export.package", "Productiepackage", "Export", ("parts", "assemblies"), "export"),
+    BOMActionDefinition("export.occurrences", "Alleen geselecteerde occurrences", "Export", _MODEL_FAMILIES, "export"),
+    BOMActionDefinition("export.per_part", "Eén bestand per onderdeel", "Export", ("parts",), "export"),
+    BOMActionDefinition("export.per_mark", "Eén bestand per merk", "Export", ("parts", "assemblies"), "export"),
+    BOMActionDefinition("export.per_assembly", "Eén package per assembly", "Export", ("assemblies",), "export"),
+    BOMActionDefinition("export.per_machine", "Eén package per machine", "Export", ("parts",), "export"),
+    BOMActionDefinition("export.per_phase", "Eén package per fase of levering", "Export", _MODEL_FAMILIES, "export"),
+)
+
+
+class BOMActionMatrix:
+    def __init__(self, definitions: Iterable[BOMActionDefinition] = ACTION_DEFINITIONS) -> None:
+        self.definitions = tuple(definitions)
+
+    def available(
+        self,
+        rows: Iterable[BOMWorkspaceRow],
+        *,
+        production_ready: bool,
+    ) -> tuple[tuple[BOMActionDefinition, bool, str], ...]:
+        selected = tuple(rows)
+        families = {row.family for row in selected}
+        result = []
+        for definition in self.definitions:
+            enabled = bool(selected) and families.issubset(set(definition.families))
+            reason = "" if enabled else "Niet beschikbaar voor deze objectfamilie"
+            if enabled and any(row.blocked for row in selected) and not definition.allow_blocked:
+                enabled, reason = False, "Selectie bevat geblokkeerde regels"
+            if enabled and definition.requires_production_ready and not production_ready:
+                enabled, reason = False, "De volledige BOM is niet productiegereed"
+            result.append((definition, enabled, reason))
+        return tuple(result)
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,6 +776,41 @@ class BOMScopeEngine:
             if row.group_id in groups or bool(entities.intersection(row.entity_ids))
         )
 
+    @staticmethod
+    def _matches_clause(row: BOMWorkspaceRow, clause: BOMQueryClause) -> bool:
+        raw = getattr(row, clause.field, "")
+        left = str(raw if raw is not None else "").strip()
+        right = str(clause.value or "").strip()
+        operator = clause.operator
+        if operator == "is_empty":
+            return left in {"", "-", "onbekend", "unknown"}
+        if operator == "is_not_empty":
+            return left not in {"", "-", "onbekend", "unknown"}
+        if operator in {"greater_than", "less_than"}:
+            try:
+                lhs, rhs = float(raw or 0.0), float(right)
+            except (TypeError, ValueError):
+                return False
+            return lhs > rhs if operator == "greater_than" else lhs < rhs
+        lhs, rhs = left.casefold(), right.casefold()
+        if operator == "equals":
+            return lhs == rhs
+        if operator == "not_equals":
+            return lhs != rhs
+        if operator == "contains":
+            return rhs in lhs
+        if operator == "not_contains":
+            return rhs not in lhs
+        return False
+
+    def query(self, smart_query: BOMSmartQuery) -> tuple[BOMWorkspaceRow, ...]:
+        rows = self.model.family_rows(smart_query.family)
+        predicate = all if smart_query.match == "all" else any
+        return tuple(
+            row for row in rows
+            if predicate(self._matches_clause(row, clause) for clause in smart_query.clauses)
+        )
+
     def impact(
         self,
         rows: Iterable[BOMWorkspaceRow],
@@ -255,7 +857,10 @@ class BOMScopeEngine:
         if not selected:
             blockers.append("Selectie is leeg")
         blocked = tuple(row.group_id for row in selected if row.blocked)
-        strict = action not in {"review_export", "inspect", "report"}
+        strict = (
+            action not in {"review_export", "inspect", "report", "comment"}
+            and not allow_blocked_review_export
+        )
         # Row blockers form an explicit rejected partition; they do not make
         # otherwise eligible rows disappear.  Global incompatibilities below
         # still block the complete action.
@@ -299,14 +904,20 @@ class BOMHubState:
         self.project = project
         self._runtime_entity_undo: dict[str, dict[str, Any]] = {}
         self._runtime_settings_undo: dict[str, dict[str, Any]] = {}
+        self._runtime_project_undo: dict[str, dict[str, Any]] = {}
 
     @property
     def data(self) -> dict[str, Any]:
         settings = self.project.settings.setdefault(HUB_SETTINGS_KEY, {})
         settings.setdefault("saved_selections", [])
+        settings.setdefault("smart_queries", [])
         settings.setdefault("basket_entity_ids", [])
         settings.setdefault("history", [])
         settings.setdefault("undo", [])
+        settings.setdefault("batch_results", [])
+        settings.setdefault("external_releases", [])
+        settings.setdefault("stock_assignments", {})
+        settings.setdefault("purchase_orders", [])
         settings.setdefault("revision_baseline", {})
         return settings
 
@@ -373,13 +984,48 @@ class BOMHubState:
             raise KeyError(selection_id)
         self._history("selection.deleted", user, {"selection_id": str(selection_id)})
 
-    def set_revision_baseline(self, model: BOMWorkspaceReadModel, *, user: str = "bom-operator") -> str:
+    def smart_queries(self) -> tuple[BOMSmartQuery, ...]:
+        return tuple(BOMSmartQuery.from_dict(value) for value in self.data["smart_queries"])
+
+    def save_smart_query(
+        self,
+        name: str,
+        family: str,
+        clauses: Iterable[BOMQueryClause],
+        *,
+        match: str = "all",
+        user: str = "bom-operator",
+    ) -> BOMSmartQuery:
+        query = BOMSmartQuery(
+            query_id=str(uuid4()), name=str(name).strip(), family=str(family),
+            match=str(match), clauses=tuple(clauses),
+        )
+        if not query.name:
+            raise ValueError("Naam van slimme selectie ontbreekt")
+        self.data["smart_queries"].append(query.to_dict())
+        self._history("smart_query.saved", user, query.to_dict())
+        return query
+
+    def delete_smart_query(self, query_id: str, *, user: str = "bom-operator") -> None:
+        before = list(self.data["smart_queries"])
+        self.data["smart_queries"] = [
+            value for value in before if str(value.get("query_id")) != str(query_id)
+        ]
+        if len(before) == len(self.data["smart_queries"]):
+            raise KeyError(query_id)
+        self._history("smart_query.deleted", user, {"query_id": str(query_id)})
+
+    def set_revision_baseline(
+        self,
+        model: BOMWorkspaceReadModel,
+        *,
+        bounds_by_entity: Mapping[str, Any] | None = None,
+        user: str = "bom-operator",
+    ) -> str:
         payload = {
-            row.group_id: {
-                "family": row.family,
-                "entity_ids": list(row.entity_ids),
-                "fingerprint": _row_fingerprint(row, self.project),
-            }
+            row.group_id: _row_payload(
+                row, self.project, bounds_by_entity=bounds_by_entity
+            )
             for family in model._rows
             for row in model.family_rows(family)
         }
@@ -396,24 +1042,291 @@ class BOMHubState:
         })
         return str(baseline["baseline_sha256"])
 
-    def revision_statuses(self, model: BOMWorkspaceReadModel) -> dict[str, str]:
+    def revision_deltas(self, model: BOMWorkspaceReadModel) -> dict[str, BOMRevisionDelta]:
         baseline = dict(self.data.get("revision_baseline") or {})
         old = dict(baseline.get("groups") or {})
+        result: dict[str, BOMRevisionDelta] = {}
+        current: dict[str, dict[str, Any]] = {
+            row.group_id: _row_payload(row, self.project)
+            for family in model._rows
+            for row in model.family_rows(family)
+        }
         if not old:
-            return {row.group_id: "geen baseline" for family in model._rows for row in model.family_rows(family)}
-        result: dict[str, str] = {}
-        for family in model._rows:
-            for row in model.family_rows(family):
-                fingerprint = _row_fingerprint(row, self.project)
-                previous = old.get(row.group_id)
-                result[row.group_id] = (
-                    "toegevoegd" if previous is None
-                    else "ongewijzigd" if previous.get("fingerprint") == fingerprint
-                    else "gewijzigd"
+            return {
+                group_id: BOMRevisionDelta(
+                    group_id=group_id,
+                    family=str(after.get("family") or ""),
+                    status="geen baseline",
+                    changed_fields=(),
+                    before={},
+                    after=deepcopy(after),
                 )
-        for group_id in set(old) - set(result):
-            result[group_id] = "verwijderd"
+                for group_id, after in current.items()
+            }
+        ignored = {"fingerprint", "entity_evidence"}
+
+        def changed_fields(before: Mapping[str, Any], after: Mapping[str, Any]) -> tuple[str, ...]:
+            changed = tuple(sorted(
+                key for key in set(before) | set(after)
+                if key not in ignored and before.get(key) != after.get(key)
+            ))
+            old_evidence = {
+                item.get("entity_id"): item for item in before.get("entity_evidence") or ()
+            }
+            new_evidence = {
+                item.get("entity_id"): item for item in after.get("entity_evidence") or ()
+            }
+            # Geometry/feature deltas apply only to the same canonical object.
+            # Added/removed membership is already reported through entity_ids.
+            for entity_id in sorted(set(old_evidence).intersection(new_evidence)):
+                left, right = old_evidence.get(entity_id, {}), new_evidence.get(entity_id, {})
+                if left.get("geometry_hash") != right.get("geometry_hash"):
+                    changed += ("geometry",)
+                if left.get("manufacturing_hash") != right.get("manufacturing_hash"):
+                    changed += ("manufacturing",)
+                if left.get("production_features") != right.get("production_features"):
+                    changed += ("production_features",)
+            return _unique(changed)
+
+        old_entity_sets = {
+            group_id: set(_unique(payload.get("entity_ids") or ()))
+            for group_id, payload in old.items()
+        }
+        current_entity_ids = {
+            entity_id for payload in current.values()
+            for entity_id in _unique(payload.get("entity_ids") or ())
+        }
+        for group_id, after in current.items():
+            before = old.get(group_id)
+            if before is None:
+                after_ids = set(_unique(after.get("entity_ids") or ()))
+                candidates = [
+                    (len(after_ids.intersection(entity_ids)), old_group, payload)
+                    for old_group, payload in old.items()
+                    for entity_ids in (old_entity_sets[old_group],)
+                    if after_ids.intersection(entity_ids)
+                    and str(payload.get("family") or "") == str(after.get("family") or "")
+                ]
+                if candidates:
+                    _overlap, _old_group, before = max(
+                        candidates, key=lambda item: (item[0], item[1])
+                    )
+            if before is None:
+                status, changed = "toegevoegd", tuple(sorted(set(after) - ignored))
+            elif before.get("fingerprint") == after.get("fingerprint"):
+                status, changed = "ongewijzigd", ()
+            else:
+                status, changed = "gewijzigd", changed_fields(before, after)
+            result[group_id] = BOMRevisionDelta(
+                group_id=group_id, family=str(after.get("family") or ""), status=status,
+                changed_fields=changed, before=deepcopy(before or {}), after=deepcopy(after),
+            )
+        for group_id in sorted(old):
+            before = dict(old[group_id] or {})
+            missing_ids = old_entity_sets[group_id] - current_entity_ids
+            if not missing_ids:
+                continue
+            removed_payload = deepcopy(before)
+            removed_payload["entity_ids"] = sorted(missing_ids)
+            removed_payload["entity_evidence"] = [
+                item for item in before.get("entity_evidence") or ()
+                if str(item.get("entity_id") or "") in missing_ids
+            ]
+            removed_payload["quantity"] = min(
+                float(before.get("quantity") or len(missing_ids)), float(len(missing_ids))
+            )
+            removed_group_id = (
+                group_id if group_id not in result
+                else f"{group_id}::removed::{stable_sha256(sorted(missing_ids))[:10]}"
+            )
+            result[removed_group_id] = BOMRevisionDelta(
+                group_id=removed_group_id, family=str(before.get("family") or ""),
+                status="verwijderd", changed_fields=("removed",),
+                before=removed_payload, after={},
+            )
         return result
+
+    def revision_statuses(self, model: BOMWorkspaceReadModel) -> dict[str, str]:
+        if not dict(self.data.get("revision_baseline") or {}).get("groups"):
+            return {row.group_id: "geen baseline" for family in model._rows for row in model.family_rows(family)}
+        return {key: value.status for key, value in self.revision_deltas(model).items()}
+
+    def removed_revision_rows(self, model: BOMWorkspaceReadModel, family: str) -> tuple[BOMWorkspaceRow, ...]:
+        rows = []
+        for delta in self.revision_deltas(model).values():
+            if delta.status != "verwijderd" or delta.family != family:
+                continue
+            value = dict(delta.before)
+            rows.append(BOMWorkspaceRow(
+                family=family, group_id=delta.group_id,
+                entity_ids=_unique(value.get("entity_ids") or ()),
+                mark=str(value.get("mark") or ""),
+                description=str(value.get("description") or "Verwijderd sinds revisiebaseline"),
+                profile=str(value.get("profile") or ""), material=str(value.get("material") or ""),
+                length_mm=float(value.get("length_mm") or 0.0), quantity=float(value.get("quantity") or 0.0),
+                total_mass_kg=float(value.get("total_mass_kg") or 0.0),
+                total_surface_m2=float(value.get("total_surface_m2") or 0.0),
+                status="removed", blocked=True,
+                blocking_reasons=("Object bestaat niet meer in de actuele revisie",),
+                revision_status="verwijderd",
+            ))
+        return tuple(rows)
+
+    def removed_revision_bounds(self, model: BOMWorkspaceReadModel) -> tuple[dict[str, Any], ...]:
+        result: dict[str, dict[str, Any]] = {}
+        for delta in self.revision_deltas(model).values():
+            if delta.status != "verwijderd":
+                continue
+            for evidence in delta.before.get("entity_evidence") or ():
+                bounds = evidence.get("world_bounds")
+                if bounds:
+                    entity_id = str(evidence.get("entity_id") or "")
+                    result.setdefault(entity_id, {
+                        "entity_id": entity_id,
+                        "group_id": delta.group_id, "bounds": deepcopy(bounds),
+                    })
+        return tuple(result[key] for key in sorted(result))
+
+    def _store_result(self, result: BOMBatchResult, *, user: str) -> BOMBatchResult:
+        self.data["batch_results"].append(result.to_dict())
+        self.data["batch_results"] = self.data["batch_results"][-200:]
+        self._history("batch.result", user, result.to_dict())
+        return result
+
+    def record_result(
+        self,
+        action: str,
+        preflight: BOMBatchPreflight,
+        *,
+        outputs: Iterable[str] = (),
+        messages: Iterable[str] = (),
+        user: str = "bom-operator",
+    ) -> BOMBatchResult:
+        digest = stable_sha256(self.project.to_dict())
+        return self._store_result(BOMBatchResult(
+            transaction_id=str(uuid4()), action=str(action), status="passed",
+            snapshot_sha256=preflight.snapshot_sha256,
+            preflight_sha256=preflight.preflight_sha256,
+            before_hash=digest, after_hash=digest,
+            eligible_group_ids=preflight.eligible_group_ids,
+            blocked_group_ids=preflight.blocked_group_ids,
+            changed_entity_ids=(), outputs=_unique(outputs), messages=_unique(messages),
+            undo_available=False,
+        ), user=user)
+
+    def execute_transaction(
+        self,
+        action: str,
+        preflight: BOMBatchPreflight,
+        mutator: Callable[[], Any],
+        *,
+        entity_ids: Iterable[str] = (),
+        outputs: Iterable[str] = (),
+        messages: Iterable[str] = (),
+        user: str = "bom-operator",
+    ) -> BOMTransactionExecution:
+        if not preflight.allowed or not preflight.preflight_sha256:
+            raise ValueError("Batchactie is door preflight geblokkeerd")
+        current_entities = _unique(entity_ids or preflight.impact.entity_ids)
+        before_state = deepcopy(self.project.__dict__)
+        before_hash = stable_sha256(self.project.to_dict())
+        transaction_id = str(uuid4())
+        try:
+            value = mutator()
+            self.project.validate()
+        except Exception as exc:
+            self.project.__dict__.clear()
+            self.project.__dict__.update(before_state)
+            failure = BOMBatchResult(
+                transaction_id=transaction_id, action=str(action), status="failed",
+                snapshot_sha256=preflight.snapshot_sha256,
+                preflight_sha256=preflight.preflight_sha256,
+                before_hash=before_hash, after_hash=before_hash,
+                eligible_group_ids=preflight.eligible_group_ids,
+                blocked_group_ids=preflight.blocked_group_ids,
+                changed_entity_ids=(), outputs=(),
+                messages=(f"{type(exc).__name__}: {exc}",), undo_available=False,
+            )
+            self._store_result(failure, user=user)
+            self.project.audit(
+                f"bom.batch.{action}.failed", user=user,
+                before_hash=before_hash, after_hash=before_hash,
+                details={"transaction_id": transaction_id,
+                         "preflight_sha256": preflight.preflight_sha256},
+            )
+            raise
+        if isinstance(value, (tuple, list)) and all(
+            isinstance(item, str) for item in value
+        ):
+            current_entities = _unique((*current_entities, *value))
+        after_hash = stable_sha256(self.project.to_dict())
+        result = BOMBatchResult(
+            transaction_id=transaction_id, action=str(action), status="passed",
+            snapshot_sha256=preflight.snapshot_sha256,
+            preflight_sha256=preflight.preflight_sha256,
+            before_hash=before_hash, after_hash=after_hash,
+            eligible_group_ids=preflight.eligible_group_ids,
+            blocked_group_ids=preflight.blocked_group_ids,
+            changed_entity_ids=current_entities, outputs=_unique(outputs),
+            messages=_unique(messages), undo_available=True,
+        )
+        self._runtime_project_undo[transaction_id] = before_state
+        record = {
+            "transaction_id": transaction_id, "action": str(action),
+            "snapshot_sha256": preflight.snapshot_sha256,
+            "preflight_sha256": preflight.preflight_sha256,
+            "before_hash": before_hash, "after_hash": after_hash,
+            "created_at": result.created_at, "user": user,
+            "entity_ids": list(current_entities), "runtime_project_restore": True,
+        }
+        self.data["undo"].append(record)
+        self.data["undo"] = self.data["undo"][-20:]
+        self._store_result(result, user=user)
+        self.project.audit(
+            f"bom.batch.{action}", user=user, before_hash=before_hash,
+            after_hash=after_hash, details={
+                "transaction_id": transaction_id,
+                "preflight_sha256": preflight.preflight_sha256,
+                "entity_ids": list(current_entities),
+            },
+        )
+        return BOMTransactionExecution(value=value, result=result)
+
+    def record_external_release(
+        self,
+        release_id: str,
+        entity_ids: Iterable[str],
+        *,
+        source: str,
+        user: str = "bom-operator",
+    ) -> None:
+        event = {
+            "release_id": str(release_id), "source": str(source),
+            "entity_ids": list(_unique(entity_ids)), "released_at": _utc_now(),
+            "user": user,
+        }
+        self.data["external_releases"].append(event)
+        for result in self.data.get("batch_results") or ():
+            if str(result.get("transaction_id") or "") == str(release_id):
+                result["undo_available"] = False
+                result["release_id"] = str(release_id)
+        self._history("external_release.recorded", user, event)
+
+    def _release_barrier(self, entity_ids: Iterable[str]) -> str:
+        requested = set(_unique(entity_ids))
+        for release in self.data.get("external_releases") or ():
+            released_ids = set(_unique(release.get("entity_ids") or ()))
+            if not released_ids or not requested or requested.intersection(released_ids):
+                return str(release.get("release_id") or "externe BOM-vrijgave")
+        for job in getattr(self.project, "machine_jobs", {}).values():
+            if str(getattr(job, "release_status", "")).casefold() in {"released", "vrijgegeven"}:
+                if not requested or requested.intersection(getattr(job, "part_ids", ()) or ()):
+                    return str(getattr(job, "internal_id", "machinejob"))
+        for run_id, record in getattr(self.project, "profile_nesting_runs", {}).items():
+            run = dict(record.get("run") or {}) if isinstance(record, Mapping) else {}
+            if run.get("released_at") or str(run.get("status") or "").casefold() == "released":
+                return str(run_id)
+        return ""
 
     def begin_settings_transaction(
         self,
@@ -423,41 +1336,14 @@ class BOMHubState:
         *,
         user: str = "bom-operator",
     ) -> Any:
-        if not preflight.snapshot_sha256 or not preflight.preflight_sha256:
-            raise ValueError("Batchactie vereist een hashgebonden BOM-preflight")
-        if not preflight.allowed:
-            raise ValueError("Batchactie is door preflight geblokkeerd")
-        before = deepcopy(self.project.settings)
-        before_hash = stable_sha256(before)
-        try:
-            result = mutator()
-        except Exception:
-            self.project.settings = before
-            raise
-        after_hash = stable_sha256(self.project.settings)
-        transaction_id = str(uuid4())
-        self._runtime_settings_undo[transaction_id] = before
-        undo = {
-            "transaction_id": transaction_id,
-            "action": str(action),
-            "snapshot_sha256": preflight.snapshot_sha256,
-            "preflight_sha256": preflight.preflight_sha256,
-            "before_hash": before_hash,
-            "after_hash": after_hash,
-            "created_at": _utc_now(),
-            "user": user,
-        }
-        self.data["undo"].append(undo)
-        self.data["undo"] = self.data["undo"][-20:]
-        self._history("batch.executed", user, {
-            key: value for key, value in undo.items()
-        })
-        self.project.audit(
-            f"bom.batch.{action}", user=user, before_hash=before_hash, after_hash=after_hash,
-            details={"preflight_sha256": preflight.preflight_sha256,
-                     "entity_ids": list(preflight.impact.entity_ids)},
-        )
-        return result
+        # Compatibility entry point: settings transactions intentionally use
+        # the same full-project rollback, persisted result report and
+        # release-bound undo contract as every other BOM mutation.
+        return self.execute_transaction(
+            action, preflight, mutator,
+            entity_ids=preflight.impact.entity_ids,
+            user=user,
+        ).value
 
     def begin_entity_transaction(
         self,
@@ -468,49 +1354,14 @@ class BOMHubState:
         *,
         user: str = "bom-operator",
     ) -> Any:
-        if not preflight.allowed or not preflight.preflight_sha256:
-            raise ValueError("Batchactie is door preflight geblokkeerd")
-        locations: dict[str, tuple[str, Any]] = {}
-        for entity_id in _unique(entity_ids):
-            for collection_name in (
-                "parts", "assemblies", "purchased_items", "fasteners", "welds",
-            ):
-                collection = getattr(self.project, collection_name, {})
-                if entity_id in collection:
-                    locations[entity_id] = (collection_name, deepcopy(collection[entity_id]))
-                    break
-        before_settings = deepcopy(self.project.settings)
-        before_hash = stable_sha256(self.project.to_dict())
-        try:
-            result = mutator()
-            self.project.validate()
-        except Exception:
-            self.project.settings = before_settings
-            for entity_id, (collection_name, entity) in locations.items():
-                getattr(self.project, collection_name)[entity_id] = entity
-            raise
-        transaction_id = str(uuid4())
-        after_hash = stable_sha256(self.project.to_dict())
-        record = {
-            "transaction_id": transaction_id, "action": str(action),
-            "snapshot_sha256": preflight.snapshot_sha256,
-            "preflight_sha256": preflight.preflight_sha256,
-            "before_hash": before_hash,
-            "after_hash": after_hash, "created_at": _utc_now(), "user": user,
-            "entity_ids": list(locations), "runtime_entity_restore": True,
-        }
-        self._runtime_entity_undo[transaction_id] = locations
-        self._runtime_settings_undo[transaction_id] = before_settings
-        self.data["undo"].append(record)
-        self.data["undo"] = self.data["undo"][-20:]
-        self._history("batch.executed", user, {
-            key: value for key, value in record.items()
-        })
-        self.project.audit(
-            f"bom.batch.{action}", user=user, before_hash=before_hash, after_hash=after_hash,
-            details={"preflight_sha256": preflight.preflight_sha256, "entity_ids": list(locations)},
-        )
-        return result
+        # Compatibility entry point kept for callers outside the workspace;
+        # execution itself is centralized so failures and successful actions
+        # always produce the same immutable result contract.
+        return self.execute_transaction(
+            action, preflight, mutator,
+            entity_ids=entity_ids,
+            user=user,
+        ).value
 
     def undo_last(self, *, user: str = "bom-operator") -> str:
         stack = self.data["undo"]
@@ -518,6 +1369,25 @@ class BOMHubState:
             raise ValueError("Geen BOM-batchactie beschikbaar om ongedaan te maken")
         record = deepcopy(stack[-1])
         transaction_id = str(record["transaction_id"])
+        barrier = self._release_barrier(record.get("entity_ids") or ())
+        if barrier:
+            raise ValueError(
+                f"Undo is geblokkeerd omdat externe vrijgave {barrier} de geselecteerde scope heeft vergrendeld"
+            )
+        if transaction_id in self._runtime_project_undo:
+            current_hash = stable_sha256(self.project.to_dict())
+            before_state = self._runtime_project_undo.pop(transaction_id)
+            self.project.__dict__.clear()
+            self.project.__dict__.update(deepcopy(before_state))
+            restored_hash = stable_sha256(self.project.to_dict())
+            self.project.audit(
+                "bom.batch.undo", user=user, before_hash=current_hash,
+                after_hash=restored_hash, details={
+                    "transaction_id": transaction_id, "action": record["action"],
+                    "release_barrier_checked": True,
+                },
+            )
+            return transaction_id
         if transaction_id not in self._runtime_settings_undo:
             raise ValueError("Deze batchactie kan alleen in de oorspronkelijke werksessie worden teruggedraaid")
         current_hash = stable_sha256(self.project.settings)
@@ -544,7 +1414,10 @@ class BOMHubState:
 
 
 __all__ = [
-    "BOMBatchPreflight", "BOMHubState", "BOMSavedSelection",
-    "BOMScopeEngine", "BOMSelectionImpact", "HUB_SETTINGS_KEY",
-    "SELECTION_BASES",
+    "ACTION_DEFINITIONS", "BOMActionDefinition", "BOMActionMatrix",
+    "BOMBatchPreflight", "BOMBatchResult", "BOMHubState", "BOMQueryClause",
+    "BOMProcurementService", "BOMRevisionDelta", "BOMSavedSelection", "BOMScopeEngine",
+    "BOMSelectionImpact", "BOMSmartQuery", "BOMTransactionExecution",
+    "BOMStockAllocator", "BOMStockSourceOption", "HUB_SETTINGS_KEY",
+    "QUERY_FIELDS", "QUERY_OPERATORS", "SELECTION_BASES",
 ]

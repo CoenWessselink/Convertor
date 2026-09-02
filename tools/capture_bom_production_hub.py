@@ -185,6 +185,32 @@ def main() -> int:
         QtWidgets.QDialog.exec = original_exec
         project.machine_profiles.pop(profile_id, None)
 
+    panel._apply_column_preset("production")
+    panel._set_viewer_layout("right")
+    _wait(app, QtCore, 0.25)
+    capture("06_productiegereedheidskolommen.png", window)
+
+    panel._apply_column_preset("procurement")
+    _wait(app, QtCore, 0.25)
+    capture("07_voorraad_en_inkoopkolommen.png", window)
+
+    panel._populate_action_matrix()
+    panel.matrix_menu.adjustSize()
+    panel.matrix_menu.show()
+    _wait(app, QtCore, 0.2)
+    capture("08_selectieafhankelijke_actiematrix.png", panel.matrix_menu)
+    panel.matrix_menu.hide()
+    action_matrix_count = sum(
+        len(action.menu().actions())
+        for action in panel.matrix_menu.actions()
+        if action.menu() is not None
+    )
+    if panel.table.columnCount() != 37 or action_matrix_count < 75:
+        raise RuntimeError(
+            f"Onvolledige BOM-runtimeprojectie: {panel.table.columnCount()} kolommen, "
+            f"{action_matrix_count} matrixacties"
+        )
+
     window.close()
     _wait(app, QtCore)
     source_sha = subprocess.check_output(
@@ -200,6 +226,8 @@ def main() -> int:
         "bom_build_seconds": round(bom_seconds, 3),
         "summary": snapshot.summary,
         "validation": snapshot.validation.to_dict() if snapshot.validation else {},
+        "bom_column_count": panel.table.columnCount(),
+        "action_matrix_action_count": action_matrix_count,
         "captures": captures,
     }
     manifest_path = output / "BOM_RUNTIME_CAPTURE_MANIFEST.json"

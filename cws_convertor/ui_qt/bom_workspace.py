@@ -5,6 +5,7 @@ import os
 import re
 import hashlib
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -18,10 +19,16 @@ from cws_convertor.bom.workspace import (
     scoped_bom_snapshot,
 )
 from cws_convertor.bom.production_hub import (
+    BOMActionDefinition,
+    BOMActionMatrix,
     BOMBatchPreflight,
     BOMHubState,
+    BOMProcurementService,
+    BOMQueryClause,
     BOMScopeEngine,
-    SELECTION_BASES,
+    BOMStockAllocator,
+    QUERY_FIELDS,
+    QUERY_OPERATORS,
 )
 from cws_convertor.machine_routing import MachineRoutingService
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
@@ -123,6 +130,8 @@ if qt_available():
             for label, callback in (
                 ("Fit", self.fit_selection),
                 ("Kader", self.area_selection),
+                ("Lasso", self.lasso_selection),
+                ("Zelfde kleur", self.select_same_colour),
                 ("Isoleer", self.isolate_selection),
                 ("Ghost", self.ghost_selection),
                 ("Alles", self.show_all),
@@ -178,6 +187,8 @@ if qt_available():
                 }
                 if hasattr(viewer, "node_picked"):
                     viewer.node_picked.connect(self._viewer_picked)
+                if hasattr(viewer, "selection_gesture_completed"):
+                    viewer.selection_gesture_completed.connect(self._selection_gesture_completed)
                 self._viewer = viewer
                 if self._state_bridge is not None:
                     self._state_bridge.register(viewer)
@@ -212,6 +223,17 @@ if qt_available():
             ))
             self.selection_requested.emit(entity_ids)
 
+        def _selection_gesture_completed(self, node_ids: Any) -> None:
+            if self._viewer is None:
+                return
+            index = self._viewer.controller.index
+            entity_ids = tuple(dict.fromkeys(
+                index.node(node_id).entity_id
+                for node_id in tuple(node_ids or ())
+                if node_id in index.nodes_by_id
+            ))
+            self.selection_requested.emit(entity_ids)
+
         def _sync_selection(self) -> None:
             if self._viewer is None:
                 return
@@ -234,6 +256,35 @@ if qt_available():
             if self._viewer is not None and hasattr(self._viewer, "set_area_selection"):
                 self._viewer.set_area_selection(True)
                 self._viewer.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+
+        def lasso_selection(self) -> None:
+            if self._viewer is not None and hasattr(self._viewer, "set_lasso_selection"):
+                self._viewer.set_lasso_selection(True)
+                self._viewer.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+
+        def select_same_colour(self) -> None:
+            if self._viewer is None:
+                return
+            nodes = self._viewer.controller.select_same_display_color()
+            self._selection_gesture_completed(nodes)
+
+        def show_removed_revision_objects(self, items: tuple[dict[str, Any], ...]) -> None:
+            if self._viewer is None:
+                return
+            callback = getattr(self._viewer.backend, "set_revision_removed_bounds", None)
+            if callable(callback):
+                callback(items)
+
+        def shared_cache_summary(self) -> str:
+            if self._viewer is None:
+                return "Rendercache wacht op Viewer"
+            stats = getattr(self._viewer.backend, "shared_render_cache_stats", None)
+            if stats is None:
+                return "Rendercache niet beschikbaar"
+            return (
+                f"Gedeelde rendercache {stats.repository_identity} · "
+                f"{stats.shared_item_count} resources · {stats.hits} hits/{stats.misses} builds"
+            )
 
         def isolate_selection(self) -> None:
             if self._viewer is not None and self._viewer.controller.session.selection:
@@ -352,8 +403,13 @@ if qt_available():
         COLUMNS = (
             "✓", "Merk / sleutel", "Omschrijving", "Profiel / maat", "Materiaal",
             "Lengte (mm)", "Aantal", "Gewicht (kg)", "Oppervlakte (m²)",
-            "Machine", "Tekening", "Fase", "Levering", "Vrijgave", "Nesting",
-            "Productie", "Voorraad", "Revisie", "Status",
+            "Geometrie", "Materiaal gereed", "Tekening", "Machine",
+            "Machine gereed", "Nesting", "NC-export", "Scribing", "Conflictvrij",
+            "Vrijgegeven", "Geproduceerd", "Geleverd", "Fase", "Levering",
+            "Voorraad", "Benodigd (mm)", "Beschikbaar (mm)", "Tekort (mm)",
+            "Voorraadstuk", "Reststuk", "Besteld", "Verwachte levering",
+            "Leverancier", "Prijs", "Alternatief materiaal", "Inkoopvrijgave",
+            "Revisie", "Status",
         )
 
         def __init__(
@@ -378,7 +434,9 @@ if qt_available():
             self._viewer_bridge = viewer_bridge or _BomViewerStateBridge(self)
             self._hub_state: BOMHubState | None = None
             self._scope_engine: BOMScopeEngine | None = None
+            self._action_matrix = BOMActionMatrix()
             self._revision_statuses: dict[str, str] = {}
+            self._revision_deltas: dict[str, Any] = {}
             self._checked_group_ids: set[str] = set()
             self._group_header_rows: dict[int, tuple[BOMWorkspaceRow, ...]] = {}
             self._main_viewer_registered: Any | None = None
@@ -490,6 +548,9 @@ if qt_available():
             smart.addAction("Zonder materiaal", lambda: self._select_smart("material_missing"))
             smart.addAction("Handmatige machinekeuze", lambda: self._select_smart("manual_machine"))
             smart.addAction("Nog niet vrijgegeven", lambda: self._select_smart("not_released"))
+            smart.addSeparator()
+            smart.addAction("Samengestelde selectie maken…", self._build_smart_query)
+            self.smart_query_menu = smart.addMenu("Opgeslagen samengestelde selecties")
             self.selection_tools_menu.addSeparator()
             self.selection_tools_menu.addAction("Aan selectiemandje toevoegen", self._basket_add)
             self.selection_tools_menu.addAction("Selectiemandje gebruiken", self._basket_select)
@@ -576,9 +637,181 @@ if qt_available():
             menu.addSeparator()
             menu.addAction("Revisiebaseline opslaan", self._save_revision_baseline)
             menu.addAction("Laatste BOM-batchactie ongedaan maken", self._undo_last_batch)
+            menu.addSeparator()
+            self.matrix_menu = menu.addMenu("Volledige selectieafhankelijke actiematrix")
+            menu.aboutToShow.connect(self._populate_action_matrix)
             more.setMenu(menu)
             layout.addWidget(more)
             return frame
+
+        def _populate_action_matrix(self) -> None:
+            self.matrix_menu.clear()
+            rows = self._selected_rows()
+            production_ready = bool(
+                self._read_model is not None
+                and self._read_model.snapshot.validation
+                and self._read_model.snapshot.validation.production_ready
+            )
+            categories: dict[str, Any] = {}
+            for definition, enabled, reason in self._action_matrix.available(
+                rows, production_ready=production_ready
+            ):
+                submenu = categories.get(definition.category)
+                if submenu is None:
+                    submenu = self.matrix_menu.addMenu(definition.category)
+                    categories[definition.category] = submenu
+                action = submenu.addAction(definition.label)
+                action.setData(definition.action_id)
+                action.setEnabled(enabled)
+                action.setToolTip(reason)
+                action.setStatusTip(reason or f"Uitvoeren: {definition.label}")
+                action.triggered.connect(
+                    lambda _checked=False, item=definition: self._execute_matrix_action(item)
+                )
+
+        def _execute_matrix_action(self, definition: BOMActionDefinition) -> None:
+            action_id = definition.action_id
+            if action_id == "viewer.zoom":
+                self._zoom_selection()
+                return
+            if action_id == "viewer.fit":
+                self.viewer.fit_selection()
+                return
+            if action_id == "viewer.isolate":
+                self._isolate_selection()
+                return
+            if action_id == "viewer.ghost":
+                self.viewer.ghost_selection()
+                return
+            if action_id == "viewer.hide":
+                viewer = getattr(self.viewer, "_viewer", None)
+                if viewer is not None:
+                    viewer.controller.hide(viewer.controller.session.selection)
+                return
+            if action_id == "viewer.show_all":
+                self.viewer.show_all()
+                return
+            if action_id in {"viewer.section", "viewer.measure"}:
+                self._route_scoped_action(action_id, "viewer")
+                return
+            if action_id.startswith("inspect."):
+                tab = {
+                    "inspect.properties": 0, "inspect.source": 0,
+                    "inspect.assembly": 0, "inspect.traceability": 4,
+                    "inspect.hashes": 4, "inspect.blockers": 5,
+                }[action_id]
+                self.detail_tabs.setCurrentIndex(tab)
+                self._record_routed_result(action_id, "Inspectie geopend")
+                return
+            if action_id in {"edit.profile", "edit.material", "edit.length"}:
+                self._route_scoped_action(action_id, "edit")
+                return
+            if action_id.startswith("edit."):
+                self._matrix_edit(action_id)
+                return
+            if action_id.startswith("drawing."):
+                self._route_scoped_action(action_id, "drawings" if action_id != "drawing.print" else "print")
+                return
+            if action_id == "machine.assign":
+                self._assign_machine()
+                return
+            if action_id == "machine.reset":
+                self._reset_machine()
+                return
+            if action_id == "machine.auto_accept":
+                self._accept_automatic_machine()
+                return
+            if action_id == "machine.manual_lock":
+                self._lock_machine_assignments()
+                return
+            if action_id == "machine.blocker":
+                self.detail_tabs.setCurrentIndex(5)
+                self._record_routed_result(action_id, "Productieblockers geopend")
+                return
+            if action_id in {
+                "machine.recommend", "machine.explain", "machine.validate", "machine.alternatives"
+            }:
+                if action_id == "machine.explain":
+                    self._explain_machine()
+                else:
+                    self._route_scoped_action(action_id, "machine")
+                return
+            if action_id == "production.release":
+                self._open_production_workflow()
+                return
+            if action_id == "production.withdraw":
+                self._set_workflow_status("production.withdraw", "release_status", "withdrawn")
+                return
+            if action_id.startswith("production."):
+                route = "export" if action_id == "production.nc_preview" else "production_workflow"
+                self._route_scoped_action(action_id, route)
+                return
+            if action_id == "stock.assign":
+                self._assign_stock()
+                return
+            if action_id == "stock.shortage":
+                shortage = sum(row.shortage_mm for row in self._selected_rows())
+                self._record_routed_result(action_id, f"Berekend tekort: {_number(shortage, 0)} mm")
+                QtWidgets.QMessageBox.information(
+                    self, "Materiaaltekort", f"Tekort in selectie: {_number(shortage, 0)} mm"
+                )
+                return
+            if action_id == "purchase.generate":
+                self._generate_purchase_need()
+                return
+            if action_id == "purchase.edit":
+                self._edit_purchase()
+                return
+            if action_id == "purchase.release":
+                self._release_purchase()
+                return
+            if action_id.startswith("optimize."):
+                self._route_scoped_action(action_id, "optimize")
+                return
+            if action_id in {"export.review", "export.xlsx", "export.csv", "export.json"}:
+                self._export_scope()
+                return
+            if action_id.startswith("export."):
+                self._route_scoped_action(action_id, "export")
+                return
+            QtWidgets.QMessageBox.warning(self, "BOM-actiematrix", f"Geen uitvoerder voor {action_id}")
+
+        def _record_routed_result(self, action: str, message: str) -> None:
+            if self._hub_state is None or self._scope_engine is None or self._workspace is None:
+                return
+            rows = self._selected_rows()
+            preflight = self._scope_engine.preflight(
+                "inspect", rows,
+                expected_snapshot_sha256=self._workspace.bom_snapshot.snapshot_sha256,
+                visible_rows=self._visible_rows,
+                allow_blocked_review_export=True,
+            )
+            if not preflight.allowed:
+                QtWidgets.QMessageBox.warning(
+                    self, "BOM-resultaatrapport",
+                    "Resultaat kon niet worden vastgelegd: "
+                    + ("; ".join(preflight.blocking_reasons) or "selectie is leeg"),
+                )
+                return
+            result = self._hub_state.record_result(action, preflight, messages=(message,))
+            self._mark_project_dirty()
+            self._show_batch_result(result)
+
+        def _show_batch_result(self, result: Any) -> None:
+            outputs = "\n".join(f"• {value}" for value in result.outputs) or "• Geen bestanden"
+            messages = "\n".join(f"• {value}" for value in result.messages) or "• Geen meldingen"
+            QtWidgets.QMessageBox.information(
+                self,
+                "BOM-resultaatrapport",
+                f"Actie: {result.action}\nStatus: {result.status}\n"
+                f"Transactie: {result.transaction_id}\n"
+                f"Snapshot: {result.snapshot_sha256[:16]}\n"
+                f"Preflight: {result.preflight_sha256[:16]}\n"
+                f"Geschikt/geblokkeerd: {len(result.eligible_group_ids)}/{len(result.blocked_group_ids)}\n"
+                f"Gewijzigde objecten: {len(result.changed_entity_ids)}\n"
+                f"Undo: {'beschikbaar' if result.undo_available else 'niet van toepassing'}\n\n"
+                f"Uitvoer:\n{outputs}\n\nMeldingen:\n{messages}",
+            )
 
         def _table_panel(self) -> QtWidgets.QWidget:
             panel = QtWidgets.QWidget()
@@ -710,8 +943,19 @@ if qt_available():
                     self._workspace.bom_snapshot,
                     self._workspace.project,
                 )
+                self._revision_deltas = self._hub_state.revision_deltas(self._read_model) if self._hub_state else {}
+                self._revision_statuses = {
+                    key: value.status for key, value in self._revision_deltas.items()
+                }
+                for family in BOM_FAMILIES:
+                    self._read_model._rows[family] = tuple(
+                        replace(
+                            row,
+                            revision_status=self._revision_statuses.get(row.group_id, "geen baseline"),
+                        )
+                        for row in self._read_model.family_rows(family)
+                    )
                 self._scope_engine = BOMScopeEngine(self._read_model)
-                self._revision_statuses = self._hub_state.revision_statuses(self._read_model) if self._hub_state else {}
                 self._refresh_scope_filter_values()
                 for index, family in enumerate(BOM_FAMILIES):
                     label = BOM_FAMILY_LABELS[family]
@@ -720,6 +964,10 @@ if qt_available():
                         f"{label} ({self._read_model.family_count(family)})",
                     )
                 rows = self._read_model.rows(self._scope())
+                if self._hub_state is not None and self._scope().status in {"all", "blocked"}:
+                    removed = self._hub_state.removed_revision_rows(self._read_model, self._family())
+                    needle = self._scope().query.casefold()
+                    rows = (*rows, *(row for row in removed if not needle or needle in row.searchable_text))
                 phase = str(self.phase_filter.currentData() or "")
                 delivery = str(self.delivery_filter.currentData() or "")
                 if phase:
@@ -757,15 +1005,33 @@ if qt_available():
                             _number(row.quantity, 0),
                             _number(row.total_mass_kg),
                             _number(row.total_surface_m2, 2),
-                            row.machine or "-",
+                            row.geometry_status or "-",
+                            row.material_status or "-",
                             row.document_status or "-",
+                            row.machine or "-",
+                            row.machine_status or "-",
+                            row.nesting_status or "-",
+                            row.nc_status or "-",
+                            row.scribing_status or "-",
+                            row.conflict_status or "-",
+                            row.release_status or "-",
+                            row.production_status or "-",
+                            row.delivery_status or "-",
                             row.phase or "-",
                             row.delivery or "-",
-                            row.release_status or "-",
-                            row.nesting_status or "-",
-                            row.production_status or "-",
                             row.stock_status or "-",
-                            self._revision_statuses.get(row.group_id, "geen baseline"),
+                            _number(float(row.length_mm or 0.0) * float(row.quantity or 0.0), 0),
+                            _number(row.available_stock_mm, 0),
+                            _number(row.shortage_mm, 0),
+                            row.assigned_stock or "-",
+                            row.assigned_remnant or "-",
+                            row.purchase_status or "-",
+                            row.expected_delivery or "-",
+                            row.supplier or "-",
+                            (f"€ {_number(row.total_price, 2)}" if row.total_price else "-"),
+                            row.alternative_material or "-",
+                            row.purchase_release_status or row.purchase_status or "-",
+                            row.revision_status or self._revision_statuses.get(row.group_id, "geen baseline"),
                             "GEBLOKKEERD" if row.blocked else row.status.upper(),
                         )
                         for column, value in enumerate(values):
@@ -785,22 +1051,24 @@ if qt_available():
                             item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, list(row.entity_ids))
                             if row.blocked:
                                 item.setToolTip("\n".join(row.blocking_reasons) or "Geblokkeerd")
-                            if column == 16:
+                            if column in {
+                                self.COLUMNS.index("Voorraad"), self.COLUMNS.index("Tekort (mm)")
+                            }:
                                 item.setToolTip(
                                     f"Beschikbaar: {_number(row.available_stock_mm, 0)} mm\n"
                                     f"Tekort: {_number(row.shortage_mm, 0)} mm"
                                 )
                                 if row.shortage_mm > 0.001:
                                     item.setBackground(QtGui.QColor("#fde7e9"))
-                            if column == 17:
+                            if column == self.COLUMNS.index("Revisie"):
                                 revision = self._revision_statuses.get(row.group_id, "")
                                 colour = {
                                     "toegevoegd": "#dff4e8", "gewijzigd": "#fff0d5",
-                                    "ongewijzigd": "#eef1f4",
+                                    "ongewijzigd": "#eef1f4", "verwijderd": "#f8d7da",
                                 }.get(revision)
                                 if colour:
                                     item.setBackground(QtGui.QColor(colour))
-                            if column == 18 and row.blocked:
+                            if column == self.COLUMNS.index("Status") and row.blocked:
                                 item.setBackground(QtGui.QColor("#fde7e9"))
                             self.table.setItem(table_row, column, item)
                         table_row += 1
@@ -908,6 +1176,69 @@ if qt_available():
             }
             self._select_rows(row for row in rows if predicates[kind](row))
 
+        def _build_smart_query(self) -> None:
+            if self._hub_state is None or self._scope_engine is None:
+                return
+            name, accepted = QtWidgets.QInputDialog.getText(
+                self, "Samengestelde slimme selectie", "Naam:"
+            )
+            if not accepted or not name.strip():
+                return
+            match_label, accepted = QtWidgets.QInputDialog.getItem(
+                self, "Combinatielogica", "Voorwaarden combineren:",
+                ("Alle voorwaarden (EN)", "Minimaal één voorwaarde (OF)"), 0, False,
+            )
+            if not accepted:
+                return
+            clauses: list[BOMQueryClause] = []
+            while True:
+                field, accepted = QtWidgets.QInputDialog.getItem(
+                    self, "Slimme selectie", "Veld:", QUERY_FIELDS, 0, False
+                )
+                if not accepted:
+                    break
+                operator, accepted = QtWidgets.QInputDialog.getItem(
+                    self, "Slimme selectie", "Operator:", QUERY_OPERATORS, 0, False
+                )
+                if not accepted:
+                    break
+                value = ""
+                if operator not in {"is_empty", "is_not_empty"}:
+                    value, accepted = QtWidgets.QInputDialog.getText(
+                        self, "Slimme selectie", "Vergelijkingswaarde:"
+                    )
+                    if not accepted:
+                        break
+                clauses.append(BOMQueryClause(str(field), str(operator), str(value)))
+                again = QtWidgets.QMessageBox.question(
+                    self, "Slimme selectie", "Nog een voorwaarde toevoegen?",
+                    QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                    QtWidgets.QMessageBox.StandardButton.No,
+                )
+                if again != QtWidgets.QMessageBox.StandardButton.Yes:
+                    break
+            if not clauses:
+                return
+            query = self._hub_state.save_smart_query(
+                name, self._family(), clauses,
+                match="all" if match_label.startswith("Alle") else "any",
+            )
+            self._mark_project_dirty()
+            self._select_rows(self._scope_engine.query(query))
+
+        def _apply_smart_query(self, query: Any) -> None:
+            if self._scope_engine is None:
+                return
+            if query.family != self._family() and query.family in BOM_FAMILIES:
+                self.family_tabs.setCurrentIndex(BOM_FAMILIES.index(query.family))
+            self._select_rows(self._scope_engine.query(query))
+
+        def _delete_smart_query(self, query_id: str) -> None:
+            if self._hub_state is None:
+                return
+            self._hub_state.delete_smart_query(query_id)
+            self._mark_project_dirty()
+
         def _basket_add(self) -> None:
             if self._hub_state is None:
                 return
@@ -963,8 +1294,10 @@ if qt_available():
 
         def _refresh_saved_selection_menu(self) -> None:
             self.saved_selection_menu.clear()
+            self.smart_query_menu.clear()
             if self._hub_state is None or self._scope_engine is None:
                 self.saved_selection_menu.setEnabled(False)
+                self.smart_query_menu.setEnabled(False)
                 return
             selections = self._hub_state.saved_selections()
             self.saved_selection_menu.setEnabled(bool(selections))
@@ -977,6 +1310,16 @@ if qt_available():
                 remove = entry.addAction("Verwijderen")
                 remove.triggered.connect(
                     lambda _checked=False, item=saved: self._delete_saved_selection(item.selection_id)
+                )
+            queries = self._hub_state.smart_queries()
+            self.smart_query_menu.setEnabled(bool(queries))
+            for query in queries:
+                entry = self.smart_query_menu.addMenu(query.name)
+                entry.addAction(
+                    "Toepassen", lambda _checked=False, item=query: self._apply_smart_query(item)
+                )
+                entry.addAction(
+                    "Verwijderen", lambda _checked=False, item=query: self._delete_smart_query(item.query_id)
                 )
 
         def _delete_saved_selection(self, selection_id: str) -> None:
@@ -1060,6 +1403,7 @@ if qt_available():
             self._sync_checkboxes(rows)
             entity_ids = tuple(dict.fromkeys(
                 entity_id for row in rows for entity_id in row.entity_ids
+                if self._workspace.project.get_entity(entity_id) is not None
             ))
             self.window.application_context.request_selection(
                 entity_ids,
@@ -1141,10 +1485,23 @@ if qt_available():
             mode = self.color_mode.currentText()
             self._settings.setValue("bom/color_mode", mode)
             self.viewer.apply_color_mode(mode, self._read_model, self._revision_statuses)
+            removed = (
+                self._hub_state.removed_revision_bounds(self._read_model)
+                if mode == "Revisie" and self._hub_state is not None and self._read_model is not None
+                else ()
+            )
+            self.viewer.show_removed_revision_objects(removed)
+            main_viewer = getattr(getattr(self.window, "project_page", None), "viewer", None)
+            main_callback = getattr(
+                getattr(main_viewer, "backend", None), "set_revision_removed_bounds", None
+            )
+            if callable(main_callback):
+                main_callback(removed)
             for detached in tuple(self._detached_windows):
                 pane = getattr(detached, "_cws_viewer_pane", None)
                 if pane is not None:
                     pane.apply_color_mode(mode, self._read_model, self._revision_statuses)
+                    pane.show_removed_revision_objects(removed)
 
         def _update_summary(self, rows: Iterable[BOMWorkspaceRow]) -> None:
             if self._read_model is None:
@@ -1190,9 +1547,19 @@ if qt_available():
             externally_selected = set(tuple(getattr(self._selection, "entity_ids", ()) or ()))
             visible_entities = {entity_id for row in self._visible_rows for entity_id in row.entity_ids}
             hidden_count = len(externally_selected - visible_entities)
+            unique_parts = set()
+            if self._workspace is not None:
+                for row in rows:
+                    for entity_id in row.entity_ids:
+                        part = self._workspace.project.parts.get(entity_id)
+                        if part is not None:
+                            unique_parts.add(
+                                part.manufacturing_hash or part.geometry_hash or part.internal_id
+                            )
             self.selection_label.setText(
                 f"{summary.group_count} regels · {summary.entity_count} occurrences · "
-                f"{summary.assembly_count} assemblies · {_number(summary.quantity, 0)} stuks · "
+                f"{summary.assembly_count} assemblies · {len(unique_parts)} unieke productiedelen · "
+                f"{_number(summary.quantity, 0)} stuks · "
                 f"{_number(summary.total_mass_kg)} kg · {summary.blocked_count} blokkeringen"
                 + (f" · {hidden_count} verborgen geselecteerd" if hidden_count else "")
             )
@@ -1226,8 +1593,12 @@ if qt_available():
                 f"Totale prijs: € {_number(sum(row.total_price for row in rows), 2)}"
             )
             self.detail_labels["production"].setText(
-                f"Productiestatus: {mixed('production_status')}\n"
-                f"Vrijgave: {mixed('release_status')}\nNesting: {mixed('nesting_status')}"
+                f"Geometrie: {mixed('geometry_status')} · Materiaal: {mixed('material_status')}\n"
+                f"Tekening: {mixed('document_status')} · Machine: {mixed('machine_status')}\n"
+                f"Nesting: {mixed('nesting_status')} · NC: {mixed('nc_status')} · "
+                f"Scribing: {mixed('scribing_status')}\n"
+                f"Conflicten: {mixed('conflict_status')} · Vrijgave: {mixed('release_status')} · "
+                f"Productie: {mixed('production_status')} · Levering: {mixed('delivery_status')}"
             )
             machine_lines = [
                 f"{machine}: {len(ids)} occurrences"
@@ -1240,18 +1611,51 @@ if qt_available():
             trace_count = sum(len(row.entity_ids) for row in rows)
             self.detail_labels["traceability"].setText(
                 f"{trace_count} gekoppelde canonieke IDs\nSnapshot: "
-                f"{self._workspace.bom_snapshot.snapshot_sha256 if self._workspace else '-'}"
+                f"{self._workspace.bom_snapshot.snapshot_sha256 if self._workspace else '-'}\n"
+                f"{self.viewer.shared_cache_summary()}"
             )
             self.detail_labels["conflicts"].setText(
                 "\n".join(blockers) if blockers else "Geen blockers in de geselecteerde regels."
             )
-            revisions = {self._revision_statuses.get(row.group_id, "geen baseline") for row in rows}
+            revisions = {self._revision_statuses.get(row.group_id, row.revision_status or "geen baseline") for row in rows}
             removed = sum(1 for value in self._revision_statuses.values() if value == "verwijderd")
+            delta_lines = []
+            for row in rows[:20]:
+                delta = self._revision_deltas.get(row.group_id)
+                if delta is None:
+                    continue
+                changes = []
+                for field_name in delta.changed_fields[:8]:
+                    if field_name in {"geometry", "manufacturing", "production_features"}:
+                        before_evidence = tuple(delta.before.get("entity_evidence") or ())
+                        after_evidence = tuple(delta.after.get("entity_evidence") or ())
+                        evidence_key = {
+                            "geometry": "geometry_hash", "manufacturing": "manufacturing_hash",
+                            "production_features": "production_features",
+                        }[field_name]
+                        before_value = [value.get(evidence_key) for value in before_evidence]
+                        after_value = [value.get(evidence_key) for value in after_evidence]
+                    else:
+                        before_value = delta.before.get(field_name, "∅")
+                        after_value = delta.after.get(field_name, "∅")
+                    changes.append(f"{field_name}: {before_value} → {after_value}")
+                fields = "; ".join(changes) if changes else "geen veldwijzigingen"
+                delta_lines.append(f"{row.mark or row.group_id}: {delta.status}\n  {fields}")
             self.detail_labels["revision"].setText(
                 "Revisiestatus: " + ", ".join(sorted(revisions))
                 + (f"\n{removed} groepen verwijderd sinds baseline" if removed else "")
+                + (("\n" + "\n".join(delta_lines)) if delta_lines else "")
             )
             events = []
+            if self._hub_state is not None:
+                for result in reversed(tuple(self._hub_state.data.get("batch_results") or ())):
+                    events.append(
+                        f"{result.get('created_at', '-')} · resultaat · "
+                        f"{result.get('action', '-')} · {result.get('status', '-')} · "
+                        f"{str(result.get('transaction_id', ''))[:8]}"
+                    )
+                    if len(events) >= 4:
+                        break
             if self._workspace is not None:
                 selected_ids = {entity_id for row in rows for entity_id in row.entity_ids}
                 for event in reversed(tuple(getattr(self._workspace.project, "audit_log", ()) or ())):
@@ -1320,6 +1724,12 @@ if qt_available():
                     primary_entity_id=part_ids[0],
                     origin="bom_production_scope",
                 )
+            if self._hub_state is not None:
+                self._hub_state.record_result(
+                    "production.release.prepare", preflight,
+                    messages=("Productievrijgavewerkstroom geopend; definitieve release blijft downstream vergrendeld",),
+                )
+                self._mark_project_dirty()
             self.action_requested.emit("production_workflow")
 
         def _assign_machine(self) -> None:
@@ -1390,9 +1800,11 @@ if qt_available():
                 service = MachineRoutingService()
                 if mode.currentIndex() == 0:
                     perform = lambda: service.assign_automatic(project, part_ids, user="bom-operator")
-                    assigned = self._hub_state.begin_settings_transaction(
-                        "machine.auto", preflight, perform, user="bom-operator"
-                    ) if self._hub_state else perform()
+                    execution = self._hub_state.execute_transaction(
+                        "machine.auto", preflight, perform, entity_ids=part_ids,
+                        messages=("Automatische capability-routing uitgevoerd",), user="bom-operator",
+                    )
+                    assigned = execution.value
                     blocked = sum(item.routing_status != "ready" for item in assigned)
                     message = (
                         f"{len(assigned) - blocked} onderdelen automatisch gerouteerd; "
@@ -1404,9 +1816,10 @@ if qt_available():
                         project, part_ids, machine.currentText(), user="bom-operator",
                         reason=reason.text(), manual_lock=lock.isChecked(),
                     )
-                    self._hub_state.begin_settings_transaction(
-                        "machine.manual", preflight, perform, user="bom-operator"
-                    ) if self._hub_state else perform()
+                    execution = self._hub_state.execute_transaction(
+                        "machine.manual", preflight, perform, entity_ids=part_ids,
+                        messages=("Handmatige machinekeuze vastgelegd",), user="bom-operator",
+                    )
                     message = (
                         "Handmatige machinekeuze opgeslagen. Productievrijgave blijft "
                         "geblokkeerd tot capaciteit opnieuw is gevalideerd."
@@ -1420,8 +1833,406 @@ if qt_available():
                     "Machine-indeling",
                     message,
                 )
+                self._show_batch_result(execution.result)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Machine-indeling geblokkeerd", str(exc))
+
+        def _accept_automatic_machine(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            preflight = self._confirm_preflight("machine", rows)
+            if preflight is None:
+                return
+            part_ids = tuple(
+                entity_id for entity_id in self._eligible_entity_ids(rows, preflight)
+                if entity_id in self._workspace.project.parts
+            )
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "machine.auto_accept", preflight,
+                    lambda: MachineRoutingService().assign_automatic(
+                        self._workspace.project, part_ids, user="bom-operator"
+                    ),
+                    entity_ids=part_ids,
+                    messages=("Automatische toewijzing op bewezen capaciteit geaccepteerd",),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Automatische machinekeuze geblokkeerd", str(exc))
+
+        def _lock_machine_assignments(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            preflight = self._confirm_preflight("machine", rows)
+            if preflight is None:
+                return
+            part_ids = tuple(
+                entity_id for entity_id in self._eligible_entity_ids(rows, preflight)
+                if entity_id in self._workspace.project.parts
+            )
+            reason, accepted = QtWidgets.QInputDialog.getText(
+                self, "Machinekeuze vergrendelen", "Reden:"
+            )
+            if not accepted or not reason.strip():
+                return
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "machine.manual_lock", preflight,
+                    lambda: MachineRoutingService().set_manual_lock(
+                        self._workspace.project, part_ids, locked=True,
+                        user="bom-operator", reason=reason,
+                    ),
+                    entity_ids=part_ids,
+                    messages=("Handmatige machinekeuze vergrendeld",),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Machinevergrendeling geblokkeerd", str(exc))
+
+        def _eligible_entity_ids(
+            self, rows: Iterable[BOMWorkspaceRow], preflight: BOMBatchPreflight
+        ) -> tuple[str, ...]:
+            allowed = set(preflight.eligible_group_ids)
+            return tuple(dict.fromkeys(
+                entity_id
+                for row in rows if row.group_id in allowed
+                for entity_id in row.entity_ids
+                if self._workspace is not None
+                and self._workspace.project.get_entity(entity_id) is not None
+            ))
+
+        def _matrix_edit(self, action_id: str) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            if action_id in {"edit.assembly_add", "edit.assembly_remove"}:
+                self._edit_assembly_membership(add=action_id.endswith("add"))
+                return
+            configuration = {
+                "edit.mark": ("Merk / positie", "mark", ()),
+                "edit.phase": ("Fase", "phase", ()),
+                "edit.classification": (
+                    "Classificatie", "category",
+                    ("make_part", "purchased_item", "fastener", "reference", "non_steel", "unknown"),
+                ),
+                "edit.orientation": (
+                    "Productieoriëntatie", "production_orientation",
+                    ("as_modeled", "end_for_end", "rotated_90", "rotated_180", "mirrored_review"),
+                ),
+                "edit.revision": ("Revisiestatus", "revision_status", ()),
+                "edit.comment": ("Opmerking", "bom_comment", ()),
+            }
+            title, field_name, choices = configuration[action_id]
+            if choices:
+                value, accepted = QtWidgets.QInputDialog.getItem(
+                    self, title, "Nieuwe waarde:", choices, 0, False
+                )
+            else:
+                value, accepted = QtWidgets.QInputDialog.getText(
+                    self, title, "Nieuwe waarde:"
+                )
+            if not accepted or not str(value).strip():
+                return
+            self._execute_field_transaction(action_id, field_name, str(value).strip())
+
+        def _execute_field_transaction(
+            self, action_id: str, field_name: str, value: str
+        ) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            preflight = self._confirm_preflight(
+                "comment" if action_id == "edit.comment" else "edit", rows,
+                allow_blocked_review_export=action_id == "edit.comment",
+            )
+            if preflight is None:
+                return
+            entity_ids = self._eligible_entity_ids(rows, preflight)
+
+            def mutate() -> int:
+                changed = 0
+                for entity_id in entity_ids:
+                    entity = self._workspace.project.get_entity(entity_id)
+                    if entity is None:
+                        continue
+                    if field_name == "mark":
+                        target = (
+                            "part_position" if entity.entity_type == "part"
+                            else "assembly_mark" if entity.entity_type == "assembly"
+                            else "article_number" if entity.entity_type == "purchased_item"
+                            else "name"
+                        )
+                        setattr(entity, target, value)
+                    elif field_name == "category":
+                        entity.category = value
+                    elif field_name == "revision_status":
+                        entity.revision = value
+                        entity.properties["revision_status"] = value
+                    elif hasattr(entity, field_name):
+                        setattr(entity, field_name, value)
+                    else:
+                        entity.properties[field_name] = value
+                    if hasattr(entity, "recompute_hashes") and field_name in {
+                        "category", "production_orientation"
+                    }:
+                        entity.recompute_hashes()
+                    changed += 1
+                return changed
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    action_id, preflight, mutate, entity_ids=entity_ids,
+                    messages=(f"{field_name} ingesteld op {value}",), user="bom-operator",
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "BOM-batchbewerking geblokkeerd", str(exc))
+
+        def _edit_assembly_membership(self, *, add: bool) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            project = self._workspace.project
+            rows = self._selected_rows()
+            candidates = []
+            for assembly in project.assemblies.values():
+                if add or any(
+                    assembly.internal_id in (getattr(project.get_entity(entity_id), "assembly_ids", ()) or ())
+                    for row in rows for entity_id in row.entity_ids
+                    if project.get_entity(entity_id) is not None
+                ):
+                    candidates.append(assembly)
+            if not candidates:
+                QtWidgets.QMessageBox.information(self, "Assembly", "Geen geschikte assembly beschikbaar.")
+                return
+            labels = tuple(
+                f"{assembly.assembly_mark or assembly.name or assembly.internal_id} · {assembly.internal_id}"
+                for assembly in candidates
+            )
+            selected, accepted = QtWidgets.QInputDialog.getItem(
+                self, "Assemblylidmaatschap", "Assembly:", labels, 0, False
+            )
+            if not accepted:
+                return
+            assembly = candidates[labels.index(selected)]
+            preflight = self._confirm_preflight("edit", rows)
+            if preflight is None:
+                return
+            entity_ids = self._eligible_entity_ids(rows, preflight)
+
+            def mutate() -> int:
+                changed = 0
+                for entity_id in entity_ids:
+                    entity = project.get_entity(entity_id)
+                    if entity is None or entity.entity_type not in {"part", "purchased_item"}:
+                        continue
+                    target = assembly.part_ids if entity.entity_type == "part" else assembly.purchased_item_ids
+                    if add:
+                        if entity_id not in target:
+                            target.append(entity_id)
+                        if assembly.internal_id not in entity.assembly_ids:
+                            entity.assembly_ids.append(assembly.internal_id)
+                        if entity.entity_type == "part":
+                            entity.quantity_per_assembly.setdefault(assembly.internal_id, 1)
+                    else:
+                        target[:] = [value for value in target if value != entity_id]
+                        entity.assembly_ids[:] = [value for value in entity.assembly_ids if value != assembly.internal_id]
+                        if entity.entity_type == "part":
+                            entity.quantity_per_assembly.pop(assembly.internal_id, None)
+                    changed += 1
+                return changed
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "edit.assembly_add" if add else "edit.assembly_remove",
+                    preflight, mutate, entity_ids=(*entity_ids, assembly.internal_id),
+                    messages=(("Toegevoegd aan " if add else "Verwijderd uit ") + assembly.internal_id,),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Assemblybewerking geblokkeerd", str(exc))
+
+        @staticmethod
+        def _cut_plan(lengths: Iterable[float], source_length: float, kerf: float) -> tuple[tuple[float, ...], ...]:
+            return BOMStockAllocator.cut_plan(lengths, source_length, kerf)
+
+        def _assign_stock(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            if not rows or any(row.family != "parts" for row in rows):
+                QtWidgets.QMessageBox.information(self, "Voorraadtoewijzing", "Selecteer uitsluitend onderdeelregels.")
+                return
+            project = self._workspace.project
+            kerf = float(((project.settings.get("profile_nesting") or {}).get("kerf_mm") or 3.0))
+            try:
+                options = BOMStockAllocator().options(project, rows, kerf_mm=kerf)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.information(self, "Voorraadtoewijzing", str(exc))
+                return
+            if not options:
+                QtWidgets.QMessageBox.warning(
+                    self, "Voorraadtoewijzing", "Geen fysiek voorraad- of reststuk past inclusief zaagverlies."
+                )
+                return
+            labels = tuple(
+                f"{'Voorraad' if option.source_type == 'full_stock' else 'Reststuk'} · "
+                f"{option.source_id} · {option.source_quantity} bronstuk(ken) · "
+                f"{option.net_length_mm:.0f} mm netto"
+                for option in options
+            )
+            selected, accepted = QtWidgets.QInputDialog.getItem(
+                self, "Fysieke voorraad toewijzen", "Bron:", labels, 0, False
+            )
+            if not accepted:
+                return
+            option = options[labels.index(selected)]
+            preflight = self._confirm_preflight("stock", rows)
+            if preflight is None:
+                return
+            entity_ids = self._eligible_entity_ids(rows, preflight)
+
+            def mutate() -> Any:
+                return BOMStockAllocator.reserve(
+                    project, self._hub_state.data, rows, option, preflight,
+                    user="bom-operator",
+                )
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "stock.assign", preflight, mutate, entity_ids=entity_ids,
+                    messages=(
+                        f"Fysieke bron {option.source_id} gereserveerd",
+                        f"{option.source_quantity} bronstuk(ken)",
+                    ),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Voorraadtoewijzing geblokkeerd", str(exc))
+
+        def _generate_purchase_need(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            preflight = self._confirm_preflight("purchase", rows)
+            if preflight is None:
+                return
+            eligible = [row for row in rows if row.group_id in set(preflight.eligible_group_ids)]
+            project = self._workspace.project
+
+            def mutate() -> tuple[str, ...]:
+                return BOMProcurementService.generate_needs(
+                    project, self._hub_state.data, eligible, preflight,
+                    user="bom-operator",
+                )
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "purchase.generate", preflight, mutate,
+                    messages=("Inkoopbehoeften als canonieke PurchasedItem-objecten aangemaakt",),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Inkoopbehoefte geblokkeerd", str(exc))
+
+        def _selected_purchase_ids(self) -> tuple[str, ...]:
+            if self._workspace is None:
+                return ()
+            return tuple(dict.fromkeys(
+                entity_id for row in self._selected_rows() for entity_id in row.entity_ids
+                if entity_id in self._workspace.project.purchased_items
+            ))
+
+        def _edit_purchase(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            ids = self._selected_purchase_ids()
+            if not ids:
+                QtWidgets.QMessageBox.information(self, "Inkoop", "Selecteer canonieke inkoopregels.")
+                return
+            fields = (
+                "Leverancier", "Eenheidsprijs", "Levertijd dagen", "Verwachte levering",
+                "Alternatief", "Inkoopstatus",
+            )
+            label, accepted = QtWidgets.QInputDialog.getItem(self, "Inkoop bewerken", "Veld:", fields, 0, False)
+            if not accepted:
+                return
+            value, accepted = QtWidgets.QInputDialog.getText(self, "Inkoop bewerken", "Nieuwe waarde:")
+            if not accepted or not value.strip():
+                return
+            preflight = self._confirm_preflight("purchase", self._selected_rows())
+            if preflight is None:
+                return
+
+            def mutate() -> int:
+                field_name = {
+                    "Leverancier": "supplier", "Eenheidsprijs": "unit_price",
+                    "Levertijd dagen": "lead_time_days",
+                    "Verwachte levering": "expected_delivery",
+                    "Alternatief": "alternative", "Inkoopstatus": "purchase_status",
+                }[label]
+                return BOMProcurementService.edit(
+                    self._workspace.project, ids, field_name, value
+                )
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "purchase.edit", preflight, mutate, entity_ids=ids,
+                    messages=(f"{label} bijgewerkt",),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Inkoopbewerking geblokkeerd", str(exc))
+
+        def _release_purchase(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            ids = self._selected_purchase_ids()
+            if not ids:
+                QtWidgets.QMessageBox.information(self, "Inkoopvrijgave", "Selecteer inkoopregels.")
+                return
+            preflight = self._confirm_preflight("purchase", self._selected_rows())
+            if preflight is None:
+                return
+
+            def mutate() -> int:
+                return BOMProcurementService.release(
+                    self._workspace.project, self._hub_state.data, ids
+                )
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "purchase.release", preflight, mutate, entity_ids=ids,
+                    messages=("Inkoopregels vrijgegeven",),
+                )
+                self._hub_state.record_external_release(
+                    execution.result.transaction_id, ids, source="purchase"
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(replace(
+                    execution.result, undo_available=False,
+                    release_id=execution.result.transaction_id,
+                ))
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Inkoopvrijgave geblokkeerd", str(exc))
+
+        def _set_workflow_status(self, action: str, field_name: str, value: str) -> None:
+            self._execute_field_transaction(action, field_name, value)
 
         def _edit_selection(self) -> None:
             if self._workspace is None or self._hub_state is None:
@@ -1486,13 +2297,12 @@ if qt_available():
                 return changed
 
             try:
-                changed = self._hub_state.begin_entity_transaction(
-                    f"edit.{field_name}", preflight, entity_ids, mutate, user="bom-operator"
+                execution = self._hub_state.execute_transaction(
+                    f"edit.{field_name}", preflight, mutate, entity_ids=entity_ids,
+                    messages=(f"{field_label} gewijzigd naar {value}",), user="bom-operator",
                 )
                 self._rebuild_bom_snapshot()
-                QtWidgets.QMessageBox.information(
-                    self, "BOM-batchbewerking", f"{changed} objecten gewijzigd. Undo blijft beschikbaar in deze werksessie."
-                )
+                self._show_batch_result(execution.result)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "BOM-batchbewerking geblokkeerd", str(exc))
 
@@ -1528,13 +2338,16 @@ if qt_available():
                 perform = lambda: MachineRoutingService().reset(
                     self._workspace.project, part_ids, user="bom-operator", reason=reason,
                 )
-                self._hub_state.begin_settings_transaction(
-                    "machine.reset", preflight, perform, user="bom-operator"
-                ) if self._hub_state else perform()
+                execution = self._hub_state.execute_transaction(
+                    "machine.reset", preflight, perform, entity_ids=part_ids,
+                    messages=(f"Machinekeuze gereset: {reason or 'geen reden opgegeven'}",),
+                    user="bom-operator",
+                )
                 session = getattr(self._workspace, "session", None)
                 if session is not None and hasattr(session, "dirty"):
                     session.dirty = True
                 self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Reset geblokkeerd", str(exc))
 
@@ -1579,11 +2392,19 @@ if qt_available():
                 Path(directory),
                 package_name=f"{stem}_{base_scope.family}_scope",
             )
+            result = self._hub_state.record_result(
+                "export.review", preflight,
+                outputs=tuple(str(value) for value in outputs),
+                messages=(f"{len(rows)} BOM-regels geëxporteerd",),
+            ) if self._hub_state is not None else None
+            self._mark_project_dirty()
             QtWidgets.QMessageBox.information(
                 self,
                 "BOM-export",
                 f"{len(outputs)} bestanden gemaakt voor {len(rows)} BOM-regels in:\n{directory}",
             )
+            if result is not None:
+                self._show_batch_result(result)
 
         def _confirm_preflight(
             self,
@@ -1683,12 +2504,43 @@ if qt_available():
                         formats=("nc1", "step", "ifc", "dxf", "production_pdf"),
                         preflight_hash=preflight.preflight_sha256,
                     )
+            if self._hub_state is not None:
+                self._hub_state.record_result(
+                    action, preflight,
+                    messages=(f"Scope doorgezet naar werkruimte {route}",),
+                )
+                self._mark_project_dirty()
             self.action_requested.emit(route)
 
         def _save_revision_baseline(self) -> None:
             if self._hub_state is None or self._read_model is None:
                 return
-            value = self._hub_state.set_revision_baseline(self._read_model)
+            bounds_by_entity: dict[str, Any] = {}
+            load_result = getattr(self._workspace, "load_result", None) if self._workspace is not None else None
+            scene = getattr(load_result, "scene", None)
+            viewer = getattr(self.viewer, "_viewer", None)
+            index = getattr(getattr(viewer, "controller", None), "index", None)
+            if scene is not None and index is None:
+                from cws_viewer.core.scene_index import SceneIndex
+                index = SceneIndex.build(scene)
+            if scene is not None and index is not None:
+                for node in scene.nodes:
+                    bounds = index.world_bounds_by_node.get(str(node.node_id))
+                    if bounds is None:
+                        continue
+                    entity_id = str(node.entity_id)
+                    previous = bounds_by_entity.get(entity_id)
+                    bounds_by_entity[entity_id] = bounds if previous is None else previous.union(bounds)
+            serialized_bounds = {
+                entity_id: {
+                    "minimum": {"x": bounds.minimum.x, "y": bounds.minimum.y, "z": bounds.minimum.z},
+                    "maximum": {"x": bounds.maximum.x, "y": bounds.maximum.y, "z": bounds.maximum.z},
+                }
+                for entity_id, bounds in bounds_by_entity.items()
+            }
+            value = self._hub_state.set_revision_baseline(
+                self._read_model, bounds_by_entity=serialized_bounds
+            )
             self._mark_project_dirty()
             self.refresh()
             QtWidgets.QMessageBox.information(self, "Revisiebaseline", f"Baseline opgeslagen: {value[:16]}")
@@ -1828,14 +2680,33 @@ if qt_available():
             self.refresh()
 
         def _apply_column_preset(self, name: str) -> None:
-            visible = {
-                "basis": {0, 1, 2, 3, 4, 5, 6, 7, 18},
-                "production": {0, 1, 3, 4, 6, 7, 9, 10, 13, 14, 15, 18},
-                "procurement": {0, 1, 2, 3, 4, 6, 7, 12, 16, 18},
-                "revision": {0, 1, 2, 3, 4, 5, 6, 10, 13, 17, 18},
-                "control": set(range(len(self.COLUMNS))),
-                "all": set(range(len(self.COLUMNS))),
+            labels = {
+                "basis": {
+                    "✓", "Merk / sleutel", "Omschrijving", "Profiel / maat", "Materiaal",
+                    "Lengte (mm)", "Aantal", "Gewicht (kg)", "Status",
+                },
+                "production": {
+                    "✓", "Merk / sleutel", "Profiel / maat", "Materiaal", "Aantal",
+                    "Geometrie", "Materiaal gereed", "Tekening", "Machine", "Machine gereed",
+                    "Nesting", "NC-export", "Scribing", "Conflictvrij", "Vrijgegeven",
+                    "Geproduceerd", "Geleverd", "Fase", "Levering", "Status",
+                },
+                "procurement": {
+                    "✓", "Merk / sleutel", "Omschrijving", "Profiel / maat", "Materiaal",
+                    "Lengte (mm)", "Aantal", "Levering", "Voorraad", "Voorraadstuk",
+                    "Benodigd (mm)", "Beschikbaar (mm)", "Tekort (mm)", "Reststuk",
+                    "Besteld", "Verwachte levering", "Leverancier", "Prijs",
+                    "Alternatief materiaal", "Inkoopvrijgave", "Status",
+                },
+                "revision": {
+                    "✓", "Merk / sleutel", "Omschrijving", "Profiel / maat", "Materiaal",
+                    "Lengte (mm)", "Aantal", "Geometrie", "Tekening", "Machine",
+                    "Vrijgegeven", "Revisie", "Status",
+                },
+                "control": set(self.COLUMNS),
+                "all": set(self.COLUMNS),
             }[name]
+            visible = {index for index, label in enumerate(self.COLUMNS) if label in labels}
             for column in range(len(self.COLUMNS)):
                 self.table.setColumnHidden(column, column not in visible)
             self.table.resizeColumnsToContents()

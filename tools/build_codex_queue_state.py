@@ -411,7 +411,7 @@ def build() -> dict[str, Any]:
             "root": str(ROOT), "branch": branch, "head": head, "tree": tree,
             "remote_ref": remote_ref or None, "remote_head": remote_head or None,
             "ahead": ahead, "behind": behind,
-            "app_version": "0.10.20-beta-dev", "project_schema": "2.25", "canonical_part_schema": "1.1",
+            "app_version": "0.10.21-beta-dev", "project_schema": "2.25", "canonical_part_schema": "1.1",
         },
         "allowed_statuses": list(ALLOWED_STATUSES),
         "source_count": len(source_entries),

@@ -76,6 +76,18 @@ class BOMWorkspaceRow:
     lead_time_days: int = 0
     expected_delivery: str = ""
     purchase_status: str = ""
+    geometry_status: str = ""
+    material_status: str = ""
+    machine_status: str = ""
+    nc_status: str = ""
+    scribing_status: str = ""
+    conflict_status: str = ""
+    delivery_status: str = ""
+    assigned_stock: str = ""
+    assigned_remnant: str = ""
+    alternative_material: str = ""
+    purchase_release_status: str = ""
+    revision_status: str = ""
     status: str = "review_required"
     blocked: bool = False
     blocking_reasons: tuple[str, ...] = ()
@@ -100,6 +112,18 @@ class BOMWorkspaceRow:
                 self.production_status,
                 self.stock_status,
                 self.supplier,
+                self.geometry_status,
+                self.material_status,
+                self.machine_status,
+                self.nc_status,
+                self.scribing_status,
+                self.conflict_status,
+                self.delivery_status,
+                self.assigned_stock,
+                self.assigned_remnant,
+                self.alternative_material,
+                self.purchase_release_status,
+                self.revision_status,
                 self.status,
                 *self.blocking_reasons,
                 *self.entity_ids,
@@ -369,6 +393,78 @@ class BOMWorkspaceReadModel:
             "production_status": self._entity_field(ids, "production_status", "fabrication_status"),
             "stock_status": self._entity_field(ids, "stock_status", "procurement_status"),
             "supplier": self._entity_field(ids, "supplier"),
+            "delivery_status": self._entity_field(ids, "delivery_status", "shipment_status"),
+            "purchase_release_status": self._entity_field(ids, "purchase_release_status"),
+        }
+
+    def _readiness_fields(
+        self,
+        entity_ids: Iterable[str],
+        *,
+        group_id: str,
+        material: str,
+        document_status: str,
+        machine: str,
+        blocked: bool,
+    ) -> dict[str, Any]:
+        ids = tuple(entity_ids)
+        entities = [
+            self.project.get_entity(entity_id)
+            for entity_id in ids
+            if self.project is not None and self.project.get_entity(entity_id) is not None
+        ]
+        parts = [entity for entity in entities if getattr(entity, "entity_type", "") == "part"]
+        material_relevant = any(
+            getattr(entity, "entity_type", "") in {"part", "purchased_item", "fastener", "weld"}
+            for entity in entities
+        )
+        geometry_ready = bool(entities) and all(
+            getattr(entity, "entity_type", "") != "part"
+            or bool(getattr(entity, "geometry_hash", ""))
+            for entity in entities
+        )
+        known_material = str(material or "").strip().casefold() not in {
+            "", "-", "unknown", "onbekend", "gemengd",
+        }
+        routing_values = [self._routing.get(str(entity_id), {}) for entity_id in ids]
+        routing_states = [
+            str(value.get("routing_status") or value.get("capability_status") or "")
+            for value in routing_values if isinstance(value, Mapping)
+        ]
+        machine_ready = bool(machine and machine != "-") and bool(routing_states) and all(
+            value.casefold() in {"ready", "eligible", "assigned"} for value in routing_states
+        )
+        nc_ready = bool(parts) and all(
+            bool(getattr(part, "nc1_eligible", False))
+            and str(getattr(part, "export_status", "")).casefold() in {"ready", "released", "valid", "ok"}
+            for part in parts
+        )
+        scribing_values = []
+        for part in parts:
+            properties = getattr(part, "properties", {}) or {}
+            explicit = str(properties.get("scribing_status") or "")
+            features = tuple(getattr(part, "production_features", ()) or ())
+            has_scribing = any(
+                str(feature.get("type") or feature.get("operation") or "").casefold()
+                in {"scribe", "scribing", "mark", "marking"}
+                for feature in features if isinstance(feature, Mapping)
+            )
+            scribing_values.append(explicit or ("ready" if has_scribing else "not_required"))
+        hub = dict(((getattr(self.project, "settings", {}) or {}).get("bom_production_hub", {}) or {}))
+        assignment = dict((hub.get("stock_assignments") or {}).get(group_id) or {})
+        source_type = str(assignment.get("source_type") or "")
+        source_id = str(assignment.get("source_id") or "")
+        return {
+            "geometry_status": "Gereed" if geometry_ready else "Geblokkeerd",
+            "material_status": (
+                "Gereed" if known_material else "Niet van toepassing" if not material_relevant else "Geblokkeerd"
+            ),
+            "machine_status": "Gereed" if machine_ready else ("Niet van toepassing" if not parts else "Review"),
+            "nc_status": "Gereed" if nc_ready else ("Niet van toepassing" if not parts else "Geblokkeerd"),
+            "scribing_status": _mixed(scribing_values, empty="Niet van toepassing"),
+            "conflict_status": "Geblokkeerd" if blocked else "Conflictvrij",
+            "assigned_stock": source_id if source_type == "full_stock" else "",
+            "assigned_remnant": source_id if source_type == "remnant" else "",
         }
 
     def _stock_fields(
@@ -384,7 +480,10 @@ class BOMWorkspaceReadModel:
         for stock in self.project.stock_items.values():
             if str(stock.profile or "").casefold() != profile_key:
                 continue
-            if material_key and str(stock.material or stock.grade or "").casefold() not in {"", material_key}:
+            stock_materials = {
+                str(value).casefold() for value in (stock.material, stock.grade) if str(value)
+            }
+            if material_key and stock_materials and material_key not in stock_materials:
                 continue
             quantity = max(0.0, float(stock.available_quantity or 0.0) - float(stock.reserved_quantity or 0.0))
             available += float(stock.stock_length_mm or 0.0) * quantity
@@ -395,8 +494,11 @@ class BOMWorkspaceReadModel:
         for remnant in self.project.remnants.values():
             if str(remnant.status or "").casefold() not in {"available", "beschikbaar"}:
                 continue
+            remnant_materials = {
+                str(value).casefold() for value in (remnant.material, remnant.grade) if str(value)
+            }
             if str(remnant.profile or "").casefold() == profile_key and (
-                not material_key or str(remnant.material or remnant.grade or "").casefold() in {"", material_key}
+                not material_key or not remnant_materials or material_key in remnant_materials
             ):
                 available += float(remnant.remaining_length_mm or 0.0)
         shortage = max(0.0, float(required_length_mm or 0.0) - available)
@@ -411,6 +513,15 @@ class BOMWorkspaceReadModel:
     def _build_family(self, family: str) -> tuple[BOMWorkspaceRow, ...]:
         snapshot = self.snapshot
         rows: list[BOMWorkspaceRow] = []
+        def enrich(
+            workflow: dict[str, Any], entity_ids: Iterable[str], *, group_id: str,
+            material: str = "", document: str = "", machine: str = "", blocked: bool = False,
+        ) -> dict[str, Any]:
+            workflow.update(self._readiness_fields(
+                entity_ids, group_id=group_id, material=material,
+                document_status=document, machine=machine, blocked=blocked,
+            ))
+            return workflow
         if family == "parts":
             for item in snapshot.part_bom:
                 marks = tuple(item.assembly_marks)
@@ -419,13 +530,20 @@ class BOMWorkspaceReadModel:
                     profile=item.profile, material=item.material,
                     required_length_mm=float(item.length_mm or 0.0) * float(item.quantity or 0.0),
                 ))
+                machine = self._machine_for(item.part_ids)
+                document = self._drawing_for_marks(marks)
+                enrich(
+                    workflow, item.part_ids, group_id=item.group_id,
+                    material=item.material, document=document, machine=machine,
+                    blocked=item.blocked,
+                )
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.part_ids),
                     mark=item.part_position or ", ".join(marks), description=item.name,
                     profile=item.profile, material=item.material, length_mm=item.length_mm,
                     quantity=item.quantity, total_mass_kg=item.total_mass_kg,
                     total_surface_m2=item.total_surface_area_m2,
-                    machine=self._machine_for(item.part_ids), document_status=self._drawing_for_marks(marks),
+                    machine=machine, document_status=document,
                     **workflow,
                     status=item.status, blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
@@ -433,11 +551,16 @@ class BOMWorkspaceReadModel:
         elif family == "assemblies":
             for item in snapshot.assembly_bom:
                 workflow = self._workflow_fields(item.assembly_ids)
+                document = self._drawing_for_marks((item.assembly_mark,))
+                enrich(
+                    workflow, item.assembly_ids, group_id=item.group_id,
+                    document=document, blocked=item.blocked,
+                )
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.assembly_ids),
                     mark=item.assembly_mark, description=item.name, quantity=item.quantity,
                     total_mass_kg=item.total_weight_kg, total_surface_m2=item.total_surface_area_m2,
-                    document_status=self._drawing_for_marks((item.assembly_mark,)),
+                    document_status=document,
                     **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
@@ -462,7 +585,16 @@ class BOMWorkspaceReadModel:
                             (getattr(value, "properties", {}) or {}).get("expected_delivery", "")
                             for value in purchased
                         ),
+                        "alternative_material": _mixed(
+                            alternative
+                            for value in purchased
+                            for alternative in (value.alternatives or ())
+                        ),
                     })
+                enrich(
+                    workflow, entity_ids, group_id=item.group_id,
+                    material=item.material_or_grade, blocked=item.blocked,
+                )
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=entity_ids,
                     mark=item.article_number, description=item.description,
@@ -475,6 +607,10 @@ class BOMWorkspaceReadModel:
         elif family == "fasteners":
             for item in snapshot.fastener_bom:
                 workflow = self._workflow_fields(item.fastener_ids)
+                enrich(
+                    workflow, item.fastener_ids, group_id=item.group_id,
+                    material=item.grade, blocked=item.blocked,
+                )
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.fastener_ids),
                     mark=item.fastener_type, description=item.standard, profile=f"Ø{item.diameter_mm:g} × {item.length_mm:g}",
@@ -486,6 +622,10 @@ class BOMWorkspaceReadModel:
         elif family == "welds":
             for item in snapshot.weld_bom:
                 workflow = self._workflow_fields(item.weld_ids)
+                enrich(
+                    workflow, item.weld_ids, group_id=item.group_id,
+                    material=item.location, blocked=item.blocked,
+                )
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.weld_ids),
                     mark=", ".join(item.assembly_marks), description=item.weld_type,
@@ -505,22 +645,36 @@ class BOMWorkspaceReadModel:
                     and part_row.profile == item.profile
                     for entity_id in part_row.part_ids
                 )
+                workflow = enrich(
+                    self._workflow_fields(part_ids), part_ids, group_id=item.group_id,
+                    material=item.material, blocked=item.blocked,
+                )
+                workflow.update(self._stock_fields(
+                    profile=item.profile, material=item.material,
+                    required_length_mm=float(item.net_length_mm or 0.0),
+                ))
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=part_ids,
                     mark=item.category, description=item.profile, profile=item.profile,
                     material=item.material, length_mm=item.net_length_mm,
                     quantity=item.quantity, total_mass_kg=item.total_mass_kg,
                     total_surface_m2=item.total_surface_area_m2,
+                    **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
                 ))
         elif family == "conflicts":
             for item in snapshot.conflicts:
+                workflow = enrich(
+                    self._workflow_fields(item.entity_ids), item.entity_ids,
+                    group_id=item.conflict_id, blocked=item.blocking,
+                )
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.conflict_id,
                     entity_ids=_unique(item.entity_ids), mark=item.key,
                     description=item.message, profile=item.conflict_type,
                     material=item.severity, quantity=len(item.entity_ids),
+                    **workflow,
                     status="blocked" if item.blocking else "warning", blocked=item.blocking,
                     blocking_reasons=(item.message,), raw=item,
                 ))

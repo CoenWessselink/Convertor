@@ -241,6 +241,11 @@ class BomProductionHubTests(unittest.TestCase):
         self.assertEqual("MANUAL", stored["P1"].assignment_source)
         self.assertIn("CWS.ROUTING.MANUAL_REVALIDATION_REQUIRED", stored["P1"].blocking_codes)
         self.assertTrue(project.settings["machine_routing"]["snapshot_sha256"])
+        unlocked = service.set_manual_lock(
+            project, ("P1",), locked=False, user="tester",
+            reason="Planning opnieuw openzetten",
+        )
+        self.assertFalse(unlocked[0].manual_lock)
         service.reset(project, ("P1",), user="tester", reason="Opnieuw routeren")
         self.assertNotIn("P1", service.assignments(project))
         self.assertIn("P2", service.assignments(project))
@@ -334,7 +339,7 @@ class BomProductionHubGuiTests(unittest.TestCase):
         self.assertEqual({"P1", "P2"}, set(Window.application_context.requested))
         self.assertTrue(panel.action_buttons["machine"].isEnabled())
         self.assertTrue(panel.viewer.isVisible() or not panel.isVisible())
-        self.assertEqual(19, panel.table.columnCount())
+        self.assertEqual(37, panel.table.columnCount())
         self.assertEqual(8, panel.detail_tabs.count())
         self.assertIn("Machine", [panel.color_mode.itemText(i) for i in range(panel.color_mode.count())])
         first_item = panel.table.item(next(iter(panel._display_rows)), 0)

@@ -37,6 +37,26 @@ if qt_available():
 
     if QVTKRenderWindowInteractor is not None:
 
+        class _LassoOverlay(QtWidgets.QWidget):
+            def __init__(self, parent: Any) -> None:
+                super().__init__(parent)
+                self.points: list[Any] = []
+                self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+                self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+            def set_points(self, points: list[Any]) -> None:
+                self.points = list(points)
+                self.update()
+
+            def paintEvent(self, _event: Any) -> None:
+                if len(self.points) < 2:
+                    return
+                painter = QtGui.QPainter(self)
+                painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+                painter.setPen(QtGui.QPen(QtGui.QColor(0, 122, 204, 230), 2.0))
+                painter.setBrush(QtGui.QColor(0, 122, 204, 35))
+                painter.drawPolygon(QtGui.QPolygon(self.points))
+
         class VtkRealProjectWidget(QVTKRenderWindowInteractor):  # type: ignore[misc]
             backend_ready = QtCore.Signal()
             backend_failed = QtCore.Signal(str)
@@ -46,6 +66,7 @@ if qt_available():
             navigation_mode_changed = QtCore.Signal(str)
             tool_cancelled = QtCore.Signal()
             interaction_message = QtCore.Signal(str)
+            selection_gesture_completed = QtCore.Signal(object)
 
             def __init__(self, repository: MeshRepository, parent: Any | None = None) -> None:
                 super().__init__(parent)
@@ -69,6 +90,8 @@ if qt_available():
 
                 self._navigation_mode = NavigationMode.ORBIT
                 self._area_selection = False
+                self._lasso_selection = False
+                self._lasso_points: list[Any] = []
                 self._press_pos: Any | None = None
                 self._last_pos: Any | None = None
                 self._pressed_button: Any | None = None
@@ -77,6 +100,9 @@ if qt_available():
                 self._rubber_band = QtWidgets.QRubberBand(
                     QtWidgets.QRubberBand.Shape.Rectangle, self
                 )
+                self._lasso_overlay = _LassoOverlay(self)
+                self._lasso_overlay.setGeometry(self.rect())
+                self._lasso_overlay.hide()
                 self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
                 self.backend_ready.emit()
 
@@ -96,13 +122,19 @@ if qt_available():
             def area_selection_enabled(self) -> bool:
                 return self._area_selection
 
+            @property
+            def lasso_selection_enabled(self) -> bool:
+                return self._lasso_selection
+
             def load_scene(self, scene: ProjectScene) -> None:
                 self._controller.load_scene(scene)
 
             def set_navigation_mode(self, mode: NavigationMode | str) -> None:
                 self._navigation_mode = NavigationMode(mode)
                 self._area_selection = False
+                self._lasso_selection = False
                 self._rubber_band.hide()
+                self._lasso_overlay.hide()
                 cursor = {
                     NavigationMode.ORBIT: QtCore.Qt.CursorShape.OpenHandCursor,
                     NavigationMode.PAN: QtCore.Qt.CursorShape.SizeAllCursor,
@@ -122,6 +154,9 @@ if qt_available():
 
             def set_area_selection(self, enabled: bool = True) -> None:
                 self._area_selection = bool(enabled)
+                if enabled:
+                    self._lasso_selection = False
+                    self._lasso_overlay.hide()
                 self._rubber_band.hide()
                 self.setCursor(
                     QtCore.Qt.CursorShape.CrossCursor
@@ -132,6 +167,23 @@ if qt_available():
                     "Vensterselectie: sleep links→rechts = volledig binnen; rechts→links = kruisen"
                     if self._area_selection
                     else "Vensterselectie beëindigd"
+                )
+
+            def set_lasso_selection(self, enabled: bool = True) -> None:
+                self._lasso_selection = bool(enabled)
+                if enabled:
+                    self._area_selection = False
+                    self._rubber_band.hide()
+                self._lasso_points = []
+                self._lasso_overlay.set_points([])
+                self._lasso_overlay.setVisible(bool(enabled))
+                self.setCursor(
+                    QtCore.Qt.CursorShape.CrossCursor
+                    if enabled else QtCore.Qt.CursorShape.OpenHandCursor
+                )
+                self.interaction_message.emit(
+                    "Lassoselectie: teken met ingedrukte linkermuisknop een vrije contour"
+                    if enabled else "Lassoselectie beëindigd"
                 )
 
             def _vtk_xy(self, pos: Any) -> tuple[int, int]:
@@ -169,7 +221,12 @@ if qt_available():
                     self._last_pos = event.position()
                     self._pressed_button = event.button()
                     self._dragging = False
-                    if self._area_selection and event.button() == QtCore.Qt.MouseButton.LeftButton:
+                    if self._lasso_selection and event.button() == QtCore.Qt.MouseButton.LeftButton:
+                        self._lasso_points = [event.position().toPoint()]
+                        self._lasso_overlay.set_points(self._lasso_points)
+                        self._lasso_overlay.show()
+                        self._lasso_overlay.raise_()
+                    elif self._area_selection and event.button() == QtCore.Qt.MouseButton.LeftButton:
                         origin = event.position().toPoint()
                         self._rubber_band.setGeometry(QtCore.QRect(origin, origin))
                         self._rubber_band.show()
@@ -185,6 +242,14 @@ if qt_available():
                 if not self._dragging and self._distance(current, self._press_pos) >= self._drag_threshold_px:
                     self._dragging = True
                 if not self._dragging:
+                    event.accept()
+                    return
+
+                if self._lasso_selection and self._pressed_button == QtCore.Qt.MouseButton.LeftButton:
+                    point = current.toPoint()
+                    if not self._lasso_points or self._distance(point, self._lasso_points[-1]) >= 3.0:
+                        self._lasso_points.append(point)
+                        self._lasso_overlay.set_points(self._lasso_points)
                     event.accept()
                     return
 
@@ -234,6 +299,21 @@ if qt_available():
                 self._pressed_button = None
                 self._dragging = False
 
+                if button == QtCore.Qt.MouseButton.LeftButton and self._lasso_selection:
+                    if dragged and len(self._lasso_points) >= 3:
+                        try:
+                            points = tuple(self._vtk_xy(point) for point in self._lasso_points)
+                            ids = self._controller.select_polygon(
+                                points, mode=self._selection_mode(event.modifiers())
+                            )
+                            self.selection_gesture_completed.emit(ids)
+                            self.interaction_message.emit(f"Lassoselectie: {len(ids):,} object(en)")
+                        except Exception as exc:
+                            self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
+                    self.set_lasso_selection(False)
+                    event.accept()
+                    return
+
                 if button == QtCore.Qt.MouseButton.LeftButton and self._area_selection:
                     self._rubber_band.hide()
                     if dragged:
@@ -250,6 +330,7 @@ if qt_available():
                                 mode=self._selection_mode(event.modifiers()),
                                 crossing=crossing,
                             )
+                            self.selection_gesture_completed.emit(ids)
                             self.interaction_message.emit(
                                 f"Vensterselectie: {len(ids):,} object(en)"
                             )
@@ -292,6 +373,7 @@ if qt_available():
                 key = event.key()
                 if key == QtCore.Qt.Key.Key_Escape:
                     self.set_area_selection(False)
+                    self.set_lasso_selection(False)
                     self._controller.cancel_tool()
                     self.tool_cancelled.emit()
                     event.accept()
@@ -329,6 +411,7 @@ if qt_available():
 
             def resizeEvent(self, event: Any) -> None:
                 super().resizeEvent(event)
+                self._lasso_overlay.setGeometry(self.rect())
                 size = event.size()
                 if size.width() > 0 and size.height() > 0:
                     self._cws_pending_resize = (size.width(), size.height())
