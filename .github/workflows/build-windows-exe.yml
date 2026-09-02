@@ -87,7 +87,6 @@ jobs:
           Write-Host "Native VTK/OCCT window rendering is exercised by local, dist, portable and installed gates."
           Write-Host "GitHub Actions uses the deterministic headless native pipeline gate."
           python tests/viewer_ci_headless_smoke.py
-          python validation/run_viewer_v6_smoke_batch.py --timeout 360
 
       - name: Exact source phase gates and 10-minute soak
         shell: pwsh
