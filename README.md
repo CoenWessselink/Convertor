@@ -1,4 +1,4 @@
-# SteelConverter - CWS Convertor 0.10.18-beta-dev implementation snapshot
+# SteelConverter - CWS Convertor 0.10.19-beta-dev implementation snapshot
 
 De V9-hoofdapp gebruikt **Viewer / Project** als centrale cockpit. De elf werkruimtes zijn: Inlezen, Viewer / Project, Bewerken, Converteren, Controleren, PDF / Tekening, Profielen, Tekeningen, Scribing, Hoeveelheden / Excel en Exporteren. Selecties uit tree, 3D-viewer en property grid blijven via canonieke entity-ID's aan de aangesloten bestaande functies gekoppeld.
 
@@ -6,7 +6,7 @@ Start de geintegreerde desktopapp met `CWS_Convertor_App.py`. De klassieke UI bl
 
 **SteelConverter** is de leidende en zichtbare productnaam. De huidige
 compatibele executable-, installer-, project- en registeridentifiers blijven
-voor versie 0.10.18-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
+voor versie 0.10.19-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
 scripts en upgrades blijven werken.
 
 SteelConverter is een local-first productieomgeving voor veilige conversie en
@@ -17,7 +17,7 @@ productievoorbereiding van:
 - hoeveelheden en Excel;
 - complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie **0.10.18-beta-dev** bouwt verder op de bewezen conversiekern en de
+Versie **0.10.19-beta-dev** bouwt verder op de bewezen conversiekern en de
 semantische IFC-/STEP-projectimport. De actuele projectstructuur gebruikt
 **Project Model 2.25**.
 
@@ -285,21 +285,30 @@ CWS_Convertor_CLI.exe project-migrate oud.cwscproj -o nieuw.cwscproj
 
 ## Windows-release
 
-De bijgewerkte buildstraat gebruikt Python 3.12 x64 op de **buildcomputer** en maakt:
+De bijgewerkte buildstraat gebruikt Python 3.12 x64 op de **buildcomputer** en maakt
+commitgebonden opleverbestanden (`<sha7>` is de eerste zeven tekens van de
+geteste Git-commit):
 
 ```text
-CWS_Convertor_Setup_0.10.18-beta-dev_x64.exe
-CWS_Convertor_Portable_0.10.18-beta-dev_x64.zip
+CWS_Convertor_Setup_0.10.19-beta-dev_<sha7>_x64.exe
+CWS_Convertor_Portable_0.10.19-beta-dev_<sha7>_x64.zip
+CWS_Convertor_Source_0.10.19-beta-dev_<sha7>.zip
+CWS_Convertor_0.10.19-beta-dev_<sha7>.bundle
+CWS_Convertor_SBOM_0.10.19-beta-dev_<sha7>.cdx.json
+CODEX_RELEASE_MANIFEST.json
 SHA256SUMS.txt
 WINDOWS_RUNTIME_VALIDATION.md
 ```
 
 De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De Windows
-workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.10.18-beta-dev. Een
+workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.10.19-beta-dev. Een
 artefact geldt pas als gebouwd nadat native selftests en de echte GUI vanuit
 `dist`, een schone portable extractie en de installatiemap zijn geslaagd zonder
 Python op de child-`PATH`. Iedere pakketvorm maakt daarnaast een project en
 voert een echte NC1-naar-STEP-conversie uit.
+
+Zie `docs/CODEX_WINDOWS_RELEASE_RUNBOOK.md` voor de exacte lokale en CI-opdracht,
+de volledige testmatrix en de verificatie van de oplevermap.
 
 Workflow `31685684421` en artefact `9175668822` zijn ingetrokken als
 releasebewijs: die controles startten de verpakte GUI/CAD-stack niet en misten

@@ -75,7 +75,12 @@ class ViewerFeelFixSmokeTests(unittest.TestCase):
         widget_source = (ROOT / "cws_viewer" / "ui_qt" / "vtk_real_project_widget_feel.py").read_text(encoding="utf-8")
         self.assertIn("prop.EdgeVisibilityOff()", backend_source)
         self.assertIn("vtkFeatureEdges", backend_source)
-        self.assertIn("normals.SplittingOn()", backend_source)
+        # The production renderer deliberately uses exact cell normals.  This
+        # keeps 90-degree profile edges hard without duplicating/splitting the
+        # complete IFC tessellation during first-frame loading.
+        self.assertIn("normals.SplittingOff()", backend_source)
+        self.assertIn("normals.ComputePointNormalsOff()", backend_source)
+        self.assertIn("normals.ComputeCellNormalsOn()", backend_source)
         self.assertIn("UseFXAAOn", backend_source)
         self.assertIn("SetMultiSamples(4 if self._offscreen else 8)", backend_source)
         self.assertIn("ArrowCursor", widget_source)

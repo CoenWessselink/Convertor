@@ -26,9 +26,9 @@ def main() -> int:
     payload = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
-        "serialNumber": f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'nl.cws.convertor:0.10.18')}",
+        "serialNumber": f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'nl.cws.convertor:0.10.19')}",
         "version": 1,
-        "metadata": {"timestamp": datetime.now(timezone.utc).isoformat(), "component": {"type": "application", "name": "CWS Convertor", "version": "0.10.18-beta-dev"}},
+        "metadata": {"timestamp": datetime.now(timezone.utc).isoformat(), "component": {"type": "application", "name": "CWS Convertor", "version": "0.10.19-beta-dev"}},
         "components": components,
     }
     target = Path(args.output)

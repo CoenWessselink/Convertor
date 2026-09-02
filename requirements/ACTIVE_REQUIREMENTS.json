@@ -1,6 +1,6 @@
 {
   "schema": "cws-active-requirements-1.0",
-  "generated_at": "2026-09-01T06:31:31.385559+00:00",
+  "generated_at": "2026-09-02T11:08:38.243859+00:00",
   "required_total": 317,
   "requirements": [
     {
@@ -714,7 +714,7 @@
         "cws_convertor/ui_qt/engineering_drawing.py"
       ],
       "test_paths": [
-        "tests/test_geometry_worker_and_drawing_regressions.py"
+        "tests/production_drawing_engine_smoke.py"
       ],
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
@@ -734,9 +734,10 @@
       "priority": "P0",
       "superseded_by": null,
       "implementation_paths": [
-        "cws_convertor/ui_qt/engineering_drawing.py"
+        "cws_convertor/drawings/renderer.py"
       ],
       "test_paths": [
+        "tests/production_drawing_engine_smoke.py",
         "tests/part_drawing_standard_smoke.py"
       ],
       "evidence_paths": [
@@ -757,10 +758,10 @@
       "priority": "P0",
       "superseded_by": null,
       "implementation_paths": [
-        "cws_convertor/ui_qt/engineering_drawing.py"
+        "cws_convertor/drawings/linter.py"
       ],
       "test_paths": [
-        "tests/test_geometry_worker_and_drawing_regressions.py"
+        "tests/production_drawing_engine_smoke.py"
       ],
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"
@@ -780,10 +781,12 @@
       "priority": "P0",
       "superseded_by": null,
       "implementation_paths": [
-        "pdf_support.py"
+        "pdf_support.py",
+        "cws_convertor/drawings/renderer.py"
       ],
       "test_paths": [
-        "tests/final_gap_closure_smoke.py"
+        "tests/production_drawing_engine_smoke.py",
+        "tests/pdf_ai_smoke.py"
       ],
       "evidence_paths": [
         "validation/final_4_phase/phase3/PHASE_GATE.json"

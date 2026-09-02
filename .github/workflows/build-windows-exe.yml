@@ -7,6 +7,7 @@ on:
       - main
       - v0.7-semantic-import
       - v0.8-codex-handover
+      - agent/cws-bom-production-hub-v1
     paths:
       - "*.py"
       - "*.json"
@@ -28,16 +29,20 @@ on:
 jobs:
   build-windows-x64:
     runs-on: windows-latest
+    timeout-minutes: 240
     permissions:
       contents: read
 
     env:
-      CWS_VERSION: 0.10.18-beta-dev
+      CWS_VERSION: 0.10.19-beta-dev
       RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
 
       - name: Set up Python 3.12 x64
         uses: actions/setup-python@v6
@@ -60,7 +65,7 @@ jobs:
           python -m compileall -q .
           python validation/run_all_smokes_v9.py `
             --headless-windows `
-            --output "$env:RUNTIME_RESULTS\source-smokes"
+            --output "validation\results\phase3\source-smokes"
           if ($LASTEXITCODE -ne 0) { throw "Source smoke suite faalde" }
           python cli.py --version
           python cli.py pdf-analyze --help
@@ -84,12 +89,36 @@ jobs:
           python tests/viewer_ci_headless_smoke.py
           python validation/run_viewer_v6_smoke_batch.py --timeout 360
 
+      - name: Exact source phase gates and 10-minute soak
+        shell: pwsh
+        run: |
+          $env:PYTHONPATH = (Get-Location).Path
+          python tools/build_phase1_reproducible_evidence.py
+          if ($LASTEXITCODE -ne 0) { throw "Reproduceerbare large-IFC gate faalde" }
+          python tools/run_phase1_unified_gates.py
+          if ($LASTEXITCODE -ne 0) { throw "Phase 1 source gate faalde" }
+          python tools/run_phase2_unified_gates.py
+          if ($LASTEXITCODE -ne 0) { throw "Phase 2 source gate faalde" }
+          python tools/run_phase3_gates.py --reuse-fresh-evidence
+          if ($LASTEXITCODE -ne 0) { throw "Phase 3 source/soak gate faalde" }
+
+      - name: Capture real BOM Productiehub evidence
+        shell: pwsh
+        run: |
+          $project = "validation\master_completion\hvpc_project\HVPC te Hengelo fasen totaal.cwscproj"
+          python tools/capture_bom_production_hub.py `
+            --project $project `
+            --output "$env:RUNTIME_RESULTS\bom-production-hub"
+          if ($LASTEXITCODE -ne 0) { throw "BOM runtimecapture faalde" }
+
       - name: Upload source smoke diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: source-smoke-diagnostics-${{ github.run_id }}
-          path: ${{ env.RUNTIME_RESULTS }}\source-smokes
+          path: |
+            validation/results/phase3/source-smokes/**
+            validation/phases/**
           if-no-files-found: warn
           retention-days: 14
 
@@ -145,15 +174,17 @@ jobs:
       - name: Create portable ZIP
         shell: pwsh
         run: |
+          $commit7 = $env:GITHUB_SHA.Substring(0, 7)
           Compress-Archive -Path "dist/CWS_Convertor" `
-            -DestinationPath "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip" -Force
+            -DestinationPath "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_${commit7}_x64.zip" -Force
 
       - name: Extract and test portable runtime
         shell: pwsh
         run: |
+          $commit7 = $env:GITHUB_SHA.Substring(0, 7)
           $portableRoot = Join-Path $env:RUNNER_TEMP "CWS_Convertor_Portable_Clean"
           if (Test-Path $portableRoot) { Remove-Item -LiteralPath $portableRoot -Recurse -Force }
-          Expand-Archive "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip" -DestinationPath $portableRoot
+          Expand-Archive "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_${commit7}_x64.zip" -DestinationPath $portableRoot
           $runtime = Join-Path $portableRoot "CWS_Convertor"
           python tests/packaged_runtime_smoke.py `
             --runtime-dir $runtime `
@@ -200,7 +231,8 @@ jobs:
             --label installed `
             --result-dir $env:RUNTIME_RESULTS
           python tests/windows_installer_association_smoke.py `
-            --runtime-dir $env:CWS_INSTALL_DIR
+            --runtime-dir $env:CWS_INSTALL_DIR `
+            --output "$env:RUNTIME_RESULTS\installed-associations.json"
 
       - name: Uninstall and verify removal
         shell: pwsh
@@ -220,13 +252,28 @@ jobs:
           if (Test-Path (Join-Path $env:CWS_INSTALL_DIR "CWS_Convertor_CLI.exe")) {
             throw "CLI EXE bleef na uninstall achter"
           }
+          python tests/windows_installer_association_smoke.py `
+            --expect-absent `
+            --output "$env:RUNTIME_RESULTS\uninstall-associations.json"
 
       - name: Create checksums and validation evidence
         shell: pwsh
         run: |
+          $commit7 = $env:GITHUB_SHA.Substring(0, 7)
+          New-Item -ItemType Directory -Path release -Force | Out-Null
+          python tools/generate_sbom.py "release/CWS_Convertor_SBOM_${env:CWS_VERSION}_${commit7}.cdx.json"
+          git archive --format=zip `
+            --output="release/CWS_Convertor_Source_${env:CWS_VERSION}_${commit7}.zip" `
+            $env:GITHUB_SHA
+          if ($LASTEXITCODE -ne 0) { throw "Source ZIP maken faalde" }
+          git bundle create "release/CWS_Convertor_${env:CWS_VERSION}_${commit7}.bundle" HEAD
+          if ($LASTEXITCODE -ne 0) { throw "Git bundle maken faalde" }
           $files = @(
-            "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_x64.zip",
-            "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_x64.exe"
+            "dist/CWS_Convertor_Portable_${env:CWS_VERSION}_${commit7}_x64.zip",
+            "dist_installer/CWS_Convertor_Setup_${env:CWS_VERSION}_${commit7}_x64.exe",
+            "release/CWS_Convertor_Source_${env:CWS_VERSION}_${commit7}.zip",
+            "release/CWS_Convertor_${env:CWS_VERSION}_${commit7}.bundle",
+            "release/CWS_Convertor_SBOM_${env:CWS_VERSION}_${commit7}.cdx.json"
           )
           $manifestFiles = foreach ($file in $files) {
             $item = Get-Item $file
@@ -237,8 +284,15 @@ jobs:
             }
           }
           $lines = $manifestFiles | ForEach-Object { "$($_.sha256)  $($_.name)" }
-          New-Item -ItemType Directory -Path release -Force | Out-Null
-          Copy-Item $files release/
+          Copy-Item $files[0..1] release/
+          New-Item -ItemType Directory -Path release/BOM_EVIDENCE -Force | Out-Null
+          Copy-Item "$env:RUNTIME_RESULTS\bom-production-hub\*" release/BOM_EVIDENCE/ -Force
+          New-Item -ItemType Directory -Path release/TEST_EVIDENCE -Force | Out-Null
+          Copy-Item "validation\phases\PHASE_1_REPRODUCIBLE_EVIDENCE.json" release/TEST_EVIDENCE/ -Force
+          Copy-Item "validation\phases\PHASE_1_SOURCE_TEST_EVIDENCE.json" release/TEST_EVIDENCE/ -Force
+          Copy-Item "validation\phases\PHASE_2_SOURCE_TEST_EVIDENCE.json" release/TEST_EVIDENCE/ -Force
+          Copy-Item "validation\phases\PHASE_3_SOURCE_TEST_EVIDENCE.json" release/TEST_EVIDENCE/ -Force
+          Copy-Item "validation\phases\PHASE_3_SOAK_EVIDENCE.json" release/TEST_EVIDENCE/ -Force
           $lines | Set-Content -Encoding ascii release/SHA256SUMS.txt
           Copy-Item WINDOWS_RUNTIME_VALIDATION.md release/WINDOWS_RUNTIME_VALIDATION.md
           Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "`n## CI build evidence"
@@ -255,14 +309,34 @@ jobs:
             Add-Content release/WINDOWS_RUNTIME_VALIDATION.md "- $($file.name): $($file.bytes) bytes; SHA-256 $($file.sha256)"
           }
           $manifest = [ordered]@{
+            schema = "cws-codex-complete-windows-release-1.0"
             version = $env:CWS_VERSION
             run_id = $env:GITHUB_RUN_ID
             commit = $env:GITHUB_SHA
             status = "passed"
+            source_phase_gates = [ordered]@{
+              phase1 = "passed"
+              phase2 = "passed"
+              phase3 = "passed"
+              soak_seconds = 600
+            }
+            runtime_matrix = [ordered]@{
+              source = "passed"
+              one_folder = "passed"
+              portable_clean_extract = "passed"
+              installed_without_external_python = "passed"
+              file_associations = "passed"
+              uninstall = "passed"
+            }
+            bom_runtime_capture = "release/BOM_EVIDENCE/BOM_RUNTIME_CAPTURE_MANIFEST.json"
             files = @($manifestFiles)
           }
           $manifest | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 release/WINDOWS_RELEASE_MANIFEST.json
           Copy-Item "$env:RUNTIME_RESULTS\*.json" release/
+          python tools/build_codex_release_manifest.py `
+            --release-dir release `
+            --runtime-results "$env:RUNTIME_RESULTS"
+          if ($LASTEXITCODE -ne 0) { throw "Codex release manifest gate faalde" }
           @(
             "## SteelConverter Windows release $env:CWS_VERSION",
             "",

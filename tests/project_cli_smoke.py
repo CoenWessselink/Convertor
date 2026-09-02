@@ -146,7 +146,7 @@ class ProjectCLITests(unittest.TestCase):
 
     def test_version_identity(self) -> None:
         self.assertEqual(APP_NAME, "CWS Convertor")
-        self.assertEqual(APP_VERSION, "0.10.18-beta-dev")
+        self.assertEqual(APP_VERSION, "0.10.19-beta-dev")
         parser = cli.build_parser()
         self.assertIn(APP_NAME, parser.description or "")
 

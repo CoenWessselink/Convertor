@@ -18,6 +18,16 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# These scripts are black-box gates for an already built exact-SHA runtime.
+# Running them without their required runtime arguments in the source suite is
+# neither a source test nor an honest failure.  They remain mandatory in the
+# Windows packaging workflow and are reported here as explicitly deferred.
+PACKAGED_ONLY_SMOKES = {
+    "conversion_one_phase_packaged_smoke.py": (
+        "deferred_to_exact_sha_packaged_runtime_matrix"
+    ),
+}
+
 
 def _failure_excerpt(stdout: str, stderr: str, returncode: int, *, limit: int = 3500) -> str:
     details = (stderr.strip() or stdout.strip()).replace("\x00", "")
@@ -83,6 +93,28 @@ def main() -> int:
             command = ["xvfb-run", "-a", *command]
         print(f"[{index:03d}/{len(scripts):03d}] {script.name}", flush=True)
         tick = time.perf_counter()
+        deferred_reason = PACKAGED_ONLY_SMOKES.get(script.name)
+        if deferred_reason:
+            log_path = logs / f"{script.stem}.log"
+            log_path.write_text(
+                f"COMMAND: {' '.join(command)}\nSTATUS: deferred\n"
+                f"REASON: {deferred_reason}\n",
+                encoding="utf-8",
+            )
+            records.append(
+                {
+                    "script": script.name,
+                    "command": command,
+                    "status": "deferred",
+                    "returncode": 0,
+                    "duration_seconds": 0.0,
+                    "log": str(log_path.relative_to(output)),
+                    "failure_excerpt": "",
+                    "reason": deferred_reason,
+                }
+            )
+            print(f"    DEFERRED {deferred_reason}", flush=True)
+            continue
         timed_out = False
         try:
             child_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
@@ -166,7 +198,7 @@ def main() -> int:
         print(f"    {status.upper()} {duration:.2f}s", flush=True)
     counts = {
         key: sum(item["status"] == key for item in records)
-        for key in ("passed", "skipped", "failed", "timeout")
+        for key in ("passed", "skipped", "deferred", "failed", "timeout")
     }
     payload = {
         "schema": "cws-viewer-v9-full-smoke-summary-1.0",
@@ -176,6 +208,10 @@ def main() -> int:
         "script_count": len(records),
         "range": {"start": first, "end": last, "total_available": len(all_scripts)},
         "counts": counts,
+        "source_scope_complete": counts["failed"] == 0 and counts["timeout"] == 0,
+        "packaged_gates_deferred": [
+            item["script"] for item in records if item["status"] == "deferred"
+        ],
         "elapsed_seconds": time.perf_counter() - started,
         "records": records,
     }

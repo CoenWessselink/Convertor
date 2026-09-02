@@ -39,7 +39,7 @@ def classification(path: str) -> tuple[str, str, bool, bool, str]:
     if normalized.startswith("validation/full_acceptance/") or normalized.startswith(generated_roots):
         kind = "screenshot" if normalized.lower().endswith((".png", ".jpg", ".jpeg")) else "artifact"
         return "GENERATED_ARTIFACT_DO_NOT_COMMIT", "Door acceptance-runner reproduceerbare evidence", False, True, kind
-    if normalized in {"CWS_Convertor_Phase3.exe", "CWS_Convertor_Setup_0.10.18-beta-dev_x64.exe"}:
+    if normalized in {"CWS_Convertor_Phase3.exe", "CWS_Convertor_Setup_0.10.19-beta-dev_x64.exe"}:
         return "GENERATED_ARTIFACT_DO_NOT_COMMIT", "Niet-commitgebonden lokaal buildproduct", False, True, "artifact"
     if normalized.endswith((".log", ".tmp")) or "__pycache__" in normalized:
         return "TEMPORARY_DELETE", "Tijdelijke runtime-output", False, True, "artifact"

@@ -113,7 +113,7 @@ def build_validation() -> dict[str, Any]:
     }
     sbom = RELEASE / "CWS_Convertor_SBOM.cdx.json"
     revision = str(windows.get("source_revision") or "")
-    source_package = RELEASE / f"CWS_Convertor_Source_0.10.18-beta-dev_{revision[:7]}.zip"
+    source_package = RELEASE / f"CWS_Convertor_Source_0.10.19-beta-dev_{revision[:7]}.zip"
     checks: list[dict[str, Any]] = []
 
     def add(identifier: str, condition: bool, evidence: Any, command: str = "") -> None:

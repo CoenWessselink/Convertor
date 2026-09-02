@@ -48,15 +48,42 @@ def _casadi_check() -> dict[str, Any]:
     if not math.isclose(result, 10.0, rel_tol=0.0, abs_tol=1e-12):
         raise AssertionError(f"CasADi-resultaat is {result}, verwacht 10.0")
     package_dir = Path(casadi.__file__).resolve().parent
-    required_dlls = ["libcasadi.dll", "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll"]
-    missing = [name for name in required_dlls if not (package_dir / name).is_file()]
+    if sys.platform == "win32":
+        required_native_files = (
+            "libcasadi.dll",
+            "libgcc_s_seh-1.dll",
+            "libstdc++-6.dll",
+            "libwinpthread-1.dll",
+        )
+        expected_extension = ".pyd"
+    elif sys.platform == "darwin":
+        required_native_files = ("libcasadi.dylib",)
+        expected_extension = ".so"
+    else:
+        required_native_files = ("libcasadi.so",)
+        expected_extension = ".so"
+    native_module_path = Path(native_casadi.__file__).resolve()
+    if native_module_path.suffix.casefold() != expected_extension:
+        raise RuntimeError(
+            f"Onverwachte CasADi native module voor {sys.platform}: {native_module_path.name}"
+        )
+    missing = [name for name in required_native_files if not (package_dir / name).is_file()]
     if missing:
-        raise FileNotFoundError(f"Ontbrekende CasADi-runtime-DLL's: {', '.join(missing)}")
+        raise FileNotFoundError(
+            f"Ontbrekende CasADi-runtimebestanden voor {sys.platform}: {', '.join(missing)}"
+        )
     return {
         "version": getattr(casadi, "__version__", _version("casadi")),
         "package_path": str(package_dir),
-        "native_module_path": str(Path(native_casadi.__file__).resolve()),
-        "required_dlls": {name: str((package_dir / name).resolve()) for name in required_dlls},
+        "native_module_path": str(native_module_path),
+        "required_native_files": {
+            name: str((package_dir / name).resolve()) for name in required_native_files
+        },
+        "required_dlls": {
+            name: str((package_dir / name).resolve())
+            for name in required_native_files
+            if name.casefold().endswith(".dll")
+        },
         "expression_result": result,
     }
 

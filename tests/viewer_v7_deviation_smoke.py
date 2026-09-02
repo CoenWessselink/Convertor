@@ -21,8 +21,8 @@ class ViewerV7DeviationTests(unittest.TestCase):
         self.assertGreater(len(field.samples),20)
 
     @unittest.skipIf(
-        sys.platform == 'win32' and os.environ.get('GITHUB_ACTIONS', '').lower() == 'true',
-        'VTK OpenGL capture vereist een interactieve Windows-sessie',
+        os.environ.get('GITHUB_ACTIONS', '').lower() == 'true',
+        'VTK OpenGL capture vereist een interactieve desktopsessie; hosted CI valideert de native pipeline zonder pixels',
     )
     def test_deviation_heatmap_is_rendered(self):
         source=build_exact_runtime(build_plate(p1811_definition()),part_id='P1811-source')

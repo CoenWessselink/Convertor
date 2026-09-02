@@ -8,10 +8,10 @@ value but are `historical_frozen_source` and `superseded_for_current_status`.
 ## Product identity
 
 - Product: CWS Convertor
-- Version: 0.10.18-beta-dev
+- Version: 0.10.19-beta-dev
 - Project Model: 2.25
 - Canonical Part: 1.1
-- Active phase: Phase 1 - Canonical Product Core + Exact Engineering
+- Active phase: Exact-SHA BOM Productiehub release acceptance
 
 ## Canonical architecture
 

@@ -1,11 +1,28 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+import json
 from pathlib import Path
 import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _write_report(path: Path | None, *, mode: str, details: dict[str, object]) -> None:
+    if path is None:
+        return
+    path = path.expanduser().resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema": "cws-windows-association-evidence-1.0",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "status": "passed",
+        "mode": mode,
+        **details,
+    }
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _read_default(winreg: object, subkey: str) -> str:
@@ -31,6 +48,7 @@ def main() -> int:
     )
     parser.add_argument("--runtime-dir", type=Path)
     parser.add_argument("--expect-absent", action="store_true")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
     if args.runtime_dir is None:
@@ -41,6 +59,11 @@ def main() -> int:
             raise AssertionError("Installer associations must not target HKCR directly")
         if installer.count('Root: HKA; Subkey: "Software\\Classes\\') != 20:
             raise AssertionError("Expected 20 installation-mode-aware association entries")
+        _write_report(
+            args.output,
+            mode="source_configuration",
+            details={"association_entries": 20, "registry_root": "HKA"},
+        )
         print("windows_installer_association_smoke: source configuration OK")
         return 0
 
@@ -66,6 +89,11 @@ def main() -> int:
                 pass
         if remaining:
             raise AssertionError(f"Association keys remained after uninstall: {remaining}")
+        _write_report(
+            args.output,
+            mode="uninstall_cleanup",
+            details={"checked_keys": len(keys), "remaining_keys": []},
+        )
         print("windows_installer_association_smoke: uninstall cleanup OK")
         return 0
 
@@ -101,6 +129,17 @@ def main() -> int:
         rf"{classes}\SystemFileAssociations\.pdf\shell\CWSConvertor\command",
     )
     _assert_open_command("PDF context menu", pdf_command, executable)
+
+    _write_report(
+        args.output,
+        mode="installed",
+        details={
+            "runtime_dir": str(runtime_dir),
+            "extensions": sorted(expected_extensions),
+            "class_count": len(set(expected_extensions.values())),
+            "pdf_context_menu": True,
+        },
+    )
 
     print("windows_installer_association_smoke: OK")
     return 0

@@ -45,6 +45,7 @@ tmp/
 /validation/results/windows-runtime-phase2/
 /validation/results/windows-runtime-phase3/
 /validation/viewer_repair_diagnostic/
+/validation/final_gap_closure/
 /validation/full_acceptance/**
 !/validation/full_acceptance/PRE_RELEASE_WORKTREE_AUDIT.json
 !/validation/full_acceptance/PRE_RELEASE_WORKTREE_AUDIT.md

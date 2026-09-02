@@ -16,7 +16,10 @@ def main() -> int:
     failures = [check for check in result["checks"] if check["status"] != "passed"]
     assert not failures, failures
     checks = {check["name"]: check["details"] for check in result["checks"]}
-    assert Path(checks["casadi"]["native_module_path"]).name == "_casadi.pyd"
+    native_casadi = Path(checks["casadi"]["native_module_path"])
+    expected_suffix = ".pyd" if sys.platform == "win32" else ".so"
+    assert native_casadi.suffix.casefold() == expected_suffix, native_casadi
+    assert checks["casadi"]["required_native_files"]
     assert checks["casadi"]["expression_result"] == 10.0
     assert checks["cadquery_ocp"]["valid_solid"] is True
     assert checks["cadquery_ocp"]["plate_bbox_mm"] == [100.0, 50.0, 10.0]
