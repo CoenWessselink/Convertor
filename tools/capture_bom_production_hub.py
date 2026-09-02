@@ -22,6 +22,17 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+BOM_CAPTURE_FILENAMES = (
+    "01_bom_productiehub_hvpc.png",
+    "02_bom_multiselect_materiaal_filter.png",
+    "03_bom_viewer_onder_en_profielgroepen.png",
+    "04_machine_indeling_automatisch.png",
+    "05_machine_indeling_handmatig.png",
+    "06_productiegereedheidskolommen.png",
+    "07_voorraad_en_inkoopkolommen.png",
+    "08_selectieafhankelijke_actiematrix.png",
+)
+
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -116,7 +127,7 @@ def main() -> int:
         })
         return target
 
-    capture("01_bom_productiehub_hvpc.png", window)
+    capture(BOM_CAPTURE_FILENAMES[0], window)
 
     panel.group_by.setCurrentText("Materiaal")
     panel.search.setText("S355")
@@ -131,13 +142,13 @@ def main() -> int:
             panel.table.selectionModel().select(panel.table.indexFromItem(item), flags)
     panel._table_selection_changed()
     _wait(app, QtCore, 0.35)
-    capture("02_bom_multiselect_materiaal_filter.png", window)
+    capture(BOM_CAPTURE_FILENAMES[1], window)
 
     panel._set_viewer_layout("bottom")
     panel.search.clear()
     panel.group_by.setCurrentText("Profiel")
     _wait(app, QtCore, 0.35)
-    capture("03_bom_viewer_onder_en_profielgroepen.png", window)
+    capture(BOM_CAPTURE_FILENAMES[2], window)
 
     # Exercise and capture the actual machine-routing dialog.  HVPC contains
     # no configured machine profiles, so a temporary in-memory profile is
@@ -170,11 +181,11 @@ def main() -> int:
         dialog.resize(620, 280)
         dialog.show()
         _wait(app, QtCore, 0.25)
-        capture("04_machine_indeling_automatisch.png", dialog)
+        capture(BOM_CAPTURE_FILENAMES[3], dialog)
         method = dialog.findChildren(QtWidgets.QComboBox)[0]
         method.setCurrentIndex(1)
         _wait(app, QtCore, 0.2)
-        capture("05_machine_indeling_handmatig.png", dialog)
+        capture(BOM_CAPTURE_FILENAMES[4], dialog)
         dialog.close()
         return int(QtWidgets.QDialog.DialogCode.Rejected)
 
@@ -188,17 +199,17 @@ def main() -> int:
     panel._apply_column_preset("production")
     panel._set_viewer_layout("right")
     _wait(app, QtCore, 0.25)
-    capture("06_productiegereedheidskolommen.png", window)
+    capture(BOM_CAPTURE_FILENAMES[5], window)
 
     panel._apply_column_preset("procurement")
     _wait(app, QtCore, 0.25)
-    capture("07_voorraad_en_inkoopkolommen.png", window)
+    capture(BOM_CAPTURE_FILENAMES[6], window)
 
     panel._populate_action_matrix()
     panel.matrix_menu.adjustSize()
     panel.matrix_menu.show()
     _wait(app, QtCore, 0.2)
-    capture("08_selectieafhankelijke_actiematrix.png", panel.matrix_menu)
+    capture(BOM_CAPTURE_FILENAMES[7], panel.matrix_menu)
     panel.matrix_menu.hide()
     action_matrix_count = sum(
         len(action.menu().actions())

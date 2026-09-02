@@ -42,6 +42,7 @@ def main() -> int:
     args = parser.parse_args()
     from cws_convertor.bom.production_hub import ACTION_DEFINITIONS
     from cws_convertor.product import APP_VERSION
+    from tools.capture_bom_production_hub import BOM_CAPTURE_FILENAMES
 
     tests = (
         "tests/bom_production_hub_complete_smoke.py",
@@ -76,6 +77,10 @@ def main() -> int:
         }.issubset(columns),
         "action_count_at_least_75": len(actions) >= 75,
         "action_ids_unique": len(actions) == len(set(actions)),
+        "eight_release_captures_unique": (
+            len(BOM_CAPTURE_FILENAMES) == 8
+            and len(BOM_CAPTURE_FILENAMES) == len(set(BOM_CAPTURE_FILENAMES))
+        ),
     }
     commit = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
@@ -90,6 +95,7 @@ def main() -> int:
         "column_count": len(columns),
         "columns": list(columns),
         "action_count": len(actions),
+        "release_capture_files": list(BOM_CAPTURE_FILENAMES),
         "action_ids_sha256": hashlib.sha256("\n".join(actions).encode("utf-8")).hexdigest(),
         "source_files": {
             relative: _sha256(ROOT / relative)

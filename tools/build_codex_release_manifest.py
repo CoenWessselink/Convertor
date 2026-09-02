@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.product import APP_NAME, APP_VERSION
+from tools.capture_bom_production_hub import BOM_CAPTURE_FILENAMES
 
 
 PASS_VALUES = {"PASS", "PASSED", "GREEN", "COMPLETE", "SUCCESS"}
@@ -157,8 +158,11 @@ def main() -> int:
 
     bom_manifest_path = release / "BOM_EVIDENCE" / "BOM_RUNTIME_CAPTURE_MANIFEST.json"
     bom = load(bom_manifest_path)
-    if bom.get("source_sha") != commit or len(bom.get("captures", ())) != 5:
-        raise RuntimeError("BOM runtimecapture is niet exact aan commit en vijf beelden gebonden")
+    captured_files = tuple(str(item.get("file") or "") for item in bom.get("captures", ()))
+    if bom.get("source_sha") != commit or captured_files != BOM_CAPTURE_FILENAMES:
+        raise RuntimeError(
+            "BOM runtimecapture is niet exact aan commit en de acht vereiste beelden gebonden"
+        )
     for capture in bom["captures"]:
         image = bom_manifest_path.parent / str(capture["file"])
         if not image.is_file() or digest(image) != str(capture["sha256"]):
