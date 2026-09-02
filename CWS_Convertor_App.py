@@ -68,15 +68,30 @@ def _write_report(path: Path | None, payload: dict[str, Any]) -> None:
     print(text)
 
 
+def _terminate_frozen_process(exit_code: int) -> None:
+    """Terminate without running native DLL detach callbacks on Windows."""
+    if os.name == "nt":
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+        kernel32.TerminateProcess.argtypes = (ctypes.c_void_p, ctypes.c_uint)
+        kernel32.TerminateProcess.restype = ctypes.c_int
+        process = kernel32.GetCurrentProcess()
+        if kernel32.TerminateProcess(process, int(exit_code)):
+            return
+    os._exit(exit_code)
+
+
 def _finish_diagnostic(exit_code: int) -> int:
-    """Exit a frozen diagnostic before native Qt/VTK frames are unwound."""
+    """Exit a frozen diagnostic before native Qt/VTK teardown starts."""
     if bool(getattr(sys, "frozen", False)):
         for stream in (sys.stdout, sys.stderr):
             try:
                 stream.flush()
             except Exception:
                 pass
-        os._exit(exit_code)
+        _terminate_frozen_process(exit_code)
     return exit_code
 
 

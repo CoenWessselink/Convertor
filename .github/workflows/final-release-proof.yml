@@ -172,3 +172,17 @@ jobs:
             validation/full_acceptance/release_traceability/**
           if-no-files-found: error
           retention-days: 90
+
+      - name: Upload final release diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_${{ github.sha }}_Final_Diagnostics
+          path: |
+            validation/phases/PHASE_*_EVIDENCE.json
+            validation/phases/PHASE_*_CHECKLIST.json
+            validation/phases/PHASE_*_CHECKLIST.md
+            validation/full_acceptance/**
+            release/phase1/PHASE_1_WINDOWS_MANIFEST.json
+          if-no-files-found: warn
+          retention-days: 30

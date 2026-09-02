@@ -23,7 +23,7 @@ class ViewerV9LauncherTests(unittest.TestCase):
             patch.object(launcher.sys, "frozen", True, create=True),
             patch.object(launcher, "_gui_smoke", return_value={"status": "passed"}),
             patch.object(launcher, "_write_report"),
-            patch.object(launcher.os, "_exit") as hard_exit,
+            patch.object(launcher, "_terminate_frozen_process") as hard_exit,
         ):
             self.assertEqual(0, launcher.main(["--gui-smoke"]))
         hard_exit.assert_called_once_with(0)
