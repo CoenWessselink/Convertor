@@ -22,6 +22,20 @@ class DrawingProjectionModel:
     """Single deterministic authority for orthographic/isometric projections."""
 
     @staticmethod
+    def _occt_point_coordinate(point: object, axis: int) -> float:
+        """Read one coordinate from either an OCP ``gp_Pnt`` or CQ vector."""
+
+        lower, upper = (("x", "X"), ("y", "Y"), ("z", "Z"))[axis]
+        for name in (lower, upper):
+            value = getattr(point, name, None)
+            if value is not None:
+                return float(value() if callable(value) else value)
+        to_tuple = getattr(point, "toTuple", None)
+        if callable(to_tuple):
+            return float(to_tuple()[axis])
+        raise TypeError(f"OCCT-punt bevat geen coördinaat voor as {axis}")
+
+    @staticmethod
     def _discretize_occt_edge(
         edge: object,
         deflection: float,
@@ -147,13 +161,6 @@ class DrawingProjectionModel:
             result: list[np.ndarray] = []
             identities: set[tuple[tuple[float, float], ...]] = set()
 
-            def coordinate(point: object, lower: str, upper: str) -> float:
-                value = getattr(point, lower, None)
-                if value is not None:
-                    return float(value() if callable(value) else value)
-                value = getattr(point, upper)
-                return float(value() if callable(value) else value)
-
             raw_compound = getattr(compound, "wrapped", compound)
             if compound is None or raw_compound.IsNull():
                 return ()
@@ -170,8 +177,8 @@ class DrawingProjectionModel:
                 projected = np.asarray(
                     [
                         (
-                            coordinate(point, "x", "X"),
-                            coordinate(point, "y", "Y"),
+                            cls._occt_point_coordinate(point, 0),
+                            cls._occt_point_coordinate(point, 1),
                         )
                         for point in points
                     ],
@@ -295,8 +302,8 @@ class DrawingProjectionModel:
             projected = np.asarray(
                 [
                     (
-                        float(point.toTuple()[coordinates[0]]),
-                        float(point.toTuple()[coordinates[1]]),
+                        DrawingProjectionModel._occt_point_coordinate(point, coordinates[0]),
+                        DrawingProjectionModel._occt_point_coordinate(point, coordinates[1]),
                     )
                     for point in points
                 ],

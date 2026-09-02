@@ -91,6 +91,26 @@ class ProductionDrawingEngineTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(calls[0][1:], (0.05, 2.0, 8.0))
 
+    def test_occt_point_coordinates_support_native_gp_points(self) -> None:
+        class NativePoint:
+            @staticmethod
+            def X() -> float:
+                return 11.0
+
+            @staticmethod
+            def Y() -> float:
+                return 22.0
+
+            @staticmethod
+            def Z() -> float:
+                return 33.0
+
+        point = NativePoint()
+        self.assertEqual(
+            [DrawingProjectionModel._occt_point_coordinate(point, axis) for axis in range(3)],
+            [11.0, 22.0, 33.0],
+        )
+
     def _request(self, **changes) -> DrawingBuildRequest:
         vertices, triangles = _box_mesh()
         values = dict(
