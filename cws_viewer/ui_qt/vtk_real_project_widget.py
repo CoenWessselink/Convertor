@@ -63,9 +63,11 @@ if qt_available():
                     width=max(1, self.width()),
                     height=max(1, self.height()),
                 )
-                interactor = self.GetRenderWindow().GetInteractor()
-                if interactor is not None:
-                    interactor.Initialize()
+                # QVTK owns its vtkGenericRenderWindowInteractor lifecycle.
+                # Calling Initialize() here (or from showEvent) duplicates that
+                # native lifecycle and access-violates on supported Windows GPU
+                # drivers. CWS navigation is controller-driven and needs no
+                # second VTK interactor initialization.
 
                 self._navigation_mode = NavigationMode.ORBIT
                 self._area_selection = False

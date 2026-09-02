@@ -188,27 +188,56 @@ def _scene(requests,meshes):
              'world_max_mm':world_max if nodes else [0.0,0.0,0.0],'world_extent_mm':extent}
     return scene,repository,metrics
 
+class _OffscreenBenchmarkHost:
+    """Run the production V15 backend without a QVTK child-window lifecycle.
+
+    Packaged performance commands are unattended CLI processes.  Hosting their
+    renderer in a transient QWidget made native OpenGL initialisation depend on
+    Windows event timing and could terminate the process before evidence was
+    written.  This host deliberately reuses the production adaptive backend and
+    V14 controller, while allowing VTK to own its supported offscreen window.
+    """
+
+    def __init__(self,repository,width=1440,height=900):
+        from cws_viewer.backends.vtk_project_mesh_adaptive import VtkProjectMeshAdaptiveBackend
+        from cws_viewer.core.v14_controller import V14ViewerCoreController
+        self.backend=VtkProjectMeshAdaptiveBackend(repository,offscreen=True)
+        self.controller=V14ViewerCoreController(self.backend,width=width,height=height)
+        self._closed=False
+
+    def GetRenderWindow(self):
+        window=getattr(self.backend,'_render_window',None)
+        if window is None:raise RuntimeError('Offscreen VTK-renderwindow is niet beschikbaar')
+        return window
+
+    def load_scene(self,scene):
+        return self.controller.load_scene(scene)
+
+    def close(self):
+        if not self._closed:
+            self._closed=True
+            self.controller.shutdown()
+
 def aa_benchmark(ifc,output,cache_root,screenshot_dir,limit):
     requests=build_requests(ifc,limit);meshes,loader=_load(requests,cache_root);scene,repository,scene_metrics=_scene(requests,meshes)
-    from cws_viewer.ui_qt.qt_compat import require_qt
-    from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import VtkRealProjectWidgetFeelV2
-    QtCore,_QtGui,QtWidgets=require_qt();app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    widget=VtkRealProjectWidgetFeelV2(repository=repository);widget.setWindowTitle('CWS Viewer real AA benchmark')
-    widget.resize(1440,900);widget.show();widget.load_scene(scene);widget.controller.fit_all();app.processEvents()
+    widget=_OffscreenBenchmarkHost(repository)
+    widget.load_scene(scene);widget.controller.fit_all()
     captures=Path(screenshot_dir);captures.mkdir(parents=True,exist_ok=True);rows=[]
     render_window=widget.GetRenderWindow();renderer=render_window.GetRenderers().GetFirstRenderer()
     for samples,fxaa in ((0,False),(0,True),(2,False),(4,False),(8,False)):
+        widget.backend.set_interaction_quality(False)
+        widget.backend.INTERACTIVE_MULTISAMPLES=samples
         render_window.SetMultiSamples(samples)
         if fxaa:renderer.UseFXAAOn()
         else:renderer.UseFXAAOff()
-        for _warmup in range(6):widget.controller.render();app.processEvents()
+        for _warmup in range(6):widget.controller.render()
         recorder=FrameTimeRecorder(max_samples=256)
         for index in range(72):
-            started=time.perf_counter();widget.controller.orbit(.18 if index%2 else -.18,.04);app.processEvents()
+            started=time.perf_counter();widget.controller.orbit(.18 if index%2 else -.18,.04)
             recorder.record((time.perf_counter()-started)*1000.0)
         metrics=recorder.to_dict();image=widget.controller.screenshot_to_file(captures/f'msaa_{samples}x_fxaa_{int(fxaa)}.png')
         rows.append({'msaa_samples':samples,'fxaa':fxaa,'metrics':metrics,'screenshot':str(image)})
-    widget.close();app.processEvents();eligible=[row for row in rows if float(row['metrics'].get('frame_ms_p95',1e9))<=33.0]
+    widget.close();eligible=[row for row in rows if float(row['metrics'].get('frame_ms_p95',1e9))<=33.0]
     interactive=min(rows,key=lambda row:float(row['metrics'].get('frame_ms_p95',1e9)))
     idle=max(eligible,key=lambda row:int(row['msaa_samples'])) if eligible else interactive
     result={**_base('cws.real_msaa_fxaa_matrix.v1',ifc),'loader':loader,'scene':scene_metrics,'rows':rows,
@@ -241,28 +270,24 @@ def _resource_snapshot(widget):
 
 def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     requests=build_requests(ifc,limit);meshes,loader=_load(requests,cache_root);scene,repository,scene_metrics=_scene(requests,meshes)
-    from cws_viewer.ui_qt.qt_compat import require_qt
-    from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import VtkRealProjectWidgetFeelV2
     from cws_viewer.contracts.enums import MeasurementKind,SelectionLevel,StandardView
     from cws_viewer.contracts.state import SectionPlane
     from cws_viewer.math3d import Vector3
-    QtCore,_QtGui,QtWidgets=require_qt();app=QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    widget=VtkRealProjectWidgetFeelV2(repository=repository);widget.setWindowTitle(f'CWS Viewer real soak - {Path(ifc).name}')
-    widget.resize(1440,900);widget.show();widget.load_scene(scene);widget.controller.fit_all();app.processEvents()
+    widget=_OffscreenBenchmarkHost(repository)
+    widget.load_scene(scene);widget.controller.fit_all()
     node_ids=tuple(widget.controller.index.renderable_node_ids);primary=node_ids[0] if node_ids else '';views=tuple(StandardView)
     # Prime lazy VTK/OpenGL allocations and every transient interaction actor before
     # taking the leak/memory baseline. The measured interval then represents a
     # steady-state Viewer session rather than first-use driver allocation.
     for warmup in range(24):
         widget.controller.orbit(.25,.04);widget.controller.pan(.001,0);widget.controller.zoom(1.002)
-        app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
     warm_section=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)))
     widget.controller.remove_section_plane(warm_section);widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool()
     if primary:
         widget.controller.set_selection_level(SelectionLevel.PART);widget.controller.set_selection((primary,),mode='replace')
         widget.controller.hide((primary,));widget.controller.show((primary,));widget.controller.isolate((primary,));widget.controller.show_all()
         widget.controller.isolate((primary,),ghost_context=True);widget.controller.show_all()
-    widget.controller.fit_all();widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,25)
+    widget.controller.fit_all();widget.controller.render()
     screenshots=Path(screenshot_dir);screenshots.mkdir(parents=True,exist_ok=True);start_image=widget.controller.screenshot_to_file(screenshots/'real_soak_start.png')
     baseline=_resource_snapshot(widget);recorder=FrameTimeRecorder(max_samples=65536);started=time.perf_counter();actions=0
     input_samples=[];unintended_input_samples=[];transition_input_samples=[];pick_samples=[];selection_samples=[];wrong_picks=0;hidden_false_picks=0
@@ -270,7 +295,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     section_id=''
     while time.perf_counter()-started<float(duration):
         explicit_transition=any(actions%interval==0 for interval in (150,220,260,520,780,1040,1300,1560,1820,2080))
-        frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12));app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
+        frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12))
         elapsed_frame=(time.perf_counter()-frame)*1000.0;recorder.record(elapsed_frame);input_samples.append(elapsed_frame);coverage['orbit']+=1
         transition_started=time.perf_counter()
         if actions%50==0:widget.controller.pan(.002 if (actions//50)%2==0 else -.002,0);coverage['pan']+=1
@@ -283,7 +308,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
         if primary and actions%520==0:widget.controller.set_selection_level(SelectionLevel.ASSEMBLY);widget.controller.set_selection((primary,),mode='replace');coverage['assembly_selection']+=1
         if len(node_ids)>1 and actions%780==0:widget.controller.set_selection(node_ids[:2],mode='replace');coverage['multiselect']+=1
         if primary and actions%1040==0:
-            widget.controller.hide((primary,));widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
+            widget.controller.hide((primary,));widget.controller.render()
             hidden_bounds=widget.controller.index.world_bounds_by_node.get(primary)
             if hidden_bounds is not None:
                 hidden_x,hidden_y=widget.backend.world_to_display(hidden_bounds.center);hidden_pick=widget.controller.pick_at(int(hidden_x),int(hidden_y),mode='replace')
@@ -296,7 +321,6 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
             if section_id:widget.controller.remove_section_plane(section_id)
             section_id=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)));coverage['section']+=1
         if actions%2080==0:widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool();coverage['measure']+=1
-        app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
         if explicit_transition:transition_input_samples.append((time.perf_counter()-transition_started)*1000.0)
         else:unintended_input_samples.append(elapsed_frame)
         if primary and actions%300==0:
@@ -309,9 +333,9 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
         actions+=1;time.sleep(.02)
     elapsed=time.perf_counter()-started
     if section_id:widget.controller.remove_section_plane(section_id)
-    widget.controller.cancel_tool();widget.controller.show_all();widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,25)
+    widget.controller.cancel_tool();widget.controller.show_all();widget.backend.set_interaction_quality(False);widget.controller.render()
     final=_resource_snapshot(widget);end_image=widget.controller.screenshot_to_file(screenshots/'real_soak_end.png')
-    telemetry=getattr(widget.backend,'telemetry_snapshot',None);backend=telemetry() if callable(telemetry) else {};widget.close();app.processEvents()
+    telemetry=getattr(widget.backend,'telemetry_snapshot',None);backend=telemetry() if callable(telemetry) else {};widget.close()
     frames=recorder.to_dict();drift=(final['rss_mb']-baseline['rss_mb'])/max(baseline['rss_mb'],1);p95=float(frames.get('frame_ms_p95',0))
     percentile=lambda values,ratio: sorted(values)[min(len(values)-1,int((len(values)-1)*ratio))] if values else None
     stall100=sum(value>100.0 for value in input_samples)
