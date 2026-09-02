@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 from typing import Any
 
 
@@ -324,6 +325,30 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
     operation_import = OUTPUT / "runtime-inventory-operations.json"
     operation_export = OUTPUT / "runtime-inventory-operations-export.json"
     operation_import.write_text('{"features": []}\n', encoding="utf-8")
+    safe_mgi_report = SimpleNamespace(
+        readiness=SimpleNamespace(value="REVIEW_REQUIRED"),
+        source_gate=SimpleNamespace(value="EXACT"),
+        engine_version="acceptance-runtime-inventory",
+        topology=None,
+        section_stations=(),
+        extrusion_regions=(),
+        features=(),
+        hypotheses=(),
+        blockers=(),
+        evidence=(("mode", "safe-runtime-inventory"),),
+        representability_report=None,
+        equivalence=SimpleNamespace(
+            status=SimpleNamespace(value="NOT_PROVEN"),
+            source_minus_reconstruction_mm3=0.0,
+            reconstruction_minus_source_mm3=0.0,
+            boundary_distance_p95_mm=0.0,
+            boundary_distance_max_mm=0.0,
+            boolean_kernel_status="NOT_RUN",
+        ),
+        source_geometry_hash="acceptance-runtime-inventory",
+        manufacturing_frame=None,
+        residual_report=None,
+    )
     safe_method_arguments: dict[str, tuple[Any, ...]] = {
         "cws_convertor.ui_qt.converter_panel._ModelPreview.set_caption": ("Acceptance",),
         "cws_convertor.ui_qt.converter_panel.ConverterPanel.add_files": ([],),
@@ -359,6 +384,15 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.cancel_project_load": (),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.export_bom": (),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.closeEvent": (close_event,),
+        "cws_convertor.ui_qt.manufacturing_geometry_workspace.ManufacturingGeometryWorkspace.set_context": (
+            SimpleNamespace(project=None),
+        ),
+        "cws_convertor.ui_qt.manufacturing_geometry_workspace.ManufacturingGeometryWorkspace.analyze_current_source": (),
+        "cws_convertor.ui_qt.manufacturing_geometry_workspace.ManufacturingGeometryWorkspace.cancel_analysis": (),
+        "cws_convertor.ui_qt.manufacturing_geometry_workspace.ManufacturingGeometryWorkspace.retry_analysis": (),
+        "cws_convertor.ui_qt.manufacturing_geometry_workspace.ManufacturingGeometryWorkspace.set_report": (
+            safe_mgi_report,
+        ),
         "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.add_paths": ([],),
         "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.clear": (),
         "cws_convertor.ui_qt.workspace_pages.IntakeDashboard.dragEnterEvent": (empty_event,),
@@ -378,7 +412,6 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
                 safe_methods_exercised += 1
             except Exception as exc:
                 safe_method_errors.append(f"{key}: {type(exc).__name__}: {exc}")
-    from types import SimpleNamespace
     from unittest.mock import patch
     from cws_convertor.output import DocumentOutputService
 
