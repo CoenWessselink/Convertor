@@ -25,7 +25,8 @@ class ViewerV4WindowsConfigTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "build-windows-exe.yml").read_text(encoding="utf-8")
         required = (
             "viewer_ci_headless_smoke.py",
-            "run_viewer_v6_smoke_batch.py",
+            "validation/run_all_smokes_v9.py",
+            "--headless-windows",
             "CWS_Convertor.spec",
             "Create portable ZIP",
             "Installed native, GUI, CLI, project and conversion smoke without Python",
@@ -33,6 +34,7 @@ class ViewerV4WindowsConfigTests(unittest.TestCase):
         )
         for value in required:
             self.assertIn(value, workflow)
+        self.assertNotIn("run_viewer_v6_smoke_batch.py", workflow)
         self.assertNotIn("run_viewer_v4_professional_controls.py", workflow)
 
     def test_requirement_lock_is_pinned(self) -> None:
