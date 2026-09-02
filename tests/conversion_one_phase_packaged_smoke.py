@@ -57,6 +57,20 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _matrix_relative(path: Path, root: Path) -> Path:
+    """Return a matrix path despite equivalent Windows 8.3 parent aliases."""
+
+    candidate = Path(path)
+    try:
+        return candidate.relative_to(root)
+    except ValueError:
+        marker = root.name.casefold()
+        for parent in candidate.parents:
+            if parent.name.casefold() == marker:
+                return candidate.relative_to(parent)
+        raise
+
+
 def _verify_archived_evidence(path: Path) -> None:
     payload = json.loads(path.read_text(encoding="utf-8"))
     claimed = str(payload.pop("manifest_sha256", ""))
@@ -319,8 +333,8 @@ def main() -> int:
             shutil.rmtree(archive)
         shutil.copytree(root, archive)
         for row in rows:
-            artifact_relative = Path(str(row["artifact"])).relative_to(root)
-            evidence_relative = Path(str(row["evidence"])).relative_to(root)
+            artifact_relative = _matrix_relative(Path(str(row["artifact"])), root)
+            evidence_relative = _matrix_relative(Path(str(row["evidence"])), root)
             row["artifact"] = str((archive / artifact_relative).resolve())
             row["artifact_relative_path"] = artifact_relative.as_posix()
             row["evidence"] = str((archive / evidence_relative).resolve())

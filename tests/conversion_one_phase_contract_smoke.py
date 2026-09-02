@@ -8,7 +8,11 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+TESTS = ROOT / "tests"
+if str(TESTS) not in sys.path:
+    sys.path.insert(0, str(TESTS))
 
+from conversion_one_phase_packaged_smoke import _matrix_relative
 from cws_convertor.conversion_service import (
     DEFAULT_CONVERSION_PLANNER,
     FORMATS,
@@ -20,6 +24,11 @@ from cws_convertor.conversion_service import (
 
 
 class ConversionOnePhaseContractTests(unittest.TestCase):
+    def test_packaged_evidence_path_handles_equivalent_temp_alias(self) -> None:
+        root = Path("/short-user/cws-packaged-conversion-matrix-123")
+        artifact = Path("/long-user/cws-packaged-conversion-matrix-123/pdf-ifc/output/part.ifc")
+        self.assertEqual(Path("pdf-ifc/output/part.ifc"), _matrix_relative(artifact, root))
+
     def test_registry_contains_every_cross_format_route_exactly_once(self) -> None:
         expected = {
             f"{source.lower()}-{target.lower()}"
