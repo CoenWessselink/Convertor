@@ -1,0 +1,97 @@
+name: Publish latest validated Windows release components
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/cws-bom-production-hub-v1
+    paths:
+      - .github/workflows/publish-windows-release-components.yml
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  publish-components:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Resolve latest successful exact-SHA Windows release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BRANCH: agent/cws-bom-production-hub-v1
+          RELEASE_WORKFLOW: build-windows-exe.yml
+        run: |
+          set -euo pipefail
+          run_id="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/${RELEASE_WORKFLOW}/runs?branch=${RELEASE_BRANCH}&status=success&per_page=1" \
+            --jq '.workflow_runs[0].id')"
+          source_sha="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" --jq '.head_sha')"
+          artifact_name="CWS_Convertor_0.10.21-beta-dev_Windows_x64"
+          test -n "$run_id"
+          test -n "$source_sha"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+
+      - name: Download and verify validated release bundle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ steps.release.outputs.run_id }}
+          ARTIFACT_NAME: ${{ steps.release.outputs.artifact_name }}
+          SOURCE_SHA: ${{ steps.release.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$ARTIFACT_NAME" \
+            --dir release
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          release = Path("release")
+          manifest = json.loads((release / "CODEX_RELEASE_MANIFEST.json").read_text(encoding="utf-8-sig"))
+          expected = os.environ["SOURCE_SHA"]
+          if manifest.get("status") != "passed" or manifest.get("commit") != expected:
+              raise SystemExit("Release manifest is niet PASS of niet aan de bron-SHA gebonden")
+          if len(tuple((release / "BOM_EVIDENCE").glob("*.png"))) != 8:
+              raise SystemExit("Niet exact acht BOM-bewijsafbeeldingen aanwezig")
+          PY
+
+      - name: Upload installer component
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_${{ steps.release.outputs.source_sha }}
+          path: release/CWS_Convertor_Setup_*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload portable component
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Portable_${{ steps.release.outputs.source_sha }}
+          path: release/CWS_Convertor_Portable_*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload source and release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Source_Evidence_${{ steps.release.outputs.source_sha }}
+          path: |
+            release/BOM_EVIDENCE/**
+            release/TEST_EVIDENCE/**
+            release/*.json
+            release/*.txt
+            release/*.md
+            release/CWS_Convertor_Source_*.zip
+            release/*.bundle
+          if-no-files-found: error
+          retention-days: 30
