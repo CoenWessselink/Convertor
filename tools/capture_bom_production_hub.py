@@ -52,7 +52,8 @@ def main() -> int:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ.setdefault("CWS_HEADLESS_GUI_SMOKE", "1")
 
-    from PySide6 import QtCore, QtWidgets
+    from PySide6 import QtCore, QtGui, QtWidgets
+    from matplotlib import get_data_path
     from cws_convertor.bom import build_bom_snapshot
     from cws_convertor.project.model import MachineProfile
     from cws_convertor.project.storage import ProjectStore
@@ -73,7 +74,26 @@ def main() -> int:
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     app.setApplicationName("CWS Convertor · BOM productiehub bewijs")
+    font_path = Path(get_data_path()) / "fonts" / "ttf" / "DejaVuSans.ttf"
+    font_id = QtGui.QFontDatabase.addApplicationFont(str(font_path))
+    font_families = tuple(QtGui.QFontDatabase.applicationFontFamilies(font_id))
+    if font_id < 0 or not font_families:
+        raise RuntimeError(f"Capturelettertype kon niet worden geladen: {font_path}")
+    capture_font_family = font_families[0]
+    capture_font = QtGui.QFont(capture_font_family, 9)
+    raw_font = QtGui.QRawFont.fromFont(capture_font)
+    glyph_probe = "BOM Productiegereed Voorraad Inkoop Revisie ë € 0123456789"
+    glyph_indexes = tuple(raw_font.glyphIndexesForString(glyph_probe))
+    if not raw_font.isValid() or not glyph_indexes or any(value == 0 for value in glyph_indexes):
+        raise RuntimeError("Capturelettertype mist vereiste Nederlandse BOM-glyphs")
+    app.setFont(capture_font)
     apply_v52_design_system(app, "Engineering Light")
+    # The Windows offscreen platform can resolve installed UI families to a
+    # box-only fallback.  A bundled Matplotlib font makes the visual evidence
+    # deterministic and readable on every runner.
+    app.setStyleSheet(
+        app.styleSheet() + f"\nQWidget {{ font-family: '{capture_font_family}'; }}"
+    )
 
     class ApplicationContext:
         def __init__(self) -> None:
@@ -239,6 +259,8 @@ def main() -> int:
         "validation": snapshot.validation.to_dict() if snapshot.validation else {},
         "bom_column_count": panel.table.columnCount(),
         "action_matrix_action_count": action_matrix_count,
+        "capture_font_family": capture_font_family,
+        "capture_font_glyphs_verified": True,
         "captures": captures,
     }
     manifest_path = output / "BOM_RUNTIME_CAPTURE_MANIFEST.json"

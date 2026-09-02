@@ -364,3 +364,34 @@ jobs:
           path: release/*
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload standalone Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_${{ github.sha }}
+          path: release/CWS_Convertor_Setup_*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload standalone portable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Portable_${{ github.sha }}
+          path: release/CWS_Convertor_Portable_*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload standalone source and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Source_Evidence_${{ github.sha }}
+          path: |
+            release/BOM_EVIDENCE/**
+            release/TEST_EVIDENCE/**
+            release/*.json
+            release/*.txt
+            release/*.md
+            release/CWS_Convertor_Source_*.zip
+            release/*.bundle
+          if-no-files-found: error
+          retention-days: 30

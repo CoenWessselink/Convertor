@@ -163,6 +163,8 @@ def main() -> int:
         raise RuntimeError(
             "BOM runtimecapture is niet exact aan commit en de acht vereiste beelden gebonden"
         )
+    if not bom.get("capture_font_glyphs_verified") or not bom.get("capture_font_family"):
+        raise RuntimeError("BOM runtimecapture bevat geen bewezen leesbaar lettertype")
     for capture in bom["captures"]:
         image = bom_manifest_path.parent / str(capture["file"])
         if not image.is_file() or digest(image) != str(capture["sha256"]):
