@@ -59,6 +59,17 @@ jobs:
           python tools/run_phase2_unified_gates.py
           python tools/run_phase3_gates.py
 
+      - name: Upload source acceptance diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_${{ github.sha }}_Source_Diagnostics
+          path: |
+            validation/phases/PHASE_*_EVIDENCE.json
+            validation/results/phase3/**
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Build Phase 1 Windows evidence
         shell: pwsh
         run: |

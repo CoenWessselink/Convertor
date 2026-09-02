@@ -86,6 +86,38 @@ def is_fresh(path: Path, *, maximum_age_seconds: float = 7200.0) -> bool:
     return path.is_file() and time.time() - path.stat().st_mtime <= maximum_age_seconds
 
 
+def failure_summary(manifest: dict[str, object]) -> dict[str, object]:
+    """Return compact, log-safe diagnostics for every failed Phase-3 gate."""
+
+    coverage = dict(manifest.get("coverage") or {})
+    failures: list[dict[str, object]] = []
+
+    def add(label: str, result: object) -> None:
+        if not isinstance(result, dict) or bool(result.get("passed")):
+            return
+        failures.append(
+            {
+                "label": label,
+                "command": result.get("command"),
+                "returncode": result.get("returncode"),
+                "stdout_tail": str(result.get("stdout") or "")[-1200:],
+                "stderr_tail": str(result.get("stderr") or "")[-1200:],
+            }
+        )
+
+    add("full_regression", manifest.get("full_regression"))
+    for group, results in dict(manifest.get("groups") or {}).items():
+        for index, result in enumerate(results if isinstance(results, list) else []):
+            add(f"group:{group}:{index + 1}", result)
+    add("real_file", manifest.get("real_file"))
+    add("ui_acceptance", manifest.get("ui_acceptance"))
+    add("soak", manifest.get("soak"))
+    return {
+        "failed_coverage": sorted(key for key, value in coverage.items() if not value),
+        "failed_commands": failures,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -186,6 +218,8 @@ def main() -> int:
     output_path = args.output / DEFAULT_OUTPUT.name if args.output.is_dir() else args.output
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if not passed:
+        print("PHASE_3_FAILURE_SUMMARY=" + json.dumps(failure_summary(manifest), sort_keys=True))
     print(f"PHASE_3_SOURCE_GATES = {'PASS' if passed else 'FAIL'}")
     print(output_path)
     return 0 if passed else 1
