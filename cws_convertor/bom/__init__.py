@@ -14,6 +14,13 @@ from .models import (
     PurchaseBOMRow,
     WeldBOMRow,
 )
+from .production_hub import (
+    BOMBatchPreflight,
+    BOMHubState,
+    BOMSavedSelection,
+    BOMScopeEngine,
+    BOMSelectionImpact,
+)
 
 
 def build_bom_snapshot(*args, **kwargs):
@@ -36,4 +43,6 @@ __all__ = [
     "FastenerBOMRow", "MaterialBOMRow", "PartBOMRow", "PurchaseBOMRow",
     "WeldBOMRow", "build_bom_snapshot", "export_bom_package",
     "safe_spreadsheet_value",
+    "BOMBatchPreflight", "BOMHubState", "BOMSavedSelection",
+    "BOMScopeEngine", "BOMSelectionImpact",
 ]

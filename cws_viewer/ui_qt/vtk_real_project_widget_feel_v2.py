@@ -363,6 +363,10 @@ if qt_available():
 else:
 
     class VtkRealProjectWidgetFeelV2:  # pragma: no cover
+        NAVIGATION_FRAME_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.navigation_frame_ms
+        MEASURE_PREVIEW_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.measurement_preview_ms
+        INTERACTION_IDLE_MS = TRIMBLE_STYLE_INTERACTION_PROFILE.interaction_idle_ms
+
         def __init__(self, *_: Any, **__: Any) -> None:
             require_qt()
 

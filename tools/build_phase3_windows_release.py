@@ -15,7 +15,7 @@ import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.10.19-beta-dev"
+VERSION = "0.10.20-beta-dev"
 
 
 def source_revision() -> str:

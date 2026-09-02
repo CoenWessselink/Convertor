@@ -152,10 +152,18 @@ def main() -> int:
         supported_operations=["saw", "drill", "scribe"],
         enabled=True,
     )
-    if not panel._selected_rows():
-        first_row = next(iter(panel._display_rows), None)
-        if first_row is not None:
-            panel.table.selectRow(first_row)
+    panel.group_by.setCurrentText("Niet groeperen")
+    panel.table.clearSelection()
+    ready_table_row = next(
+        (
+            table_row for table_row, bom_row in panel._display_rows.items()
+            if bom_row.family == "parts" and not bom_row.blocked
+        ),
+        None,
+    )
+    if ready_table_row is not None:
+        panel.table.selectRow(ready_table_row)
+        panel._table_selection_changed()
     original_exec = QtWidgets.QDialog.exec
 
     def capture_machine_dialog(dialog) -> int:

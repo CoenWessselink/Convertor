@@ -62,6 +62,20 @@ class BOMWorkspaceRow:
     total_surface_m2: float = 0.0
     machine: str = ""
     document_status: str = ""
+    phase: str = ""
+    delivery: str = ""
+    release_status: str = ""
+    nesting_status: str = ""
+    production_status: str = ""
+    stock_status: str = ""
+    supplier: str = ""
+    available_stock_mm: float = 0.0
+    shortage_mm: float = 0.0
+    unit_price: float = 0.0
+    total_price: float = 0.0
+    lead_time_days: int = 0
+    expected_delivery: str = ""
+    purchase_status: str = ""
     status: str = "review_required"
     blocked: bool = False
     blocking_reasons: tuple[str, ...] = ()
@@ -79,6 +93,13 @@ class BOMWorkspaceRow:
                 self.material,
                 self.machine,
                 self.document_status,
+                self.phase,
+                self.delivery,
+                self.release_status,
+                self.nesting_status,
+                self.production_status,
+                self.stock_status,
+                self.supplier,
                 self.status,
                 *self.blocking_reasons,
                 *self.entity_ids,
@@ -320,12 +341,84 @@ class BOMWorkspaceReadModel:
         ]
         return _mixed(values)
 
+    def _entity_field(self, entity_ids: Iterable[str], *names: str) -> str:
+        if self.project is None:
+            return "-"
+        values: list[str] = []
+        for entity_id in entity_ids:
+            entity = self.project.get_entity(str(entity_id)) if hasattr(self.project, "get_entity") else None
+            if entity is None:
+                continue
+            properties = getattr(entity, "properties", {}) or {}
+            value = ""
+            for name in names:
+                value = getattr(entity, name, "") or properties.get(name) or properties.get(name.title())
+                if value not in (None, ""):
+                    break
+            if value not in (None, ""):
+                values.append(str(value))
+        return _mixed(values)
+
+    def _workflow_fields(self, entity_ids: Iterable[str]) -> dict[str, Any]:
+        ids = tuple(entity_ids)
+        return {
+            "phase": self._entity_field(ids, "phase", "project_phase"),
+            "delivery": self._entity_field(ids, "delivery", "delivery_id", "shipment"),
+            "release_status": self._entity_field(ids, "release_status", "review_status", "status"),
+            "nesting_status": self._entity_field(ids, "nesting_status"),
+            "production_status": self._entity_field(ids, "production_status", "fabrication_status"),
+            "stock_status": self._entity_field(ids, "stock_status", "procurement_status"),
+            "supplier": self._entity_field(ids, "supplier"),
+        }
+
+    def _stock_fields(
+        self, *, profile: str, material: str, required_length_mm: float
+    ) -> dict[str, Any]:
+        if self.project is None:
+            return {}
+        profile_key = str(profile or "").casefold()
+        material_key = str(material or "").casefold()
+        available = 0.0
+        suppliers: list[str] = []
+        prices: list[float] = []
+        for stock in self.project.stock_items.values():
+            if str(stock.profile or "").casefold() != profile_key:
+                continue
+            if material_key and str(stock.material or stock.grade or "").casefold() not in {"", material_key}:
+                continue
+            quantity = max(0.0, float(stock.available_quantity or 0.0) - float(stock.reserved_quantity or 0.0))
+            available += float(stock.stock_length_mm or 0.0) * quantity
+            if stock.supplier:
+                suppliers.append(str(stock.supplier))
+            if stock.unit_price:
+                prices.append(float(stock.unit_price))
+        for remnant in self.project.remnants.values():
+            if str(remnant.status or "").casefold() not in {"available", "beschikbaar"}:
+                continue
+            if str(remnant.profile or "").casefold() == profile_key and (
+                not material_key or str(remnant.material or remnant.grade or "").casefold() in {"", material_key}
+            ):
+                available += float(remnant.remaining_length_mm or 0.0)
+        shortage = max(0.0, float(required_length_mm or 0.0) - available)
+        return {
+            "available_stock_mm": available,
+            "shortage_mm": shortage,
+            "stock_status": "Tekort" if shortage > 0.001 else "Beschikbaar",
+            "supplier": _mixed(suppliers),
+            "unit_price": min(prices) if prices else 0.0,
+        }
+
     def _build_family(self, family: str) -> tuple[BOMWorkspaceRow, ...]:
         snapshot = self.snapshot
         rows: list[BOMWorkspaceRow] = []
         if family == "parts":
             for item in snapshot.part_bom:
                 marks = tuple(item.assembly_marks)
+                workflow = self._workflow_fields(item.part_ids)
+                workflow.update(self._stock_fields(
+                    profile=item.profile, material=item.material,
+                    required_length_mm=float(item.length_mm or 0.0) * float(item.quantity or 0.0),
+                ))
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.part_ids),
                     mark=item.part_position or ", ".join(marks), description=item.name,
@@ -333,46 +426,72 @@ class BOMWorkspaceReadModel:
                     quantity=item.quantity, total_mass_kg=item.total_mass_kg,
                     total_surface_m2=item.total_surface_area_m2,
                     machine=self._machine_for(item.part_ids), document_status=self._drawing_for_marks(marks),
+                    **workflow,
                     status=item.status, blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
                 ))
         elif family == "assemblies":
             for item in snapshot.assembly_bom:
+                workflow = self._workflow_fields(item.assembly_ids)
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.assembly_ids),
                     mark=item.assembly_mark, description=item.name, quantity=item.quantity,
                     total_mass_kg=item.total_weight_kg, total_surface_m2=item.total_surface_area_m2,
                     document_status=self._drawing_for_marks((item.assembly_mark,)),
+                    **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
                 ))
         elif family == "purchase":
             for item in snapshot.purchase_bom:
                 entity_ids = _unique((*item.part_ids, *getattr(item, "purchased_item_ids", ())))
+                workflow = self._workflow_fields(entity_ids)
+                purchased = [
+                    self.project.purchased_items[entity_id]
+                    for entity_id in entity_ids
+                    if self.project is not None and entity_id in self.project.purchased_items
+                ]
+                if purchased:
+                    workflow.update({
+                        "unit_price": min(float(value.unit_price or 0.0) for value in purchased),
+                        "total_price": sum(float(value.unit_price or 0.0) * float(value.quantity or 0.0) for value in purchased),
+                        "lead_time_days": max(int(value.lead_time_days or 0) for value in purchased),
+                        "purchase_status": _mixed(value.purchase_status for value in purchased),
+                        "supplier": _mixed(value.supplier for value in purchased),
+                        "expected_delivery": _mixed(
+                            (getattr(value, "properties", {}) or {}).get("expected_delivery", "")
+                            for value in purchased
+                        ),
+                    })
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=entity_ids,
                     mark=item.article_number, description=item.description,
                     profile=item.profile_or_size, material=item.material_or_grade,
                     length_mm=item.length_mm, quantity=item.quantity,
+                    **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
                 ))
         elif family == "fasteners":
             for item in snapshot.fastener_bom:
+                workflow = self._workflow_fields(item.fastener_ids)
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.fastener_ids),
                     mark=item.fastener_type, description=item.standard, profile=f"Ø{item.diameter_mm:g} × {item.length_mm:g}",
                     material=item.grade, length_mm=item.length_mm, quantity=item.quantity,
+                    **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
                 ))
         elif family == "welds":
             for item in snapshot.weld_bom:
+                workflow = self._workflow_fields(item.weld_ids)
                 rows.append(BOMWorkspaceRow(
                     family=family, group_id=item.group_id, entity_ids=_unique(item.weld_ids),
                     mark=", ".join(item.assembly_marks), description=item.weld_type,
                     profile=f"a={item.size_mm:g} · {item.process}".strip(" ·"), material=item.location,
                     length_mm=item.length_mm, quantity=item.quantity,
+                    **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
                 ))

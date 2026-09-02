@@ -34,7 +34,7 @@ jobs:
       contents: read
 
     env:
-      CWS_VERSION: 0.10.19-beta-dev
+      CWS_VERSION: 0.10.20-beta-dev
       RUNTIME_RESULTS: ${{ github.workspace }}\validation\results\windows-runtime
 
     steps:

@@ -16,7 +16,7 @@ jobs:
       PYTHONUTF8: "1"
       PYTHONPATH: ${{ github.workspace }}
       QT_QPA_PLATFORM: offscreen
-      CWS_VERSION: 0.10.19-beta-dev
+      CWS_VERSION: 0.10.20-beta-dev
     steps:
       - uses: actions/checkout@v4
         with:

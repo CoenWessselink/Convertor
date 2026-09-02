@@ -989,6 +989,10 @@ if qt_available():
         return int(application.exec())
 
 else:
+    class WorkspaceRouter:
+        def __init__(self, *_: Any, **__: Any) -> None:
+            require_qt()
+
     class CWSMainWindow:
         def __init__(self, *_: Any, **__: Any) -> None:
             require_qt()
@@ -1006,5 +1010,6 @@ __all__ = [
     "CWSMainWindow",
     "CwsConvertorMainWindow",
     "IntegratedProjectPage",
+    "WorkspaceRouter",
     "run_qt_application",
 ]

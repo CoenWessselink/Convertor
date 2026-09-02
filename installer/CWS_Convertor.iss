@@ -1,6 +1,6 @@
 #define MyAppName "CWS Convertor"
-#define MyAppVersion "0.10.19-beta-dev"
-#define MyAppNumericVersion "0.10.19.0"
+#define MyAppVersion "0.10.20-beta-dev"
+#define MyAppNumericVersion "0.10.20.0"
 #ifndef Commit7
 #error Commit7 define is required for a release-bound installer
 #endif

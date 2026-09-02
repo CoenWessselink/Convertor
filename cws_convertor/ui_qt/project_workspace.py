@@ -1265,6 +1265,10 @@ if qt_available():
 
 else:
 
+    from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import (
+        VtkRealProjectWidgetFeelV2 as VtkRealProjectWidget,
+    )
+
     class IntegratedProjectWorkspaceWidget:  # pragma: no cover
         def __init__(self, *_: Any, **__: Any) -> None:
             require_qt()

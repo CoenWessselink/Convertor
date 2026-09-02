@@ -1,4 +1,4 @@
-# SteelConverter - CWS Convertor 0.10.19-beta-dev implementation snapshot
+# SteelConverter - CWS Convertor 0.10.20-beta-dev implementation snapshot
 
 De V9-hoofdapp gebruikt **Viewer / Project** als centrale cockpit. De elf werkruimtes zijn: Inlezen, Viewer / Project, Bewerken, Converteren, Controleren, PDF / Tekening, Profielen, Tekeningen, Scribing, Hoeveelheden / Excel en Exporteren. Selecties uit tree, 3D-viewer en property grid blijven via canonieke entity-ID's aan de aangesloten bestaande functies gekoppeld.
 
@@ -6,7 +6,7 @@ Start de geintegreerde desktopapp met `CWS_Convertor_App.py`. De klassieke UI bl
 
 **SteelConverter** is de leidende en zichtbare productnaam. De huidige
 compatibele executable-, installer-, project- en registeridentifiers blijven
-voor versie 0.10.19-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
+voor versie 0.10.20-beta-dev bewust `CWS_Convertor`, zodat bestaande projecten,
 scripts en upgrades blijven werken.
 
 SteelConverter is een local-first productieomgeving voor veilige conversie en
@@ -17,7 +17,7 @@ productievoorbereiding van:
 - hoeveelheden en Excel;
 - complete IFC-/STEP-projectmodellen in één draagbaar `.cwscproj`-project.
 
-Versie **0.10.19-beta-dev** bouwt verder op de bewezen conversiekern en de
+Versie **0.10.20-beta-dev** bouwt verder op de bewezen conversiekern en de
 semantische IFC-/STEP-projectimport. De actuele projectstructuur gebruikt
 **Project Model 2.25**.
 
@@ -249,6 +249,34 @@ De eerdere regressies blijven onderdeel van iedere build:
 - begrensde AI-laag;
 - hoeveelheden en Excel.
 
+## BOM Productiehub 0.10.20
+
+De BOM is het centrale productie-werkblad en gebruikt uitsluitend de canonieke
+`BOMSnapshot` en application selection bus. De werkruimte bevat:
+
+- Viewer rechts, onder, verborgen of als gekoppeld los venster;
+- BOM als gekoppeld los venster en persistente scherm-/kolomindelingen;
+- checkbox-, Ctrl-, Shift-, groep-, filter-, Viewer- en kaderselectie;
+- selecteren op hetzelfde profiel, materiaal, machine, status, fase of levering;
+- een persistent selectiemandje en vaste of dynamische opgeslagen selecties;
+- expliciete occurrence-, BOM-groep-, assembly- of vergelijkbare scope na een Viewer-pick;
+- selectie-impact met groepen, occurrences, assemblies, massa, verborgen selectie en blockers;
+- snapshotgebonden batchpreflight zonder stil overslaan, inclusief machinepartities;
+- transactionele machine- en metadatawijzigingen, audittrail en sessiegebonden undo;
+- contextacties voor bewerken, tekeningen, machines, optimalisatie, scribing,
+  productie-vrijgave, BOM-export en multi-format productie-export;
+- acht gekoppelde detailtabs voor eigenschappen, productie, machine, tekeningen,
+  traceability, conflicten, revisie en historie;
+- materiaal-, profiel-, assembly-, fase-, machine-, status-, vrijgave- en revisiekleuring;
+- revisiebaselines en toegevoegd/gewijzigd/ongewijzigd/verwijderd-detectie;
+- voorraad-, reststuk-, tekort-, leverancier-, prijs- en levertijdinformatie;
+- synchronisatie van camera, visibility, kleuren, clipping en doorsneden tussen
+  de hoofdviewer en gekoppelde BOM-viewers op dezelfde projectscene.
+
+Een preflight blijft fail-closed bij een verouderde snapshot of globale
+productieblokkade. Geblokkeerde regels vormen bij gemengde selecties een
+zichtbare afgewezen partition en worden nooit stil overgeslagen.
+
 ## CLI
 
 ### Project aanmaken en bronnen registreren
@@ -290,18 +318,18 @@ commitgebonden opleverbestanden (`<sha7>` is de eerste zeven tekens van de
 geteste Git-commit):
 
 ```text
-CWS_Convertor_Setup_0.10.19-beta-dev_<sha7>_x64.exe
-CWS_Convertor_Portable_0.10.19-beta-dev_<sha7>_x64.zip
-CWS_Convertor_Source_0.10.19-beta-dev_<sha7>.zip
-CWS_Convertor_0.10.19-beta-dev_<sha7>.bundle
-CWS_Convertor_SBOM_0.10.19-beta-dev_<sha7>.cdx.json
+CWS_Convertor_Setup_0.10.20-beta-dev_<sha7>_x64.exe
+CWS_Convertor_Portable_0.10.20-beta-dev_<sha7>_x64.zip
+CWS_Convertor_Source_0.10.20-beta-dev_<sha7>.zip
+CWS_Convertor_0.10.20-beta-dev_<sha7>.bundle
+CWS_Convertor_SBOM_0.10.20-beta-dev_<sha7>.cdx.json
 CODEX_RELEASE_MANIFEST.json
 SHA256SUMS.txt
 WINDOWS_RUNTIME_VALIDATION.md
 ```
 
 De eindgebruiker heeft geen Python, pip, venv of terminal nodig. De Windows
-workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.10.19-beta-dev. Een
+workflow en Inno Setup-configuratie zijn bijgewerkt naar 0.10.20-beta-dev. Een
 artefact geldt pas als gebouwd nadat native selftests en de echte GUI vanuit
 `dist`, een schone portable extractie en de installatiemap zijn geslaagd zonder
 Python op de child-`PATH`. Iedere pakketvorm maakt daarnaast een project en
