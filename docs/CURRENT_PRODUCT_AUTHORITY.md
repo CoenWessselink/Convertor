@@ -24,6 +24,7 @@ value but are `historical_frozen_source` and `superseded_for_current_status`.
 - One Workbench transaction/write path.
 - One drawing and trusted-PDF path.
 - One export/release safety gate.
+- One exact-SHA BOM completion gate before Windows packaging.
 
 ## Repository evidence
 
