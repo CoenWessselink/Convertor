@@ -11,7 +11,17 @@ from .model import (
 )
 from .store import ReviewStore
 from .package import ReviewPackageBuilder, ReviewPackageVerifier, ReviewPackageReader
-from .bcf import BcfTopicMapping, map_review_topic, BcfExportNotCertified, BcfExporterExtension
+from .bcf import (
+    BCF_MIME_TYPE,
+    BCF_VERSION,
+    Bcf21Exporter,
+    Bcf21Verifier,
+    BcfExporterExtension,
+    BcfTopicMapping,
+    BcfValidationError,
+    BcfValidationReport,
+    map_review_topic,
+)
 from .v15_service import (
     ReferenceState,
     ReviewReferenceHealth,
@@ -37,7 +47,12 @@ __all__ = [
     "ReviewPackageReader",
     "BcfTopicMapping",
     "map_review_topic",
-    "BcfExportNotCertified",
+    "BCF_MIME_TYPE",
+    "BCF_VERSION",
+    "Bcf21Exporter",
+    "Bcf21Verifier",
+    "BcfValidationError",
+    "BcfValidationReport",
     "BcfExporterExtension",
     "ReferenceState",
     "ReviewReferenceHealth",

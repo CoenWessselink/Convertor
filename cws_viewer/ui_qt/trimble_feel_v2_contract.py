@@ -4,8 +4,9 @@ from __future__ import annotations
 from typing import Any
 
 from cws_viewer.ui_qt.cockpit_trimble_feel_v2 import trimble_feel_v2_workspace_contract
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
-PREVIEW2_VERSION = "1.4.0-v15-preview.2"
+PREVIEW2_VERSION = VIEWER_PREVIEW_VERSION
 
 
 def preview2_workspace_contract() -> dict[str, Any]:

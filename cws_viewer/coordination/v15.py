@@ -13,9 +13,10 @@ from typing import Any, Iterable
 from cws_viewer.core.serialization import stable_sha256
 from cws_viewer.model_control import ModelControlEngine, ModelControlSettings, ScanResult
 from cws_viewer.revisions import ProjectRevisionCompareReport, compare_project_revisions
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 V15_T6_SCHEMA = "cws-viewer-coordination-15.5"
-V15_T6_VERSION = "1.4.0-v15-preview.1"
+V15_T6_VERSION = VIEWER_PREVIEW_VERSION
 
 
 class SequenceKind(StrEnum):

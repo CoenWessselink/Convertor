@@ -51,9 +51,11 @@ if qt_available():
             self.save_store = QtWidgets.QPushButton("Review opslaan")
             self.reload_store = QtWidgets.QPushButton("Heropen")
             self.export_package = QtWidgets.QPushButton("Exporteer .cwsreview")
+            self.export_bcf = QtWidgets.QPushButton("Exporteer BCF 2.1")
             io.addWidget(self.save_store)
             io.addWidget(self.reload_store)
             io.addWidget(self.export_package)
+            io.addWidget(self.export_bcf)
             io.addStretch(1)
             root.addLayout(io)
             self.summary = QtWidgets.QLabel()
@@ -64,6 +66,7 @@ if qt_available():
             self.save_store.clicked.connect(self._save)
             self.reload_store.clicked.connect(self._reload)
             self.export_package.clicked.connect(self._export_package)
+            self.export_bcf.clicked.connect(self._export_bcf)
 
         def _build_views_tab(self) -> Any:
             widget = QtWidgets.QWidget()
@@ -478,6 +481,21 @@ if qt_available():
                 self.status_changed.emit(f"Reviewpakket geëxporteerd: {output.name}")
             except Exception as exc:
                 QtWidgets.QMessageBox.critical(self, "Review export", f"{type(exc).__name__}: {exc}")
+
+        def _export_bcf(self) -> None:
+            default = "review.bcfzip"
+            if self.service.store_path is not None:
+                default = str(self.service.store_path.with_suffix(".bcfzip"))
+            path, _ = QtWidgets.QFileDialog.getSaveFileName(
+                self, "Exporteer buildingSMART BCF 2.1", default, "BCF 2.1 (*.bcfzip *.bcf)"
+            )
+            if not path:
+                return
+            try:
+                output = self.service.export_bcf(path)
+                self.status_changed.emit(f"BCF 2.1 XSD-gevalideerd: {output.name}")
+            except Exception as exc:
+                QtWidgets.QMessageBox.critical(self, "BCF export", f"{type(exc).__name__}: {exc}")
 
         def refresh(
             self,

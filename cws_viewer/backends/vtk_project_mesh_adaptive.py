@@ -25,7 +25,7 @@ class _PickLocatorEntry:
 class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     """V15 renderer with interactive/idle quality states and indexed picking."""
 
-    INTERACTIVE_MULTISAMPLES = 2
+    INTERACTIVE_MULTISAMPLES = 0
     MIN_IDLE_MULTISAMPLES = 8
     MAX_PICK_CANDIDATES = 64
     # A cell pick identifies the shared mesh actor, not the concrete instance.

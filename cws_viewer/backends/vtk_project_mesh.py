@@ -75,6 +75,11 @@ class _MeshActorGroup:
 
 class VtkProjectMeshBackend(VtkProjectBackend):
     SOURCE_TABLE_CHUNK_SIZE = 64
+    # Source-table glyph groups preserve exact source geometry and per-instance
+    # colours while already keeping draw calls bounded. Expanding all instances
+    # into one transient actor doubled HVPC frame time and introduced a large
+    # first-input stall, so it is retained only as an opt-in diagnostic path.
+    USE_CONSOLIDATED_INTERACTION_ACTOR = False
 
     def __init__(
         self,
@@ -292,6 +297,8 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         return actor
 
     def set_interaction_scene(self, active: bool) -> None:
+        if not self.USE_CONSOLIDATED_INTERACTION_ACTOR:
+            return
         actor = getattr(self, "_interaction_actor", None)
         if active and actor is None:
             actor = self._build_interaction_actor()

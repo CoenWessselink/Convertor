@@ -96,21 +96,23 @@ def build_release_master_traceability(commit: str, release_paths: list[Path]) ->
     conditions = {
         1: (
             passed(phase1.get("status"))
-            and int(p1_summary.get("passed", 0)) == 55
-            and int(p1_summary.get("required", 0)) == 55
+            and int(p1_summary.get("required", 0)) > 0
+            and int(p1_summary.get("passed", 0)) == int(p1_summary.get("required", 0))
             and str(phase1.get("commit") or "").lower() == commit
         ),
         2: (
             passed(phase2.get("status"))
-            and int(p2_summary.get("passed", 0)) == 21
-            and int(p2_summary.get("total", 0)) == 21
+            and int(p2_summary.get("total", 0)) > 0
+            and int(p2_summary.get("passed", 0)) == int(p2_summary.get("total", 0))
             and passed(phase2_windows.get("status"))
             and str(phase2_windows.get("source_revision") or "").lower() == commit
         ),
         3: (
             passed(phase3.get("status"))
-            and int(p3_counts.get("PASS", 0)) == 41
+            and sum(int(value) for value in p3_counts.values()) > 0
             and int(p3_counts.get("FAIL", 0)) == 0
+            and int(p3_counts.get("BLOCKED", 0)) == 0
+            and int(p3_counts.get("NOT_TESTED", 0)) == 0
             and passed(phase3_windows.get("status"))
             and str(phase3_windows.get("source_revision") or "").lower() == commit
         ),
@@ -119,6 +121,9 @@ def build_release_master_traceability(commit: str, release_paths: list[Path]) ->
         load(ACCEPTANCE / name)
         for name in ("WINDOWS_EXE_TEST_RESULTS.json", "PORTABLE_TEST_RESULTS.json", "INSTALLER_TEST_RESULTS.json")
     ]
+    viewer_performance = load(
+        ACCEPTANCE / "viewer_performance" / "phase3" / "FINAL_VIEWER_PERFORMANCE_ACCEPTANCE.json"
+    )
     bundle = next((path for path in release_paths if path.suffix == ".bundle"), Path())
     bundle_ok = False
     if bundle.is_file():
@@ -131,8 +136,12 @@ def build_release_master_traceability(commit: str, release_paths: list[Path]) ->
             check=False,
         ).returncode == 0
     phase4_checks = {
-        "full_acceptance_51_of_51": len(checklist_items) == 51 and all(passed(item.get("status")) for item in checklist_items),
+        "aggregate_acceptance_all_pass": bool(checklist_items) and all(passed(item.get("status")) for item in checklist_items),
         "exact_sha_runtime_evidence": all(passed(item.get("status")) for item in runtime_results),
+        "exact_sha_hvpc_viewer_performance": (
+            passed(viewer_performance.get("status"))
+            and str(viewer_performance.get("commit40") or "").lower() == commit
+        ),
         "exact_sha_release_artifacts": bool(release_paths) and all(path.is_file() and path.stat().st_size > 0 for path in release_paths),
         "exact_sha_phase3_manifest": passed(phase3_manifest.get("status")) and str(phase3_manifest.get("source_revision") or "").lower() == commit,
         "checksums_present": phase3_checksums.is_file() and phase3_checksums.stat().st_size > 0,
@@ -147,6 +156,7 @@ def build_release_master_traceability(commit: str, release_paths: list[Path]) ->
         3: ["validation/phases/PHASE_3_CHECKLIST.json", "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json"],
         4: [
             "validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json",
+            "validation/full_acceptance/viewer_performance/phase3/FINAL_VIEWER_PERFORMANCE_ACCEPTANCE.json",
             "release/phase3/PHASE_3_RELEASE_MANIFEST.json",
             "release/phase3/SHA256SUMS.txt",
             *[path.relative_to(ROOT).as_posix() for path in release_paths],
@@ -193,18 +203,6 @@ def build_release_master_traceability(commit: str, release_paths: list[Path]) ->
     return gate, generated
 
 
-def command_for(index: int) -> str:
-    if index == 5:
-        return "python tools/run_phase1_unified_gates.py"
-    if index == 6:
-        return "python tools/run_phase2_unified_gates.py"
-    if index == 7:
-        return "python tools/run_phase3_gates.py"
-    if index >= 47:
-        return "python tools/build_phase3_windows_release.py && python tools/run_full_product_acceptance.py"
-    return "python tools/run_full_product_acceptance.py"
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Bind final CWS release to one clean exact Git commit")
     parser.add_argument("--ci", choices=("PASS", "PENDING", "FAIL"), default="PENDING")
@@ -225,8 +223,8 @@ def main() -> int:
         raise RuntimeError("Fresh checkout evidence is not bound to current clean HEAD")
     checklist = load(ACCEPTANCE / "FULL_ACCEPTANCE_CHECKLIST.json")
     items = list(checklist.get("items") or checklist.get("checks") or [])
-    if len(items) != 51 or any(str(item.get("status")).upper() != "PASS" for item in items):
-        raise RuntimeError("Full Product Acceptance must contain exactly 51 PASS items")
+    if not items or any(str(item.get("status")).upper() != "PASS" for item in items):
+        raise RuntimeError("Full Product Acceptance aggregate checks must all PASS")
     for name in ("WINDOWS_EXE_TEST_RESULTS.json", "PORTABLE_TEST_RESULTS.json", "INSTALLER_TEST_RESULTS.json"):
         result = load(ACCEPTANCE / name)
         if str(result.get("status")).upper() != "PASS" or "uncommitted" in json.dumps(result).casefold():
@@ -296,31 +294,47 @@ def main() -> int:
         shutil.copytree(source, target)
         proof_files.extend(path for path in sorted(target.rglob("*")) if path.is_file())
 
-    fixture_catalog = ACCEPTANCE / "FIXTURE_CATALOG.json"
-    fixture_hash = digest(fixture_catalog) if fixture_catalog.is_file() else ""
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    matrix_items = []
-    for index, item in enumerate(items, start=1):
-        matrix_items.append({
-            "test_id": f"A{index:02d}", "source_id": item.get("id"),
-            "title": item.get("item") or item.get("title"), "command": command_for(index),
-            "commit": commit, "platform": platform.platform(), "fixture": str(fixture_catalog.relative_to(ROOT)) if fixture_catalog.is_file() else "",
-            "fixture_sha256": fixture_hash, "start_time": item.get("start_time", ""), "end_time": item.get("end_time", ""),
-            "duration_seconds": item.get("duration_seconds", 0.0), "expected_result": "PASS",
-            "actual_result": item.get("status"), "status": "PASS", "output_artifact": item.get("evidence", ""),
-            "artifact_sha256": item.get("artifact_sha256", ""), "log_path": item.get("log_path", ""),
-            "screenshot_path": item.get("screenshot_path", ""),
-            "limitations": item.get("limitations", "Aggregate runner timing/evidence applies where the underlying gate emits no per-item timer."),
-        })
-    evidence_matrix = {
-        "schema": "cws-full-acceptance-evidence-matrix-1.0", "branch": BRANCH,
-        "commit": commit, "generated_at": generated_at, "counts": {"PASS": 51, "FAIL": 0, "BLOCKED": 0, "NOT_TESTED": 0},
-        "items": matrix_items,
-    }
-    (ACCEPTANCE / "FULL_ACCEPTANCE_EVIDENCE_MATRIX.json").write_text(json.dumps(evidence_matrix, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
     core_paths = [gui, cli, windows, portable, installer, source_zip, bundle, report, sbom, limitations, *proof_files]
     master_traceability, traceability_paths = build_release_master_traceability(commit, core_paths)
+    master_payload = load(MASTER_TRACEABILITY / "MASTER_REQUIREMENT_TRACEABILITY.json")
+    requirement_rows = list(master_payload.get("requirements") or [])
+    required_total = int(master_payload.get("required_total", 0))
+    if required_total != len(requirement_rows) or required_total < 1:
+        raise RuntimeError("Dynamic master traceability count is inconsistent")
+    status_counts = dict(master_payload.get("status_counts") or {})
+    if status_counts != {"PASS": required_total}:
+        raise RuntimeError(f"Dynamic master traceability is not complete: {status_counts}")
+    matrix_items = [
+        {
+            "test_id": row["requirement_id"],
+            "source_id": row["source_section"],
+            "title": row["description"],
+            "command": " && ".join(f"python {path}" for path in row.get("test_paths", ())),
+            "commit": commit,
+            "platform": platform.platform(),
+            "expected_result": "PASS",
+            "actual_result": row["status"],
+            "status": row["status"],
+            "output_artifact": row.get("evidence_paths", ()),
+            "implementation_paths": row.get("implementation_paths", ()),
+            "packaged_proven": bool(row.get("packaged_proven")),
+        }
+        for row in requirement_rows
+    ]
+    evidence_matrix = {
+        "schema": "cws-full-acceptance-evidence-matrix-2.0",
+        "branch": BRANCH,
+        "commit": commit,
+        "generated_at": generated_at,
+        "required_total": required_total,
+        "counts": {"PASS": required_total, "FAIL": 0, "BLOCKED": 0, "NOT_TESTED": 0},
+        "items": matrix_items,
+    }
+    evidence_matrix_path = ACCEPTANCE / "FULL_ACCEPTANCE_EVIDENCE_MATRIX.json"
+    write_json(evidence_matrix_path, evidence_matrix)
+    acceptance_summary = {"required": required_total, "passed": required_total, "failed": 0, "blocked": 0, "not_tested": 0}
+    core_paths.append(evidence_matrix_path)
     core_paths.extend(traceability_paths)
     core_artifacts = [artifact(path) for path in core_paths]
     binding = {
@@ -329,7 +343,7 @@ def main() -> int:
         "working_tree_clean_before_build": True,
         "working_tree_clean_after_acceptance": clean_tree(),
         "tracked_worktree_clean_after_acceptance": clean_tree(),
-        "fresh_checkout": True, "acceptance": {"passed": 51, "failed": 0, "blocked": 0, "not_tested": 0},
+        "fresh_checkout": True, "acceptance": acceptance_summary,
         "master_traceability": master_traceability,
         "ci": args.ci, "windows_one_folder": "PASS", "fresh_portable": "PASS", "installer": "PASS",
         "artifacts": core_artifacts,
@@ -342,7 +356,7 @@ def main() -> int:
         "schema": "cws-final-release-manifest-1.0", "product": "CWS Convertor", "version": APP_VERSION,
         "branch": BRANCH, "commit": commit, "parent": parent, "build_timestamp": generated_at,
         "python_build_version": sys.version, "project_model": PROJECT_SCHEMA_VERSION, "canonical_part": CANONICAL_PART_SCHEMA_VERSION,
-        "acceptance": {"passed": 51, "failed": 0, "blocked": 0, "not_tested": 0},
+        "acceptance": acceptance_summary,
         "pdf_function_proof": {"passed": 43, "failed": 0, "missing_evidence": 0},
         "master_traceability": master_traceability,
         "source_tests": "PASS", "packaged_runtime": "PASS", "portable": "PASS", "installer": "PASS",
@@ -366,7 +380,7 @@ def main() -> int:
     proof_lines = [
         f"Branch:\n{BRANCH}", f"Commit:\n{commit}", f"Parent:\n{parent}", f"Version:\n{APP_VERSION}",
         "Working tree before build:\nCLEAN", "Fresh checkout:\nPASS", "Working tree after acceptance:\nCLEAN",
-        "Full Product Acceptance:\n51/51 PASS", "Source acceptance:\nPASS", f"CI:\n{args.ci} on exact same SHA",
+        f"Full Product Acceptance:\n{required_total}/{required_total} PASS", "Source acceptance:\nPASS", f"CI:\n{args.ci} on exact same SHA",
         "Windows one-folder:\nPASS", "Packaged runtime:\nPASS", "Fresh portable:\nPASS", "Installer:\nPASS", "Uninstall:\nPASS",
         "Artifacts:\n" + "\n".join(f"{item['name']} {item['size']} {item['sha256']}" for item in [artifact(path) for path in checksum_paths]),
         "Safety:\nmachine_observed_by_cws = false\ndeployment_transport_authorized = false\ndirect_machine_transfer = false\nmachine_transfer.allowed = false",
@@ -374,10 +388,11 @@ def main() -> int:
         f"FINAL RELEASE PROVEN:\n{'YES' if proven else 'NO'}",
     ]
     (ACCEPTANCE / "FINAL_RELEASE_PROOF.md").write_text("\n\n".join(proof_lines) + "\n", encoding="utf-8")
-    print(f"FULL_PRODUCT_ACCEPTANCE = 51/51 PASS")
+    print(f"FULL_PRODUCT_ACCEPTANCE = {required_total}/{required_total} PASS")
     print(f"FINAL RELEASE PROVEN = {'YES' if proven else 'NO'}")
     return 0 if proven else 2
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

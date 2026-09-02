@@ -24,9 +24,10 @@ from cws_viewer.measurements import (
 )
 from cws_viewer.exact.snapping import anchor_from_candidate, snap
 from cws_viewer.math3d import Vector3
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 V15_T4_SCHEMA = "cws-viewer-selection-measurement-15.3"
-V15_T4_VERSION = "1.4.0-v15-preview.1"
+V15_T4_VERSION = VIEWER_PREVIEW_VERSION
 
 
 @dataclass(frozen=True, slots=True)

@@ -26,6 +26,29 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
 
     FEATURE_ANGLE_DEG = 34.0
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._hidden_line_actors: list[Any] = []
+
+    def _remove_hidden_line_actors(self) -> None:
+        renderer = self._renderer
+        if renderer is not None:
+            for actor in self._hidden_line_actors:
+                renderer.RemoveActor(actor)
+        self._hidden_line_actors.clear()
+
+    def load_scene(self, scene: Any, index: Any) -> None:
+        self._remove_hidden_line_actors()
+        super().load_scene(scene, index)
+
+    def clear_scene(self) -> None:
+        self._remove_hidden_line_actors()
+        super().clear_scene()
+
+    def refresh_geometry(self, geometry_ids: tuple[str, ...] | None = None) -> None:
+        self._remove_hidden_line_actors()
+        super().refresh_geometry(geometry_ids)
+
     def capabilities(self) -> ViewerCapabilities:
         base = super().capabilities()
         return replace(
@@ -148,12 +171,25 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         """Never expose tessellation edges in normal shaded display."""
         prop = group.actor.GetProperty()
         if mode == RenderMode.WIREFRAME:
+            group.mapper.ScalarVisibilityOn()
             prop.SetRepresentationToWireframe()
             prop.EdgeVisibilityOff()
             prop.SetLineWidth(max(0.55, float(edge_width) * 1.35))
             prop.LightingOff()
             return
 
+        if mode == RenderMode.HIDDEN_LINE:
+            # A depth-writing surface hides rear feature lines.  Its actor edge
+            # flag remains off because that flag exposes tessellation triangles.
+            group.mapper.ScalarVisibilityOff()
+            prop.SetRepresentationToSurface()
+            prop.EdgeVisibilityOff()
+            prop.SetColor(0.965, 0.975, 0.988)
+            prop.SetOpacity(1.0)
+            prop.LightingOff()
+            return
+
+        group.mapper.ScalarVisibilityOn()
         prop.SetRepresentationToSurface()
         # Critical repair: actor edge visibility renders every mesh triangle.
         # Model/feature edges are not the same as tessellation edges.
@@ -161,6 +197,53 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         prop.SetLineWidth(max(0.5, float(edge_width)))
         prop.LightingOn()
         VtkProjectMeshFeelBackend._quality_material(prop)
+
+    def _ensure_static_groups(self, index: Any) -> None:
+        super()._ensure_static_groups(index)
+        if self._hidden_line_actors or self._renderer is None or self._vtk is None:
+            return
+        vtk = self._vtk
+        for group in self._mesh_groups:
+            sources = group.source if isinstance(group.source, tuple) else (group.source,)
+            mapper = vtk.vtkGlyph3DMapper()
+            mapper.SetInputData(group.polydata)
+            for source_index, source in enumerate(sources):
+                mapper.SetSourceData(
+                    source_index,
+                    self._feature_edges_polydata(source, f"hidden-line:{id(source)}"),
+                )
+            if len(sources) > 1:
+                mapper.SourceIndexingOn()
+                mapper.SetSourceIndexArray("cws_source_index")
+                mapper.SetRange(0.0, float(len(sources) - 1))
+            mapper.ScalingOff()
+            mapper.OrientOn()
+            mapper.SetOrientationArray("cws_quaternion")
+            mapper.SetOrientationModeToQuaternion()
+            mapper.ScalarVisibilityOff()
+            mapper.SetMaskArray("cws_visible")
+            mapper.MaskingOn()
+            try:
+                mapper.SetResolveCoincidentTopologyToPolygonOffset()
+                mapper.SetRelativeCoincidentTopologyLineOffsetParameters(0.0, -2.0)
+            except Exception:
+                pass
+            actor = vtk.vtkActor()
+            actor.SetMapper(mapper)
+            actor.PickableOff()
+            actor.SetVisibility(False)
+            prop = actor.GetProperty()
+            prop.SetColor(0.035, 0.045, 0.065)
+            prop.SetLineWidth(1.35)
+            prop.LightingOff()
+            self._renderer.AddActor(actor)
+            self._hidden_line_actors.append(actor)
+
+    def _update_instance_state(self, state: Any, index: Any) -> None:
+        super()._update_instance_state(state, index)
+        hidden_line = state.display_preferences.render_mode == RenderMode.HIDDEN_LINE
+        for actor in self._hidden_line_actors:
+            actor.SetVisibility(hidden_line)
 
     def _build_mesh_group(
         self,

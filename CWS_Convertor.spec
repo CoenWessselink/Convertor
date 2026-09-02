@@ -32,6 +32,7 @@ datas = [
     (str(ROOT / "templates"), "templates"),
     (str(ROOT / "assets"), "assets"),
     (str(ROOT / "cws_viewer" / "schemas"), "cws_viewer/schemas"),
+    (str(ROOT / "cws_viewer" / "review" / "schemas"), "cws_viewer/review/schemas"),
     (
         str(ROOT / "cws_convertor" / "manufacturing" / "m18_authority_runtime.zip"),
         "cws_convertor/manufacturing",

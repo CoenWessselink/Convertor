@@ -6,9 +6,10 @@ from enum import StrEnum
 from typing import Any
 
 from cws_convertor.production_export.utils import stable_hash
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 V15_T7_SCHEMA = "cws-viewer-export-center-1.0"
-V15_T7_VERSION = "1.4.0-v15-preview.1"
+V15_T7_VERSION = VIEWER_PREVIEW_VERSION
 
 
 class ExportScopeKind(StrEnum):

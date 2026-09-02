@@ -43,6 +43,9 @@ def _worker_main(connection: Connection) -> None:
             return
         if message is None or message.get("command") == "shutdown":
             return
+        if message.get("command") == "prewarm":
+            connection.send({"ok": True, "type": "prewarm"})
+            continue
         try:
             settings = message["settings"]
             if message.get("command") == "load_many":
@@ -178,6 +181,21 @@ class IsolatedIfcMeshProvider:
                     f"Frozen IFC-worker kon niet starten: {type(exc).__name__}: {exc}"
                 ) from exc
         return self._frozen_client
+
+    def prewarm(self) -> None:
+        """Start the isolated process and finish native provider imports."""
+        if self._frozen:
+            self._ensure_frozen_worker().prewarm()
+            return
+        self._ensure_source_worker()
+        assert self._connection is not None and self._process is not None
+        self._connection.send({"command": "prewarm"})
+        if not self._connection.poll(self.timeout_seconds):
+            self._stop_source_worker()
+            raise NativeGeometryWorkerError("IFC-worker prewarm timeout")
+        reply = self._connection.recv()
+        if not reply.get("ok"):
+            raise NativeGeometryWorkerError(str(reply.get("error") or "IFC-worker prewarm failed"))
 
     def load(
         self,

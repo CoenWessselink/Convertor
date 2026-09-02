@@ -14,9 +14,10 @@ from cws_viewer.contracts.enums import ProjectionType, StandardView
 from cws_viewer.contracts.state import CameraState, ClippingBox, SectionPlane, Viewpoint
 from cws_viewer.errors import ViewerError, ViewerErrorCode
 from cws_viewer.math3d import BoundingBox, Vector3
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 V15_T3_SCHEMA = "cws-viewer-navigation-15.3"
-V15_T3_VERSION = "1.4.0-v15-preview.2"
+V15_T3_VERSION = VIEWER_PREVIEW_VERSION
 
 
 def navigation_contract() -> dict[str, Any]:

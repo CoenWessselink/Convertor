@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import threading
 from typing import Any, Iterable
 
 from cws_convertor.product import APP_NAME, APP_VERSION
@@ -16,6 +17,17 @@ from .unified_shell import (
 
 U4_WORKFLOW_PROPERTY = "cwsUnifiedProductionWorkflow"
 U4_WORKFLOW_TOKEN = "CWS-U4-PRODUCTION-WORKFLOW"
+_viewer_worker_prewarm: threading.Thread | None = None
+
+
+def _prewarm_viewer_workers() -> None:
+    try:
+        from cws_viewer.geometry.worker_pool import PersistentGeometryWorkerPool
+
+        PersistentGeometryWorkerPool.shared(3).prewarm()
+    except Exception:
+        # File-open retains its normal crash-recovering lazy-start path.
+        pass
 
 _PRODUCT_QSS = """
 QMainWindow, QWidget { background:#f7f9fc; color:#17243a; font-family:'Segoe UI', 'Arial'; font-size:9pt; }
@@ -1164,9 +1176,18 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
     def run_qt_application(initial_paths: Iterable[str | Path] | str | Path | None = None) -> int:
         import sys
 
+        global _viewer_worker_prewarm
+
         application = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
         application.setApplicationName(APP_NAME)
         application.setOrganizationName("CWS")
+        if _viewer_worker_prewarm is None or not _viewer_worker_prewarm.is_alive():
+            _viewer_worker_prewarm = threading.Thread(
+                target=_prewarm_viewer_workers,
+                name="CWS-Viewer-Worker-Prewarm",
+                daemon=True,
+            )
+            _viewer_worker_prewarm.start()
         if initial_paths is None:
             paths: tuple[Path, ...] = ()
         elif isinstance(initial_paths, (str, Path)):

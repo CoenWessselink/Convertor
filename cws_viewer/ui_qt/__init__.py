@@ -21,6 +21,8 @@ __all__ = [
     "run_harness",
     "RevisionComparePanel",
     "ExactComparePanel",
+    "ExactOcctWidget",
+    "ExactPartWorkbenchPanel",
     "ProfessionalPropertyGridPanel",
     "VirtualProjectTableModel",
     "FieldChooserDialog",
@@ -57,9 +59,14 @@ def __getattr__(name: str) -> Any:
     if name in {"RevisionComparePanel", "ExactComparePanel"}:
         from .revision_compare import ExactComparePanel, RevisionComparePanel
         return {"RevisionComparePanel": RevisionComparePanel, "ExactComparePanel": ExactComparePanel}[name]
+    if name in {"ExactOcctWidget", "ExactPartWorkbenchPanel"}:
+        from .exact_part_workbench import ExactOcctWidget, ExactPartWorkbenchPanel
+
+        return {
+            "ExactOcctWidget": ExactOcctWidget,
+            "ExactPartWorkbenchPanel": ExactPartWorkbenchPanel,
+        }[name]
     if name in {"create_harness_window", "run_harness"}:
         from .technology_harness import create_harness_window, run_harness
         return {"create_harness_window": create_harness_window, "run_harness": run_harness}[name]
     raise AttributeError(name)
-
-from .exact_part_workbench import ExactOcctWidget, ExactPartWorkbenchPanel

@@ -14,6 +14,7 @@ from typing import Any, Iterable
 
 from cws_viewer.contracts.workspace import viewpoint_from_dict
 from cws_viewer.core.serialization import stable_sha256
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 from .model import (
     MarkupAnchor,
@@ -27,9 +28,10 @@ from .model import (
 )
 from .package import ReviewPackageBuilder
 from .store import ReviewStore
+from .bcf import Bcf21Exporter
 
 V15_T5_SCHEMA = "cws-viewer-review-workspace-15.4"
-V15_T5_VERSION = "1.4.0-v15-preview.1"
+V15_T5_VERSION = VIEWER_PREVIEW_VERSION
 
 
 class ReferenceState(StrEnum):
@@ -83,6 +85,7 @@ def review_workspace_contract() -> dict[str, Any]:
             "issue_optional_viewpoint_link": True,
             "review_checksum_store": True,
             "portable_cwsreview_export": True,
+            "bcf_2_1_schema_validated_export": True,
             "stale_reference_detection": True,
             "silent_reference_remap": False,
             "review_mutates_canonical_geometry": False,
@@ -393,6 +396,50 @@ class V15ReviewWorkspaceService:
             markups=self.list_markups(),
             viewpoints=self.controller.list_viewpoints(),
             assets_root=assets_root,
+        )
+
+    def export_bcf(
+        self,
+        output_path: str | Path,
+        *,
+        ifc_guid_by_entity: dict[str, str] | None = None,
+    ) -> Path:
+        """Export review issues as an XSD-validated buildingSMART BCF 2.1 archive."""
+        # Native IFC scenes already preserve GlobalId as the scene entity identity.
+        # Merge that information (and optional project-adapter metadata) so the UI
+        # export path never silently drops BCF component selections merely because
+        # its caller did not construct a second lookup table.
+        valid_ifc_chars = frozenset("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$")
+
+        def is_ifc_guid(value: object) -> bool:
+            text = str(value or "")
+            return len(text) == 22 and all(character in valid_ifc_chars for character in text)
+
+        resolved_mapping: dict[str, str] = {}
+        metadata_mapping = self.project_metadata.get("ifc_guid_by_entity", {})
+        if isinstance(metadata_mapping, dict):
+            resolved_mapping.update(
+                (str(entity), str(guid))
+                for entity, guid in metadata_mapping.items()
+                if is_ifc_guid(guid)
+            )
+        for node in self.controller.index.nodes_by_id.values():
+            for candidate in (node.entity_id, node.source_entity_id):
+                if is_ifc_guid(candidate):
+                    resolved_mapping.setdefault(str(node.entity_id), str(candidate))
+                    resolved_mapping.setdefault(str(node.node_id), str(candidate))
+        if ifc_guid_by_entity:
+            resolved_mapping.update(
+                (str(entity), str(guid))
+                for entity, guid in ifc_guid_by_entity.items()
+                if is_ifc_guid(guid)
+            )
+        return Bcf21Exporter().export(
+            output_path,
+            project_id=self.project_id,
+            issues=self.list_issues(),
+            viewpoints=self.controller.list_viewpoints(),
+            ifc_guid_by_entity=resolved_mapping,
         )
 
 

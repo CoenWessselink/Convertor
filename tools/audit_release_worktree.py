@@ -133,7 +133,7 @@ def main() -> int:
             "installer_previous": "installer/CWS_Convertor.iss omitted commit7",
         },
         "root_cause": "Acceptance ran in a dirty development worktree while packaging had explicit uncommitted fallbacks and no clean-tree/exact-SHA release boundary.",
-        "corrective_action": "Commit required source, fail closed on unknown SHA or dirty tree, rebuild from a fresh exact-SHA checkout, rerun 51/51 and bind every final artifact and checksum to commit7.",
+        "corrective_action": "Commit required source, fail closed on unknown SHA or dirty tree, rebuild from a fresh exact-SHA checkout, rerun every dynamic master requirement and bind every final artifact and checksum to commit7.",
     }
     (OUTPUT / "UNCOMMITTED_ACCEPTANCE_ROOT_CAUSE.json").write_text(json.dumps(root_cause, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     (OUTPUT / "UNCOMMITTED_ACCEPTANCE_ROOT_CAUSE.md").write_text(

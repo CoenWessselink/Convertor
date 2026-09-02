@@ -897,7 +897,7 @@ def main() -> int:
         master_traceability = {
             "schema": "cws-master-release-gate-1.0",
             "status": "DEFERRED_TO_FINAL_BINDING",
-            "reason": "Generated fail-closed after 51/51 acceptance and exact-SHA artifacts exist.",
+            "reason": "Generated fail-closed after every dynamic master requirement and exact-SHA artifact passes.",
         }
     else:
         from master_release_gate import load_master_traceability_gate

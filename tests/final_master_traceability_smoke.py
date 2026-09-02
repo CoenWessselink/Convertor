@@ -52,6 +52,18 @@ def main() -> int:
         release_trace, _, _ = build(evidence_root)
         assert release_trace["required_total"] == len(release_trace["requirements"])
         assert release_trace["status_counts"] == {"PASS": release_trace["required_total"]}
+
+        finalizer = (ROOT / "tools/finalize_commit_bound_release.py").read_text(encoding="utf-8")
+        workflow = (ROOT / ".github/workflows/final-release-proof.yml").read_text(encoding="utf-8")
+        assert "51/51" not in finalizer
+        assert "exactly 51" not in finalizer
+        assert '== 55' not in finalizer
+        assert '== 21' not in finalizer
+        assert '== 41' not in finalizer
+        assert "Count -ne 51" not in workflow
+        assert "required_total -ne $matrix.items.Count" in workflow
+        assert "exact_sha_hvpc_viewer_performance" in finalizer
+        assert "run_viewer_performance_closeout.py" in workflow
     return 0
 
 

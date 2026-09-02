@@ -14,6 +14,7 @@ from cws_viewer.ui_qt.cockpit_feel_fix_v15 import (
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.views_strip_feel_v2 import CwsViewsStripV2
 from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import VtkRealProjectWidgetFeelV2
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 FEEL_V2_BUILD = "viewer-trimble-feel-v2"
 
@@ -136,7 +137,7 @@ QComboBox#cwsSelectionLevelQuick {
             self.setStyleSheet(self.styleSheet() + _EXTRA_QSS)
             for label in self.findChildren(QtWidgets.QLabel):
                 if label.objectName() == "cwsVersion":
-                    label.setText("1.4.0-v15-preview.2")
+                    label.setText(VIEWER_PREVIEW_VERSION)
                     break
             self._install_views_strip()
             self._connect_grid_bidirectional_selection()

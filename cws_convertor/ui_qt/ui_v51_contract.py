@@ -1002,6 +1002,8 @@ if QtWidgets is not None:
             return items
 
         def capture_evidence(self, output_root: Path, reference_root: Path | None = None) -> dict[str, Any]:
+            from cws_viewer.ui_qt.native_capture import capture_window_with_native_renderers
+
             output_root.mkdir(parents=True, exist_ok=True)
             screenshots = output_root / "screenshots"
             screenshots.mkdir(parents=True, exist_ok=True)
@@ -1017,13 +1019,7 @@ if QtWidgets is not None:
                     app.processEvents()
                 screen_id = str(screen["screen_id"])
                 target = screenshots / f"{screen_id}_{_plain(screen['title']).replace(' ', '_')}.png"
-                pixmap = None
-                handle = self.window.windowHandle()
-                native_screen = handle.screen() if handle is not None else None
-                if native_screen is not None:
-                    pixmap = native_screen.grabWindow(int(self.window.winId()))
-                if pixmap is None or pixmap.isNull():
-                    pixmap = self.window.grab()
+                pixmap = capture_window_with_native_renderers(self.window)
                 saved = pixmap.save(str(target), "PNG")
                 inventory = self.runtime_inventory()
                 for item in inventory:
@@ -1100,7 +1096,7 @@ if QtWidgets is not None:
                 if app is not None:
                     app.processEvents()
                 target = dpi_root / f"dpi_{percent}_{width}x{height}.png"
-                saved = self.window.grab().save(str(target), "PNG")
+                saved = capture_window_with_native_renderers(self.window).save(str(target), "PNG")
                 clipped: list[str] = []
                 window_rect = self.window.rect()
                 for widget in self.window.findChildren(QtWidgets.QWidget):

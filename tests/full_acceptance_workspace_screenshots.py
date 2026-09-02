@@ -22,6 +22,7 @@ def main() -> int:
     os.environ.setdefault("CWS_HEADLESS_GUI_SMOKE", "1")
     from PySide6 import QtCore, QtWidgets
     from cws_convertor.ui_qt import CWSMainWindow
+    from cws_viewer.ui_qt.native_capture import capture_window_with_native_renderers
 
     output = ROOT / "validation" / "full_acceptance" / "screenshots"
     output.mkdir(parents=True, exist_ok=True)
@@ -39,7 +40,7 @@ def main() -> int:
             time.sleep(0.01)
         label = window.tabs.tabText(index).strip()
         path = output / f"workspace-{index:02d}-{_slug(label)}.png"
-        pixmap = window.grab()
+        pixmap = capture_window_with_native_renderers(window)
         saved = pixmap.save(str(path), "PNG")
         valid = bool(saved and path.is_file() and path.stat().st_size > 10_000)
         rows.append(

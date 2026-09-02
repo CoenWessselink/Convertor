@@ -206,6 +206,9 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
             if command == "shutdown":
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": True, "type": "shutdown"})
                 return 0
+            if command == "prewarm":
+                _send_message(sock, {"protocol": _PROTOCOL, "ok": True, "type": "prewarm"})
+                continue
             if command not in {"load", "load_many"}:
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": False, "error": "Onbekende workeropdracht"})
                 continue
@@ -395,6 +398,21 @@ class FrozenIfcWorkerClient:
             except Exception:
                 pass
             self._stderr_handle = None
+
+    def prewarm(self) -> None:
+        """Complete the packaged worker's native import handshake."""
+        sock = self._socket
+        process = self._process
+        if sock is None or process is None or process.poll() is not None:
+            self._terminate_process()
+            self._start()
+            sock = self._socket
+            process = self._process
+        assert sock is not None and process is not None
+        _send_message(sock, {"protocol": _PROTOCOL, "command": "prewarm"})
+        reply = _recv_message(sock)
+        if not bool(reply.get("ok")) or reply.get("type") != "prewarm":
+            raise FrozenWorkerProtocolError(str(reply.get("error") or "IFC-worker prewarm failed"))
 
     def load(self, request: GeometryRequest, settings: TessellationSettings, *, cancel_check=None) -> MeshData:
         sock = self._socket

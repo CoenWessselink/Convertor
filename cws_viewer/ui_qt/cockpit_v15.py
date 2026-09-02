@@ -12,10 +12,11 @@ from typing import Any
 
 from cws_viewer.ui_qt import cockpit as _v14
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
 V15_WORKSPACE_SCHEMA = "cws-viewer-workspace-15.1"
 V15_WORKSPACE_STATE_VERSION = 15
-V15_VERSION = "1.4.0-v15-preview.1"
+V15_VERSION = VIEWER_PREVIEW_VERSION
 
 
 @dataclass(frozen=True, slots=True)

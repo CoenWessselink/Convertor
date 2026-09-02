@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -14,6 +16,7 @@ from cws_viewer.core.v14_controller import V14ViewerCoreController
 from cws_viewer.fixtures import build_synthetic_product_scene
 from cws_viewer.review import (
     MarkupKind,
+    Bcf21Verifier,
     ReferenceState,
     ReviewPackageReader,
     ReviewPackageVerifier,
@@ -158,11 +161,34 @@ class ViewerV15ReviewWorkspaceTests(unittest.TestCase):
         self.assertEqual(view.viewpoint_id, payload["saved_views"][0]["viewpoint_id"])
         self.assertEqual(issue.issue_id, payload["issues"][0]["issue_id"])
 
-    def test_bcf_semantic_mapping_carries_priority_without_claiming_bcf_export(self) -> None:
-        issue = self.service.create_issue("BCF semantic", priority=ReviewPriority.URGENT)
+    def test_bcf_2_1_export_is_schema_validated_with_viewpoint_and_ifc_selection(self) -> None:
+        view = self.service.capture_view("BCF view", owner="tester")
+        entity = self.controller.index.node(self.controller.index.renderable_node_ids[0]).entity_id
+        issue = self.service.create_issue(
+            "BCF semantic",
+            priority=ReviewPriority.URGENT,
+            linked_entity_ids=(str(entity),),
+            viewpoint_id=view.viewpoint_id,
+            created_by="tester@example.com",
+        )
+        self.service.add_comment(issue.issue_id, "tester@example.com", "Schema test")
         mapping = map_review_topic(issue, project_id=self.scene.project_id)
         self.assertEqual(ReviewPriority.URGENT.value, mapping.priority)
-        self.assertEqual(issue.issue_id, self.service.issue(issue.issue_id).issue_id)
+        self.service.project_metadata["ifc_guid_by_entity"] = {str(entity): "0" * 22}
+        target = self.service.export_bcf(self.root / "review.bcfzip")
+        report = Bcf21Verifier().verify(target)
+        self.assertEqual("2.1", report.version)
+        self.assertEqual(1, report.topic_count)
+        self.assertEqual(1, report.viewpoint_count)
+        with zipfile.ZipFile(target) as archive:
+            viewpoint_name = next(name for name in archive.namelist() if name.endswith(".bcfv"))
+            root = ET.fromstring(archive.read(viewpoint_name))
+            self.assertEqual("0" * 22, root.find("./Components/Selection/Component").attrib["IfcGuid"])
+        self.assertTrue(self.service.review_hash)
+        self.assertIn(
+            '"review" / "schemas"',
+            (ROOT / "CWS_Convertor.spec").read_text(encoding="utf-8"),
+        )
 
 
 if __name__ == "__main__":

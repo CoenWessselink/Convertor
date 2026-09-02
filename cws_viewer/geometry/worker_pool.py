@@ -95,6 +95,16 @@ class PersistentGeometryWorkerPool:
                 return False
             return bool(self._providers[0].supports(request))
 
+    def prewarm(self) -> None:
+        """Start every isolated IFC process concurrently before file-open work."""
+        futures = []
+        for provider in self._providers:
+            warm = getattr(provider, "prewarm", None)
+            if callable(warm):
+                futures.append(self._executor.submit(warm))
+        for future in futures:
+            future.result()
+
     def _claim_worker(self) -> int:
         with self._selection_lock:
             if self._closed:

@@ -6,8 +6,9 @@ from typing import Any
 from cws_viewer.ui_qt.cockpit_t7_v15 import CwsViewerV15T7CockpitWindow, t7_workspace_contract
 from cws_viewer.ui_qt.manufacturing_faces_v15 import ManufacturingFacesPanel
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
-V15_T8_VERSION = "1.4.0-v15-preview.1"
+V15_T8_VERSION = VIEWER_PREVIEW_VERSION
 V15_T8_WORKSPACE_SCHEMA = "cws-viewer-workspace-15.2"
 V15_T8_WORKSPACE_STATE_VERSION = 16
 

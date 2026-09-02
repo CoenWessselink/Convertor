@@ -61,7 +61,23 @@ class RecoveringProvider(FakeProvider):
         return super().load(value, settings, cancel_check=cancel_check)
 
 
+class PrewarmProvider(FakeProvider):
+    calls = 0
+
+    def prewarm(self):
+        type(self).calls += 1
+
+
 class PerformanceLoadingV2Smoke(unittest.TestCase):
+    def test_worker_prewarm_starts_every_isolated_provider(self):
+        PrewarmProvider.calls = 0
+        pool = PersistentGeometryWorkerPool(3, provider_factory=PrewarmProvider)
+        try:
+            pool.prewarm()
+            self.assertEqual(3, PrewarmProvider.calls)
+        finally:
+            pool.close(force=True)
+
     def test_policy_priority_and_scene_generation(self):
         policy = LoadingPerformancePolicy.detect(600, source_format="IFC")
         self.assertGreaterEqual(policy.worker_count, 1)

@@ -1,6 +1,6 @@
 # CWS Convertor current product authority
 
-Status: `current_authority_in_progress`
+Status: `current_release_authority`
 
 This file is the current phase authority. Older handover documents retain audit
 value but are `historical_frozen_source` and `superseded_for_current_status`.
@@ -11,7 +11,8 @@ value but are `historical_frozen_source` and `superseded_for_current_status`.
 - Version: 0.10.18-beta-dev
 - Project Model: 2.25
 - Canonical Part: 1.1
-- Active phase: Phase 1 - Canonical Product Core + Exact Engineering
+- Viewer package: 1.4.0-v15-preview.2
+- Active phase: Phase 4 - dynamic release acceptance
 
 ## Canonical architecture
 
@@ -27,9 +28,12 @@ value but are `historical_frozen_source` and `superseded_for_current_status`.
 
 ## Repository evidence
 
-Branch, HEAD, parent and working-tree state are deliberately `NOT_TESTED` in
-this initial authority record. They must be captured only by an explicitly
-authorized repository operation and must never be inferred from an old prompt.
+The canonical source branch is `agent/cws-product-ui-reintegration-v1`.
+The exact HEAD, parent, clean-tree result, packaged runtime checksums and all
+dynamic requirement rows are generated at release time in
+`validation/full_acceptance/RELEASE_BINDING.json` and
+`validation/full_acceptance/master_traceability/`. A hard-coded SHA in this
+tracked document would immediately become stale when the document changes.
 
 ## Safety authority
 

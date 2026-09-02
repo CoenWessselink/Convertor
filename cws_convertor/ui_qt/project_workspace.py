@@ -814,7 +814,15 @@ if qt_available():
             self.viewer_tools.status_changed.connect(self.status.setText)
             right_tabs.addTab(self.viewer_tools, "Doorsnede / Meten")
             splitter.addWidget(right_tabs)
-            splitter.setSizes([650, 1050, 430])
+            # The 3D model is the primary work surface. Side panes remain
+            # available and resizable, but no longer consume half the window.
+            left.setMinimumWidth(260)
+            right_tabs.setMinimumWidth(260)
+            splitter.setStretchFactor(0, 0)
+            splitter.setStretchFactor(1, 1)
+            splitter.setStretchFactor(2, 0)
+            splitter.setSizes([320, 1400, 300])
+            self.viewer_splitter = splitter
             self.host_layout.addWidget(splitter)
 
             # Publish the first interactive model frame before populating the

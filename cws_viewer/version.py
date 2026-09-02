@@ -6,7 +6,8 @@ Project Model versions so each contract can evolve explicitly.
 """
 from __future__ import annotations
 
-VIEWER_PACKAGE_VERSION = "1.0.0-dev0"
+VIEWER_PACKAGE_VERSION = "1.4.0-v15-preview.2"
+VIEWER_PREVIEW_VERSION = VIEWER_PACKAGE_VERSION
 VIEWER_API_VERSION = "0.7.0"
 SCENE_SCHEMA_VERSION = "1.0"
 VIEWER_STATE_SCHEMA_VERSION = "1.1"
@@ -27,6 +28,7 @@ def display_version() -> str:
 
 __all__ = [
     "VIEWER_PACKAGE_VERSION",
+    "VIEWER_PREVIEW_VERSION",
     "VIEWER_API_VERSION",
     "SCENE_SCHEMA_VERSION",
     "VIEWER_STATE_SCHEMA_VERSION",

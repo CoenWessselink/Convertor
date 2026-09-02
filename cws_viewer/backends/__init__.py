@@ -11,6 +11,7 @@ from typing import Any
 __all__ = [
     "HeadlessViewerController",
     "MemoryRenderBackend",
+    "OcctExactPartBackend",
     "OcctAisSpikeBackend",
     "VtkMeshSpikeBackend",
     "VtkProjectBackend",
@@ -27,6 +28,10 @@ def __getattr__(name: str) -> Any:
         from .memory import MemoryRenderBackend
 
         return MemoryRenderBackend
+    if name == "OcctExactPartBackend":
+        from .occt_exact import OcctExactPartBackend
+
+        return OcctExactPartBackend
     if name == "OcctAisSpikeBackend":
         from .occt_ais import OcctAisSpikeBackend
 
@@ -44,5 +49,3 @@ def __getattr__(name: str) -> Any:
 
         return VtkProjectMeshBackend
     raise AttributeError(name)
-
-from .occt_exact import OcctExactPartBackend

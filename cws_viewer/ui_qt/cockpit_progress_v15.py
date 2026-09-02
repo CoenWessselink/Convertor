@@ -9,8 +9,9 @@ from cws_viewer.ui_qt.cockpit_trimble_feel_v2 import CwsViewerV15TrimbleFeelV2Co
 from cws_viewer.ui_qt.design_system import DEFAULT_THEME, theme_qss
 from cws_viewer.ui_qt.loading_dialog import create_loading_dialog
 from cws_viewer.ui_qt.qt_compat import require_qt
+from cws_viewer.version import VIEWER_PREVIEW_VERSION
 
-PREVIEW2_VERSION = "1.4.0-v15-preview.2"
+PREVIEW2_VERSION = VIEWER_PREVIEW_VERSION
 
 
 def run_cws_viewer_cockpit_v15(

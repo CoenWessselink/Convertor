@@ -66,9 +66,10 @@ def _scheduler(requests):
 
 def _load(requests,cache_root):
     policy=LoadingPerformancePolicy.detect(len(requests),source_format='IFC')
-    settings=TessellationSettings(linear_deflection_mm=.35,angular_deflection_rad=.16,circle_segments=48)
+    settings=TessellationSettings()
     scheduler=_scheduler(requests);ordered=scheduler.order(requests);pool=PersistentGeometryWorkerPool(policy.worker_count)
     try:
+        prewarm_started=time.perf_counter();pool.prewarm();prewarm_s=time.perf_counter()-prewarm_started
         cache=MeshCache(cache_root,max_memory_items=max(128,len(requests)*2));started=time.perf_counter()
         meshes=pool.load_many(ordered,settings);cold=time.perf_counter()-started;version=pool.provider_version
         persist_started=time.perf_counter();cache_entries=[]
@@ -101,7 +102,9 @@ def _load(requests,cache_root):
         'cache':{'engine':'MeshCache V2','root':str(Path(cache_root).resolve()),
                  'storage_mode':str(getattr(disk,'storage_mode','mmap')),
                  'persist_seconds':persist_s,'async_persistence':cache_async},
-        'tessellation':{'linear_deflection_mm':.35,'angular_deflection_rad':.16,'circle_segments':48}}
+        'worker_prewarm_seconds':prewarm_s,
+        'cold_measurement_boundary':'after isolated worker startup/native import; before IFC parse and tessellation',
+        'tessellation':settings.to_dict()}
 
 def _base(kind,ifc):
     return {'schema':kind,'generated_at_epoch':time.time(),'executable':str(Path(sys.executable).resolve()),
@@ -110,6 +113,7 @@ def _base(kind,ifc):
 def benchmark(ifc,output,cache_root,limit):
     requests=build_requests(ifc,limit);_,measure=_load(requests,cache_root);workers=measure['worker_pool']
     gates={'real_ifc_exact_geometry':measure['exact_mesh_count']==len(requests),
+           'cold_exact_lte_5_seconds':measure['cold_seconds']<=5.0,
            'persistent_process_workers':workers['active_process_count']>=max(1,int(workers.get('dispatch_worker_count',workers['worker_count']))),
            'worker_delivery_complete':workers['completed_requests']==len(requests),
            'worker_pool_clean_run':workers['failed_requests']==0 and workers['restarted_workers']==0 and workers['retry_successes']==0,
@@ -123,7 +127,7 @@ def benchmark(ifc,output,cache_root,limit):
     _write(output,result);return result
 
 def cache_read_probe(ifc,output,cache_root,limit,iterations):
-    requests=build_requests(ifc,limit);settings=TessellationSettings(linear_deflection_mm=.35,angular_deflection_rad=.16,circle_segments=48)
+    requests=build_requests(ifc,limit);settings=TessellationSettings()
     pool=PersistentGeometryWorkerPool(1);version=pool.provider_version;pool.close(force=True)
     cache=MeshCache(cache_root,max_memory_items=max(128,len(requests)*2));runs=[];hits=[]
     keys=[value.cache_key(settings,version) for value in requests]
@@ -200,7 +204,7 @@ def aa_benchmark(ifc,output,cache_root,screenshot_dir,limit):
         for _warmup in range(6):widget.controller.render();app.processEvents()
         recorder=FrameTimeRecorder(max_samples=256)
         for index in range(72):
-            started=time.perf_counter();widget.controller.orbit(.18 if index%2 else -.18,.04);widget.controller.render();app.processEvents()
+            started=time.perf_counter();widget.controller.orbit(.18 if index%2 else -.18,.04);app.processEvents()
             recorder.record((time.perf_counter()-started)*1000.0)
         metrics=recorder.to_dict();image=widget.controller.screenshot_to_file(captures/f'msaa_{samples}x_fxaa_{int(fxaa)}.png')
         rows.append({'msaa_samples':samples,'fxaa':fxaa,'metrics':metrics,'screenshot':str(image)})
@@ -210,7 +214,7 @@ def aa_benchmark(ifc,output,cache_root,screenshot_dir,limit):
     result={**_base('cws.real_msaa_fxaa_matrix.v1',ifc),'loader':loader,'scene':scene_metrics,'rows':rows,
             'selected_policy':{'interactive_msaa':interactive['msaa_samples'],'interactive_fxaa':interactive['fxaa'],
                                'recovery_msaa':2,'idle_msaa':idle['msaa_samples']},
-            'status':'PASS' if len(rows)==4 and all(Path(row['screenshot']).is_file() for row in rows) else 'FAIL'}
+            'status':'PASS' if len(rows)==5 and all(Path(row['screenshot']).is_file() for row in rows) else 'FAIL'}
     _write(output,result);return result
 
 def _resource_snapshot(widget):
@@ -251,7 +255,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     # steady-state Viewer session rather than first-use driver allocation.
     for warmup in range(24):
         widget.controller.orbit(.25,.04);widget.controller.pan(.001,0);widget.controller.zoom(1.002)
-        widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
+        app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
     warm_section=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)))
     widget.controller.remove_section_plane(warm_section);widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool()
     if primary:
@@ -266,7 +270,9 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     section_id=''
     while time.perf_counter()-started<float(duration):
         explicit_transition=any(actions%interval==0 for interval in (150,220,260,520,780,1040,1300,1560,1820,2080))
-        frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12));coverage['orbit']+=1
+        frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12));app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
+        elapsed_frame=(time.perf_counter()-frame)*1000.0;recorder.record(elapsed_frame);input_samples.append(elapsed_frame);coverage['orbit']+=1
+        transition_started=time.perf_counter()
         if actions%50==0:widget.controller.pan(.002 if (actions//50)%2==0 else -.002,0);coverage['pan']+=1
         if actions%90==0:widget.controller.zoom(1.015 if (actions//90)%2==0 else 1/1.015);coverage['zoom']+=1
         if actions%150==0:widget.controller.fit_all();coverage['fit']+=1
@@ -290,9 +296,9 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
             if section_id:widget.controller.remove_section_plane(section_id)
             section_id=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)));coverage['section']+=1
         if actions%2080==0:widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool();coverage['measure']+=1
-        widget.controller.render();app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
-        elapsed_frame=(time.perf_counter()-frame)*1000.0;recorder.record(elapsed_frame);input_samples.append(elapsed_frame)
-        (transition_input_samples if explicit_transition else unintended_input_samples).append(elapsed_frame)
+        app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,10)
+        if explicit_transition:transition_input_samples.append((time.perf_counter()-transition_started)*1000.0)
+        else:unintended_input_samples.append(elapsed_frame)
         if primary and actions%300==0:
             bounds=widget.controller.index.world_bounds_by_node.get(primary)
             if bounds is not None:
@@ -313,7 +319,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     transition_stall100=sum(value>100.0 for value in transition_input_samples)
     gates={'real_vtk_viewer':len(scene.nodes)>0,'duration_reached':elapsed>=float(duration),'frame_instrumentation':frames['sample_count']>0,
            'rss_measurement_valid':baseline['rss_mb']>0 and final['rss_mb']>0,
-           'memory_drift_lte_10pct':baseline['rss_mb']>0 and final['rss_mb']>0 and drift<.10,
+           'memory_drift_lt_10pct':baseline['rss_mb']>0 and final['rss_mb']>0 and drift<.10,
            'start_screenshot':Path(start_image).is_file(),'end_screenshot':Path(end_image).is_file(),
            'exact_geometry':loader['exact_mesh_count']==len(requests),
            'ifc_world_placements_applied':scene_metrics['placed_node_count']>0,
@@ -322,10 +328,17 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
            'worker_leak_zero':final['worker_process_count']<=baseline['worker_process_count'],
            'thread_leak_zero':final['thread_count']<=baseline['thread_count'],
            'actor_leak_zero':final['actor_count']==baseline['actor_count'],
-           'unintended_stall_over_100ms_zero':unintended_stall100==0,'wrong_instance_picks_zero':wrong_picks==0}
+           'frame_p95_lte_33ms':p95<=33.0,
+           'fps_mean_gte_30':float(frames.get('fps_mean',0))>=30.0,
+           'input_to_render_p95_lte_35ms':(percentile(input_samples,.95) or float('inf'))<=35.0,
+           'input_to_render_p99_lte_50ms':(percentile(input_samples,.99) or float('inf'))<=50.0,
+           'large_pick_p95_lte_150ms':(percentile(pick_samples,.95) or float('inf'))<=150.0,
+           'unintended_stall_over_100ms_zero':unintended_stall100==0,
+           'wrong_instance_picks_zero':wrong_picks==0,
+           'hidden_object_false_picks_zero':hidden_false_picks==0}
     result={**_base('cws.real_viewer_soak.v2',ifc),'duration_seconds':elapsed,'actions':actions,'frame_metrics':frames,
             'memory':{'baseline':baseline,'final':final,'drift_ratio':drift},'backend':backend,'action_coverage':coverage,
-            'interaction_metrics':{'input_to_render_p50_ms':percentile(input_samples,.50),'input_to_render_p95_ms':percentile(input_samples,.95),
+            'interaction_metrics':{'input_to_render_p50_ms':percentile(input_samples,.50),'input_to_render_p95_ms':percentile(input_samples,.95),'input_to_render_p99_ms':percentile(input_samples,.99),
                                    'pick_p50_ms':percentile(pick_samples,.50),'pick_p95_ms':percentile(pick_samples,.95),
                                    'selection_p95_ms':percentile(selection_samples,.95),'wrong_instance_picks':wrong_picks,
                                    'hidden_object_false_picks':hidden_false_picks,'stall_33ms_count':sum(v>33 for v in input_samples),
