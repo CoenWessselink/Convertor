@@ -8,7 +8,12 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from cws_convertor.drawings import DrawingProjectionModel
+from cws_convertor.drawings import (
+    DrawingBuildRequest,
+    DrawingProjectionModel,
+    ProductionDrawingEngine,
+    ProductionDrawingRenderer,
+)
 from cws_convertor.output import DocumentOutputService
 
 SHEET_MM: dict[str, tuple[float, float]] = {
@@ -24,6 +29,11 @@ class DrawingOutput:
     pdf_path: Path | None
     warnings: tuple[str, ...] = ()
     scale_label: str = "Auto"
+    document_sha256: str = ""
+    visible_content_sha256: str = ""
+    release_ready: bool = False
+    lint_issues: tuple[Mapping[str, Any], ...] = ()
+    page_count: int = 0
 
 
 class EngineeringDrawingGenerator:
@@ -524,6 +534,8 @@ class EngineeringDrawingGenerator:
         views: Sequence[str] = ("front", "top", "side", "iso"), dimensions: bool = True,
         title_block: bool = True, dimension_mode: str = "Hoofdmaten",
         manual_dimensions: Sequence[Mapping[str, Any]] = (),
+        orientation: str = "landscape", include_sections: bool = True,
+        include_details: bool = True, require_production_ready: bool = False,
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
         aliases = {
@@ -596,71 +608,245 @@ class EngineeringDrawingGenerator:
         selected_views = tuple(view for view in views if view in {"front", "top", "side", "3d", "iso"})
         if not selected_views:
             raise ValueError("Selecteer ten minste een aanzicht")
-        drawing_views = tuple("iso" if view == "3d" else view for view in selected_views)
-        labels = {"front": "VOORAANZICHT", "top": "BOVENAANZICHT", "side": "ZIJAANZICHT", "3d": "3D", "iso": "ISOMETRISCH"}
         sheet_key = sheet_format if sheet_format in SHEET_MM else "A3"
-        paper_width, paper_height = SHEET_MM[sheet_key]
-        width = 1800
-        height = int(round(width * paper_height / paper_width))
-        title_height = 135 if title_block else 20
-        image = Image.new("RGB", (width, height), "white")
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((12, 12, width - 12, height - 12), outline=(37, 70, 108), width=3)
-        self._draw_logo(draw, 36, 22)
-        draw.text((355, 31), "TECHNISCHE WERKPLAATSTEKENING", fill=(34, 58, 87), font=self._font(18, bold=True))
-        rectangles = self._rectangles(len(drawing_views), (34, 76, width - 34, height - title_height - 16))
-        px_per_mm = width / paper_width
         requested = self._requested_scale(scale_label)
-        denominator, adjusted = self._fit_scale(vertices, drawing_views, rectangles, px_per_mm, requested)
-        for source_view, drawing_view, rectangle in zip(selected_views, drawing_views, rectangles):
-            self._draw_view(
-                draw, vertices, triangles, drawing_view, rectangle, labels[source_view], denominator,
-                px_per_mm, dimensions, dimension_mode, manual_dimensions, production_features,
-            )
         warnings: list[str] = []
-        if adjusted:
-            warnings.append(f"Gevraagde schaal paste niet op {sheet_key}; aangepast naar 1:{denominator}")
-        if title_block:
-            top = height - title_height
-            draw.rectangle((34, top, width - 34, height - 34), outline=(37, 70, 108), width=2)
-            columns = (34, 465, 900, 1335, width - 34)
-            for x in columns[1:-1]:
-                draw.line((x, top, x, height - 34), fill=(91, 116, 145), width=1)
-            middle = top + 48
-            draw.line((34, middle, width - 34, middle), fill=(91, 116, 145), width=1)
-            part_id = str(getattr(entity, "part_position", "") or getattr(entity, "position", "") or getattr(entity, "name", "") or resolved_entity_id)
-            profile = str(
-                getattr(entity, "normalized_profile", "")
-                or getattr(entity, "profile_designation", "")
-                or getattr(entity, "profile", "")
-                or "Niet herkend"
+
+        # Prefer a freshly rebuilt canonical BREP.  The stored rebuild record
+        # must match the current manufacturing hash before the linter can mark
+        # the drawing as production-ready.
+        exact_shape = None
+        geometry_basis = "viewer_mesh"
+        geometry_sha256 = ""
+        canonical_rebuild_current = False
+        workbench = getattr(entity, "workbench", {}) or {}
+        try:
+            from cws_convertor.project.canonical_rebuild import rebuild_and_compare
+
+            rebuilt = rebuild_and_compare(entity)
+            if rebuilt.shape is not None:
+                exact_shape = rebuilt.shape
+                raw_vertices, raw_triangles = rebuilt.shape.tessellate(0.08)
+                vertices = np.asarray(
+                    [
+                        (
+                            float(value.x),
+                            float(value.y),
+                            float(value.z),
+                        )
+                        for value in raw_vertices
+                    ],
+                    dtype=float,
+                )
+                triangles = np.asarray(raw_triangles, dtype=int)
+                geometry_basis = "canonical_rebuild_brep"
+                geometry_sha256 = str(rebuilt.report.get("canonical_signature") or "")
+                stored = dict(workbench.get("canonical_rebuild") or {}) if isinstance(workbench, Mapping) else {}
+                stored_report = dict(stored.get("report") or {})
+                canonical_rebuild_current = bool(
+                    rebuilt.report.get("status") == "passed"
+                    and stored.get("status") == "current"
+                    and stored.get("manufacturing_hash") == getattr(entity, "manufacturing_hash", "")
+                    and stored_report.get("canonical_signature") == rebuilt.report.get("canonical_signature")
+                )
+                warnings.extend(str(value) for value in rebuilt.report.get("warnings") or ())
+        except Exception as exc:
+            warnings.append(f"Canonical BREP niet beschikbaar voor deze review: {exc}")
+
+        semantic_dimensions: list[dict[str, Any]] = []
+        dimension_chains: list[dict[str, Any]] = []
+        canonical = None
+        canonical_current = False
+        try:
+            if exact_shape is not None and geometry_sha256:
+                from cws_convertor.project.roundtrip import canonical_part_from_workbench
+
+                canonical = canonical_part_from_workbench(
+                    entity,
+                    exact_shape,
+                    canonical_signature=geometry_sha256,
+                )
+            else:
+                canonical = entity.canonical() if callable(getattr(entity, "canonical", None)) else None
+            if canonical is not None:
+                from dimension_graph import populate_dimension_graph
+
+                graph = populate_dimension_graph(canonical, overwrite=True, strict=False)
+                canonical_hash = str(canonical.properties.get("manufacturing_hash") or "")
+                if not canonical_hash or canonical_hash != str(getattr(entity, "manufacturing_hash", "")):
+                    warnings.append("DimensionGraph mist een actuele productierevisiebinding en is niet overgenomen")
+                else:
+                    canonical_current = True
+                    semantic_dimensions = [dict(value) for value in canonical.drawing.dimensions]
+                    dimension_chains = [dict(value) for value in canonical.drawing.dimension_chains]
+                    warnings.extend(str(value) for value in graph.warnings)
+        except Exception as exc:
+            warnings.append(f"DimensionGraph kon niet worden geladen: {exc}")
+
+        project = self.workspace.project
+        part_label = str(
+            getattr(entity, "part_position", "")
+            or getattr(entity, "assembly_mark", "")
+            or getattr(entity, "position", "")
+            or getattr(entity, "name", "")
+            or resolved_entity_id
+        )
+        profile = str(
+            getattr(entity, "normalized_profile", "")
+            or getattr(entity, "profile_designation", "")
+            or getattr(entity, "profile", "")
+            or "Niet herkend"
+        )
+        material = str(
+            getattr(entity, "normalized_material", "")
+            or getattr(entity, "material_grade", "")
+            or getattr(entity, "material", "")
+            or "Niet herkend"
+        )
+        project_label = str(
+            getattr(project, "project_name", "")
+            or getattr(project, "name", "")
+            or getattr(project, "project_id", "")
+            or "CWS project"
+        )
+        is_assembly = resolved_entity_id in getattr(project, "assemblies", {})
+        bom: list[dict[str, Any]] = []
+        if is_assembly:
+            part_ids = list(getattr(entity, "part_ids", ()) or ())
+            for part_id in part_ids:
+                item = project.parts.get(str(part_id))
+                if item is None:
+                    continue
+                bom.append(
+                    {
+                        "id": str(part_id),
+                        "mark": str(getattr(item, "part_position", "") or part_id),
+                        "quantity": int(getattr(item, "quantity_per_assembly", {}).get(resolved_entity_id, 1) or 1),
+                        "profile": str(getattr(item, "normalized_profile", "") or getattr(item, "profile", "")),
+                        "material": str(getattr(item, "normalized_material", "") or getattr(item, "material", "")),
+                    }
+                )
+            for fastener_id in getattr(entity, "fastener_ids", ()) or ():
+                fastener = project.fasteners.get(str(fastener_id))
+                bom.append({"id": str(fastener_id), "mark": str(getattr(fastener, "name", "") or fastener_id), "quantity": int(getattr(fastener, "quantity", 1) or 1), "description": "Bevestiger"})
+            for weld_id in getattr(entity, "weld_ids", ()) or ():
+                weld = project.welds.get(str(weld_id))
+                bom.append({"id": str(weld_id), "mark": str(getattr(weld, "name", "") or weld_id), "quantity": 1, "description": "Las"})
+        else:
+            bom.append(
+                {
+                    "id": resolved_entity_id,
+                    "mark": part_label,
+                    "quantity": int(getattr(entity, "quantity_total", 1) or 1),
+                    "profile": profile,
+                    "material": material,
+                }
             )
-            material = str(
-                getattr(entity, "normalized_material", "")
-                or getattr(entity, "material_grade", "")
-                or getattr(entity, "material", "")
-                or "Niet herkend"
-            )
-            project_label = str(
-                getattr(self.workspace.project, "project_name", "")
-                or getattr(self.workspace.project, "name", "")
-                or getattr(self.workspace.project, "project_id", "")
-                or "CWS project"
-            )
-            entries = (("Project", project_label), ("Onderdeel", part_id), ("Profiel", profile),
-                       ("Materiaal", material), ("Formaat / schaal", f"{sheet_key} / 1:{denominator}"),
-                       ("Eenheid", unit), ("Revisie", "A"), ("Blad", "1 van 1"))
-            for index, (key, value) in enumerate(entries):
-                column, row = index % 4, index // 4
-                draw.text((columns[column] + 10, top + 7 + row * 49), f"{key}: {value}", fill=(37, 60, 86), font=self._font(14, bold=key in {"Onderdeel", "Formaat / schaal"}))
+
+        current_workbench_revision = (
+            dict(workbench.get("current_revision") or {})
+            if isinstance(workbench, Mapping)
+            else {}
+        )
+        revision = str(getattr(entity, "revision", "") or current_workbench_revision.get("revision_number") or "A")
+        status = str(current_workbench_revision.get("review_status") or getattr(entity, "status", "") or "REVIEW")
+        roundtrip = dict(current_workbench_revision.get("roundtrip_validation") or {})
+        roundtrip_current = bool(
+            roundtrip.get("status") == "passed"
+            and roundtrip.get("manufacturing_hash") == str(getattr(entity, "manufacturing_hash", ""))
+        )
+        title_values = {
+            "project": project_label,
+            "entity": part_label,
+            "profile": profile,
+            "material": material,
+            "revision": revision,
+            "status": status,
+        }
+        request = DrawingBuildRequest(
+            entity_id=resolved_entity_id,
+            vertices=vertices,
+            triangles=triangles,
+            views=selected_views,
+            sheet_format=sheet_key,
+            orientation=orientation,
+            scale_denominator=requested,
+            unit=unit,
+            dimensions_enabled=dimensions,
+            dimension_mode=dimension_mode,
+            title_block_enabled=title_block,
+            include_sections=include_sections,
+            include_details=include_details,
+            features=production_features,
+            dimensions=semantic_dimensions,
+            dimension_chains=dimension_chains,
+            manual_dimensions=manual_dimensions,
+            title_block=title_values,
+            revisions=({"revision": revision, "status": status},),
+            bom=bom,
+            notes=(
+                "Alle maten vóór productie controleren.",
+                "Niet van de rasterpreview meten; gebruik uitsluitend de vermelde vector-maten.",
+                "Productievrijgave vereist een groene DrawingLinter en actuele roundtrip.",
+            ),
+            document_type="assembly" if is_assembly else "part",
+            geometry_basis=geometry_basis,
+            geometry_sha256=geometry_sha256,
+            manufacturing_sha256=str(getattr(entity, "manufacturing_hash", "")),
+            expected_manufacturing_sha256=str(getattr(entity, "manufacturing_hash", "")),
+            source_revision=revision,
+            canonical_rebuild_current=canonical_rebuild_current,
+            canonical_payload_current=canonical_current,
+            roundtrip_current=roundtrip_current,
+            exact_shape=exact_shape,
+        )
+        document = ProductionDrawingEngine.build(request)
+        lint_issues = tuple(dict(item) for item in document.lint.get("issues") or ())
+        warnings.extend(str(item.get("message") or item.get("code")) for item in lint_issues)
+        release_ready = bool(document.lint.get("release_ready"))
+        if require_production_ready and not release_ready:
+            codes = ", ".join(str(item.get("code") or "DRAWING_BLOCKED") for item in lint_issues)
+            raise ValueError(f"Productie-PDF geblokkeerd door DrawingLinter: {codes}")
+
         output = Path(output_directory)
         output.mkdir(parents=True, exist_ok=True)
-        stem = str(getattr(entity, "part_position", "") or getattr(entity, "position", "") or getattr(entity, "name", "") or resolved_entity_id or "onderdeel").replace("/", "-")
+        stem = part_label.replace("/", "-")
         png_path = output / f"{stem}_tekening.png" if make_png else None
         pdf_path = output / f"{stem}_tekening.pdf" if make_pdf else None
-        if png_path is not None:
-            image.save(png_path, format="PNG", optimize=True, dpi=(300, 300))
+        if pdf_path is not None and canonical is not None and canonical_current and not is_assembly:
+            from pdf_support import create_trusted_pdf
+
+            create_trusted_pdf(canonical, pdf_path, drawing_document=document)
+            if png_path is not None:
+                ProductionDrawingRenderer.render_png(pdf_path, png_path)
+        else:
+            ProductionDrawingRenderer.render(document, pdf_path=pdf_path, png_path=png_path)
         if pdf_path is not None:
-            DrawingProjectionModel.export_pdf(pdf_path,vertices,triangles,views=drawing_views,sheet_mm=(paper_width,paper_height),scale_denominator=denominator,title="TECHNISCHE WERKPLAATSTEKENING",metadata={"Onderdeel":stem,"Formaat":sheet_key,"Eenheid":unit})
             DocumentOutputService.shared().register(pdf_path,kind="engineering_drawing",producer="EngineeringDrawingGenerator",entity_ids=(resolved_entity_id,))
-        return DrawingOutput(png_path=png_path, pdf_path=pdf_path, warnings=tuple(warnings), scale_label=f"1:{denominator}")
+        if png_path is not None:
+            DocumentOutputService.shared().register(png_path,kind="drawing_preview",producer="EngineeringDrawingGenerator",entity_ids=(resolved_entity_id,))
+        properties = getattr(entity, "properties", None)
+        if isinstance(properties, dict):
+            properties["drawing_state"] = {
+                "status": "current" if release_ready else "review_blocked",
+                "manufacturing_hash": str(getattr(entity, "manufacturing_hash", "")),
+                "geometry_sha256": document.geometry_sha256,
+                "document_sha256": document.document_sha256,
+                "visible_content_sha256": document.visible_content_sha256,
+                "page_count": len(document.pages),
+                "release_ready": release_ready,
+                "lint": document.lint,
+            }
+        if hasattr(entity, "drawing_status"):
+            entity.drawing_status = "released" if release_ready else "review"
+        return DrawingOutput(
+            png_path=png_path,
+            pdf_path=pdf_path,
+            warnings=tuple(dict.fromkeys(warnings)),
+            scale_label=f"1:{document.scale_denominator}",
+            document_sha256=document.document_sha256,
+            visible_content_sha256=document.visible_content_sha256,
+            release_ready=release_ready,
+            lint_issues=lint_issues,
+            page_count=len(document.pages),
+        )

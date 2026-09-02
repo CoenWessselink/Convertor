@@ -1417,18 +1417,21 @@ if qt_available():
             self.format = QtWidgets.QComboBox()
             self.format.addItems(["A4", "A3", "A2", "A1", "A0"])
             self.format.setCurrentText("A3")
+            self.orientation = QtWidgets.QComboBox()
+            self.orientation.addItem("Liggend", "landscape")
+            self.orientation.addItem("Staand", "portrait")
             self.scale = QtWidgets.QComboBox()
             self.scale.addItems(["Auto", "1:1", "1:2", "1:5", "1:10", "1:20", "1:25", "1:50", "1:100", "1:200"])
             self.unit = QtWidgets.QComboBox()
             self.unit.addItems(["mm", "cm"])
             self.preview_button = QtWidgets.QPushButton("Voorbeeld vernieuwen")
             self.png_button = QtWidgets.QPushButton("PNG exporteren")
-            self.pdf_button = QtWidgets.QPushButton("Review-PDF genereren")
+            self.pdf_button = QtWidgets.QPushButton("PDF genereren")
             self.pdf_button.setObjectName("primaryButton")
             top.addWidget(self.title)
             top.addWidget(live)
             top.addStretch(1)
-            for label, widget in (("Formaat", self.format), ("Schaal", self.scale), ("Eenheid", self.unit)):
+            for label, widget in (("Formaat", self.format), ("Oriëntatie", self.orientation), ("Schaal", self.scale), ("Eenheid", self.unit)):
                 top.addWidget(QtWidgets.QLabel(label))
                 top.addWidget(widget)
             top.addWidget(self.preview_button)
@@ -1453,11 +1456,19 @@ if qt_available():
             self.title_block_button.setChecked(True)
             self.dimension_mode = QtWidgets.QComboBox()
             self.dimension_mode.addItems(("Hoofdmaten", "Contour + gaten", "Productiematen"))
+            self.sections_button = QtWidgets.QPushButton("Doorsneden")
+            self.sections_button.setCheckable(True)
+            self.sections_button.setChecked(True)
+            self.details_button = QtWidgets.QPushButton("Details")
+            self.details_button.setCheckable(True)
+            self.details_button.setChecked(True)
             self.add_dimension_button = QtWidgets.QPushButton("Eigen maat toevoegen...")
             self.clear_dimensions_button = QtWidgets.QPushButton("Eigen maten wissen")
             views.addSpacing(18)
             views.addWidget(self.dimensions_button)
             views.addWidget(self.dimension_mode)
+            views.addWidget(self.sections_button)
+            views.addWidget(self.details_button)
             views.addWidget(self.add_dimension_button)
             views.addWidget(self.clear_dimensions_button)
             views.addWidget(self.title_block_button)
@@ -1480,9 +1491,13 @@ if qt_available():
             self.png_button.clicked.connect(self.export_png)
             self.pdf_button.clicked.connect(self.export_pdf)
             self.format.currentTextChanged.connect(lambda _text: self.refresh_preview())
+            self.orientation.currentIndexChanged.connect(lambda _index: self.refresh_preview())
             self.scale.currentTextChanged.connect(lambda _text: self.refresh_preview())
+            self.unit.currentTextChanged.connect(lambda _text: self.refresh_preview())
             self.dimensions_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
             self.title_block_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
+            self.sections_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
+            self.details_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
             self.dimension_mode.currentTextChanged.connect(lambda _text: self.refresh_preview())
             self.add_dimension_button.clicked.connect(self._add_manual_dimension)
             self.clear_dimensions_button.clicked.connect(self._clear_manual_dimensions)
@@ -1614,8 +1629,9 @@ if qt_available():
                 except Exception:
                     return False
 
-            # A fastener or assembly may have renderable geometry, but a
-            # production drawing must resolve to its canonical make part.
+            # Assemblies now have their own multi-sheet drawing/BOM route.
+            if current in project.assemblies and drawable(current):
+                return current
             if current in project.parts and drawable(current):
                 return current
 
@@ -1693,14 +1709,18 @@ if qt_available():
                     title_block=self.title_block_button.isChecked(),
                     dimension_mode=self.dimension_mode.currentText(),
                     manual_dimensions=tuple(self._manual_dimensions),
+                    orientation=str(self.orientation.currentData() or "landscape"),
+                    include_sections=self.sections_button.isChecked(),
+                    include_details=self.details_button.isChecked(),
                 )
                 if result.png_path:
                     self._last_png = Path(result.png_path)
                     self._show_pixmap()
                 warning = f" | {result.warnings[0]}" if result.warnings else ""
+                release = "productie-gereed" if result.release_ready else "review; productie geblokkeerd"
                 self.status.setText(
                     f"Reviewdocument gegenereerd op schaal {result.scale_label}: "
-                    f"{result.pdf_path or result.png_path}{warning} | geen productie-vrijgave"
+                    f"{result.pdf_path or result.png_path}{warning} | {result.page_count} blad(en) | {release}"
                 )
                 return result
             except Exception as exc:

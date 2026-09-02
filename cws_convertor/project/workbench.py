@@ -1077,6 +1077,18 @@ def _sync_part_state(part: Part) -> None:
     ]
     previous_hash = part.manufacturing_hash
     part.recompute_hashes()
+    if previous_hash != part.manufacturing_hash:
+        previous_drawing = dict(part.properties.get("drawing_state") or {})
+        part.properties["drawing_state"] = {
+            **previous_drawing,
+            "status": "stale",
+            "release_ready": False,
+            "previous_manufacturing_hash": previous_hash,
+            "manufacturing_hash": part.manufacturing_hash,
+            "invalidated_reason": "part_workbench_changed",
+            "document_sha256": "",
+            "visible_content_sha256": "",
+        }
     if identity_inputs_changed or previous_hash != part.manufacturing_hash:
         part.classification_status = "review_required"
         part.classification_method = "part_workbench_change"
@@ -1510,6 +1522,17 @@ def record_canonical_rebuild(
         if len(matches) == 1:
             part.mass_each_kg = float(volume_mm3) / 1_000_000_000.0 * matches[0].density_kg_m3
     part.workbench["canonical_rebuild"] = record
+    previous_drawing = dict(part.properties.get("drawing_state") or {})
+    part.properties["drawing_state"] = {
+        **previous_drawing,
+        "status": "refresh_required",
+        "release_ready": False,
+        "manufacturing_hash": part.manufacturing_hash,
+        "geometry_sha256": str(payload.get("canonical_signature") or ""),
+        "invalidated_reason": "canonical_rebuild_refreshed",
+        "document_sha256": "",
+        "visible_content_sha256": "",
+    }
     part.modified_at = utc_now_iso()
     validate_workbench_state(part, part.workbench)
     project.audit(

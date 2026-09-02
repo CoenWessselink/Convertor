@@ -1796,8 +1796,15 @@ def create_trusted_pdf(
     output_path: str | Path,
     *,
     template: DrawingTemplate | None = None,
+    drawing_document: Any | None = None,
 ) -> PDFConversionResult:
-    """Create a vector drawing with exact canonical JSON and integrity hashes."""
+    """Create a vector drawing with exact canonical JSON and integrity hashes.
+
+    When supplied, ``drawing_document`` is the renderer-neutral authority used
+    by the active PDF / Tekening workspace.  Trusted PDF then adds integrity
+    around those exact visible pages instead of invoking the legacy drawing
+    layout as a second authority.
+    """
 
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1811,7 +1818,30 @@ def create_trusted_pdf(
 
     with tempfile.TemporaryDirectory(prefix="trusted_pdf_") as folder:
         base = Path(folder) / "visible.pdf"
-        render_part_pdf(prepared, base, template=template)
+        drawing_document_sha256 = ""
+        if drawing_document is not None:
+            from cws_convertor.drawings import DrawingDocument, ProductionDrawingRenderer
+
+            document = (
+                drawing_document
+                if isinstance(drawing_document, DrawingDocument)
+                else DrawingDocument.from_dict(dict(drawing_document))
+            )
+            if document.entity_id not in {
+                str(prepared.part_id),
+                str(prepared.header.part_number),
+                str(prepared.header.position_number),
+            }:
+                raise TrustedPDFError("DrawingDocument hoort niet bij het canonical onderdeel")
+            ProductionDrawingRenderer.render_pdf(document, base)
+            drawing_document_sha256 = document.document_sha256
+            prepared.drawing.sheet_format = document.sheet_format
+            prepared.drawing.orientation = document.orientation
+            prepared.drawing.scale = f"1:{document.scale_denominator}"
+            prepared.drawing.sheet_count = len(document.pages)
+            prepared.properties.setdefault("trusted_pdf", {})["drawing_document_sha256"] = drawing_document_sha256
+        else:
+            render_part_pdf(prepared, base, template=template)
         visible_hash = visible_pdf_sha256(base)
         prepared.drawing.visible_content_sha256 = visible_hash
         prepared.properties.setdefault("trusted_pdf", {})
@@ -1839,6 +1869,9 @@ def create_trusted_pdf(
             "visible_hash_algorithm": VISIBLE_HASH_ALGORITHM,
             "created_at": utc_now_iso(),
         }
+        if drawing_document_sha256:
+            manifest["drawing_document_filename"] = "cws-drawing-document.json"
+            manifest["drawing_document_sha256"] = drawing_document_sha256
         manifest_bytes = json.dumps(
             manifest,
             ensure_ascii=False,
@@ -1894,10 +1927,15 @@ def create_trusted_pdf(
         outputs=[output],
         warnings=list(dict.fromkeys(prepared.warnings + prepared.validation.warnings)),
         details={
-            "route": "canonical->vector-pdf+embedded-model",
+            "route": (
+                "drawing-document->vector-pdf+canonical-integrity"
+                if drawing_document is not None
+                else "canonical->vector-pdf+embedded-model"
+            ),
             "mode": verification.mode,
             "manifest": verification.details.get("manifest", {}),
             "production_export_allowed": prepared.validation.production_export_allowed,
+            "drawing_document_sha256": drawing_document_sha256,
         },
     )
 
@@ -1936,6 +1974,16 @@ def load_trusted_pdf(path: str | Path, *, strict: bool = True) -> PDFAnalysisRes
     for key, value in checks.items():
         if value != manifest.get(key):
             raise TrustedPDFError(f"Trusted PDF-controle mislukt voor {key}")
+    drawing_document_sha256 = str(manifest.get("drawing_document_sha256") or "")
+    if drawing_document_sha256:
+        try:
+            from cws_convertor.drawings import ProductionDrawingRenderer
+
+            document = ProductionDrawingRenderer.load_embedded_document(source)
+        except Exception as exc:
+            raise TrustedPDFError("Trusted PDF bevat een ongeldig DrawingDocument") from exc
+        if document.document_sha256 != drawing_document_sha256:
+            raise TrustedPDFError("DrawingDocument-hash wijkt af van het Trusted PDF-manifest")
     if part.drawing.visible_content_sha256 and part.drawing.visible_content_sha256 != checks["visible_sha256"]:
         raise TrustedPDFError("Zichtbare PDF-hash wijkt af van de canonieke tekeningdata")
     if manifest.get("source_sha256", "") != part.source_sha256:

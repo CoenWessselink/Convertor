@@ -26,7 +26,10 @@ class DrawingProjectionModel:
         if view == "front": return np.array((1.,0.,0.)),np.array((0.,1.,0.)),np.array((0.,0.,1.))
         if view == "top": return np.array((1.,0.,0.)),np.array((0.,0.,1.)),np.array((0.,-1.,0.))
         if view == "side": return np.array((0.,1.,0.)),np.array((0.,0.,1.)),np.array((1.,0.,0.))
-        direction=np.array((1.,-1.,.78),dtype=float);direction/=np.linalg.norm(direction)
+        # ISO is an exact parallel isometric projection.  The separate 3D
+        # review direction deliberately has a lower elevation, so the two UI
+        # options no longer render the same view.
+        direction=np.array((1.,-.62,.42) if view=="3d" else (1.,-1.,.78),dtype=float);direction/=np.linalg.norm(direction)
         u=np.array((1.,1.,0.),dtype=float);u/=np.linalg.norm(u);v=np.cross(direction,u);v/=np.linalg.norm(v)
         return u,v,direction
 
@@ -52,6 +55,238 @@ class DrawingProjectionModel:
                 if front[first]!=front[second] or (front[first] and float(np.dot(normals[first],normals[second]))<math.cos(math.radians(28.))):result.add(edge)
         return tuple(sorted(result))
 
+    @staticmethod
+    def _mesh_edge_layers(
+        triangles: np.ndarray,
+        vertices: np.ndarray,
+        direction: np.ndarray,
+    ) -> tuple[tuple[tuple[int, int], ...], tuple[tuple[int, int], ...]]:
+        """Return feature/silhouette edges without coplanar triangulation lines."""
+
+        adjacency: dict[tuple[int, int], list[int]] = {}
+        normals: list[np.ndarray] = []
+        for triangle_index, triangle in enumerate(np.asarray(triangles, dtype=int)):
+            a, b, c = (int(value) for value in triangle)
+            normal = np.cross(vertices[b] - vertices[a], vertices[c] - vertices[a])
+            length = float(np.linalg.norm(normal))
+            normals.append(normal / length if length > 1.0e-9 else np.zeros(3))
+            for start, end in ((a, b), (b, c), (c, a)):
+                edge = (start, end) if start < end else (end, start)
+                adjacency.setdefault(edge, []).append(triangle_index)
+        front = [float(np.dot(normal, direction)) >= -1.0e-8 for normal in normals]
+        visible: set[tuple[int, int]] = set()
+        hidden: set[tuple[int, int]] = set()
+        crease_limit = math.cos(math.radians(1.0))
+        for edge, faces in adjacency.items():
+            if len(faces) == 1:
+                (visible if front[faces[0]] else hidden).add(edge)
+                continue
+            first, second = faces[:2]
+            silhouette = front[first] != front[second]
+            crease = float(np.dot(normals[first], normals[second])) < crease_limit
+            if not silhouette and not crease:
+                continue
+            if front[first] or front[second]:
+                visible.add(edge)
+            else:
+                hidden.add(edge)
+        return tuple(sorted(visible)), tuple(sorted(hidden))
+
+    @classmethod
+    def _occt_hlr_polylines(
+        cls,
+        exact_shape: object,
+        view: str,
+    ) -> tuple[tuple[np.ndarray, ...], tuple[np.ndarray, ...]]:
+        """Run OCCT HLR and return projected visible/hidden edge polylines.
+
+        Imports are local so mesh-only review remains usable in reduced
+        environments.  Any HLR failure is reported to ``edge_layers`` which
+        then uses the explicitly non-production mesh fallback.
+        """
+
+        import cadquery as cq
+
+        try:
+            from cadquery.occ_impl.shapes import hlr as cadquery_hlr
+        except ImportError:
+            cadquery_hlr = None
+
+        u, v, direction = cls.basis(view)
+
+        def edge_points(compound: object) -> tuple[np.ndarray, ...]:
+            result: list[np.ndarray] = []
+            identities: set[tuple[tuple[float, float], ...]] = set()
+
+            def coordinate(point: object, lower: str, upper: str) -> float:
+                value = getattr(point, lower, None)
+                if value is not None:
+                    return float(value() if callable(value) else value)
+                value = getattr(point, upper)
+                return float(value() if callable(value) else value)
+
+            if compound is None or getattr(compound, "wrapped", compound).IsNull():
+                return ()
+            wrapped_compound = compound if hasattr(compound, "Edges") else cq.Shape.cast(compound)
+            for edge in wrapped_compound.Edges():
+                points = edge.discretize(Deflection=0.05)
+                # HLR returns geometry in its projection plane.  X/Y are
+                # therefore already drawing coordinates; projecting a second
+                # time would corrupt orthographic proportions.
+                projected = np.asarray(
+                    [
+                        (
+                            coordinate(point, "x", "X"),
+                            coordinate(point, "y", "Y"),
+                        )
+                        for point in points
+                    ],
+                    dtype=float,
+                )
+                if len(projected) < 2:
+                    continue
+                identity = tuple((round(float(point[0]), 6), round(float(point[1]), 6)) for point in projected)
+                reverse = tuple(reversed(identity))
+                if identity in identities or reverse in identities:
+                    continue
+                identities.add(identity)
+                result.append(projected)
+            return tuple(result)
+
+        if cadquery_hlr is not None:
+            result = cadquery_hlr(
+                exact_shape,
+                dir=tuple(float(value) for value in direction),
+                up=tuple(float(value) for value in v),
+            )
+            visible = edge_points(result.visible)
+            hidden = edge_points(result.hidden)
+            if not visible:
+                raise RuntimeError("OCCT HLR leverde geen zichtbare randen")
+            return visible, hidden
+
+        from OCP.HLRAlgo import HLRAlgo_Projector
+        from OCP.HLRBRep import HLRBRep_Algo, HLRBRep_HLRToShape
+        from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+
+        algorithm = HLRBRep_Algo()
+        wrapped = getattr(exact_shape, "wrapped", exact_shape)
+        algorithm.Add(wrapped)
+        axis = gp_Ax2(
+            gp_Pnt(0.0, 0.0, 0.0),
+            gp_Dir(float(direction[0]), float(direction[1]), float(direction[2])),
+            gp_Dir(float(u[0]), float(u[1]), float(u[2])),
+        )
+        algorithm.Projector(HLRAlgo_Projector(axis))
+        algorithm.Update()
+        algorithm.Hide()
+        extraction = HLRBRep_HLRToShape(algorithm)
+
+        def collect(names: Sequence[str]) -> tuple[np.ndarray, ...]:
+            result: list[np.ndarray] = []
+            for name in names:
+                method = getattr(extraction, name, None)
+                if method is None:
+                    continue
+                compound = method()
+                if compound is None or compound.IsNull():
+                    continue
+                result.extend(edge_points(compound))
+            return tuple(result)
+
+        visible = collect(("VCompound", "Rg1LineVCompound", "OutLineVCompound"))
+        hidden = collect(("HCompound", "Rg1LineHCompound", "OutLineHCompound"))
+        if not visible:
+            raise RuntimeError("OCCT HLR leverde geen zichtbare randen")
+        return visible, hidden
+
+    @classmethod
+    def edge_layers(
+        cls,
+        vertices: np.ndarray,
+        triangles: np.ndarray,
+        view: str,
+        *,
+        exact_shape: object | None = None,
+    ) -> tuple[tuple[np.ndarray, ...], tuple[np.ndarray, ...], str]:
+        if exact_shape is not None:
+            try:
+                visible, hidden = cls._occt_hlr_polylines(exact_shape, view)
+                return visible, hidden, "occt_hlr"
+            except Exception:
+                # The linter keeps this fallback out of production release.
+                pass
+        direction = cls.basis(view)[2]
+        visible_edges, hidden_edges = cls._mesh_edge_layers(
+            np.asarray(triangles, dtype=int),
+            np.asarray(vertices, dtype=float),
+            direction,
+        )
+        projected, _depth = cls.project(np.asarray(vertices, dtype=float), view)
+        visible = tuple(projected[[first, second]] for first, second in visible_edges)
+        hidden = tuple(projected[[first, second]] for first, second in hidden_edges)
+        return visible, hidden, "mesh_fallback"
+
+    @staticmethod
+    def exact_section_polylines(
+        exact_shape: object,
+        *,
+        axis: str = "x",
+        position: float | None = None,
+    ) -> tuple[np.ndarray, ...]:
+        """Intersect an exact BREP with a manufacturing-axis plane.
+
+        The result is returned in section-plane coordinates and can therefore
+        be hatched and rendered without consulting the viewer tessellation.
+        """
+
+        import cadquery as cq
+        from OCP.BRepAlgoAPI import BRepAlgoAPI_Section
+        from OCP.gp import gp_Dir, gp_Pln, gp_Pnt
+
+        shape = exact_shape if hasattr(exact_shape, "BoundingBox") else cq.Shape.cast(exact_shape)
+        bounds = shape.BoundingBox()
+        axes = {
+            "x": ((1.0, 0.0, 0.0), (float(bounds.xmin), float(bounds.xmax)), (1, 2)),
+            "y": ((0.0, 1.0, 0.0), (float(bounds.ymin), float(bounds.ymax)), (0, 2)),
+            "z": ((0.0, 0.0, 1.0), (float(bounds.zmin), float(bounds.zmax)), (0, 1)),
+        }
+        normal, limits, coordinates = axes.get(str(axis).lower(), axes["x"])
+        cut_position = float(position) if position is not None else (limits[0] + limits[1]) * 0.5
+        origin = [0.0, 0.0, 0.0]
+        origin[{"x": 0, "y": 1, "z": 2}.get(str(axis).lower(), 0)] = cut_position
+        plane = gp_Pln(gp_Pnt(*origin), gp_Dir(*normal))
+        operation = BRepAlgoAPI_Section(getattr(shape, "wrapped", shape), plane, False)
+        operation.Approximation(True)
+        operation.Build()
+        if not operation.IsDone() or operation.Shape().IsNull():
+            raise RuntimeError("OCCT BREP-vlakdoorsnede kon niet worden opgebouwd")
+        section = cq.Shape.cast(operation.Shape())
+        result: list[np.ndarray] = []
+        identities: set[tuple[tuple[float, float], ...]] = set()
+        for edge in section.Edges():
+            points = edge.discretize(Deflection=0.03)
+            projected = np.asarray(
+                [
+                    (
+                        float(point.toTuple()[coordinates[0]]),
+                        float(point.toTuple()[coordinates[1]]),
+                    )
+                    for point in points
+                ],
+                dtype=float,
+            )
+            if len(projected) < 2:
+                continue
+            identity = tuple((round(float(point[0]), 6), round(float(point[1]), 6)) for point in projected)
+            if identity in identities or tuple(reversed(identity)) in identities:
+                continue
+            identities.add(identity)
+            result.append(projected)
+        if not result:
+            raise RuntimeError("OCCT BREP-vlakdoorsnede bevat geen snijranden")
+        return tuple(result)
+
     @classmethod
     def view(cls,vertices:np.ndarray,triangles:np.ndarray,name:str)->ProjectedView:
         points,depths=cls.project(vertices,name);direction=cls.basis(name)[2]
@@ -59,23 +294,43 @@ class DrawingProjectionModel:
 
     @classmethod
     def export_pdf(cls,path:str|Path,vertices:np.ndarray,triangles:np.ndarray,*,views:Sequence[str],sheet_mm:tuple[float,float],scale_denominator:int,title:str,metadata:Mapping[str,str]|None=None)->Path:
-        from reportlab.lib import colors
-        from reportlab.lib.units import mm
-        from reportlab.pdfgen import canvas
-        target=Path(path).expanduser().resolve();target.parent.mkdir(parents=True,exist_ok=True);page=(float(sheet_mm[0])*mm,float(sheet_mm[1])*mm);pdf=canvas.Canvas(str(target),pagesize=page,pageCompression=1);pdf.setTitle(title);pdf.setAuthor("CWS Convertor")
-        width,height=page;margin=9*mm;header=15*mm;footer=24*mm;gap=4*mm;pdf.setStrokeColor(colors.HexColor("#244665"));pdf.setLineWidth(.45*mm);pdf.rect(margin,margin,width-2*margin,height-2*margin);pdf.setFont("Helvetica-Bold",12);pdf.drawString(margin+4*mm,height-margin-9*mm,title);pdf.setFont("Helvetica",7);pdf.drawRightString(width-margin-4*mm,height-margin-8*mm,f"Vectorprojectie | schaal 1:{scale_denominator}")
-        area=(margin+3*mm,margin+footer,width-margin-3*mm,height-margin-header);count=max(1,len(views));columns=1 if count==1 else 2;rows=int(math.ceil(count/columns));cell_w=(area[2]-area[0]-gap*(columns-1))/columns;cell_h=(area[3]-area[1]-gap*(rows-1))/rows;labels={"front":"VOORAANZICHT","top":"BOVENAANZICHT","side":"ZIJAANZICHT","iso":"ISOMETRISCH","3d":"ISOMETRISCH"}
-        for index,raw_view in enumerate(views):
-            view_name="iso" if raw_view=="3d" else raw_view;row,column=divmod(index,columns);left=area[0]+column*(cell_w+gap);bottom=area[3]-(row+1)*cell_h-row*gap;pdf.setStrokeColor(colors.HexColor("#b8c8d6"));pdf.setLineWidth(.18*mm);pdf.rect(left,bottom,cell_w,cell_h);pdf.setFillColor(colors.HexColor("#1d466d"));pdf.setFont("Helvetica-Bold",7);pdf.drawString(left+2*mm,bottom+cell_h-5*mm,labels.get(raw_view,raw_view.upper()))
-            projected=cls.view(np.asarray(vertices,dtype=float),np.asarray(triangles,dtype=int),view_name);center=(projected.points.min(axis=0)+projected.points.max(axis=0))*.5;drawing_scale=mm/max(1.,float(scale_denominator));cx=left+cell_w*.5;cy=bottom+cell_h*.48;screen=np.empty_like(projected.points);screen[:,0]=(projected.points[:,0]-center[0])*drawing_scale+cx;screen[:,1]=(projected.points[:,1]-center[1])*drawing_scale+cy;face_depths=projected.depths[triangles].mean(axis=1)
-            for triangle_index in np.argsort(face_depths):
-                triangle=triangles[int(triangle_index)];points=[(float(screen[int(vertex),0]),float(screen[int(vertex),1])) for vertex in triangle];path_object=pdf.beginPath();path_object.moveTo(*points[0]);path_object.lineTo(*points[1]);path_object.lineTo(*points[2]);path_object.close();pdf.setFillColor(colors.HexColor("#d8e0e8"));pdf.setStrokeColor(colors.HexColor("#8ca1b4"));pdf.setLineWidth(.08*mm);pdf.drawPath(path_object,fill=1,stroke=1)
-            pdf.setStrokeColor(colors.HexColor("#173b5d"));pdf.setLineWidth(.22*mm)
-            for first,second in projected.visible_edges:pdf.line(float(screen[first,0]),float(screen[first,1]),float(screen[second,0]),float(screen[second,1]))
-            span=projected.points.max(axis=0)-projected.points.min(axis=0);pdf.setFont("Helvetica",6);pdf.setFillColor(colors.HexColor("#245b8d"));pdf.drawString(left+2*mm,bottom+2*mm,f"{span[0]:.1f} x {span[1]:.1f} mm")
-        values=dict(metadata or {});pdf.setFillColor(colors.HexColor("#243d55"));pdf.setFont("Helvetica",6.5);pdf.drawString(margin+3*mm,margin+5*mm," | ".join(f"{key}: {value}" for key,value in values.items())[:220]);pdf.save()
-        if not target.is_file() or target.stat().st_size<512:raise RuntimeError(f"Vector-PDF is niet aangemaakt: {target}")
-        return target
+        # Compatibility entry point: legacy callers now use the same
+        # DrawingDocument and renderer as the active PDF / Tekening workspace.
+        from .engine import DrawingBuildRequest, ProductionDrawingEngine
+        from .renderer import ProductionDrawingRenderer
+
+        width, height = (float(sheet_mm[0]), float(sheet_mm[1]))
+        orientation = "landscape" if width >= height else "portrait"
+        long_side, short_side = max(width, height), min(width, height)
+        formats = {"A4": (297.0, 210.0), "A3": (420.0, 297.0), "A2": (594.0, 420.0), "A1": (841.0, 594.0), "A0": (1189.0, 841.0)}
+        sheet_format = min(
+            formats,
+            key=lambda name: abs(formats[name][0] - long_side) + abs(formats[name][1] - short_side),
+        )
+        values = dict(metadata or {})
+        entity = str(values.get("Onderdeel") or values.get("entity") or title)
+        document = ProductionDrawingEngine.build(
+            DrawingBuildRequest(
+                entity_id=entity,
+                vertices=np.asarray(vertices, dtype=float),
+                triangles=np.asarray(triangles, dtype=int),
+                views=views,
+                sheet_format=sheet_format,
+                orientation=orientation,
+                scale_denominator=max(1, int(scale_denominator)),
+                unit=str(values.get("Eenheid") or "mm").lower(),
+                title_block={
+                    "project": str(values.get("Project") or "CWS project"),
+                    "entity": entity,
+                    "profile": str(values.get("Profiel") or "Niet opgegeven"),
+                    "material": str(values.get("Materiaal") or "Niet opgegeven"),
+                    "revision": str(values.get("Revisie") or "-") ,
+                    "status": str(values.get("Status") or "REVIEW"),
+                },
+                notes=("Compatibele mesh-review; productie-vrijgave vereist canonical rebuilt BREP.",),
+            )
+        )
+        return ProductionDrawingRenderer.render_pdf(document, path)
 
 
 __all__=["DrawingProjectionModel","ProjectedView"]

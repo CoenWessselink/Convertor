@@ -24,6 +24,7 @@ TESTS = (
     ("workbench", "tests/part_workbench_roundtrip_smoke.py"),
     ("conversion", "tests/viewer_v6_roundtrip_smoke.py"),
     ("drawing", "tests/part_drawing_standard_smoke.py"),
+    ("drawing", "tests/production_drawing_engine_smoke.py"),
     ("export", "tests/viewer_v15_export_center_smoke.py"),
     ("export", "tests/production_export_smoke.py"),
     ("export", "tests/production_export_negative_smoke.py"),

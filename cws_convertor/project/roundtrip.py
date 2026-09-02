@@ -218,7 +218,12 @@ def canonical_part_from_workbench(
             },
         ),
     )
-    canonical.validation.export_status = "validated"
+    canonical.validation.export_status = (
+        "released"
+        if str(revision.get("review_status") or "") == "released"
+        else "validated"
+    )
+    canonical.refresh_export_gate()
     canonical.validate()
     return canonical
 
