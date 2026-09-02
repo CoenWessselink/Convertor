@@ -667,6 +667,41 @@ def run_runtime_acceptance_evidence(project: Path | None) -> list[dict[str, Any]
     return results
 
 
+def exact_upgrade_verified(
+    project: Path,
+    batch: dict[str, Any],
+    qt_exact: dict[str, Any],
+) -> bool:
+    """Validate exact viewer geometry without assuming one draw group per mesh.
+
+    The Qt renderer intentionally batches compatible meshes into material-based
+    render groups.  A valid exact scene can therefore contain fewer render
+    groups than repository meshes, while still preserving every exact mesh.
+    """
+
+    requested = int(batch.get("requested", 0))
+    returned = int(batch.get("returned", -1))
+    repository_meshes = int(qt_exact.get("repository_meshes", 0))
+    exact_meshes = int(qt_exact.get("exact_meshes", 0))
+    render_groups = int(qt_exact.get("render_groups", 0))
+    same_batch_project = Path(str(batch.get("project_path", ""))).resolve() == project.resolve()
+    same_qt_project = Path(str(qt_exact.get("project_path", ""))).resolve() == project.resolve()
+    return (
+        batch.get("status") == "PASS"
+        and same_batch_project
+        and requested > 0
+        and requested == returned
+        and int(batch.get("failed", 0)) == 0
+        and qt_exact.get("status") == "PASS"
+        and same_qt_project
+        and bool(qt_exact.get("finished"))
+        and int(qt_exact.get("proxy_meshes", -1)) == 0
+        and repository_meshes == returned
+        and exact_meshes == returned
+        and 0 < render_groups <= repository_meshes
+    )
+
+
 def geometry_evidence(project: Path | None) -> dict[str, Any]:
     if project is None or not project.exists():
         return {"status": "BLOCKED", "reason": "Geen echt .cwscproj voor geometrie-evidence."}
@@ -701,19 +736,7 @@ def geometry_evidence(project: Path | None) -> dict[str, Any]:
     try:
         batch = json.loads(batch_path.read_text(encoding="utf-8"))
         qt_exact = json.loads(qt_path.read_text(encoding="utf-8"))
-        same_batch_project = Path(str(batch.get("project_path", ""))).resolve() == project.resolve()
-        same_qt_project = Path(str(qt_exact.get("project_path", ""))).resolve() == project.resolve()
-        exact_passed = (
-            batch.get("status") == "PASS"
-            and same_batch_project
-            and int(batch.get("requested", 0)) == int(batch.get("returned", -1))
-            and int(batch.get("failed", 0)) == 0
-            and qt_exact.get("status") == "PASS"
-            and same_qt_project
-            and int(qt_exact.get("proxy_meshes", -1)) == 0
-            and int(qt_exact.get("repository_meshes", 0)) == int(batch.get("returned", -1))
-            and int(qt_exact.get("render_groups", 0)) == int(batch.get("returned", -1))
-        )
+        exact_passed = exact_upgrade_verified(project, batch, qt_exact)
     except (OSError, ValueError, TypeError):
         exact_passed = False
     passed = passed or exact_passed
