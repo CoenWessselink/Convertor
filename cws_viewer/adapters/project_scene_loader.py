@@ -95,7 +95,7 @@ class ProjectSceneLoader:
         # the proven serial crash-isolated path below.
         formats={str(request.source_format).upper() for request in requests};policy=LoadingPerformancePolicy.detect(len(requests),source_format='MIXED' if len(formats)>1 else next(iter(formats),'IFC'))
         providers=tuple(self.provider_factory()) if self.provider_factory is not None else (PersistentGeometryWorkerPool.shared(policy.worker_count),StepMeshProvider())
-        policy_payload=policy.to_dict();policy_payload['governor']=governor.snapshot();policy_payload['proxy_first']=bool(fast_proxy_catalog or not providers);profile.set_policy(policy_payload)
+        policy_payload=policy.to_dict();policy_payload['governor']=governor.snapshot();policy_payload['proxy_first']=bool(fast_proxy_catalog or not providers)
         # A proxy-only first frame has no primary-provider cache keys. Avoid
         # opening/indexing the persistent mesh cache on this latency-critical
         # path; exact background upgrades use the cache normally.
@@ -108,11 +108,13 @@ class ProjectSceneLoader:
                     cache=MeshCache(self.cache_root,max_memory_items=max(128,min(len(requests),2048)),max_memory_bytes=policy.cache_memory_bytes)
                     self._session_caches[cache_identity]=cache
         repository=MeshRepository()
-        t=time.perf_counter();prefetch_keys=[]
+        t=time.perf_counter();prefetch_keys=[];cache_keys_by_geometry={}
         for request in requests:
             provider=next((candidate for candidate in providers if candidate.supports(request)),None)
             if provider is not None:
-                prefetch_keys.append(request.cache_key(self.settings,provider.provider_version))
+                key=request.cache_key(self.settings,provider.provider_version)
+                prefetch_keys.append(key);cache_keys_by_geometry[request.geometry_id]=key
+        policy_payload['mesh_cache_keys']=dict(sorted(cache_keys_by_geometry.items()));profile.set_policy(policy_payload)
         prefetch_hits=cache.prefetch(
             prefetch_keys,
             max_workers=policy.cache_prefetch_workers,

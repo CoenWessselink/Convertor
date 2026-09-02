@@ -137,6 +137,11 @@ class ViewerV15WorkspaceContractTests(unittest.TestCase):
             self.assertEqual(before + 1, cache.stats.memory_hits)
             assert loaded is not None
             self.assertEqual(mesh.mesh_hash, loaded.mesh_hash)
+            cache.clear_memory()
+            del loaded
+            import gc
+
+            gc.collect()
 
 
 if __name__ == "__main__":

@@ -99,6 +99,19 @@ def _bundle_mesh_keys(
     return None
 
 
+def _profile_mesh_keys(load_result: Any, scene: ProjectScene) -> dict[str, str] | None:
+    profile = dict(getattr(load_result, "load_profile", None) or {})
+    policy = dict(profile.get("policy") or {})
+    candidates = {
+        str(geometry_id): str(cache_key).lower()
+        for geometry_id, cache_key in dict(policy.get("mesh_cache_keys") or {}).items()
+    }
+    required = {resource.geometry_id for resource in scene.geometry}
+    if set(candidates) != required or not all(_is_sha256(value) for value in candidates.values()):
+        return None
+    return candidates
+
+
 def persist_exact_scene_warmstart(
     project_path: str | Path,
     load_result: Any,
@@ -126,7 +139,7 @@ def persist_exact_scene_warmstart(
 
     project_sha256 = _package_project_hash(path)
     effective_mesh_root = Path(mesh_cache_root or _default_mesh_cache_root())
-    mesh_keys = _bundle_mesh_keys(effective_mesh_root, scene)
+    mesh_keys = _bundle_mesh_keys(effective_mesh_root, scene) or _profile_mesh_keys(load_result, scene)
     if mesh_keys is None:
         return None
     artifact = {

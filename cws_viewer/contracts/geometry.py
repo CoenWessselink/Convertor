@@ -128,8 +128,16 @@ class MeshData:
     lod_triangles: tuple[np.ndarray, ...] = ()
 
     def __post_init__(self) -> None:
-        vertices = np.asarray(self.vertices, dtype=np.float64)
-        triangles = np.asarray(self.triangles, dtype=np.int32)
+        vertices = self.vertices
+        if not isinstance(vertices, np.ndarray) or vertices.dtype != np.dtype(np.float64):
+            vertices = np.asarray(vertices, dtype=np.float64)
+        if not vertices.flags.c_contiguous:
+            vertices = np.ascontiguousarray(vertices)
+        triangles = self.triangles
+        if not isinstance(triangles, np.ndarray) or triangles.dtype != np.dtype(np.int32):
+            triangles = np.asarray(triangles, dtype=np.int32)
+        if not triangles.flags.c_contiguous:
+            triangles = np.ascontiguousarray(triangles)
         if vertices.ndim != 2 or vertices.shape[1] != 3:
             raise ValueError("MeshData.vertices moet N×3 zijn")
         if triangles.ndim != 2 or triangles.shape[1] != 3:
@@ -142,8 +150,6 @@ class MeshData:
             raise ValueError("MeshData.triangles bevat ongeldige vertexindices")
         if not is_sha256(self.source_geometry_hash):
             raise ValueError("MeshData.source_geometry_hash is geen SHA-256")
-        vertices = np.ascontiguousarray(vertices)
-        triangles = np.ascontiguousarray(triangles)
         vertices.setflags(write=False)
         triangles.setflags(write=False)
         object.__setattr__(self, "vertices", vertices)
@@ -151,20 +157,32 @@ class MeshData:
         object.__setattr__(self, "warnings", tuple(str(v) for v in self.warnings))
         object.__setattr__(self, "metadata", dict(self.metadata))
         if self.normals is not None:
-            normals = np.ascontiguousarray(np.asarray(self.normals, dtype=np.float32))
+            normals = self.normals
+            if not isinstance(normals, np.ndarray) or normals.dtype != np.dtype(np.float32):
+                normals = np.asarray(normals, dtype=np.float32)
+            if not normals.flags.c_contiguous:
+                normals = np.ascontiguousarray(normals)
             if normals.shape != vertices.shape:
                 raise ValueError("MeshData.normals moet dezelfde vorm als vertices hebben")
             normals.setflags(write=False)
             object.__setattr__(self, "normals", normals)
         if self.feature_edges is not None:
-            feature_edges = np.ascontiguousarray(np.asarray(self.feature_edges, dtype=np.int32))
+            feature_edges = self.feature_edges
+            if not isinstance(feature_edges, np.ndarray) or feature_edges.dtype != np.dtype(np.int32):
+                feature_edges = np.asarray(feature_edges, dtype=np.int32)
+            if not feature_edges.flags.c_contiguous:
+                feature_edges = np.ascontiguousarray(feature_edges)
             if feature_edges.ndim != 2 or feature_edges.shape[1] != 2:
                 raise ValueError("MeshData.feature_edges moet Kx2 zijn")
             feature_edges.setflags(write=False)
             object.__setattr__(self, "feature_edges", feature_edges)
         lods: list[np.ndarray] = []
         for lod in self.lod_triangles:
-            value = np.ascontiguousarray(np.asarray(lod, dtype=np.int32))
+            value = lod
+            if not isinstance(value, np.ndarray) or value.dtype != np.dtype(np.int32):
+                value = np.asarray(value, dtype=np.int32)
+            if not value.flags.c_contiguous:
+                value = np.ascontiguousarray(value)
             if value.ndim != 2 or value.shape[1] != 3:
                 raise ValueError("MeshData.lod_triangles moet uit Mx3-arrays bestaan")
             value.setflags(write=False)

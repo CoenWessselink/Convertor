@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import gc
 import tempfile
 import unittest
 
@@ -102,6 +103,23 @@ class PerformanceLoadingV2Smoke(unittest.TestCase):
             self.assertIsNotNone(cache.get(key))
             self.assertEqual(cache.stats.disk_hits, 1)
             self.assertEqual(cache.stats.memory_hits, 1)
+
+    def test_cache_v2_prefetch_keeps_memory_mapped_arrays(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = MeshCache(directory, max_memory_bytes=1024 * 1024, storage_mode="mmap")
+            value = request("prefetched")
+            settings = TessellationSettings()
+            key = value.cache_key(settings, FakeProvider.provider_version)
+            cache.put(key, mesh("prefetched"), provider_version=FakeProvider.provider_version, settings=settings)
+            cache.clear_memory()
+            self.assertEqual(cache.prefetch((key,), max_workers=2), 1)
+            loaded = cache.get(key)
+            self.assertIsNotNone(loaded)
+            assert loaded is not None
+            self.assertIsInstance(loaded.vertices, np.memmap)
+            cache.clear_memory()
+            del loaded
+            gc.collect()
 
     def test_persistent_pool_and_profiled_batch(self):
         pool = PersistentGeometryWorkerPool(2, provider_factory=FakeProvider)

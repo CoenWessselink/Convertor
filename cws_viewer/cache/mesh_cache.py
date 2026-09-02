@@ -743,15 +743,12 @@ class MeshCache:
             return already
 
         def read_one(key: str) -> tuple[str, MeshData | None]:
-            reader = MeshCache(
-                self.root,
-                max_memory_items=0,
-                max_memory_bytes=0,
-                storage_mode=self.storage_mode,
-                integrity_mode=self.integrity_mode,
-            )
-            mesh = reader.get(key)
-            return key, None if mesh is None else self._materialize(mesh)
+            # MeshCache V2 is deliberately memory-mapped. Reading through the
+            # shared cache keeps those mappings alive and avoids copying every
+            # vertices/triangles/normals array during warm-start prefetch.
+            # Per-key write locks and _remember's cache lock make this path
+            # safe for concurrent, distinct keys.
+            return key, self.get(key)
 
         workers = max(1, min(int(max_workers), len(pending)))
         loaded: list[tuple[str, MeshData | None]] = []
@@ -765,11 +762,9 @@ class MeshCache:
                 for future in as_completed(futures):
                     loaded.append(future.result())
         hits = already
-        with self._lock:
-            for key, mesh in loaded:
-                if mesh is not None:
-                    self._remember(key, mesh)
-                    hits += 1
+        for _key, mesh in loaded:
+            if mesh is not None:
+                hits += 1
         return hits
 
     def invalidate(self, key: str) -> None:
