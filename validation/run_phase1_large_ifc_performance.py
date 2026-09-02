@@ -19,9 +19,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.product import APP_NAME, APP_VERSION
-from cws_convertor.project import ProjectSession
-
-
 def max_rss_mb() -> float:
     if sys.platform != "win32":
         import resource
@@ -64,7 +61,35 @@ def max_rss_mb() -> float:
     return float(counters.PeakWorkingSetSize) / (1024.0 * 1024.0)
 
 
+def source_geometry_checks(inspection: object | None) -> dict[str, bool]:
+    """Validate selection and prevent an exact claim for mesh-only geometry.
+
+    The deterministic IFC fixture can resolve either to a review mesh or,
+    when IfcOpenShell/OCP is available, to a stronger exact native BREP.  Both
+    are valid evidence outcomes; only an unverified selection or a mesh that
+    is incorrectly advertised as exact must fail.
+    """
+
+    status = str(getattr(inspection, "status", ""))
+    scope = str(getattr(inspection, "scope", ""))
+    geometry_kind = str(getattr(inspection, "geometry_kind", ""))
+    exact = bool(getattr(inspection, "production_geometry_exact", False))
+    return {
+        "part_geometry_selected": bool(
+            inspection
+            and status in {"resolved_mesh", "resolved_exact"}
+            and scope == "part"
+            and getattr(inspection, "selection_verified", False)
+        ),
+        "ifc_mesh_not_claimed_as_exact_brep": not (
+            geometry_kind == "mesh" and exact
+        ),
+    }
+
+
 def main() -> int:
+    from cws_convertor.project import ProjectSession
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -130,15 +155,7 @@ def main() -> int:
     checks = {
         "semantic_import_completed": result.semantic_import_complete,
         "parts_materialized": result.entity_counts.get("parts", 0) > 0,
-        "part_geometry_selected": bool(
-            inspection
-            and inspection.status == "resolved_mesh"
-            and inspection.scope == "part"
-            and inspection.selection_verified
-        ),
-        "ifc_mesh_not_claimed_as_exact_brep": bool(
-            inspection and not inspection.production_geometry_exact
-        ),
+        **source_geometry_checks(inspection),
         "production_gate_closed": session.project.production_gate().get("allowed") is False,
         "source_unchanged": source_unchanged,
         "within_time_guardrail": elapsed <= args.max_seconds,

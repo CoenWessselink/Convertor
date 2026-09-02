@@ -20,6 +20,7 @@ TESTS = (
     ("viewer", "tests/viewer_v15_workspace_contract_smoke.py"),
     ("viewer", "tests/unified_viewer_v15_u3_smoke.py"),
     ("viewer", "tests/viewer_v15_selection_measurement_smoke.py"),
+    ("viewer", "tests/phase1_large_ifc_evidence_contract_smoke.py"),
     ("workbench", "tests/part_workbench_smoke.py"),
     ("workbench", "tests/part_workbench_roundtrip_smoke.py"),
     ("conversion", "tests/viewer_v6_roundtrip_smoke.py"),
