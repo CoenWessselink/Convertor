@@ -1042,69 +1042,27 @@ def convert_file(
     tolerance_mm: float = 1.0,
     strict_validation: bool = True,
 ) -> tuple[list[Path], list[str], list[str]]:
-    """Converteer één bestand en retourneer (outputs, warnings, failures).
+    """Converteer via de centrale fail-closed planner en bewijsservice.
 
-    Deze helper wordt gebruikt door GUI en CLI voor eenvoudige conversiepaden.
-    IFC-richtingen worden lazy geïmporteerd, zodat de NC1/STEP-kern blijft werken
-    wanneer IfcOpenShell niet is geïnstalleerd.
+    De fysieke serializers in deze module blijven de geometriekern. Deze
+    compatibiliteitsingang mag echter geen route meer uitvoeren zonder
+    target-specifieke preflight, fysieke herimport en heropenbaar bewijs.
     """
-    source = Path(input_path)
-    output = Path(output_directory)
-    output.mkdir(parents=True, exist_ok=True)
-    normalised = direction.lower().replace(" ", "").replace("/", "")
-    normalised = normalised.replace("dstv", "nc1").replace("→", "-").replace("_", "-").replace("to", "-")
-    while "--" in normalised:
-        normalised = normalised.replace("--", "-")
-    normalised = normalised.strip("-")
+    from cws_convertor.conversion_service import DEFAULT_CONVERSION_SERVICE
 
-    if normalised in {"nc1-step", "nc1-step", "nc1step"}:
-        target = output / f"{source.stem}.step"
-        part = convert_nc1_to_step(source, target)
-        return [target], list(part.warnings), []
-
-    if normalised in {"step-nc1", "stepnc1"}:
-        target = output / f"{source.stem}.nc1"
-        result = step_to_nc1(
-            source,
-            target,
-            material=material,
-            order_number=order_number,
-            profile_database=profile_database,
-            preferred_profile=preferred_profile,
-            tolerance_mm=tolerance_mm,
-            strict_validation=strict_validation,
-        )
-        warnings = list(result.warnings)
-        warnings.insert(0, f"{result.profile_designation}; confidence {result.confidence:.0%}; volume {result.volume_delta_percent:+.6f}%")
-        return [target], warnings, []
-
-    if normalised in {"ifc-step", "ifcstep"}:
-        from ifc_support import ifc_to_step
-        result = ifc_to_step(source, output / f"{source.stem}.step")
-        return result.outputs, result.warnings, result.failures
-
-    if normalised in {"step-ifc", "stepifc"}:
-        from ifc_support import step_to_ifc
-        result = step_to_ifc(source, output / f"{source.stem}.ifc", material=material)
-        return result.outputs, result.warnings, result.failures
-
-    if normalised in {"nc1-ifc", "nc1ifc"}:
-        from ifc_support import dstv_to_ifc
-        result = dstv_to_ifc(source, output / f"{source.stem}.ifc", material=material)
-        return result.outputs, result.warnings, result.failures
-
-    if normalised in {"ifc-nc1", "ifcnc1"}:
-        from ifc_support import ifc_to_dstv
-        result = ifc_to_dstv(
-            source,
-            output / source.stem,
-            material=material,
-            order_number=order_number,
-            profile_database=profile_database,
-            preferred_profile=preferred_profile,
-            tolerance_mm=tolerance_mm,
-            strict_validation=strict_validation,
-        )
-        return result.outputs, result.warnings, result.failures
-
-    raise ValueError(f"Onbekende conversierichting: {direction}")
+    result = DEFAULT_CONVERSION_SERVICE.convert_file(
+        input_path,
+        output_directory,
+        direction,
+        material=material,
+        order_number=order_number,
+        profile_database=profile_database,
+        preferred_profile=preferred_profile,
+        tolerance_mm=tolerance_mm,
+        strict_validation=strict_validation,
+    )
+    return (
+        [Path(value) for value in result.outputs],
+        list(result.warnings),
+        list(result.failures),
+    )

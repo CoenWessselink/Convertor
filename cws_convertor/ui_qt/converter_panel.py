@@ -1,4 +1,8 @@
-"""Production-oriented before/after converter workspace."""
+"""Production-oriented before/after converter workspace.
+
+The central service owns the pdf_to_nc1, pdf_to_step and pdf_to_ifc physical
+serializers; this panel only displays plans and submits isolated jobs.
+"""
 from __future__ import annotations
 
 import json
@@ -72,83 +76,79 @@ if qt_available():
         def run(self) -> None:
             self._last_exception = None
             try:
-                results = []
-                timeout_seconds = max(
+                timeout_per_item = max(
                     30.0,
                     float(os.environ.get("CWS_CONVERSION_TIMEOUT_SECONDS", "300")),
                 )
-                for index, source in enumerate(self.files, start=1):
-                    if self._job_context is not None:
-                        self._job_context.check_cancelled()
-                    if self._cancel_requested:
-                        raise RuntimeError("Conversie door gebruiker geannuleerd")
-                    base_percent = int(((index - 1) / max(1, len(self.files))) * 100)
-                    self.progress.emit(base_percent, f"{index}/{len(self.files)} · {source.name} voorbereiden")
-                    with tempfile.TemporaryDirectory(prefix="cws-conversion-job-") as folder:
-                        job_path = Path(folder) / "job.json"
-                        result_path = Path(folder) / "result.json"
-                        log_path = Path(folder) / "worker.log"
-                        job_path.write_text(
-                            json.dumps(
-                                {
-                                    "source": str(source),
-                                    "output": str(self.output),
-                                    "direction": self.direction,
-                                    "material": self.material,
-                                    "project_path": str(self.project_path or ""),
-                                    "entity_id": self.entity_id,
-                                },
-                                ensure_ascii=False,
-                            ),
-                            encoding="utf-8",
-                        )
-                        started = time.monotonic()
-                        with log_path.open("wb") as worker_log:
-                            self._process = subprocess.Popen(
-                                self._command(job_path, result_path),
-                                stdout=worker_log,
-                                stderr=subprocess.STDOUT,
-                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-                            )
-                            while self._process.poll() is None:
-                                elapsed = time.monotonic() - started
-                                if self._job_context is not None:
-                                    self._job_context.check_cancelled()
-                                if self._cancel_requested:
-                                    self._stop_process(self._process)
-                                    raise RuntimeError("Conversie door gebruiker geannuleerd")
-                                if elapsed >= timeout_seconds:
-                                    self._stop_process(self._process)
-                                    raise TimeoutError(
-                                        f"{source.name}: worker-timeout na {timeout_seconds:.0f} s. "
-                                        "Het bronbestand is niet stil blijven hangen; de native worker is gestopt."
-                                    )
-                                within_file = min(90, int((elapsed / timeout_seconds) * 90))
-                                total_percent = min(
-                                    99,
-                                    base_percent + int(within_file / max(1, len(self.files))),
-                                )
-                                self.progress.emit(
-                                    total_percent,
-                                    f"{index}/{len(self.files)} · {source.name} · {elapsed:.0f} s · native worker actief",
-                                )
-                                time.sleep(0.25)
-                        return_code = self._process.returncode
-                        self._process = None
-                        if not result_path.exists():
-                            details = log_path.read_text(encoding="utf-8", errors="replace")[-8000:]
-                            raise RuntimeError(
-                                f"Conversieworker stopte zonder resultaat (code {return_code}). {details}"
-                            )
-                        payload = json.loads(result_path.read_text(encoding="utf-8"))
-                        if payload.get("status") != "passed":
-                            raise RuntimeError(str(payload.get("error") or "Onbekende conversieworkerfout"))
-                        results.append(dict(payload["result"]))
-                    self.progress.emit(
-                        int((index / max(1, len(self.files))) * 100),
-                        f"{index}/{len(self.files)} · {source.name} afgerond",
+                timeout_seconds = timeout_per_item * max(1, len(self.files))
+                with tempfile.TemporaryDirectory(prefix="cws-conversion-job-") as folder:
+                    job_path = Path(folder) / "job.json"
+                    result_path = Path(folder) / "result.json"
+                    progress_path = Path(folder) / "progress.json"
+                    log_path = Path(folder) / "worker.log"
+                    job_path.write_text(
+                        json.dumps(
+                            {
+                                "sources": [str(source) for source in self.files],
+                                "output": str(self.output),
+                                "direction": self.direction,
+                                "material": self.material,
+                                "project_path": str(self.project_path or ""),
+                                "entity_id": self.entity_id,
+                                "progress_path": str(progress_path),
+                            },
+                            ensure_ascii=False,
+                        ),
+                        encoding="utf-8",
                     )
-                self.finished.emit({"status": "passed", "results": results})
+                    self.progress.emit(0, f"Preflight van {len(self.files)} bronbestand(en) starten")
+                    started = time.monotonic()
+                    last_progress_signature = ""
+                    with log_path.open("wb") as worker_log:
+                        self._process = subprocess.Popen(
+                            self._command(job_path, result_path),
+                            stdout=worker_log,
+                            stderr=subprocess.STDOUT,
+                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                        )
+                        while self._process.poll() is None:
+                            elapsed = time.monotonic() - started
+                            if self._job_context is not None:
+                                self._job_context.check_cancelled()
+                            if self._cancel_requested:
+                                self._stop_process(self._process)
+                                raise RuntimeError("Conversie door gebruiker geannuleerd")
+                            if elapsed >= timeout_seconds:
+                                self._stop_process(self._process)
+                                raise TimeoutError(
+                                    f"Batch-worker-timeout na {timeout_seconds:.0f} s; "
+                                    "het native proces is hard gestopt."
+                                )
+                            if progress_path.is_file():
+                                try:
+                                    progress_payload = json.loads(progress_path.read_text(encoding="utf-8"))
+                                    signature = json.dumps(progress_payload, sort_keys=True)
+                                    if signature != last_progress_signature:
+                                        last_progress_signature = signature
+                                        self.progress.emit(
+                                            int(progress_payload.get("percent") or 0),
+                                            str(progress_payload.get("message") or "Conversieworker actief"),
+                                        )
+                                except (OSError, ValueError, TypeError):
+                                    pass
+                            time.sleep(0.2)
+                    return_code = self._process.returncode
+                    self._process = None
+                    if not result_path.exists():
+                        details = log_path.read_text(encoding="utf-8", errors="replace")[-8000:]
+                        raise RuntimeError(
+                            f"Conversieworker stopte zonder resultaat (code {return_code}). {details}"
+                        )
+                    payload = json.loads(result_path.read_text(encoding="utf-8"))
+                    if payload.get("status") != "passed":
+                        raise RuntimeError(str(payload.get("error") or "Onbekende conversieworkerfout"))
+                    self.progress.emit(100, "Conversiebatch afgerond")
+                    self.finished.emit(dict(payload["result"]))
             except Exception as exc:
                 self._last_exception = exc
                 process = self._process
@@ -207,10 +207,13 @@ if qt_available():
     class ConverterPanel(QtWidgets.QWidget):
         _DIRECTIONS = (
             ("NC1 / DSTV → STEP", "nc1-step"),
+            ("NC1 / DSTV → PDF", "nc1-pdf"),
             ("STEP → NC1 / DSTV", "step-nc1"),
+            ("STEP → PDF", "step-pdf"),
             ("IFC → STEP", "ifc-step"),
             ("STEP → IFC", "step-ifc"),
             ("IFC → NC1 / DSTV", "ifc-nc1"),
+            ("IFC → PDF", "ifc-pdf"),
             ("NC1 / DSTV → IFC", "nc1-ifc"),
             ("PDF → STEP (Trusted payload)", "pdf-step"),
             ("PDF → NC1 / DSTV (Trusted payload)", "pdf-nc1"),
@@ -481,61 +484,110 @@ if qt_available():
                     self.direction.setCurrentIndex(index)
 
         def _apply_capabilities(self, part: Any | None) -> None:
-            from cws_convertor.conversion_capabilities import DEFAULT_CAPABILITY_REGISTRY
+            from cws_convertor.conversion_service import (
+                DEFAULT_CONVERSION_PLANNER,
+                ConversionSource,
+                ROUTES,
+            )
 
             current = str(self.direction.currentData() or "")
-            allowed = {value for _label, value in self._DIRECTIONS}
-            blockers: list[str] = []
-            if part is not None:
-                source = getattr(part, "source_identity", None)
-                source_format = str(getattr(source, "source_format", "") or "").upper()
-                workbench = getattr(part, "workbench", {}) or {}
-                revision = workbench.get("current_revision") if isinstance(workbench, dict) else {}
-                part_form = str(revision.get("part_form") or "") if isinstance(revision, dict) else ""
-                features = tuple(
-                    str(item.get("kind") or "")
-                    for item in list(revision.get("features") or [])
-                    if isinstance(item, dict)
-                ) if isinstance(revision, dict) else ()
-                metrics = dict(getattr(part, "geometry_descriptor", {}).get("cad_metrics") or {})
-                exact_source = bool(metrics.get("production_geometry_exact")) or source_format in {"NC1", "STEP"}
-                evaluations = DEFAULT_CAPABILITY_REGISTRY.evaluate(
-                    source_format=source_format,
-                    part_form=part_form,
-                    features=features,
-                    exact_source=exact_source,
-                )
-                allowed = {capability.direction for capability, reasons in evaluations if not reasons}
-                blockers = [
-                    f"{capability.target_format}: {', '.join(reasons)}"
-                    for capability, reasons in evaluations if reasons
+            plans: dict[str, Any] = {}
+            source_format = ""
+            if part is not None and self._workspace is not None:
+                try:
+                    inspection = self._workspace.session.inspect_part_source_geometry(
+                        self._selected_part_id,
+                        persist=False,
+                    )
+                    source = DEFAULT_CONVERSION_PLANNER.source_from_project_part(
+                        part,
+                        inspection,
+                        project_path=self._workspace.project_path,
+                    )
+                except Exception as exc:
+                    identity = getattr(part, "source_identity", None)
+                    source_format = str(getattr(identity, "source_format", "") or "").upper()
+                    source_format = {"NC": "NC1", "DSTV": "NC1", "STP": "STEP"}.get(
+                        source_format,
+                        source_format,
+                    )
+                    source = ConversionSource(
+                        str(self._workspace.project_path),
+                        source_format,
+                        str(getattr(identity, "source_sha256", "") or ""),
+                        blockers=(f"SOURCE_INSPECTION_FAILED:{type(exc).__name__}:{exc}",),
+                    )
+                source_format = source.source_format
+                for route in ROUTES:
+                    if route.source_format == source_format:
+                        plan = DEFAULT_CONVERSION_PLANNER.plan_source(source, route.direction)
+                        plans[route.direction] = plan
+            elif part is None and self._files:
+                inspected = [
+                    DEFAULT_CONVERSION_PLANNER.inspect_file(path)
+                    for path in self._files
                 ]
-            if part is not None:
-                source = getattr(part, "source_identity", None)
-                source_format = str(getattr(source, "source_format", "") or "").upper()
-                source_prefix = {
-                    "IFC": "ifc-", "STEP": "step-", "STP": "step-",
-                    "NC": "nc1-", "NC1": "nc1-", "DSTV": "nc1-", "PDF": "pdf-",
-                }.get(source_format, "")
-                source_directions = {
-                    value for _label, value in self._DIRECTIONS
-                    if not source_prefix or value.startswith(source_prefix)
+                source_format = inspected[0].source_format
+                severity = {
+                    "SUPPORTED": 0,
+                    "SUPPORTED_WITH_LIMITS": 1,
+                    "REVIEW": 2,
+                    "BLOCKED": 3,
                 }
-                # A release gate may block production output, but it must not
-                # erase the source/target selector itself.
-                allowed = allowed or source_directions
+                for route in ROUTES:
+                    if route.source_format != source_format:
+                        continue
+                    candidates = [
+                        DEFAULT_CONVERSION_PLANNER.plan_source(source, route.direction)
+                        for source in inspected
+                    ]
+                    aggregate = candidates[0]
+                    aggregate.status = max(
+                        (candidate.status for candidate in candidates),
+                        key=lambda value: severity[value.value],
+                    )
+                    aggregate.blockers = tuple(
+                        dict.fromkeys(
+                            f"{Path(candidate.source.source_path).name}: {reason}"
+                            for candidate in candidates
+                            for reason in candidate.blockers
+                        )
+                    )
+                    aggregate.warnings = tuple(
+                        dict.fromkeys(
+                            f"{Path(candidate.source.source_path).name}: {reason}"
+                            for candidate in candidates
+                            for reason in candidate.warnings
+                        )
+                    )
+                    plans[route.direction] = aggregate
             blocker = QtCore.QSignalBlocker(self.direction)
             self.direction.clear()
             for label, value in self._DIRECTIONS:
-                if value in allowed:
-                    self.direction.addItem(label, value)
+                plan = plans.get(value)
+                if part is not None and plan is None:
+                    continue
+                display = f"{label} · {plan.status.value}" if plan is not None else label
+                self.direction.addItem(display, value)
+                if plan is not None:
+                    self.direction.setItemData(
+                        self.direction.count() - 1,
+                        plan.to_dict(),
+                        QtCore.Qt.ItemDataRole.UserRole + 1,
+                    )
             del blocker
             index = self.direction.findData(current)
             if index >= 0:
                 self.direction.setCurrentIndex(index)
-            self.run_button.setEnabled(self.direction.count() > 0)
-            if part is not None and not allowed:
-                self.status.setText("Geen exact conversiedoel beschikbaar: " + " | ".join(blockers[:3]))
+            elif self.direction.count() > 0:
+                self.direction.setCurrentIndex(0)
+            self._direction_changed(self.direction.currentIndex())
+            if part is not None and plans:
+                summary = " · ".join(
+                    f"{plan.route.target_format}: {plan.status.value}"
+                    for plan in plans.values()
+                )
+                self.status.setText(f"Centrale preflight · {summary}")
 
         def add_files(self, paths) -> None:
             allowed = {".nc", ".nc1", ".step", ".stp", ".ifc", ".pdf"}
@@ -547,6 +599,8 @@ if qt_available():
             self.status.setText(f"{len(self._files)} bestand(en) geselecteerd")
             if self._files:
                 self.source_preview.set_caption(self._files[0].name)
+                if self._workspace is None or not self._selected_part_id:
+                    self._apply_capabilities(None)
                 self._select_direction_for(self._files[0])
 
         @staticmethod
@@ -573,6 +627,18 @@ if qt_available():
         def _direction_changed(self, _index: int = -1) -> None:
             label = self.direction.currentText().split("→", 1)[-1].strip()
             self.target_preview.set_caption(f"Doelformaat: {label}")
+            plan = self.direction.currentData(QtCore.Qt.ItemDataRole.UserRole + 1)
+            if isinstance(plan, dict):
+                status = str(plan.get("status") or "BLOCKED")
+                reasons = list(plan.get("blockers") or plan.get("warnings") or [])
+                executable = status in {"SUPPORTED", "SUPPORTED_WITH_LIMITS"}
+                self.run_button.setEnabled(executable and self._job_id is None)
+                self.status.setText(
+                    f"{status}"
+                    + (f" · {'; '.join(str(value) for value in reasons[:3])}" if reasons else "")
+                )
+            else:
+                self.run_button.setEnabled(bool(self.direction.currentData()) and self._job_id is None)
 
         def _choose_files(self) -> None:
             names, _ = QtWidgets.QFileDialog.getOpenFileNames(self, "Model- of tekeningbestanden kiezen", "", "Ondersteunde bestanden (*.nc *.nc1 *.step *.stp *.ifc *.pdf)")
@@ -588,6 +654,8 @@ if qt_available():
             self.files.clear()
             self.status.setText("Geen bestanden geselecteerd")
             self.source_preview.set_caption("Wacht op selectie")
+            if self._workspace is None or not self._selected_part_id:
+                self._apply_capabilities(None)
 
         def _run(self) -> None:
             if self._job_id is not None:
@@ -617,9 +685,9 @@ if qt_available():
                 )
                 return
             expected = {
-                "nc1-step": {".nc", ".nc1"}, "nc1-ifc": {".nc", ".nc1"},
-                "step-nc1": {".step", ".stp"}, "step-ifc": {".step", ".stp"},
-                "ifc-step": {".ifc"}, "ifc-nc1": {".ifc"},
+                "nc1-step": {".nc", ".nc1"}, "nc1-ifc": {".nc", ".nc1"}, "nc1-pdf": {".nc", ".nc1"},
+                "step-nc1": {".step", ".stp"}, "step-ifc": {".step", ".stp"}, "step-pdf": {".step", ".stp"},
+                "ifc-step": {".ifc"}, "ifc-nc1": {".ifc"}, "ifc-pdf": {".ifc"},
                 "pdf-step": {".pdf"}, "pdf-nc1": {".pdf"}, "pdf-ifc": {".pdf"},
             }.get(direction, set())
             validation_files = () if project_path is not None else files
@@ -627,6 +695,36 @@ if qt_available():
             if invalid:
                 QtWidgets.QMessageBox.warning(self, "Converteren", f"De gekozen richting past niet bij: {', '.join(invalid)}")
                 return
+            selected_plan = self.direction.currentData(QtCore.Qt.ItemDataRole.UserRole + 1)
+            if isinstance(selected_plan, dict) and str(selected_plan.get("status")) not in {
+                "SUPPORTED",
+                "SUPPORTED_WITH_LIMITS",
+            }:
+                reasons = "; ".join(str(value) for value in selected_plan.get("blockers") or ())
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Preflight weigert conversie",
+                    f"{selected_plan.get('status', 'BLOCKED')}: {reasons or 'route is niet uitvoerbaar'}",
+                )
+                return
+            if project_path is None:
+                from cws_convertor.conversion_service import DEFAULT_CONVERSION_SERVICE
+
+                plans = [DEFAULT_CONVERSION_SERVICE.preflight(path, direction) for path in files]
+                refused = [
+                    (path, plan)
+                    for path, plan in zip(files, plans, strict=True)
+                    if not plan.executable
+                ]
+                if refused:
+                    details = " | ".join(
+                        f"{path.name}: {plan.status.value} · {'; '.join(plan.blockers)}"
+                        for path, plan in refused[:5]
+                    )
+                    self.status.setText("Preflight heeft de batch geweigerd")
+                    self.log.appendPlainText(f"PREFLIGHT  {details}")
+                    QtWidgets.QMessageBox.warning(self, "Preflight weigert conversie", details)
+                    return
             self.run_button.setEnabled(False)
             self.cancel_button.setEnabled(True)
             self.conversion_progress.setValue(0)
@@ -684,15 +782,29 @@ if qt_available():
             self.cancel_button.setEnabled(False)
             outputs = []
             for row in payload.get("results", []):
-                self.log.appendPlainText(f"OK  {Path(row['source']).name}")
+                item_status = str(row.get("status") or "unknown")
+                marker = "OK" if item_status == "passed" else "NIET UITGEVOERD" if item_status in {"blocked", "review_required"} else "FOUT"
+                self.log.appendPlainText(f"{marker}  {Path(str(row.get('source') or '')).name} · {item_status}")
                 for output in row.get("outputs", []):
                     outputs.append(output)
                     self.log.appendPlainText(f"    {output}")
                 for warning in row.get("warnings", []):
                     self.log.appendPlainText(f"WAARSCHUWING  {warning}")
-            self.status.setText("Conversie succesvol afgerond")
+                for failure in row.get("failures", []):
+                    self.log.appendPlainText(f"FOUT  {failure}")
+            overall = str(payload.get("status") or "passed")
+            successful = overall == "passed"
+            self.status.setText(
+                "Conversie succesvol afgerond"
+                if successful
+                else "Batch afgerond met afzonderlijke blokkades of fouten"
+            )
             self.conversion_progress.setValue(100)
-            self.conversion_progress.setFormat("Conversie succesvol afgerond · 100%")
+            self.conversion_progress.setFormat(
+                "Conversie succesvol afgerond · 100%"
+                if successful
+                else "Batch afgerond met itemresultaten · 100%"
+            )
             self.target_preview.set_caption(Path(outputs[-1]).name if outputs else "Conversie gereed")
 
         @QtCore.Slot(str)

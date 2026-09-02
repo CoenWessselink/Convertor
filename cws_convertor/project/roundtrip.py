@@ -28,7 +28,12 @@ from canonical_model import (
     utc_now_iso,
 )
 from ifc_native import extract_native_canonical, parse_native_ifc_meshes, write_native_ifc
-from pdf_support import canonical_to_nc1, create_trusted_pdf, load_trusted_pdf
+from pdf_support import (
+    canonical_to_nc1,
+    create_trusted_pdf,
+    load_trusted_pdf,
+    visible_pdf_sha256,
+)
 from profile_database import ProfileDatabase, normalise_name
 from cws_convertor.steel_model.tolerances import (
     BBOX_ABSOLUTE_TOLERANCE_MM,
@@ -290,6 +295,55 @@ def _metric_checks(expected: Mapping[str, Any], found: Mapping[str, Any]) -> lis
     ]
 
 
+def _visible_pdf_checks(
+    path: Path,
+    canonical: CanonicalPart,
+    manifest: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Prove that the generated vector sheet itself exposes key geometry facts.
+
+    The embedded canonical model proves the lossless data route, but cannot by
+    itself prove that a usable drawing was rendered.  These checks inspect the
+    visible page stream independently: page count, content bytes, fixed view
+    label, profile/part identity and one visible label per manufactured hole.
+    This deliberately fails closed when text extraction cannot prove the sheet.
+    """
+
+    from pypdf import PdfReader
+
+    reader = PdfReader(str(path))
+    page_text = "\n".join((page.extract_text() or "") for page in reader.pages)
+    content_bytes = sum(
+        len(page.get_contents().get_data())
+        for page in reader.pages
+        if page.get_contents() is not None
+    )
+    visible_hash = visible_pdf_sha256(path)
+    expected_hash = str(manifest.get("visible_sha256") or "")
+    checks = [
+        _check("pdf_visible_sha256", expected_hash, visible_hash),
+        _check("pdf_page_count", True, len(reader.pages) >= 1),
+        _check("pdf_vector_content_present", True, content_bytes >= 500),
+        _check("pdf_main_view_visible", True, "ELEVATION / MAIN VIEW" in page_text),
+    ]
+    identity = canonical.header.position_number or canonical.header.part_number or canonical.part_id
+    if identity:
+        checks.append(_check("pdf_part_identity_visible", True, str(identity) in page_text))
+    if canonical.header.profile:
+        checks.append(_check("pdf_profile_visible", True, str(canonical.header.profile) in page_text))
+    visible_hole_labels = sum(
+        1 for index in range(1, len(canonical.holes) + 1) if f"H{index}" in page_text
+    )
+    checks.append(
+        _check(
+            "pdf_visible_hole_labels",
+            len(canonical.holes),
+            visible_hole_labels,
+        )
+    )
+    return checks
+
+
 def _mesh_metrics(path: Path) -> dict[str, Any]:
     meshes = parse_native_ifc_meshes(path)
     volume = 0.0
@@ -345,7 +399,7 @@ def _run_one(
         restored = extract_native_canonical(path, strict=True)
         visible = _mesh_metrics(path)
     elif format_name == "pdf":
-        create_trusted_pdf(canonical, path)
+        pdf_result = create_trusted_pdf(canonical, path)
         restored = load_trusted_pdf(path, strict=True).part
         visible = None
     else:
@@ -355,20 +409,30 @@ def _run_one(
     checks = _payload_checks(canonical, restored)
     if visible is not None:
         checks.extend(_metric_checks(expected_metrics, visible))
+    elif format_name == "pdf":
+        checks.extend(
+            _visible_pdf_checks(
+                path,
+                canonical,
+                dict(pdf_result.details.get("manifest") or {}),
+            )
+        )
     return checks, all(item["status"] == "passed" for item in checks)
 
 
-def validate_roundtrips(
+def _validate_requested_roundtrips(
     part: Part,
     shape: cq.Shape,
     output_directory: str | Path,
     *,
     canonical_signature: str,
-    formats: Iterable[str] = REQUIRED_ROUNDTRIP_FORMATS,
+    requested: tuple[str, ...],
 ) -> dict[str, Any]:
-    requested = tuple(dict.fromkeys(str(item).strip().lower() for item in formats))
-    if set(requested) != set(REQUIRED_ROUNDTRIP_FORMATS):
-        raise ProjectValidationError("Productievalidatie vereist exact NC1, STEP, IFC en PDF")
+    unknown = set(requested) - set(REQUIRED_ROUNDTRIP_FORMATS)
+    if not requested or unknown:
+        raise ProjectValidationError(
+            "Onbekende roundtripformaten: " + ", ".join(sorted(unknown or {"<leeg>"}))
+        )
     output = Path(output_directory)
     output.mkdir(parents=True, exist_ok=True)
     canonical = canonical_part_from_workbench(
@@ -406,6 +470,15 @@ def validate_roundtrips(
                         for item in checks
                         if item["property"] == "geometry_sha256"
                     ),
+                    "visible_content_proven": (
+                        all(
+                            item["status"] == "passed"
+                            for item in checks
+                            if item["property"].startswith("pdf_")
+                        )
+                        if format_name == "pdf"
+                        else True
+                    ),
                     "artifact_id": artifact_id,
                     "artifact_path": str(final_path.resolve()),
                     "artifact_sha256": artifact_sha,
@@ -427,6 +500,7 @@ def validate_roundtrips(
                         }
                     ],
                     "payload_geometry_exact": False,
+                    "visible_content_proven": False,
                     "artifact_id": artifact_id,
                     "artifact_path": str(final_path.resolve()),
                     "artifact_sha256": "",
@@ -441,6 +515,8 @@ def validate_roundtrips(
     report = {
         "schema_version": ROUNDTRIP_SCHEMA_VERSION,
         "validator_version": ROUNDTRIP_VALIDATOR_VERSION,
+        "validation_scope": "complete_matrix" if set(requested) == set(REQUIRED_ROUNDTRIP_FORMATS) else "target_specific",
+        "requested_formats": list(requested),
         "part_id": part.internal_id,
         "manufacturing_hash": part.manufacturing_hash,
         "canonical_signature": canonical_signature,
@@ -455,9 +531,50 @@ def validate_roundtrips(
     return report
 
 
+def validate_roundtrips(
+    part: Part,
+    shape: cq.Shape,
+    output_directory: str | Path,
+    *,
+    canonical_signature: str,
+    formats: Iterable[str] = REQUIRED_ROUNDTRIP_FORMATS,
+) -> dict[str, Any]:
+    requested = tuple(dict.fromkeys(str(item).strip().lower() for item in formats))
+    if set(requested) != set(REQUIRED_ROUNDTRIP_FORMATS):
+        raise ProjectValidationError("Productievalidatie vereist exact NC1, STEP, IFC en PDF")
+    return _validate_requested_roundtrips(
+        part,
+        shape,
+        output_directory,
+        canonical_signature=canonical_signature,
+        requested=requested,
+    )
+
+
+def validate_target_roundtrip(
+    part: Part,
+    shape: cq.Shape,
+    output_directory: str | Path,
+    *,
+    canonical_signature: str,
+    target_format: str,
+) -> dict[str, Any]:
+    """Validate one selected target while keeping the release gate unchanged."""
+
+    target = str(target_format or "").strip().lower().replace("dstv", "nc1")
+    return _validate_requested_roundtrips(
+        part,
+        shape,
+        output_directory,
+        canonical_signature=canonical_signature,
+        requested=(target,),
+    )
+
+
 __all__ = [
     "ROUNDTRIP_SCHEMA_VERSION",
     "ROUNDTRIP_VALIDATOR_VERSION",
     "canonical_part_from_workbench",
+    "validate_target_roundtrip",
     "validate_roundtrips",
 ]

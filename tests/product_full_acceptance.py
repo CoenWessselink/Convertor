@@ -16,56 +16,49 @@ if str(ROOT) not in sys.path:
 
 
 def _convert_matrix(nc1: Path, ifc: Path, step: Path, output: Path) -> list[dict[str, object]]:
-    from conversion import convert_file
+    from cws_convertor.conversion_service import DEFAULT_CONVERSION_SERVICE, FORMATS
 
-    cases = [
-        ("nc1-step", nc1),
-        ("step-nc1", step),
-        ("step-ifc", step),
-        ("nc1-ifc", nc1),
-    ]
+    # External IFC/STEP are covered by project intake below. The cross-format
+    # production matrix starts from one controlled NC1 and derives trusted
+    # STEP/IFC/PDF sources, so every advertised route can be proven exactly.
+    del ifc, step
+    sources = {"NC1": nc1}
     results: list[dict[str, object]] = []
-    for direction, source in cases:
+
+    def execute(source_format: str, target_format: str) -> Path:
+        direction = f"{source_format.lower()}-{target_format.lower()}"
+        source = sources[source_format]
         target = output / direction
         target.mkdir(parents=True, exist_ok=True)
-        outputs, warnings, failures = convert_file(
+        execution = DEFAULT_CONVERSION_SERVICE.convert_file(
             source,
             target,
             direction,
             material="S355JR",
             strict_validation=True,
         )
-        row = {
-            "direction": direction,
-            "source": str(source),
-            "outputs": [str(Path(value)) for value in outputs],
-            "warnings": [str(value) for value in warnings],
-            "failures": [str(value) for value in failures],
-        }
-        if failures or not outputs:
+        row = execution.to_dict()
+        if execution.status != "passed" or not execution.outputs:
             raise RuntimeError(f"Conversie {direction} mislukt: {row}")
+        if not execution.evidence_path or not Path(execution.evidence_path).is_file():
+            raise RuntimeError(f"Conversie {direction} mist heropenbaar bewijs: {row}")
+        if not all(value.get("status") == "PASS" for value in execution.proofs.values()):
+            raise RuntimeError(f"Conversie {direction} mist een bewijslaag: {row}")
         results.append(row)
-    controlled_ifc = Path(results[-1]["outputs"][0])
-    for direction in ("ifc-step", "ifc-nc1"):
-        target = output / direction
-        target.mkdir(parents=True, exist_ok=True)
-        outputs, warnings, failures = convert_file(
-            controlled_ifc,
-            target,
-            direction,
-            material="S355JR",
-            strict_validation=True,
-        )
-        row = {
-            "direction": direction,
-            "source": str(controlled_ifc),
-            "outputs": [str(Path(value)) for value in outputs],
-            "warnings": [str(value) for value in warnings],
-            "failures": [str(value) for value in failures],
-        }
-        if failures or not outputs:
-            raise RuntimeError(f"Conversie {direction} mislukt: {row}")
-        results.append(row)
+        suffix = ".nc1" if target_format == "NC1" else f".{target_format.lower()}"
+        artifacts = [Path(value) for value in execution.outputs if Path(value).suffix.lower() == suffix]
+        if not artifacts:
+            raise RuntimeError(f"Conversie {direction} heeft geen {target_format}-artefact: {row}")
+        return artifacts[0]
+
+    for target_format in ("STEP", "IFC", "PDF"):
+        sources[target_format] = execute("NC1", target_format)
+    for source_format in ("STEP", "IFC", "PDF"):
+        for target_format in FORMATS:
+            if source_format != target_format:
+                execute(source_format, target_format)
+    if len(results) != 12:
+        raise RuntimeError(f"Conversiematrix bevat {len(results)} in plaats van 12 routes")
     return results
 
 

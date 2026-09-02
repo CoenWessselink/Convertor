@@ -1,8 +1,18 @@
-"""Single fail-closed capability registry for engineering conversions."""
+"""Compatibility view over the central conversion planner.
+
+New code must use :mod:`cws_convertor.conversion_service` directly. This
+adapter retains the former registry API without maintaining a second policy.
+"""
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from typing import Iterable
+
+from cws_convertor.conversion_service import (
+    DEFAULT_CONVERSION_PLANNER,
+    ROUTES,
+    ConversionSource,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,23 +32,19 @@ class ConversionCapability:
         return asdict(self)
 
 
-# The current physical serializers can only prove a semantic re-import for
-# plain holes across every advertised family.  Richer workbench features stay
-# canonical and visible, but are deliberately blocked until their target
-# serializer and re-import comparator prove them losslessly.
-_EXACT_FEATURES = ("hole",)
-
-
-CAPABILITIES = (
-    ConversionCapability("NC1", "STEP", "nc1-step", "part", ("plate", "profile"), ("hole",), "semantic_nc1", "canonical_roundtrip", "step_reimport"),
-    ConversionCapability("NC1", "IFC", "nc1-ifc", "part", ("plate", "profile"), ("hole",), "semantic_nc1", "canonical_roundtrip", "ifc_reimport"),
-    ConversionCapability("STEP", "NC1", "step-nc1", "part", ("plate", "profile"), ("hole",), "exact_native_brep", "canonical_roundtrip", "nc1_reimport"),
-    ConversionCapability("STEP", "IFC", "step-ifc", "part", ("plate", "profile", "round_bar"), _EXACT_FEATURES, "exact_native_brep", "canonical_roundtrip", "ifc_reimport"),
-    ConversionCapability("IFC", "STEP", "ifc-step", "part", ("plate", "profile", "round_bar"), _EXACT_FEATURES, "exact_part_geometry", "canonical_roundtrip", "step_reimport", ("triangulated_ifc_is_review_only",)),
-    ConversionCapability("IFC", "NC1", "ifc-nc1", "part", ("plate", "profile"), ("hole",), "exact_part_geometry", "canonical_roundtrip", "nc1_reimport", ("triangulated_ifc_is_review_only",)),
-    ConversionCapability("PDF", "STEP", "pdf-step", "part", ("plate", "profile", "round_bar"), _EXACT_FEATURES, "trusted_pdf_payload", "canonical_roundtrip", "step_reimport"),
-    ConversionCapability("PDF", "NC1", "pdf-nc1", "part", ("plate", "profile"), ("hole",), "trusted_pdf_payload", "canonical_roundtrip", "nc1_reimport"),
-    ConversionCapability("PDF", "IFC", "pdf-ifc", "part", ("plate", "profile", "round_bar"), _EXACT_FEATURES, "trusted_pdf_payload", "canonical_roundtrip", "ifc_reimport"),
+CAPABILITIES = tuple(
+    ConversionCapability(
+        route.source_format,
+        route.target_format,
+        route.direction,
+        "part_or_assembly_package",
+        ("plate", "profile", "round_bar"),
+        ("hole", "outer_contour"),
+        "central_target_specific_preflight",
+        route.serializer,
+        route.reimport_validator,
+    )
+    for route in ROUTES
 )
 
 
@@ -55,19 +61,28 @@ class ConversionCapabilityRegistry:
         exact_source: bool = True,
     ) -> tuple[tuple[ConversionCapability, tuple[str, ...]], ...]:
         source = str(source_format or "").upper().lstrip(".")
-        feature_set = {str(value).lower() for value in features if str(value)}
+        source = {"NC": "NC1", "DSTV": "NC1", "STP": "STEP"}.get(source, source)
+        descriptor = ConversionSource(
+            source_path="compatibility-preflight",
+            source_format=source,
+            source_sha256="",
+            exact_source=bool(exact_source),
+            trusted_payload=source == "NC1",
+            part_form=str(part_form or "").lower(),
+            features=tuple(str(value).lower() for value in features if str(value)),
+            solid_count=1,
+        )
         results = []
-        for capability in self.capabilities:
-            if capability.source_format != source:
+        by_direction = {item.direction: item for item in self.capabilities}
+        for route in ROUTES:
+            if route.source_format != source or route.direction not in by_direction:
                 continue
-            blockers = list(capability.blockers)
-            if part_form and part_form not in capability.part_forms:
-                blockers.append(f"part_form:{part_form}")
-            unsupported = sorted(feature_set - set(capability.supported_features))
-            blockers.extend(f"unsupported_feature:{value}" for value in unsupported)
-            if capability.exactness_requirement in {"exact_native_brep", "exact_part_geometry"} and not exact_source:
-                blockers.append("exact_source_geometry_required")
-            results.append((capability, tuple(dict.fromkeys(blockers))))
+            plan = DEFAULT_CONVERSION_PLANNER.plan_source(descriptor, route.direction)
+            capability = by_direction[route.direction]
+            unsupported = sorted(set(descriptor.features) - set(capability.supported_features))
+            reasons = list(() if plan.executable else plan.blockers or (plan.status.value,))
+            reasons.extend(f"unsupported_feature:{value}" for value in unsupported)
+            results.append((capability, tuple(dict.fromkeys(reasons))))
         return tuple(results)
 
     def available_directions(self, **context: object) -> tuple[str, ...]:
