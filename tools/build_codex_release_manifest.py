@@ -33,6 +33,22 @@ def git(*arguments: str) -> str:
     ).strip()
 
 
+def tracked_change_paths() -> list[str]:
+    """Return tracked porcelain paths without stripping the first status column."""
+
+    porcelain = subprocess.check_output(
+        ["git", "status", "--porcelain=v1", "--untracked-files=no"],
+        cwd=ROOT,
+        text=True,
+        encoding="utf-8",
+    )
+    return [
+        line[3:].split(" -> ")[-1]
+        for line in porcelain.splitlines()
+        if len(line) >= 4
+    ]
+
+
 def digest(path: Path) -> str:
     value = sha256()
     with path.open("rb") as handle:
@@ -100,8 +116,7 @@ def main() -> int:
     if len(commit) != 40 or len(tree) != 40:
         raise RuntimeError("Exacte Git commit en tree zijn vereist")
 
-    porcelain = git("status", "--porcelain=v1", "--untracked-files=no")
-    tracked_changes = [line[3:].split(" -> ")[-1] for line in porcelain.splitlines() if line]
+    tracked_changes = tracked_change_paths()
     disallowed = [path for path in tracked_changes if not allowed_generated_change(path)]
     if disallowed:
         raise RuntimeError(f"Productbron wijzigde tijdens acceptance: {disallowed}")

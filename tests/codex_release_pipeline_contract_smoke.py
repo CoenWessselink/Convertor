@@ -56,6 +56,21 @@ class CodexReleasePipelineContractTests(unittest.TestCase):
         for status in ("", "red", "failed", "blocked", "skipped"):
             self.assertFalse(module.passed({"status": status}))
 
+    def test_manifest_gate_preserves_first_porcelain_path_character(self) -> None:
+        module = _load_manifest_module()
+        original = module.subprocess.check_output
+        module.subprocess.check_output = lambda *args, **kwargs: (
+            " M requirements/ACTIVE_REQUIREMENTS.json\n"
+            "M  cws_convertor/product.py\n"
+        )
+        try:
+            self.assertEqual(
+                ["requirements/ACTIVE_REQUIREMENTS.json", "cws_convertor/product.py"],
+                module.tracked_change_paths(),
+            )
+        finally:
+            module.subprocess.check_output = original
+
 
 if __name__ == "__main__":
     unittest.main()

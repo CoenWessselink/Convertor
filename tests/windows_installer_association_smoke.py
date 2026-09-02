@@ -51,28 +51,12 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
-    if args.runtime_dir is None:
-        installer = (ROOT / "installer" / "CWS_Convertor.iss").read_text(
-            encoding="utf-8"
-        )
-        if "Root: HKCR" in installer:
-            raise AssertionError("Installer associations must not target HKCR directly")
-        if installer.count('Root: HKA; Subkey: "Software\\Classes\\') != 20:
-            raise AssertionError("Expected 20 installation-mode-aware association entries")
-        _write_report(
-            args.output,
-            mode="source_configuration",
-            details={"association_entries": 20, "registry_root": "HKA"},
-        )
-        print("windows_installer_association_smoke: source configuration OK")
-        return 0
-
-    if sys.platform != "win32":
-        raise SystemExit("windows_installer_association_smoke requires Windows")
-
-    import winreg
-
     if args.expect_absent:
+        if sys.platform != "win32":
+            raise SystemExit("windows_installer_association_smoke requires Windows")
+
+        import winreg
+
         keys = [
             r"Software\Classes\.cwscproj", r"Software\Classes\.nc", r"Software\Classes\.nc1",
             r"Software\Classes\.step", r"Software\Classes\.stp", r"Software\Classes\.ifc",
@@ -96,6 +80,27 @@ def main() -> int:
         )
         print("windows_installer_association_smoke: uninstall cleanup OK")
         return 0
+
+    if args.runtime_dir is None:
+        installer = (ROOT / "installer" / "CWS_Convertor.iss").read_text(
+            encoding="utf-8"
+        )
+        if "Root: HKCR" in installer:
+            raise AssertionError("Installer associations must not target HKCR directly")
+        if installer.count('Root: HKA; Subkey: "Software\\Classes\\') != 20:
+            raise AssertionError("Expected 20 installation-mode-aware association entries")
+        _write_report(
+            args.output,
+            mode="source_configuration",
+            details={"association_entries": 20, "registry_root": "HKA"},
+        )
+        print("windows_installer_association_smoke: source configuration OK")
+        return 0
+
+    if sys.platform != "win32":
+        raise SystemExit("windows_installer_association_smoke requires Windows")
+
+    import winreg
 
     runtime_dir = args.runtime_dir.resolve()
     executable = runtime_dir / "CWS_Convertor.exe"
