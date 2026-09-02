@@ -165,6 +165,9 @@ def main() -> None:
         assert reverse_ifc.exists() and reverse_ifc.stat().st_size > 1000
         payload = extract_part_from_ifc(reverse_ifc, strict=True)
         assert payload is not None and payload.schema_version == "1.1"
+        assert payload.geometry_sha256() == inspection.part.geometry_sha256()
+        assert payload.header.profile == inspection.part.header.profile
+        assert payload.header.quantity == inspection.part.header.quantity
 
         # STEP -> Trusted PDF -> exact STEP attachment.
         step_pdf = out / "D20_trusted.pdf"

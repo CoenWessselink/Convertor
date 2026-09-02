@@ -3622,15 +3622,21 @@ def pdf_to_ifc(
             # replace the source attachment whose hash is part of provenance.
             if export_part.attachment("step") is None:
                 export_part.add_attachment("step", generated_step.name, "model/step", generated_step.read_bytes())
-            box = shape.BoundingBox()
-            export_part.geometry.update(
-                {
-                    "volume_mm3": float(shape.Volume()),
-                    "area_mm2": float(shape.Area()),
-                    "bbox_mm": [float(box.xlen), float(box.ylen), float(box.zlen)],
-                    "solids": len(shape.Solids()),
-                }
-            )
+            # A Trusted PDF already carries the authoritative canonical
+            # geometry. Recomputing its floating-point metrics from a STEP
+            # intermediary changes geometry_sha256 even when the independently
+            # compared solid is within tolerance. Only populate metrics for a
+            # reviewed payload that did not already provide them.
+            if not export_part.geometry:
+                box = shape.BoundingBox()
+                export_part.geometry.update(
+                    {
+                        "volume_mm3": float(shape.Volume()),
+                        "area_mm2": float(shape.Area()),
+                        "bbox_mm": [float(box.xlen), float(box.ylen), float(box.zlen)],
+                        "solids": len(shape.Solids()),
+                    }
+                )
 
             semantic_error = ""
             if export_part.header.profile_type == "B":
