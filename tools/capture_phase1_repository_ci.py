@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from typing import Any
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
@@ -48,11 +49,27 @@ def main() -> int:
     tracking_head = git("rev-parse", tracking)
     ahead_text = git("rev-list", "--left-right", "--count", f"HEAD...{tracking}")
     ahead, behind = (int(value) for value in ahead_text.split())
-    status_lines = tuple(line for line in git("status", "--short").splitlines() if line)
-    runs_payload = github_json(
-        f"https://api.github.com/repos/{REPOSITORY}/actions/runs?branch={quote(branch, safe='')}&per_page=20"
+    status_lines = tuple(
+        line
+        for line in git("status", "--short", "--untracked-files=no").splitlines()
+        if line
     )
-    runs = list(runs_payload.get("workflow_runs") or [])
+    ci_execution_exact_sha = bool(
+        os.environ.get("GITHUB_ACTIONS", "").casefold() == "true"
+        and str(os.environ.get("GITHUB_SHA") or "").casefold() == head.casefold()
+    )
+    runs: list[dict[str, Any]] = []
+    repository_api_error = ""
+    if not ci_execution_exact_sha:
+        try:
+            runs_payload = github_json(
+                f"https://api.github.com/repos/{REPOSITORY}/actions/runs?branch={quote(branch, safe='')}&per_page=20"
+            )
+            runs = list(runs_payload.get("workflow_runs") or [])
+        except Exception as exc:
+            # Local audits remain fail-closed if GitHub cannot be queried. An
+            # exact-SHA Actions execution does not need the external lookup.
+            repository_api_error = f"{type(exc).__name__}: {exc}"
     exact_runs = [run for run in runs if str(run.get("head_sha")) == head]
     canonical_exact_runs = [
         run for run in exact_runs if str(run.get("name") or "") == CANONICAL_WORKFLOW
@@ -62,7 +79,10 @@ def main() -> int:
     )
     jobs: list[dict] = []
     if latest.get("jobs_url"):
-        jobs = list(github_json(str(latest["jobs_url"])).get("jobs") or [])
+        try:
+            jobs = list(github_json(str(latest["jobs_url"])).get("jobs") or [])
+        except Exception as exc:
+            repository_api_error = f"{type(exc).__name__}: {exc}"
     workflow_path = ROOT / ".github" / "workflows" / "build-product-ui-reintegration-exe.yml"
     committed_workflow = git("show", f"{head}:.github/workflows/build-product-ui-reintegration-exe.yml")
     payload = {
@@ -79,6 +99,7 @@ def main() -> int:
         "working_tree_clean": not status_lines,
         "working_tree_change_count": len(status_lines),
         "working_tree_status": list(status_lines),
+        "repository_api_error": repository_api_error,
         "workflow": {
             "path": str(workflow_path.relative_to(ROOT)),
             "committed_non_whitespace_bytes": len(committed_workflow.strip().encode("utf-8")),
@@ -104,10 +125,7 @@ def main() -> int:
             and jobs
         ),
     }
-    payload["ci_execution_exact_sha"] = bool(
-        os.environ.get("GITHUB_ACTIONS", "").casefold() == "true"
-        and str(os.environ.get("GITHUB_SHA") or "").casefold() == head.casefold()
-    )
+    payload["ci_execution_exact_sha"] = ci_execution_exact_sha
     payload["required_ci_green"] = bool(payload["required_ci_green"] or payload["ci_execution_exact_sha"])
     payload["status"] = (
         "PASS"

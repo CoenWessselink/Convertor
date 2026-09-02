@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -18,6 +19,7 @@ if str(TOOLS) not in sys.path:
 
 import build_phase2_windows_release as phase2
 import build_phase3_windows_release as phase3
+import capture_phase1_repository_ci as phase1_capture
 import finalize_commit_bound_release as finalizer
 
 
@@ -76,6 +78,46 @@ class ReleaseTrackedSourceIntegritySmokeTests(unittest.TestCase):
                 },
                 names,
             )
+
+    def test_phase1_repository_capture_avoids_rate_limited_ci_lookup(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self._repository(root)
+            subprocess.run(
+                ["git", "branch", "-m", phase1_capture.CANONICAL_BRANCH],
+                cwd=root,
+                check=True,
+            )
+            workflow = root / ".github" / "workflows" / "build-product-ui-reintegration-exe.yml"
+            workflow.parent.mkdir(parents=True)
+            workflow.write_text("name: fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", str(workflow)], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-m", "workflow"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            revision = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=root, text=True
+            ).strip()
+            subprocess.run(
+                ["git", "update-ref", f"refs/remotes/origin/{phase1_capture.CANONICAL_BRANCH}", revision],
+                cwd=root,
+                check=True,
+            )
+            output = root / "validation" / "phases" / "repository.json"
+            with (
+                patch.object(phase1_capture, "ROOT", root),
+                patch.object(phase1_capture, "OUTPUT", output),
+                patch.object(phase1_capture, "github_json", side_effect=AssertionError("network lookup")),
+                patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_SHA": revision}),
+            ):
+                self.assertEqual(0, phase1_capture.main())
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual("PASS", payload["status"])
+            self.assertTrue(payload["ci_execution_exact_sha"])
+            self.assertEqual("", payload["repository_api_error"])
 
 
 if __name__ == "__main__":
