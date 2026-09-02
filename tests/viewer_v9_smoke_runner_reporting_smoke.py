@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from validation.run_all_smokes_v9 import (
+    SOURCE_SMOKE_EXCLUSIONS,
     _failure_excerpt,
     _workflow_command_escape,
 )
@@ -30,6 +31,12 @@ class ViewerV9SmokeRunnerReportingTests(unittest.TestCase):
         with patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}, clear=False):
             self.assertEqual("true", os.environ["GITHUB_ACTIONS"])
         self.assertEqual(before, os.environ.get("GITHUB_ACTIONS"))
+
+    def test_packaged_only_conversion_matrix_is_not_run_without_artifact_arguments(self) -> None:
+        self.assertIn(
+            "conversion_one_phase_packaged_smoke.py",
+            SOURCE_SMOKE_EXCLUSIONS,
+        )
 
 
 if __name__ == "__main__":

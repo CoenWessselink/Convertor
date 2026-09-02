@@ -18,6 +18,15 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# These scripts require a built, commit-bound runtime and are executed by the
+# release workflow after packaging. Running them as source smokes would omit
+# their mandatory artifact arguments and produce a false regression.
+SOURCE_SMOKE_EXCLUSIONS = frozenset(
+    {
+        "conversion_one_phase_packaged_smoke.py",
+    }
+)
+
 
 def _failure_excerpt(stdout: str, stderr: str, returncode: int, *, limit: int = 3500) -> str:
     details = (stderr.strip() or stdout.strip()).replace("\x00", "")
@@ -65,6 +74,7 @@ def main() -> int:
             path
             for path in (ROOT / "tests").glob("*_smoke.py")
             if not path.name.startswith("full_acceptance_")
+            and path.name not in SOURCE_SMOKE_EXCLUSIONS
         ),
         key=lambda p: p.name.lower(),
     )

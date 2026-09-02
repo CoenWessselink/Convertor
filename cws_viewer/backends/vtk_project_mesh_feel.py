@@ -61,9 +61,9 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
     def _mesh_polydata(self, geometry_id: str):
         """Build mesh polydata with crisp structural hard edges.
 
-        The old ``SplittingOff`` smoothed normals across 90-degree steel corners.
-        Splitting at a feature angle preserves planar steel faces while keeping
-        curved/faceted source geometry visually continuous where appropriate.
+        Point normals with ``SplittingOff`` smoothed across 90-degree steel
+        corners. Exact cell normals keep every structural face crisp without
+        the point duplication and first-frame cost of splitting large models.
         """
         cache = getattr(self, "_cws_polydata_cache", None)
         if cache is None:
