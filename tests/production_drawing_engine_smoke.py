@@ -44,6 +44,53 @@ def _box_mesh() -> tuple[np.ndarray, np.ndarray]:
 
 
 class ProductionDrawingEngineTests(unittest.TestCase):
+    def test_occt_edge_sampler_uses_supported_curve_adaptor_api(self) -> None:
+        class Point:
+            def __init__(self, value: float) -> None:
+                self.value = value
+
+        class Curve:
+            @staticmethod
+            def FirstParameter() -> float:
+                return 2.0
+
+            @staticmethod
+            def LastParameter() -> float:
+                return 8.0
+
+        class Edge:
+            @staticmethod
+            def _geomAdaptor() -> Curve:
+                return Curve()
+
+        calls: list[tuple[object, float, float, float]] = []
+
+        class Sampler:
+            def __init__(self, curve: object, deflection: float, start: float, end: float) -> None:
+                calls.append((curve, deflection, start, end))
+
+            @staticmethod
+            def IsDone() -> bool:
+                return True
+
+            @staticmethod
+            def NbPoints() -> int:
+                return 3
+
+            @staticmethod
+            def Value(index: int) -> Point:
+                return Point(float(index))
+
+        points = DrawingProjectionModel._discretize_occt_edge(
+            Edge(),
+            0.05,
+            sampler_factory=Sampler,
+        )
+
+        self.assertEqual([point.value for point in points], [1.0, 2.0, 3.0])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][1:], (0.05, 2.0, 8.0))
+
     def _request(self, **changes) -> DrawingBuildRequest:
         vertices, triangles = _box_mesh()
         values = dict(

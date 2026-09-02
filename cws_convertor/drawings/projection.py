@@ -22,6 +22,38 @@ class DrawingProjectionModel:
     """Single deterministic authority for orthographic/isometric projections."""
 
     @staticmethod
+    def _discretize_occt_edge(
+        edge: object,
+        deflection: float,
+        *,
+        sampler_factory: object | None = None,
+    ) -> tuple[object, ...]:
+        """Sample a CadQuery edge through OCCT's curve adaptor.
+
+        CadQuery 2.8 does not expose ``Edge.discretize``.  Its own SVG
+        exporter samples HLR edges with ``GCPnts_QuasiUniformDeflection``;
+        keep the drawing and section routes on that supported OCCT API too.
+        ``sampler_factory`` is injectable so this compatibility boundary can
+        be covered without requiring the native runtime on every developer
+        machine.
+        """
+
+        if sampler_factory is None:
+            from OCP.GCPnts import GCPnts_QuasiUniformDeflection
+
+            sampler_factory = GCPnts_QuasiUniformDeflection
+        curve = edge._geomAdaptor()
+        sampler = sampler_factory(
+            curve,
+            float(deflection),
+            curve.FirstParameter(),
+            curve.LastParameter(),
+        )
+        if not sampler.IsDone():
+            return ()
+        return tuple(sampler.Value(index + 1) for index in range(sampler.NbPoints()))
+
+    @staticmethod
     def basis(view: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         if view == "front": return np.array((1.,0.,0.)),np.array((0.,1.,0.)),np.array((0.,0.,1.))
         if view == "top": return np.array((1.,0.,0.)),np.array((0.,0.,1.)),np.array((0.,-1.,0.))
@@ -106,11 +138,8 @@ class DrawingProjectionModel:
         """
 
         import cadquery as cq
-
-        try:
-            from cadquery.occ_impl.shapes import hlr as cadquery_hlr
-        except ImportError:
-            cadquery_hlr = None
+        from cadquery.occ_impl.shapes import TOLERANCE
+        from OCP.BRepLib import BRepLib
 
         u, v, direction = cls.basis(view)
 
@@ -125,11 +154,16 @@ class DrawingProjectionModel:
                 value = getattr(point, upper)
                 return float(value() if callable(value) else value)
 
-            if compound is None or getattr(compound, "wrapped", compound).IsNull():
+            raw_compound = getattr(compound, "wrapped", compound)
+            if compound is None or raw_compound.IsNull():
                 return ()
-            wrapped_compound = compound if hasattr(compound, "Edges") else cq.Shape.cast(compound)
+            # HLR output needs explicit 3D curves before BRepAdaptor sampling;
+            # this mirrors CadQuery 2.8's native SVG exporter and also avoids
+            # null adaptors/segfaults in OCP.
+            BRepLib.BuildCurves3d_s(raw_compound, TOLERANCE)
+            wrapped_compound = compound if hasattr(compound, "Edges") else cq.Shape.cast(raw_compound)
             for edge in wrapped_compound.Edges():
-                points = edge.discretize(Deflection=0.05)
+                points = cls._discretize_occt_edge(edge, 0.05)
                 # HLR returns geometry in its projection plane.  X/Y are
                 # therefore already drawing coordinates; projecting a second
                 # time would corrupt orthographic proportions.
@@ -152,18 +186,6 @@ class DrawingProjectionModel:
                 identities.add(identity)
                 result.append(projected)
             return tuple(result)
-
-        if cadquery_hlr is not None:
-            result = cadquery_hlr(
-                exact_shape,
-                dir=tuple(float(value) for value in direction),
-                up=tuple(float(value) for value in v),
-            )
-            visible = edge_points(result.visible)
-            hidden = edge_points(result.hidden)
-            if not visible:
-                raise RuntimeError("OCCT HLR leverde geen zichtbare randen")
-            return visible, hidden
 
         from OCP.HLRAlgo import HLRAlgo_Projector
         from OCP.HLRBRep import HLRBRep_Algo, HLRBRep_HLRToShape
@@ -241,7 +263,9 @@ class DrawingProjectionModel:
         """
 
         import cadquery as cq
+        from cadquery.occ_impl.shapes import TOLERANCE
         from OCP.BRepAlgoAPI import BRepAlgoAPI_Section
+        from OCP.BRepLib import BRepLib
         from OCP.gp import gp_Dir, gp_Pln, gp_Pnt
 
         shape = exact_shape if hasattr(exact_shape, "BoundingBox") else cq.Shape.cast(exact_shape)
@@ -261,11 +285,13 @@ class DrawingProjectionModel:
         operation.Build()
         if not operation.IsDone() or operation.Shape().IsNull():
             raise RuntimeError("OCCT BREP-vlakdoorsnede kon niet worden opgebouwd")
-        section = cq.Shape.cast(operation.Shape())
+        raw_section = operation.Shape()
+        BRepLib.BuildCurves3d_s(raw_section, TOLERANCE)
+        section = cq.Shape.cast(raw_section)
         result: list[np.ndarray] = []
         identities: set[tuple[tuple[float, float], ...]] = set()
         for edge in section.Edges():
-            points = edge.discretize(Deflection=0.03)
+            points = DrawingProjectionModel._discretize_occt_edge(edge, 0.03)
             projected = np.asarray(
                 [
                     (
