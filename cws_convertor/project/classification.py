@@ -208,6 +208,7 @@ class ClassificationReport:
 
     def refresh_hash(self) -> str:
         data = self.to_dict(include_decisions=True)
+        data.pop("generated_at", None)
         data["report_sha256"] = ""
         self.report_sha256 = stable_sha256(data)
         return self.report_sha256

@@ -56,7 +56,8 @@ class BOMTests(unittest.TestCase):
         self.assertEqual(snapshot.summary["weld_object_count"], 1)
         self.assertEqual(snapshot.summary["traceability_record_count"], 6)
         self.assertTrue(snapshot.validation.passed)
-        self.assertTrue(snapshot.validation.production_ready)
+        self.assertFalse(snapshot.validation.production_ready)
+        self.assertIn("Bronbewijs ontbreekt", " ".join(snapshot.validation.messages))
         lo4 = snapshot.part_bom[0]
         self.assertEqual(lo4.quantity, 2)
         self.assertAlmostEqual(lo4.total_mass_kg, 1.24, places=6)

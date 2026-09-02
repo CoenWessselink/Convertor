@@ -1057,6 +1057,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 "report": "production_workflow",
                 "production_workflow": "production_workflow",
                 "export": "export",
+                "print": "print_center",
             }
             if key in {"open_exact", "legacy_profiles"}:
                 super()._route_action(key)

@@ -830,6 +830,10 @@ if qt_available():
                 self.window.application_context.request_selection((entity_id,), origin="report")
 
 
+    # The production-hub implementation supersedes the early raw-part table
+    # while preserving the public import used by the unified shells.
+    from .bom_workspace import BomWorkspacePanel as BomWorkspacePanel
+
 else:
     class _Unavailable:
         def __init__(self, *_: Any, **__: Any) -> None:

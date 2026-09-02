@@ -31,6 +31,7 @@ GATES = (
     ("production_export", "tests/production_export_smoke.py"),
     ("production_export", "tests/production_export_negative_smoke.py"),
     ("bom_reporting", "tests/project_bom_smoke.py"),
+    ("bom_reporting", "tests/bom_production_hub_smoke.py"),
     ("phase1_phase2", "tests/phase1_phase2_completion_smoke.py"),
     ("qt_headless_gui", "tests/phase1_phase2_context_e2e_gui_smoke.py"),
     ("qt_headless_gui", "tests/unified_ui_shell_u3_gui_smoke.py"),

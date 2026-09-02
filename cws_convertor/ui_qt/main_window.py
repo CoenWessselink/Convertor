@@ -796,7 +796,7 @@ if qt_available():
                 "convert": "converter", "validate": "control", "pdf": "pdf_review",
                 "profiles": "profiles", "drawings": "drawing",
                 "scribing": "scribing", "quantities": "bom", "bom": "bom",
-                "report": "report", "export": "export",
+                "report": "report", "export": "export", "print": "pdf_review",
             }
             if action == "open_exact":
                 self.project_page.open_exact_workbench()

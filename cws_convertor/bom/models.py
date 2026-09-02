@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 from cws_convertor.project.model import stable_sha256, utc_now_iso
 
-BOM_SCHEMA_VERSION = "1.0"
+BOM_SCHEMA_VERSION = "1.2"
 
 class DictMixin:
     def to_dict(self) -> dict[str, Any]:
@@ -59,6 +59,11 @@ class AssemblyBOMRow(DictMixin):
     blocking_reasons: list[str]
     composition_hashes: list[str]
     assembly_ids: list[str]
+    part_ids: list[str] = field(default_factory=list)
+    purchased_item_ids: list[str] = field(default_factory=list)
+    fastener_ids: list[str] = field(default_factory=list)
+    weld_ids: list[str] = field(default_factory=list)
+    child_assembly_ids: list[str] = field(default_factory=list)
 
 @dataclass
 class PurchaseBOMRow(DictMixin):
@@ -82,6 +87,7 @@ class PurchaseBOMRow(DictMixin):
     warnings: list[str]
     source_entity_ids: list[str]
     part_ids: list[str]
+    purchased_item_ids: list[str] = field(default_factory=list)
 
 @dataclass
 class FastenerBOMRow(DictMixin):
@@ -195,6 +201,10 @@ class BOMSnapshot:
 
     def refresh_hash(self) -> str:
         data = self.to_dict()
+        data.pop("generated_at", None)
         data["snapshot_sha256"] = ""
+        summary = dict(data.get("summary") or {})
+        summary.pop("generated_at", None)
+        data["summary"] = summary
         self.snapshot_sha256 = stable_sha256(data)
         return self.snapshot_sha256

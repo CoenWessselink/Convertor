@@ -92,10 +92,18 @@ def _build_part_rows(project: ProjectModel):
             warnings.append("Gelijke productie-identiteit komt onder meerdere part positions voor")
         if len({p.normalized_material for p in group}) > 1:
             reasons.append("Materiaalconflict binnen productie-identiteit")
+        if len({(p.normalized_profile or p.profile).strip().upper() for p in group}) > 1:
+            reasons.append("Profielconflict binnen productie-identiteit")
+        if len({_round(p.length_mm) for p in group}) > 1:
+            reasons.append("Lengteconflict binnen productie-identiteit")
+        if len({_round(p.mass_each_kg) for p in group}) > 1:
+            reasons.append("Massa per stuk verschilt binnen productie-identiteit")
+        if len({_round(p.surface_area_each_m2, 9) for p in group}) > 1:
+            reasons.append("Oppervlakte per stuk verschilt binnen productie-identiteit")
         group_id = f"PART-{key[:16]}"
         row = PartBOMRow(
             group_id=group_id,
-            status="blocked" if reasons else "review_required",
+            status="blocked" if reasons else "ready",
             category=exemplar.category,
             part_position=", ".join(positions),
             name=exemplar.name,
@@ -134,55 +142,139 @@ def _classification_conflicts(project: ProjectModel):
 
 
 def _build_purchase_rows(project: ProjectModel):
-    groups: dict[tuple[Any, ...], list[Any]] = defaultdict(list)
+    groups: dict[tuple[Any, ...], list[tuple[str, Any]]] = defaultdict(list)
     for part in project.parts.values():
         if part.category != EntityCategory.PURCHASED_ITEM.value:
             continue
         key = (
+            (part.part_position or part.source_identity.part_position).strip().upper(),
             part.name.strip().upper(),
             (part.normalized_profile or part.profile).strip().upper(),
             (part.normalized_material or part.material_grade or part.material).strip().upper(),
             _round(part.length_mm),
+            "PIECE",
+            "",
+            "",
+            "",
+            0.0,
+            0,
         )
-        groups[key].append(part)
+        groups[key].append(("part", part))
+    for item in project.purchased_items.values():
+        dimensions = dict(item.dimensions or {})
+        profile_or_size = str(
+            dimensions.get("profile")
+            or dimensions.get("size")
+            or dimensions.get("description")
+            or ""
+        )
+        length_mm = _round(dimensions.get("length_mm") or dimensions.get("length") or 0.0)
+        material_or_grade = item.grade or item.material
+        key = (
+            item.article_number.strip().upper(),
+            (item.description or item.name).strip().upper(),
+            profile_or_size.strip().upper(),
+            material_or_grade.strip().upper(),
+            length_mm,
+            (item.unit or "piece").strip().upper(),
+            item.supplier.strip().upper(),
+            item.manufacturer.strip().upper(),
+            item.standard.strip().upper(),
+            _round(item.unit_price, 2),
+            int(item.lead_time_days or 0),
+        )
+        groups[key].append(("purchased_item", item))
     rows: list[PurchaseBOMRow] = []
-    part_to_group: dict[str, str] = {}
+    entity_to_group: dict[str, str] = {}
     for key, group in sorted(groups.items(), key=lambda item: str(item[0])):
-        exemplar = sorted(group, key=lambda p: p.internal_id)[0]
-        quantity = sum(max(1, int(p.quantity_total or 1)) for p in group)
+        kind, exemplar = sorted(group, key=lambda pair: pair[1].internal_id)[0]
+        quantity = sum(
+            max(1, int(entity.quantity_total or 1))
+            if entity_kind == "part"
+            else max(0.0, float(entity.quantity or 0.0))
+            for entity_kind, entity in group
+        )
         group_hash = stable_sha256(["purchase", key])
         group_id = f"BUY-{group_hash[:16]}"
-        reasons: list[str] = []
+        reasons = sorted({
+            reason
+            for _entity_kind, entity in group
+            for reason in _blocking_reasons(entity)
+        })
         warnings: list[str] = []
-        if not exemplar.name and not exemplar.profile:
+        if kind == "part":
+            article_number = exemplar.part_position or exemplar.source_identity.part_position
+            description = exemplar.name or exemplar.profile
+            profile_or_size = exemplar.normalized_profile or exemplar.profile
+            material_or_grade = exemplar.normalized_material or exemplar.material_grade or exemplar.material
+            length_mm = _round(exemplar.length_mm)
+            unit = "piece"
+            supplier = manufacturer = standard = ""
+            unit_price = 0.0
+            lead_time_days = 0
+        else:
+            dimensions = dict(exemplar.dimensions or {})
+            article_number = exemplar.article_number
+            description = exemplar.description or exemplar.name
+            profile_or_size = str(
+                dimensions.get("profile")
+                or dimensions.get("size")
+                or dimensions.get("description")
+                or ""
+            )
+            material_or_grade = exemplar.grade or exemplar.material
+            length_mm = _round(dimensions.get("length_mm") or dimensions.get("length") or 0.0)
+            unit = exemplar.unit or "piece"
+            supplier = exemplar.supplier
+            manufacturer = exemplar.manufacturer
+            standard = exemplar.standard
+            unit_price = _round(exemplar.unit_price, 2)
+            lead_time_days = int(exemplar.lead_time_days or 0)
+        if not description and not profile_or_size:
             reasons.append("Artikelomschrijving ontbreekt")
-        if not exemplar.part_position:
+        if not article_number:
             warnings.append("Bron-part-position ontbreekt; interne group-ID wordt gebruikt")
+        assembly_marks: set[str] = set()
+        for entity_kind, entity in group:
+            if entity_kind == "part":
+                assembly_marks.update(_part_marks(project, entity))
+            else:
+                assembly_marks.update(
+                    project.assemblies[assembly_id].assembly_mark
+                    for assembly_id in entity.assembly_ids
+                    if assembly_id in project.assemblies
+                    and project.assemblies[assembly_id].assembly_mark
+                )
+                if entity.source_identity.assembly_mark:
+                    assembly_marks.add(entity.source_identity.assembly_mark)
         rows.append(PurchaseBOMRow(
             group_id=group_id,
-            article_number=exemplar.part_position,
-            description=exemplar.name or exemplar.profile,
-            profile_or_size=exemplar.normalized_profile or exemplar.profile,
-            material_or_grade=exemplar.normalized_material or exemplar.material_grade or exemplar.material,
-            length_mm=_round(exemplar.length_mm),
+            article_number=article_number,
+            description=description,
+            profile_or_size=profile_or_size,
+            material_or_grade=material_or_grade,
+            length_mm=length_mm,
             quantity=float(quantity),
-            unit="piece",
-            supplier="",
-            manufacturer="",
-            standard="",
-            unit_price=0.0,
-            total_price=0.0,
-            lead_time_days=0,
-            assembly_marks=sorted({mark for p in group for mark in _part_marks(project, p)}),
+            unit=unit,
+            supplier=supplier,
+            manufacturer=manufacturer,
+            standard=standard,
+            unit_price=unit_price,
+            total_price=_round(unit_price * quantity, 2),
+            lead_time_days=lead_time_days,
+            assembly_marks=sorted(assembly_marks),
             blocked=bool(reasons),
-            blocking_reasons=reasons,
+            blocking_reasons=list(dict.fromkeys(reasons)),
             warnings=warnings,
-            source_entity_ids=_source_entity_ids(group),
-            part_ids=sorted(p.internal_id for p in group),
+            source_entity_ids=_source_entity_ids(entity for _kind, entity in group),
+            part_ids=sorted(entity.internal_id for entity_kind, entity in group if entity_kind == "part"),
+            purchased_item_ids=sorted(
+                entity.internal_id for entity_kind, entity in group if entity_kind == "purchased_item"
+            ),
         ))
-        for part in group:
-            part_to_group[part.internal_id] = group_id
-    return rows, part_to_group
+        for _entity_kind, entity in group:
+            entity_to_group[entity.internal_id] = group_id
+    return rows, entity_to_group
 
 
 def _build_fastener_rows(project: ProjectModel):
@@ -239,16 +331,26 @@ def _weld_mark(project: ProjectModel, weld) -> str:
 
 
 def _build_weld_rows(project: ProjectModel):
-    # A welding BOM is most useful per assembly mark: every row is directly
-    # traceable to the fabrication drawing and repeated assemblies are summed.
-    groups: dict[str, list[Any]] = defaultdict(list)
+    # Preserve the complete fabrication identity. Different weld types, sizes,
+    # processes, sides or locations may never disappear into one assembly row.
+    groups: dict[tuple[Any, ...], list[Any]] = defaultdict(list)
     for weld in project.welds.values():
-        groups[_weld_mark(project, weld)].append(weld)
+        mark = _weld_mark(project, weld)
+        key = (
+            mark,
+            (weld.weld_type or weld.name).strip().upper(),
+            _round(weld.size_mm),
+            weld.process.strip().upper(),
+            weld.side.strip().upper(),
+            weld.location.strip().upper(),
+        )
+        groups[key].append(weld)
     rows: list[WeldBOMRow] = []
     entity_to_group: dict[str, str] = {}
-    for mark, group in sorted(groups.items()):
+    for key, group in sorted(groups.items(), key=lambda item: str(item[0])):
+        mark = str(key[0])
         exemplar = sorted(group, key=lambda x: x.internal_id)[0]
-        group_id = f"WELD-{stable_sha256(['weld', mark])[:16]}"
+        group_id = f"WELD-{stable_sha256(['weld', key])[:16]}"
         reasons = [] if mark != "ONGEKOPPELD" else ["Las is niet aan een assembly gekoppeld"]
         rows.append(WeldBOMRow(
             group_id=group_id,
@@ -283,7 +385,7 @@ def _assembly_compositions(project: ProjectModel, part_to_group: dict[str, str])
         for assembly in group:
             composition = sorted(
                 part_to_group[part_id]
-                for part_id in assembly.part_ids
+                for part_id in (*assembly.part_ids, *assembly.purchased_item_ids)
                 if part_id in part_to_group
             )
             hashes.add(stable_sha256(composition))
@@ -311,6 +413,9 @@ def _build_assembly_rows(project: ProjectModel, part_to_group, purchase_to_group
         purchased_occurrences = sum(
             1 for a in group for pid in a.part_ids
             if pid in project.parts and project.parts[pid].category == EntityCategory.PURCHASED_ITEM.value
+        ) + sum(
+            1 for a in group for pid in a.purchased_item_ids
+            if pid in project.purchased_items
         )
         rows.append(AssemblyBOMRow(
             group_id=group_id,
@@ -318,7 +423,12 @@ def _build_assembly_rows(project: ProjectModel, part_to_group, purchase_to_group
             name=exemplar.name,
             quantity=len(group),
             part_occurrences=part_occurrences,
-            unique_part_groups=len({all_part_group[pid] for a in group for pid in a.part_ids if pid in all_part_group}),
+            unique_part_groups=len({
+                all_part_group[pid]
+                for a in group
+                for pid in (*a.part_ids, *a.purchased_item_ids)
+                if pid in all_part_group
+            }),
             purchased_occurrences=purchased_occurrences,
             fastener_count=sum(
                 max(1, int(project.fasteners[fid].quantity or 1))
@@ -333,6 +443,21 @@ def _build_assembly_rows(project: ProjectModel, part_to_group, purchase_to_group
             blocking_reasons=reasons,
             composition_hashes=comp_hashes,
             assembly_ids=sorted(a.internal_id for a in group),
+            part_ids=sorted({pid for a in group for pid in a.part_ids if pid in project.parts}),
+            purchased_item_ids=sorted({
+                pid for a in group for pid in a.purchased_item_ids
+                if pid in project.purchased_items
+            }),
+            fastener_ids=sorted({
+                fid for a in group for fid in a.fastener_ids if fid in project.fasteners
+            }),
+            weld_ids=sorted({
+                wid for a in group for wid in a.weld_ids if wid in project.welds
+            }),
+            child_assembly_ids=sorted({
+                child for a in group for child in a.child_assembly_ids
+                if child in project.assemblies
+            }),
         ))
         for a in group:
             entity_to_group[a.internal_id] = group_id
@@ -424,6 +549,7 @@ def _traceability(project, maps):
     for entity_type, collection, mapping in (
         ("assembly", project.assemblies, maps["assembly"]),
         ("part", project.parts, {**maps["part"], **maps["purchase"]}),
+        ("purchased_item", project.purchased_items, maps["purchase"]),
         ("fastener", project.fasteners, maps["fastener"]),
         ("weld", project.welds, maps["weld"]),
     ):
@@ -474,26 +600,64 @@ def build_bom_snapshot(
         "weld": weld_map, "assembly": assembly_map,
     })
 
-    total_entities = len(project.parts) + len(project.assemblies) + len(project.fasteners) + len(project.welds)
+    total_entities = (
+        len(project.parts)
+        + len(project.purchased_items)
+        + len(project.assemblies)
+        + len(project.fasteners)
+        + len(project.welds)
+    )
     coverage = len(traceability) / total_entities if total_entities else 1.0
     non_purchase_parts = [p for p in project.parts.values() if p.category != EntityCategory.PURCHASED_ITEM.value]
     expected_mass = sum(float(p.mass_each_kg or 0.0) * max(1, int(p.quantity_total or 1)) for p in non_purchase_parts)
     expected_area = sum(float(p.surface_area_each_m2 or 0.0) * max(1, int(p.quantity_total or 1)) for p in non_purchase_parts)
     expected_length = sum(float(p.length_mm or 0.0) * max(1, int(p.quantity_total or 1)) for p in non_purchase_parts)
+    grouped_part_ids = [entity_id for row in part_rows for entity_id in row.part_ids]
+    grouped_legacy_purchase_ids = [entity_id for row in purchase_rows for entity_id in row.part_ids]
+    grouped_purchase_ids = [
+        entity_id for row in purchase_rows for entity_id in row.purchased_item_ids
+    ]
+    grouped_assembly_ids = [entity_id for row in assembly_rows for entity_id in row.assembly_ids]
+    grouped_fastener_ids = [entity_id for row in fastener_rows for entity_id in row.fastener_ids]
+    grouped_weld_ids = [entity_id for row in weld_rows for entity_id in row.weld_ids]
+    traceability_ids = [str(row.get("internal_id") or "") for row in traceability]
     checks = {
-        "part_coverage": sum(len(row.part_ids) for row in part_rows) == len(non_purchase_parts),
-        "purchase_coverage": sum(len(row.part_ids) for row in purchase_rows) == len(project.parts) - len(non_purchase_parts),
-        "assembly_coverage": sum(len(row.assembly_ids) for row in assembly_rows) == len(project.assemblies),
-        "fastener_coverage": sum(len(row.fastener_ids) for row in fastener_rows) == len(project.fasteners),
-        "weld_coverage": sum(len(row.weld_ids) for row in weld_rows) == len(project.welds),
-        "traceability_coverage": len(traceability) == total_entities,
+        "part_coverage": sorted(grouped_part_ids) == sorted(part.internal_id for part in non_purchase_parts),
+        "part_unique_membership": len(grouped_part_ids) == len(set(grouped_part_ids)),
+        "purchase_coverage": (
+            sorted(grouped_legacy_purchase_ids)
+            == sorted(
+                part.internal_id
+                for part in project.parts.values()
+                if part.category == EntityCategory.PURCHASED_ITEM.value
+            )
+            and sorted(grouped_purchase_ids) == sorted(project.purchased_items)
+        ),
+        "purchase_unique_membership": (
+            len(grouped_legacy_purchase_ids) == len(set(grouped_legacy_purchase_ids))
+            and len(grouped_purchase_ids) == len(set(grouped_purchase_ids))
+            and not set(grouped_legacy_purchase_ids).intersection(grouped_purchase_ids)
+        ),
+        "assembly_coverage": sorted(grouped_assembly_ids) == sorted(project.assemblies),
+        "assembly_unique_membership": len(grouped_assembly_ids) == len(set(grouped_assembly_ids)),
+        "fastener_coverage": sorted(grouped_fastener_ids) == sorted(project.fasteners),
+        "fastener_unique_membership": len(grouped_fastener_ids) == len(set(grouped_fastener_ids)),
+        "weld_coverage": sorted(grouped_weld_ids) == sorted(project.welds),
+        "weld_unique_membership": len(grouped_weld_ids) == len(set(grouped_weld_ids)),
+        "traceability_coverage": len(traceability_ids) == total_entities,
+        "traceability_unique_membership": (
+            len(traceability_ids) == len(set(traceability_ids))
+            and all(str(row.get("group_id") or "") for row in traceability)
+        ),
         "mass_balance": abs(sum(row.total_mass_kg for row in part_rows) - expected_mass) <= 0.01,
         "surface_balance": abs(sum(row.total_surface_area_m2 for row in part_rows) - expected_area) <= 1e-6,
         "length_balance": abs(sum(row.length_mm * row.quantity for row in part_rows) - expected_length) <= 1e-3,
     }
     blocking_count = sum(1 for item in conflicts if item.blocking)
     warning_count = sum(1 for item in conflicts if not item.blocking)
-    source_gate_open = all(source.production_export_allowed for source in project.sources.values())
+    source_gate_open = bool(project.sources) and all(
+        source.production_export_allowed for source in project.sources.values()
+    )
     production_ready = all(checks.values()) and blocking_count == 0 and source_gate_open
     validation = BOMValidation(
         passed=all(checks.values()),
@@ -502,8 +666,8 @@ def build_bom_snapshot(
         blocking_conflict_count=blocking_count,
         warning_conflict_count=warning_count,
         traceability_coverage=coverage,
-        messages=([] if all(checks.values()) else ["Een of meer BOM-balanscontroles zijn mislukt"])
-        + ([] if source_gate_open else ["Externe IFC/STEP-bronnen zijn nog niet productie-vrijgegeven"]),
+        messages=([] if all(checks.values()) else ["Een of meer BOM-identiteits- of balanscontroles zijn mislukt"])
+        + ([] if source_gate_open else ["Bronbewijs ontbreekt of externe IFC/STEP-bronnen zijn nog niet productie-vrijgegeven"]),
     )
     summary = {
         "part_group_count": len(part_rows),

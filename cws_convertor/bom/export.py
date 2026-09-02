@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+from html import escape
 import json
 from pathlib import Path
 import re
@@ -247,53 +248,220 @@ def _scan_xlsx_formula_errors(path: Path) -> None:
 def _write_pdf(path: Path, snapshot: BOMSnapshot) -> None:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.platypus import LongTable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     styles = getSampleStyleSheet()
+    cell_style = ParagraphStyle(
+        "BOMCell", parent=styles["BodyText"], fontName="Helvetica",
+        fontSize=6.2, leading=7.2, spaceAfter=0, spaceBefore=0,
+    )
+    header_style = ParagraphStyle(
+        "BOMHeader", parent=cell_style, fontName="Helvetica-Bold",
+        textColor=colors.white, fontSize=6.0, leading=6.8,
+    )
+
+    def text(value: Any, *, header: bool = False) -> Paragraph:
+        if isinstance(value, (list, tuple, set)):
+            value = ", ".join(str(item) for item in value)
+        return Paragraph(escape(str(value if value not in (None, "") else "-")), header_style if header else cell_style)
+
+    def number(value: Any, decimals: int = 1) -> str:
+        try:
+            result = f"{float(value or 0.0):,.{decimals}f}"
+        except (TypeError, ValueError):
+            return "-"
+        return result.replace(",", "X").replace(".", ",").replace("X", ".")
+
+    def status(item: Any, fallback: str = "gereed") -> str:
+        reasons = tuple(getattr(item, "blocking_reasons", ()) or ())
+        if getattr(item, "blocked", False):
+            return "GEBLOKKEERD" + ((": " + " | ".join(reasons)) if reasons else "")
+        return str(getattr(item, "status", "") or fallback).upper()
+
+    ready = bool(snapshot.validation and snapshot.validation.production_ready)
     story: list[Any] = [
         Paragraph(f"{APP_NAME} - Project BOM", styles["Title"]),
         Paragraph(f"Project: {snapshot.project_name}", styles["Heading2"]),
         Paragraph(f"Snapshot SHA-256: {snapshot.snapshot_sha256}", styles["Code"]),
+        Paragraph(
+            "Productiestatus: VRIJGEGEVEN" if ready else "Productiestatus: GEBLOKKEERD / REVIEW VEREIST",
+            styles["Heading3"],
+        ),
         Spacer(1, 5 * mm),
     ]
-    summary_rows = [["Kenmerk", "Waarde"]] + [
-        [str(key), str(value)] for key, value in sorted(snapshot.summary.items())
-    ]
-    story.append(Table(summary_rows, repeatRows=1, colWidths=(95 * mm, 155 * mm)))
+    summary_labels = (
+        ("Onderdeelgroepen", "part_group_count"),
+        ("Assemblygroepen", "assembly_group_count"),
+        ("Inkoopgroepen", "purchase_group_count"),
+        ("Boutgroepen", "fastener_group_count"),
+        ("Lasgroepen", "weld_group_count"),
+        ("Materiaalgroepen", "material_group_count"),
+        ("Totale massa", "total_part_mass_kg"),
+        ("Totale oppervlakte", "total_part_surface_m2"),
+        ("Totale lengte", "total_part_length_mm"),
+        ("Blokkerende conflicten", "blocking_conflict_count"),
+        ("Waarschuwingen", "warning_conflict_count"),
+        ("Traceerbaarheidsrecords", "traceability_record_count"),
+    )
+    summary_rows = [[text("Kenmerk", header=True), text("Waarde", header=True)]]
+    for label, key in summary_labels:
+        value = snapshot.summary.get(key, 0)
+        if key == "total_part_mass_kg":
+            value = number(value, 1) + " kg"
+        elif key == "total_part_surface_m2":
+            value = number(value, 2) + " m2"
+        elif key == "total_part_length_mm":
+            value = number(value, 0) + " mm"
+        summary_rows.append([text(label), text(value)])
+    summary_table = Table(summary_rows, repeatRows=1, colWidths=(90 * mm, 90 * mm))
+    summary_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#B8C4D4")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), (colors.white, colors.HexColor("#F3F7FB"))),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(summary_table)
+
     datasets = (
-        ("Part BOM", snapshot.part_bom),
-        ("Assembly BOM", snapshot.assembly_bom),
-        ("Inkoop", snapshot.purchase_bom),
-        ("Bevestigers", snapshot.fastener_bom),
-        ("Lassen", snapshot.weld_bom),
-        ("Materialen", snapshot.material_bom),
+        ("Onderdelen", snapshot.part_bom, (
+            ("Merk", 25, lambda x: x.part_position),
+            ("Omschrijving", 28, lambda x: x.name),
+            ("Profiel", 27, lambda x: x.profile),
+            ("Materiaal", 20, lambda x: x.material),
+            ("Lengte mm", 17, lambda x: number(x.length_mm, 0)),
+            ("Aantal", 13, lambda x: x.quantity),
+            ("kg/st", 17, lambda x: number(x.mass_each_kg, 2)),
+            ("kg totaal", 19, lambda x: number(x.total_mass_kg, 2)),
+            ("m2 totaal", 19, lambda x: number(x.total_surface_area_m2, 3)),
+            ("Assemblies", 42, lambda x: x.assembly_marks),
+            ("Status", 28, status),
+        )),
+        ("Assemblies", snapshot.assembly_bom, (
+            ("Merk", 24, lambda x: x.assembly_mark),
+            ("Omschrijving", 38, lambda x: x.name),
+            ("Aantal", 13, lambda x: x.quantity),
+            ("Delen", 16, lambda x: x.part_occurrences),
+            ("Unieke groepen", 20, lambda x: x.unique_part_groups),
+            ("Inkoop", 16, lambda x: x.purchased_occurrences),
+            ("Bouten", 15, lambda x: x.fastener_count),
+            ("Lassen", 15, lambda x: x.weld_count),
+            ("kg/st", 18, lambda x: number(x.weight_each_kg, 2)),
+            ("kg totaal", 19, lambda x: number(x.total_weight_kg, 2)),
+            ("m2 totaal", 19, lambda x: number(x.total_surface_area_m2, 3)),
+            ("Status", 42, status),
+        )),
+        ("Inkoop", snapshot.purchase_bom, (
+            ("Artikel", 25, lambda x: x.article_number),
+            ("Omschrijving", 32, lambda x: x.description),
+            ("Profiel/maat", 25, lambda x: x.profile_or_size),
+            ("Materiaal", 20, lambda x: x.material_or_grade),
+            ("Lengte mm", 17, lambda x: number(x.length_mm, 0)),
+            ("Aantal/eenheid", 22, lambda x: f"{number(x.quantity, 1)} {x.unit}"),
+            ("Leverancier", 28, lambda x: x.supplier),
+            ("Norm", 23, lambda x: x.standard),
+            ("Totaalprijs", 20, lambda x: number(x.total_price, 2)),
+            ("Levertijd d", 16, lambda x: x.lead_time_days),
+            ("Assemblies", 32, lambda x: x.assembly_marks),
+            ("Status", 28, status),
+        )),
+        ("Bevestigers", snapshot.fastener_bom, (
+            ("Type", 28, lambda x: x.fastener_type),
+            ("Diameter", 18, lambda x: number(x.diameter_mm, 1)),
+            ("Kwaliteit", 18, lambda x: x.grade),
+            ("Lengte", 18, lambda x: number(x.length_mm, 1)),
+            ("Norm", 24, lambda x: x.standard),
+            ("Gatdiameter", 20, lambda x: number(x.hole_diameter_mm, 1)),
+            ("Aantal", 16, lambda x: x.quantity),
+            ("Assemblies", 92, lambda x: x.assembly_marks),
+            ("Status", 28, status),
+        )),
+        ("Lassen", snapshot.weld_bom, (
+            ("Assemblies", 40, lambda x: x.assembly_marks),
+            ("Type", 25, lambda x: x.weld_type),
+            ("a mm", 15, lambda x: number(x.size_mm, 1)),
+            ("Proces", 18, lambda x: x.process),
+            ("Zijde", 20, lambda x: x.side),
+            ("Locatie", 22, lambda x: x.location),
+            ("Aantal", 15, lambda x: x.quantity),
+            ("Lengte totaal", 25, lambda x: number(x.total_length_mm, 0)),
+            ("Tijd min", 20, lambda x: number(x.total_time_minutes, 1)),
+            ("Kosten", 20, lambda x: number(x.total_cost, 2)),
+            ("Status", 45, status),
+        )),
+        ("Materialen", snapshot.material_bom, (
+            ("Categorie", 28, lambda x: x.category),
+            ("Materiaal", 28, lambda x: x.material),
+            ("Profiel", 34, lambda x: x.profile),
+            ("Aantal", 16, lambda x: x.quantity),
+            ("Netto lengte mm", 27, lambda x: number(x.net_length_mm, 0)),
+            ("kg totaal", 24, lambda x: number(x.total_mass_kg, 2)),
+            ("m2 totaal", 24, lambda x: number(x.total_surface_area_m2, 3)),
+            ("Onderdeelgroepen", 27, lambda x: x.part_group_count),
+            ("Status", 55, status),
+        )),
     )
     table_style = TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#17365D")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#B8C4D4")),
-        ("FONTSIZE", (0, 0), (-1, -1), 6.5),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), (colors.white, colors.HexColor("#F3F7FB"))),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2.5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2.5),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
     ])
-    for title, source_rows in datasets:
-        rows = _flatten_rows(source_rows)
+    for title, source_rows, columns in datasets:
         story.extend((PageBreak(), Paragraph(title, styles["Heading1"])))
-        if not rows:
+        if not source_rows:
             story.append(Paragraph("Geen gegevens", styles["BodyText"]))
             continue
-        headers = list(rows[0])
-        values = [headers] + [[str(row.get(header, "")) for header in headers] for row in rows]
-        table = Table(values, repeatRows=1, hAlign="LEFT")
+        values = [[text(label, header=True) for label, _width, _getter in columns]]
+        values.extend([
+            [text(getter(item)) for _label, _width, getter in columns]
+            for item in source_rows
+        ])
+        table = LongTable(
+            values,
+            repeatRows=1,
+            hAlign="LEFT",
+            colWidths=[width * mm for _label, width, _getter in columns],
+            splitByRow=1,
+        )
         table.setStyle(table_style)
         story.append(table)
+
+    page_size = landscape(A4)
+
+    def footer(canvas: Any, document: Any) -> None:
+        canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor("#B8C4D4"))
+        canvas.line(8 * mm, 7 * mm, page_size[0] - 8 * mm, 7 * mm)
+        canvas.setFont("Helvetica", 6.5)
+        canvas.setFillColor(colors.HexColor("#52647C"))
+        canvas.drawString(8 * mm, 3.8 * mm, snapshot.project_name[:85])
+        canvas.drawCentredString(
+            page_size[0] / 2,
+            3.8 * mm,
+            f"BOM {snapshot.snapshot_sha256[:16]}",
+        )
+        canvas.drawRightString(
+            page_size[0] - 8 * mm,
+            3.8 * mm,
+            f"Pagina {document.page}",
+        )
+        canvas.restoreState()
+
     document = SimpleDocTemplate(
-        str(path), pagesize=landscape(A4),
-        leftMargin=10 * mm, rightMargin=10 * mm, topMargin=10 * mm, bottomMargin=10 * mm,
+        str(path), pagesize=page_size,
+        leftMargin=8 * mm, rightMargin=8 * mm, topMargin=8 * mm, bottomMargin=11 * mm,
         title=f"{snapshot.project_name} BOM", author=APP_NAME,
     )
-    document.build(story)
+    document.build(story, onFirstPage=footer, onLaterPages=footer)
 
 
 def _sha256(path: Path) -> str:
@@ -344,6 +512,7 @@ def export_bom_package(
             "app_version": APP_VERSION,
             "project_id": snapshot.project_id,
             "snapshot_sha256": snapshot.snapshot_sha256,
+            "scope": dict(snapshot.summary.get("scope") or {}),
             "files": {},
         }
         for path in sorted(work.iterdir()):
