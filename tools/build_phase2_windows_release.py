@@ -71,9 +71,18 @@ def _zip_tree(source: Path, target: Path) -> None:
 
 def _clean_revision() -> str:
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    dirty = subprocess.check_output(["git", "status", "--porcelain=v1"], cwd=ROOT, text=True).strip()
-    if len(revision) != 40 or dirty:
-        raise RuntimeError("Phase-2 release requires one clean, exact Git commit")
+    expected = str(os.environ.get("GITHUB_SHA") or "").strip()
+    dirty = subprocess.check_output(
+        ["git", "status", "--porcelain=v1", "--untracked-files=no"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
+    if len(revision) != 40 or (expected and expected.casefold() != revision.casefold()) or dirty:
+        details = dirty or f"HEAD={revision}; expected={expected or revision}"
+        raise RuntimeError(
+            "Phase-2 release requires one exact Git commit with an unchanged tracked source tree: "
+            f"{details}"
+        )
     return revision
 
 

@@ -70,6 +70,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Assert tracked source remains exact after acceptance
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne "${{ github.sha }}") { throw "Source SHA changed during acceptance" }
+          $tracked = git status --porcelain=v1 --untracked-files=no
+          if ($tracked) {
+            $tracked | Write-Host
+            throw "Acceptance changed tracked source"
+          }
+
       - name: Build Phase 1 Windows evidence
         shell: pwsh
         run: |
@@ -122,11 +132,14 @@ jobs:
       - name: Record fresh checkout evidence
         shell: pwsh
         run: |
+          $tracked = git status --porcelain=v1 --untracked-files=no
           $payload = [ordered]@{
             status = "PASS"
             branch = "agent/cws-product-ui-reintegration-v1"
             commit = (git rev-parse HEAD).Trim()
-            working_tree_clean = -not [bool](git status --porcelain=v1)
+            working_tree_clean = -not [bool]$tracked
+            tracked_worktree_clean = -not [bool]$tracked
+            generated_evidence_allowed = $true
             checkout = "actions/checkout exact github.sha"
           }
           $payload | ConvertTo-Json | Set-Content -Encoding utf8 validation/full_acceptance/FRESH_CHECKOUT_EVIDENCE.json
@@ -136,7 +149,11 @@ jobs:
         run: |
           python tools/finalize_commit_bound_release.py --ci PASS
           if (Get-ChildItem release/final -File | Where-Object Name -Match uncommitted) { throw "Uncommitted artifact name found" }
-          if (git status --porcelain=v1) { throw "Acceptance left source checkout dirty" }
+          $tracked = git status --porcelain=v1 --untracked-files=no
+          if ($tracked) {
+            $tracked | Write-Host
+            throw "Acceptance changed tracked source"
+          }
 
       - name: Upload exact-SHA final release
         uses: actions/upload-artifact@v4

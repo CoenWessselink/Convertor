@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+from fnmatch import fnmatch
 from hashlib import sha256
 import json
 import os
@@ -94,18 +95,33 @@ def zip_onedir(source: Path, target: Path) -> None:
 
 
 def source_files() -> list[Path]:
-    roots = ["cws_convertor", "cws_viewer", "tests", "tools", "validation", "installer", "docs", "00_START_HERE", ".github"]
+    roots = {"cws_convertor", "cws_viewer", "tests", "tools", "validation", "installer", "docs", "00_START_HERE", ".github"}
     suffixes = {".py", ".json", ".md", ".txt", ".yml", ".yaml", ".iss", ".spec", ".toml", ".b64"}
+    top_level_patterns = ("*.py", "*.spec", "requirements*.txt", "README.md")
+    completed = subprocess.run(
+        ["git", "ls-files", "-z"],
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(
+            "Unable to enumerate the exact tracked source tree: "
+            + completed.stderr.decode("utf-8", errors="replace").strip()
+        )
     files: list[Path] = []
-    for name in roots:
-        root = ROOT / name
-        if not root.exists():
+    for raw in completed.stdout.split(b"\0"):
+        if not raw:
             continue
-        for path in root.rglob("*"):
-            if path.is_file() and path.suffix.lower() in suffixes and "__pycache__" not in path.parts:
-                files.append(path)
-    for pattern in ("*.py", "*.spec", "requirements*.txt", "README.md"):
-        files.extend(path for path in ROOT.glob(pattern) if path.is_file())
+        relative = Path(raw.decode("utf-8"))
+        path = ROOT / relative
+        in_source_root = len(relative.parts) > 1 and relative.parts[0] in roots
+        top_level_source = len(relative.parts) == 1 and any(
+            fnmatch(relative.name, pattern) for pattern in top_level_patterns
+        )
+        if path.is_file() and path.suffix.lower() in suffixes and (in_source_root or top_level_source):
+            files.append(path)
     return sorted(set(files), key=lambda item: item.relative_to(ROOT).as_posix())
 
 

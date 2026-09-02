@@ -44,7 +44,10 @@ def load(path: Path) -> dict[str, Any]:
 
 
 def clean_tree() -> bool:
-    return not bool(git("status", "--porcelain=v1"))
+    # Release builders intentionally create untracked/ignored evidence and
+    # artifacts. Integrity is bound to the committed source tree, so only a
+    # staged or unstaged change to a tracked path invalidates the release.
+    return not bool(git("status", "--porcelain=v1", "--untracked-files=no"))
 
 
 def deterministic_zip(source: Path, target: Path) -> None:
@@ -89,7 +92,8 @@ def main() -> int:
     if active_branch != BRANCH:
         raise RuntimeError(f"Canonical branch required: {BRANCH}; got {active_branch}")
     fresh = load(ACCEPTANCE / "FRESH_CHECKOUT_EVIDENCE.json")
-    if fresh.get("commit") != commit or fresh.get("status") != "PASS" or not fresh.get("working_tree_clean"):
+    tracked_clean = fresh.get("tracked_worktree_clean", fresh.get("working_tree_clean"))
+    if fresh.get("commit") != commit or fresh.get("status") != "PASS" or not tracked_clean:
         raise RuntimeError("Fresh checkout evidence is not bound to current clean HEAD")
     checklist = load(ACCEPTANCE / "FULL_ACCEPTANCE_CHECKLIST.json")
     items = list(checklist.get("items") or checklist.get("checks") or [])
@@ -159,7 +163,9 @@ def main() -> int:
     binding = {
         "branch": BRANCH, "commit": commit, "parent": parent, "commit7": commit7,
         "version": APP_VERSION, "project_model": PROJECT_SCHEMA_VERSION, "canonical_part": CANONICAL_PART_SCHEMA_VERSION,
-        "working_tree_clean_before_build": True, "working_tree_clean_after_acceptance": clean_tree(),
+        "working_tree_clean_before_build": True,
+        "working_tree_clean_after_acceptance": clean_tree(),
+        "tracked_worktree_clean_after_acceptance": clean_tree(),
         "fresh_checkout": True, "acceptance": {"passed": 51, "failed": 0, "blocked": 0, "not_tested": 0},
         "master_traceability": master_traceability,
         "ci": args.ci, "windows_one_folder": "PASS", "fresh_portable": "PASS", "installer": "PASS",
