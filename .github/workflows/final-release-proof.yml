@@ -123,7 +123,7 @@ jobs:
           GALLIUM_DRIVER: llvmpipe
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
-          python tools/run_full_product_acceptance.py --reuse-fresh-phase3-evidence
+          python tools/run_full_product_acceptance.py --reuse-fresh-phase3-evidence --defer-master-release-gate
           python tools/build_superprompt_acceptance_report.py
           $check = Get-Content validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json -Raw | ConvertFrom-Json
           if ($check.checks.Count -ne 51) { throw "Acceptance does not contain 51 checks" }
@@ -168,5 +168,7 @@ jobs:
             validation/full_acceptance/FINAL_RELEASE_PROOF.md
             validation/full_acceptance/CONVERSION_PACKAGED_MATRIX.json
             validation/full_acceptance/conversion_packaged_matrix_evidence/**
+            validation/full_acceptance/master_traceability/**
+            validation/full_acceptance/release_traceability/**
           if-no-files-found: error
           retention-days: 90

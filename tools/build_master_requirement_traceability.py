@@ -112,8 +112,15 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _phase_gate(phase: int) -> dict[str, Any]:
-    path = EVIDENCE_ROOT / f"phase{phase}" / "PHASE_GATE.json"
+def _relative(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(path.resolve())
+
+
+def _phase_gate(phase: int, evidence_root: Path = EVIDENCE_ROOT) -> dict[str, Any]:
+    path = evidence_root / f"phase{phase}" / "PHASE_GATE.json"
     if not path.is_file():
         return {"status": "NOT_TESTED", "path": path}
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -133,8 +140,18 @@ def _screen_phase(screen_id: str) -> int:
     return 3
 
 
-def _row(requirement_id: str, phase: int, description: str, implementations: tuple[str, ...], tests: tuple[str, ...], *, source: str, source_section: str) -> dict[str, Any]:
-    gate = _phase_gate(phase)
+def _row(
+    requirement_id: str,
+    phase: int,
+    description: str,
+    implementations: tuple[str, ...],
+    tests: tuple[str, ...],
+    *,
+    source: str,
+    source_section: str,
+    evidence_root: Path = EVIDENCE_ROOT,
+) -> dict[str, Any]:
+    gate = _phase_gate(phase, evidence_root)
     status = str(gate.get("status", "NOT_TESTED"))
     proven = status == "PASS"
     return {
@@ -147,7 +164,7 @@ def _row(requirement_id: str, phase: int, description: str, implementations: tup
         "superseded_by": None,
         "implementation_paths": list(implementations),
         "test_paths": list(tests),
-        "evidence_paths": [str(Path(gate["path"]).relative_to(ROOT)).replace("\\", "/")],
+        "evidence_paths": [_relative(Path(gate["path"]))],
         "implemented": proven,
         "integrated": proven,
         "tested": proven,
@@ -156,7 +173,7 @@ def _row(requirement_id: str, phase: int, description: str, implementations: tup
     }
 
 
-def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+def build(evidence_root: Path = EVIDENCE_ROOT) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     sources = []
     for name in SOURCE_FILES:
         path = SOURCE_ROOT / name
@@ -168,7 +185,7 @@ def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         })
     rows = [
         _row(req_id, phase, description, implementations, tests,
-             source=SOURCE_FILES[0], source_section=f"Fase {phase}")
+             source=SOURCE_FILES[0], source_section=f"Fase {phase}", evidence_root=evidence_root)
         for req_id, phase, description, implementations, tests in CORE_REQUIREMENTS
     ]
     screen_manifest = json.loads((ROOT / "docs/ui/v5_2/spec/SCREEN_MANIFEST.json").read_text(encoding="utf-8"))
@@ -179,7 +196,7 @@ def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             f"UI-SCREEN-{screen_id}", _screen_phase(screen_id),
             f"Runtime surface {screen_id} {screen['title']} matches its active structural and functional contract",
             ("cws_convertor/ui_qt/",), ("tests/ui_v51_binding_contract_smoke.py",),
-            source="SCREEN_MANIFEST.json", source_section=screen_id,
+            source="SCREEN_MANIFEST.json", source_section=screen_id, evidence_root=evidence_root,
         ))
     for control in control_manifest["controls"]:
         screen_id = str(control["screen_id"])
@@ -188,7 +205,7 @@ def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             f"UI-CONTROL-{control['test_id']}", phase,
             f"Control {control['test_id']} ({control.get('label', '')}) is present, uniquely owned and invokes its declared contract",
             ("cws_convertor/ui_qt/ui_v51_contract.py",), ("tests/ui_v51_binding_contract_smoke.py",),
-            source="CONTROL_INVENTORY_MASTER.json", source_section=screen_id,
+            source="CONTROL_INVENTORY_MASTER.json", source_section=screen_id, evidence_root=evidence_root,
         ))
     if len({row["requirement_id"] for row in rows}) != len(rows):
         raise RuntimeError("Duplicate requirement_id in active traceability")
@@ -217,9 +234,23 @@ def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check-sources", action="store_true")
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=REQUIREMENTS_ROOT,
+        help="Directory for generated traceability snapshots (defaults to requirements/)",
+    )
+    parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        default=EVIDENCE_ROOT,
+        help="Directory containing phase1..phase4/PHASE_GATE.json",
+    )
     args = parser.parse_args()
-    REQUIREMENTS_ROOT.mkdir(parents=True, exist_ok=True)
-    trace, active, superseded = build()
+    output_root = args.output_dir.expanduser().resolve()
+    evidence_root = args.evidence_root.expanduser().resolve()
+    output_root.mkdir(parents=True, exist_ok=True)
+    trace, active, superseded = build(evidence_root)
     if args.check_sources:
         missing = [item["name"] for item in trace["sources"] if not item["present"]]
         if missing:
@@ -229,7 +260,7 @@ def main() -> int:
         ("ACTIVE_REQUIREMENTS.json", active),
         ("SUPERSEDED_REQUIREMENTS.json", superseded),
     ):
-        (REQUIREMENTS_ROOT / name).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (output_root / name).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = [
         "# CWS Convertor Master Requirement Traceability", "",
         f"Generated: `{trace['generated_at']}`", "",
@@ -244,7 +275,7 @@ def main() -> int:
     for row in trace["requirements"]:
         if not row["requirement_id"].startswith("UI-"):
             lines.append(f"| {row['requirement_id']} | {row['phase']} | {row['status']} | {row['description']} |")
-    (REQUIREMENTS_ROOT / "MASTER_REQUIREMENT_TRACEABILITY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (output_root / "MASTER_REQUIREMENT_TRACEABILITY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(json.dumps({"required_total": trace["required_total"], "status_counts": trace["status_counts"]}, sort_keys=True))
     return 0
 

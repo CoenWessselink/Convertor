@@ -12,8 +12,8 @@ if str(ROOT) not in sys.path:
 from tools.master_release_gate import load_master_traceability_gate, require_master_traceability_pass
 
 
-def write_traceability(root: Path, statuses: list[str]) -> None:
-    target = root / "requirements" / "MASTER_REQUIREMENT_TRACEABILITY.json"
+def write_traceability(root: Path, statuses: list[str], relative: str = "requirements/MASTER_REQUIREMENT_TRACEABILITY.json") -> Path:
+    target = root / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(
         json.dumps(
@@ -29,6 +29,7 @@ def write_traceability(root: Path, statuses: list[str]) -> None:
         ),
         encoding="utf-8",
     )
+    return target
 
 
 def main() -> int:
@@ -49,6 +50,9 @@ def main() -> int:
             assert "NOT_TESTED=1" in str(exc)
         else:
             raise AssertionError("Release gate accepted a NOT_TESTED requirement")
+
+        generated = write_traceability(root, ["PASS", "PASS"], "validation/generated/master.json")
+        assert require_master_traceability_pass(root, generated)["status"] == "PASS"
 
     print("final phase4 master release gate smoke PASS")
     return 0

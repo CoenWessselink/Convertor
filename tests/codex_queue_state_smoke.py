@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -35,7 +36,14 @@ def _tracked(path: str) -> bool:
     return result.returncode == 0
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Optional evidence path; omitted source smokes remain read-only",
+    )
+    args = parser.parse_args(argv)
     checks: dict[str, bool] = {}
     checks["required_outputs"] = all((OUT / name).is_file() for name in REQUIRED)
     state = json.loads((OUT / "CODEX_QUEUE_STATE.json").read_text(encoding="utf-8"))
@@ -56,7 +64,9 @@ def main() -> int:
         "status": "PASS" if all(checks.values()) else "FAIL",
         "checks": checks,
     }
-    (OUT / "CODEX_QUEUE_STATE_SMOKE.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(f"CODEX_QUEUE_STATE_SMOKE={result['status']}")
     return 0 if result["status"] == "PASS" else 1
 

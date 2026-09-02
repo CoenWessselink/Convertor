@@ -773,6 +773,11 @@ def main() -> int:
     parser.add_argument("--project")
     parser.add_argument("--inventory-only", action="store_true")
     parser.add_argument("--reuse-fresh-phase3-evidence", action="store_true")
+    parser.add_argument(
+        "--defer-master-release-gate",
+        action="store_true",
+        help="Defer the circular final master gate until exact-SHA release artifacts exist",
+    )
     args = parser.parse_args()
     OUTPUT.mkdir(parents=True, exist_ok=True)
 
@@ -829,12 +834,22 @@ def main() -> int:
     write_json("FULL_ACCEPTANCE_RUNTIME_EVIDENCE.json", runtime_evidence)
     write_json("FIXTURE_GENERATION_RESULTS.json", fixture)
     write_json("PHASE_GATE_RESULTS.json", phases)
-    from master_release_gate import load_master_traceability_gate
+    if args.defer_master_release_gate:
+        # The complete master release gate is built by the finalizer from this
+        # acceptance, exact-SHA phase evidence and the release files. Requiring
+        # that downstream gate here would create a circular dependency.
+        master_traceability = {
+            "schema": "cws-master-release-gate-1.0",
+            "status": "DEFERRED_TO_FINAL_BINDING",
+            "reason": "Generated fail-closed after 51/51 acceptance and exact-SHA artifacts exist.",
+        }
+    else:
+        from master_release_gate import load_master_traceability_gate
 
-    master_traceability = load_master_traceability_gate(ROOT)
+        master_traceability = load_master_traceability_gate(ROOT)
+        if master_traceability["status"] != "PASS":
+            overall = "FAIL"
     write_json("MASTER_REQUIREMENT_TRACEABILITY_GATE.json", master_traceability)
-    if master_traceability["status"] != "PASS":
-        overall = "FAIL"
     summary = {
         "FULL_PRODUCT_ACCEPTANCE": overall,
         "MASTER_REQUIREMENT_TRACEABILITY": master_traceability["status"],

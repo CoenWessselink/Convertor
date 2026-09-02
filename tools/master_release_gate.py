@@ -9,8 +9,11 @@ from typing import Any
 ALLOWED_STATUSES = ("PASS", "FAIL", "BLOCKED", "NOT_TESTED")
 
 
-def load_master_traceability_gate(root: Path) -> dict[str, Any]:
-    path = root / "requirements" / "MASTER_REQUIREMENT_TRACEABILITY.json"
+def load_master_traceability_gate(
+    root: Path,
+    traceability_path: Path | None = None,
+) -> dict[str, Any]:
+    path = traceability_path or root / "requirements" / "MASTER_REQUIREMENT_TRACEABILITY.json"
     if not path.is_file():
         return {
             "schema": "cws-master-release-gate-1.0",
@@ -46,8 +49,11 @@ def load_master_traceability_gate(root: Path) -> dict[str, Any]:
     }
 
 
-def require_master_traceability_pass(root: Path) -> dict[str, Any]:
-    gate = load_master_traceability_gate(root)
+def require_master_traceability_pass(
+    root: Path,
+    traceability_path: Path | None = None,
+) -> dict[str, Any]:
+    gate = load_master_traceability_gate(root, traceability_path)
     if gate["status"] != "PASS":
         counts = gate.get("counts", {})
         raise RuntimeError(
