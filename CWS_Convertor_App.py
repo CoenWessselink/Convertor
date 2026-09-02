@@ -68,6 +68,18 @@ def _write_report(path: Path | None, payload: dict[str, Any]) -> None:
     print(text)
 
 
+def _finish_diagnostic(exit_code: int) -> int:
+    """Exit a frozen diagnostic before native Qt/VTK frames are unwound."""
+    if bool(getattr(sys, "frozen", False)):
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.flush()
+            except Exception:
+                pass
+        os._exit(exit_code)
+    return exit_code
+
+
 def _project_argument(args: argparse.Namespace) -> Path | None:
     return args.project or args.project_smoke
 
@@ -227,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
             deep_native=not args.quick_self_test,
         )
         _write_report(report_path, payload)
-        return 0 if payload["status"] == "passed" else 2
+        return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
     if args.gui_smoke or args.viewer_gui_smoke:
         try:
             payload = _gui_smoke(project)
@@ -242,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
                 },
             }
         _write_report(report_path, payload)
-        return 0 if payload["status"] == "passed" else 2
+        return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
 
     initial_files = list(args.paths)
     if project is not None:

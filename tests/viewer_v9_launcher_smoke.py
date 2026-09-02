@@ -7,15 +7,27 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.product import APP_NAME
+import CWS_Convertor_App as launcher
 
 
 class ViewerV9LauncherTests(unittest.TestCase):
+    def test_frozen_diagnostic_exits_before_native_teardown(self) -> None:
+        with (
+            patch.object(launcher.sys, "frozen", True, create=True),
+            patch.object(launcher, "_gui_smoke", return_value={"status": "passed"}),
+            patch.object(launcher, "_write_report"),
+            patch.object(launcher.os, "_exit") as hard_exit,
+        ):
+            self.assertEqual(0, launcher.main(["--gui-smoke"]))
+        hard_exit.assert_called_once_with(0)
+
     def test_launcher_version_and_integrated_selftest(self) -> None:
         version = subprocess.run(
             [sys.executable, str(ROOT / "CWS_Convertor_App.py"), "--version"],
