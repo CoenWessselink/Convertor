@@ -193,6 +193,7 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
         work = Path(temporary_name)
         selftest_path = result_dir / f"{label}-native-selftest.json"
         gui_path = result_dir / f"{label}-gui-smoke.json"
+        gui_screenshot = result_dir / f"{label}-gui.png"
         _, selftest_process = _run_gui_with_bounded_shutdown_retry(
             [str(gui), "--self-test", "--output", str(selftest_path)],
             environment=environment,
@@ -215,7 +216,7 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             },
         )
         _, gui_process = _run_gui_with_bounded_shutdown_retry(
-            [str(gui), "--gui-smoke", "--output", str(gui_path)],
+            [str(gui), "--gui-smoke", "--output", str(gui_path), "--screenshot", str(gui_screenshot)],
             environment=environment,
             cwd=work,
             report_path=gui_path,
@@ -224,6 +225,7 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             gui_path,
             {"casadi", "cadquery_ocp", "pyside6", "viewer_integration", "exact_occt_viewer", "vtk_viewer", "gui"},
         )
+        assert gui_screenshot.is_file() and gui_screenshot.stat().st_size > 10_000, gui_screenshot
 
         version = _run([str(cli), "--version"], environment=environment, cwd=work)
         assert f"{APP_NAME} {APP_VERSION}" in version.stdout, version.stdout
@@ -343,6 +345,7 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             "python_on_child_path": False,
             "native_checks": {check["name"]: check["status"] for check in native_result["checks"]},
             "gui_checks": {check["name"]: check["status"] for check in gui_result["checks"]},
+            "gui_screenshot": str(gui_screenshot),
             "gui_process_attempts": {
                 "native_selftest": selftest_process,
                 "gui_smoke": gui_process,

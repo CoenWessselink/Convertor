@@ -38,6 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--quick-self-test", action="store_true")
     parser.add_argument("--gui-smoke", action="store_true")
+    parser.add_argument("--screenshot", type=Path, help=argparse.SUPPRESS)
     # Compatibility with the pre-V9 packaged commands/workflows.
     parser.add_argument("--viewer-self-test", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--viewer-gui-smoke", action="store_true", help=argparse.SUPPRESS)
@@ -136,7 +137,7 @@ def _self_test(
     return payload
 
 
-def _gui_smoke(project: Path | None) -> dict[str, Any]:
+def _gui_smoke(project: Path | None, *, screenshot: Path | None = None) -> dict[str, Any]:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ["CWS_HEADLESS_GUI_SMOKE"] = "1"
     from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
@@ -168,6 +169,21 @@ def _gui_smoke(project: Path | None) -> dict[str, Any]:
         "qt_platform": application.platformName(),
         "production_release_allowed": False,
     }
+    if screenshot is not None:
+        screenshot = screenshot.expanduser().resolve()
+        screenshot.parent.mkdir(parents=True, exist_ok=True)
+        window.resize(1600, 1000)
+        application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
+        pixmap = window.grab()
+        if not pixmap.save(str(screenshot), "PNG") or screenshot.stat().st_size < 10_000:
+            raise RuntimeError(f"GUI-smoke screenshot kon niet worden opgeslagen: {screenshot}")
+        gui_details["screenshot"] = {
+            "path": str(screenshot),
+            "bytes": screenshot.stat().st_size,
+            "width": pixmap.width(),
+            "height": pixmap.height(),
+            "capture_runtime": "packaged_qt_window_grab" if bool(getattr(sys, "frozen", False)) else "source_qt_window_grab",
+        }
     project_viewer = getattr(getattr(window, "project_page", None), "viewer", None)
     gui_details["viewer_widget"] = type(project_viewer).__name__ if project_viewer is not None else ""
     gui_details["headless_viewer"] = bool(
@@ -257,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
     if args.gui_smoke or args.viewer_gui_smoke:
         try:
-            payload = _gui_smoke(project)
+            payload = _gui_smoke(project, screenshot=args.screenshot)
         except Exception as exc:
             payload = {
                 "schema": "cws-convertor-v9-gui-smoke-1.0",

@@ -21,6 +21,7 @@ from cws_convertor.product import APP_VERSION, CANONICAL_PART_SCHEMA_VERSION, PR
 
 ACCEPTANCE = ROOT / "validation" / "full_acceptance"
 FINAL = ROOT / "release" / "final"
+PDF_PROOF = ROOT / "validation" / "pdf_function_proof"
 RELEASE_TRACEABILITY = ACCEPTANCE / "release_traceability"
 MASTER_TRACEABILITY = ACCEPTANCE / "master_traceability"
 BRANCH = "agent/cws-product-ui-reintegration-v1"
@@ -241,11 +242,11 @@ def main() -> int:
     if FINAL.exists():
         shutil.rmtree(FINAL)
     FINAL.mkdir(parents=True)
-    portable = FINAL / f"CWS_Convertor_Final_{APP_VERSION}_{commit7}_Portable.zip"
+    portable = FINAL / f"CWS_Convertor_Portable_{APP_VERSION}_x64.zip"
     windows = FINAL / f"CWS_Convertor_{APP_VERSION}_{commit7}_Windows_x64.zip"
     deterministic_zip(runtime, portable)
     deterministic_zip(runtime, windows)
-    installer = FINAL / installer_source.name
+    installer = FINAL / f"CWS_Convertor_Setup_{APP_VERSION}_x64.exe"
     shutil.copy2(installer_source, installer)
     source_zip = FINAL / f"CWS_Convertor_Source_{APP_VERSION}_{commit7}.zip"
     subprocess.run(["git", "archive", "--format=zip", f"--output={source_zip}", commit], cwd=ROOT, check=True)
@@ -258,6 +259,42 @@ def main() -> int:
     shutil.copy2(ACCEPTANCE / "FULL_ACCEPTANCE_REPORT.md", report)
     limitations = FINAL / "KNOWN_LIMITATIONS.md"
     shutil.copy2(ROOT / "docs" / "CWS_CONVERTOR_KNOWN_LIMITATIONS.md", limitations)
+
+    proof_matrix = load(PDF_PROOF / "PDF_FUNCTION_PROOF_MATRIX.json")
+    proof_items = list(proof_matrix.get("items") or [])
+    proof_counts = dict(proof_matrix.get("counts") or {})
+    if (
+        str(proof_matrix.get("commit") or "").lower() != commit
+        or len(proof_items) != 43
+        or any(str(item.get("status") or "").upper() != "PASS" for item in proof_items)
+        or int(proof_counts.get("missing_evidence", -1)) != 0
+    ):
+        raise RuntimeError("PDF function proof must contain 43 exact-SHA PASS items with complete evidence")
+    proof_files: list[Path] = []
+    proof_top_files = (
+        "PDF_FUNCTION_PROOF_MATRIX.json",
+        "CWS_CONVERTOR_PDF_FUNCTION_PROOFBOOK.pdf",
+        "CWS_CONVERTOR_PDF_PROOF_CONTACT_SHEET.png",
+        "PDF_FUNCTION_TEST_REPORT.md",
+        "PDF_INDEPENDENT_VALIDATION.json",
+        "INSTALLATION_AND_TEST_REPORT.md",
+        "INSTALLATION_EVIDENCE.json",
+        "TEST_RESULTS.json",
+        "BUILD_PROVENANCE.json",
+        "RELEASE_NOTES.md",
+    )
+    for name in proof_top_files:
+        source = PDF_PROOF / name
+        if not source.is_file():
+            raise FileNotFoundError(source)
+        target = FINAL / name
+        shutil.copy2(source, target)
+        proof_files.append(target)
+    for name in ("pdf_generated_outputs", "pdf_rendered_pages", "pdf_function_evidence", "installation_evidence"):
+        source = PDF_PROOF / name
+        target = FINAL / name
+        shutil.copytree(source, target)
+        proof_files.extend(path for path in sorted(target.rglob("*")) if path.is_file())
 
     fixture_catalog = ACCEPTANCE / "FIXTURE_CATALOG.json"
     fixture_hash = digest(fixture_catalog) if fixture_catalog.is_file() else ""
@@ -282,7 +319,7 @@ def main() -> int:
     }
     (ACCEPTANCE / "FULL_ACCEPTANCE_EVIDENCE_MATRIX.json").write_text(json.dumps(evidence_matrix, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    core_paths = [gui, cli, windows, portable, installer, source_zip, bundle, report, sbom, limitations]
+    core_paths = [gui, cli, windows, portable, installer, source_zip, bundle, report, sbom, limitations, *proof_files]
     master_traceability, traceability_paths = build_release_master_traceability(commit, core_paths)
     core_paths.extend(traceability_paths)
     core_artifacts = [artifact(path) for path in core_paths]
@@ -306,6 +343,7 @@ def main() -> int:
         "branch": BRANCH, "commit": commit, "parent": parent, "build_timestamp": generated_at,
         "python_build_version": sys.version, "project_model": PROJECT_SCHEMA_VERSION, "canonical_part": CANONICAL_PART_SCHEMA_VERSION,
         "acceptance": {"passed": 51, "failed": 0, "blocked": 0, "not_tested": 0},
+        "pdf_function_proof": {"passed": 43, "failed": 0, "missing_evidence": 0},
         "master_traceability": master_traceability,
         "source_tests": "PASS", "packaged_runtime": "PASS", "portable": "PASS", "installer": "PASS",
         "artifacts": [*core_artifacts, artifact(binding_copy)], "sbom": sbom.name,
@@ -313,9 +351,11 @@ def main() -> int:
         "safety": {"machine_observed_by_cws": False, "deployment_transport_authorized": False, "direct_machine_transfer": False, "machine_transfer.allowed": False},
         "external_machine_qualification": "OUT_OF_SCOPE_SAFETY_CLOSED",
     }
-    manifest_path = FINAL / "FINAL_RELEASE_MANIFEST.json"
+    manifest_path = FINAL / "RELEASE_MANIFEST.json"
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    checksum_paths = [*core_paths, binding_copy, manifest_path]
+    legacy_manifest = FINAL / "FINAL_RELEASE_MANIFEST.json"
+    shutil.copy2(manifest_path, legacy_manifest)
+    checksum_paths = [*core_paths, binding_copy, manifest_path, legacy_manifest]
     checksum_path = FINAL / "SHA256SUMS.txt"
     checksum_path.write_text("".join(f"{digest(path)}  {path.relative_to(ROOT).as_posix()}\n" for path in checksum_paths), encoding="ascii")
     for line in checksum_path.read_text(encoding="ascii").splitlines():

@@ -559,6 +559,34 @@ __all__ = [
 if qt_available():
     _LegacyImportPanel = ImportPanel
 
+    class _RecentThumbnailSignals(QtCore.QObject):
+        completed = QtCore.Signal(str, str)
+
+
+    class _RecentThumbnailJob(QtCore.QRunnable):
+        def __init__(self, source: Path) -> None:
+            super().__init__()
+            self.source = source
+            self.signals = _RecentThumbnailSignals()
+
+        @QtCore.Slot()
+        def run(self) -> None:
+            thumbnail = ""
+            try:
+                from cws_convertor.thumbnails import thumbnail_for_recent
+
+                generated = thumbnail_for_recent(self.source, render_if_missing=True)
+                thumbnail = str(generated or "")
+            except Exception:
+                thumbnail = ""
+            try:
+                self.signals.completed.emit(str(self.source), thumbnail)
+            except RuntimeError:
+                # The dashboard may be closed while filesystem thumbnails are
+                # still rendering. A deleted Qt receiver is a normal shutdown
+                # condition and must not escape from the worker thread.
+                return
+
     class IntakeDashboard(_LegacyImportPanel):
         """Project intake dashboard matching the product reference."""
 
@@ -615,6 +643,8 @@ if qt_available():
             self.recent.setIconSize(QtCore.QSize(210, 112))
             self.recent.setGridSize(QtCore.QSize(235, 162))
             self.recent.setWordWrap(True)
+            self.recent.setUniformItemSizes(True)
+            self.recent.setSpacing(4)
             self.recent.itemDoubleClicked.connect(self._open_recent)
             recent_layout.addWidget(self.recent)
             body.addWidget(recent_box)
@@ -648,6 +678,9 @@ if qt_available():
             self.status.setObjectName("mutedText")
             root.addWidget(self.progress)
             root.addWidget(self.status)
+            self._thumbnail_pool = QtCore.QThreadPool(self)
+            self._thumbnail_pool.setMaxThreadCount(1)
+            self._thumbnail_jobs: dict[str, _RecentThumbnailJob] = {}
             self._load_recent()
 
         def _load_recent(self) -> None:
@@ -675,13 +708,14 @@ if qt_available():
                 item.setToolTip(str(path))
                 item.setData(QtCore.Qt.ItemDataRole.UserRole, str(path))
                 self.recent.addItem(item)
+                self._queue_thumbnail(path)
 
         def _preview_icon(self, kind: str, seed: str, source_path: Path | None = None) -> QtGui.QIcon:
             if source_path is not None:
                 try:
                     from cws_convertor.thumbnails import thumbnail_for_recent
 
-                    thumbnail = thumbnail_for_recent(source_path)
+                    thumbnail = thumbnail_for_recent(source_path, render_if_missing=False)
                     if thumbnail is not None:
                         actual = QtGui.QPixmap(str(thumbnail))
                         if not actual.isNull():
@@ -689,35 +723,59 @@ if qt_available():
                 except Exception:
                     pass
             pixmap = QtGui.QPixmap(420, 224)
-            pixmap.fill(QtGui.QColor("#f7faff"))
+            pixmap.fill(QtCore.Qt.GlobalColor.transparent)
             painter = QtGui.QPainter(pixmap)
             painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-            painter.setPen(QtGui.QPen(QtGui.QColor("#a9bbcf"), 3))
-            painter.setBrush(QtGui.QColor("#e9f1fa"))
-            if kind == "project":
-                for offset in (0, 72, 144, 216, 288):
-                    x = 42 + offset
-                    painter.drawLine(x, 176, x, 62)
-                    painter.drawLine(x, 62, x + 42, 34)
-                    painter.drawLine(x + 42, 34, x + 72, 62)
-                    painter.drawLine(x, 102, x + 72, 102)
-                    painter.drawLine(x, 142, x + 72, 142)
-                painter.setPen(QtGui.QPen(QtGui.QColor("#1f6fd2"), 7))
-                painter.drawLine(112, 142, 328, 102)
-            else:
-                painter.setBrush(QtGui.QColor("#d8e5f3"))
-                painter.setPen(QtGui.QPen(QtGui.QColor("#65809c"), 3))
-                body = QtCore.QRectF(58, 84, 304, 58)
-                painter.drawRect(body)
-                painter.drawRect(QtCore.QRectF(48, 64, 18, 98))
-                painter.drawRect(QtCore.QRectF(354, 64, 18, 98))
-                painter.setPen(QtGui.QPen(QtGui.QColor("#1f6fd2"), 4))
-                painter.drawLine(66, 113, 354, 113)
+            gradient = QtGui.QLinearGradient(0, 0, 0, 224)
+            gradient.setColorAt(0.0, QtGui.QColor("#f8fbfe"))
+            gradient.setColorAt(1.0, QtGui.QColor("#e8eef4"))
+            painter.setPen(QtGui.QPen(QtGui.QColor("#c5d1dc"), 2))
+            painter.setBrush(gradient)
+            painter.drawRoundedRect(QtCore.QRectF(1, 1, 418, 222), 8, 8)
+            painter.setPen(QtGui.QPen(QtGui.QColor("#6f8294"), 5, QtCore.Qt.PenStyle.SolidLine, QtCore.Qt.PenCapStyle.RoundCap))
+            painter.drawEllipse(QtCore.QPointF(210, 92), 27, 27)
+            painter.drawLine(210, 119, 210, 142)
+            painter.drawLine(183, 142, 237, 142)
             painter.setPen(QtGui.QColor("#52677c"))
-            painter.setFont(QtGui.QFont("Segoe UI", 10))
-            painter.drawText(12, 210, seed[:48])
+            painter.setFont(QtGui.QFont("Segoe UI", 10, QtGui.QFont.Weight.DemiBold))
+            painter.drawText(QtCore.QRectF(20, 164, 380, 30), QtCore.Qt.AlignmentFlag.AlignCenter, "3D-snapshot wordt opgebouwd")
             painter.end()
             return QtGui.QIcon(pixmap)
+
+        def _queue_thumbnail(self, source_path: Path) -> None:
+            if source_path.suffix.casefold() not in {".ifc", ".cwscproj"}:
+                return
+            key = str(source_path.resolve())
+            if key in self._thumbnail_jobs:
+                return
+            job = _RecentThumbnailJob(source_path)
+            job.signals.completed.connect(self._thumbnail_ready)
+            self._thumbnail_jobs[key] = job
+            self._thumbnail_pool.start(job)
+
+        @QtCore.Slot(str, str)
+        def _thumbnail_ready(self, source: str, thumbnail: str) -> None:
+            self._thumbnail_jobs.pop(str(Path(source).resolve()), None)
+            if not thumbnail:
+                return
+            pixmap = QtGui.QPixmap(thumbnail)
+            if pixmap.isNull():
+                return
+            icon = QtGui.QIcon(
+                pixmap.scaled(
+                    420,
+                    224,
+                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                    QtCore.Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+            target = str(Path(source).resolve())
+            for index in range(self.recent.count()):
+                item = self.recent.item(index)
+                value = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+                if value and str(Path(value).resolve()) == target:
+                    item.setIcon(icon)
+                    break
 
         def _remember_recent(self, path: Path) -> None:
             settings = QtCore.QSettings("CWS", "CWS Convertor")

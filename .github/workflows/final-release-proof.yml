@@ -129,6 +129,19 @@ jobs:
           if ($check.checks.Count -ne 51) { throw "Acceptance does not contain 51 checks" }
           if (@($check.checks | Where-Object status -ne PASS).Count -ne 0) { throw "Acceptance contains a non-PASS item" }
 
+      - name: Build and validate PDF function proof 43 of 43
+        shell: pwsh
+        env:
+          GALLIUM_DRIVER: llvmpipe
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          python tests/pdf_function_proof_smoke.py
+          python tools/build_pdf_function_proof.py --require-packaged-evidence
+          $proof = Get-Content validation/pdf_function_proof/PDF_FUNCTION_PROOF_MATRIX.json -Raw | ConvertFrom-Json
+          if ($proof.items.Count -ne 43) { throw "PDF proof matrix does not contain 43 requirements" }
+          if (@($proof.items | Where-Object status -ne PASS).Count -ne 0) { throw "PDF proof matrix contains a non-PASS item" }
+          if ($proof.counts.missing_evidence -ne 0) { throw "PDF proof matrix has missing visual evidence" }
+
       - name: Record fresh checkout evidence
         shell: pwsh
         run: |
@@ -160,7 +173,8 @@ jobs:
         with:
           name: CWS_Convertor_${{ env.CWS_VERSION }}_${{ github.sha }}_Final
           path: |
-            release/final/*
+            release/final/**
+            validation/pdf_function_proof/**
             validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json
             validation/full_acceptance/FULL_ACCEPTANCE_REPORT.md
             validation/full_acceptance/FULL_ACCEPTANCE_EVIDENCE_MATRIX.json
