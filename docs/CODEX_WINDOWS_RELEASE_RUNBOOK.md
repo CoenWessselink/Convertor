@@ -59,7 +59,7 @@ en voert dezelfde eindgate uit als CI. De eindgebruiker heeft geen Python nodig.
 | Dist | PyInstaller onedir, native inventory, GUI/CLI/conversie/project-roundtrip zonder externe Python |
 | Portable | schoon uitgepakte ZIP, volledige packaged-runtime-smoke zonder externe Python |
 | Installer | stille per-user-installatie, volledige packaged-runtime-smoke, zes associaties en PDF-contextactie |
-| Uninstall | GUI/CLI verwijderd en alle geteste associaties opgeruimd |
+| Uninstall | GUI/CLI verwijderd, CWS-extensiewaarden weg of vorig systeemdefault hersteld, eigen ProgID/PDF-contextsleutels verwijderd |
 | Overdracht | installer, portable, bron-ZIP, Git-bundle, CycloneDX-SBOM, manifest en recursieve checksums |
 
 ## Opleverbestanden

@@ -57,26 +57,48 @@ def main() -> int:
 
         import winreg
 
-        keys = [
-            r"Software\Classes\.cwscproj", r"Software\Classes\.nc", r"Software\Classes\.nc1",
-            r"Software\Classes\.step", r"Software\Classes\.stp", r"Software\Classes\.ifc",
+        extension_values = {
+            r"Software\Classes\.cwscproj": "CWSConvertor.Project",
+            r"Software\Classes\.nc": "CWSConvertor.NC1",
+            r"Software\Classes\.nc1": "CWSConvertor.NC1",
+            r"Software\Classes\.step": "CWSConvertor.STEP",
+            r"Software\Classes\.stp": "CWSConvertor.STEP",
+            r"Software\Classes\.ifc": "CWSConvertor.IFC",
+        }
+        owned_keys = [
             r"Software\Classes\CWSConvertor.Project", r"Software\Classes\CWSConvertor.NC1",
             r"Software\Classes\CWSConvertor.STEP", r"Software\Classes\CWSConvertor.IFC",
             r"Software\Classes\SystemFileAssociations\.pdf\shell\CWSConvertor",
         ]
-        remaining = []
-        for subkey in keys:
+        remaining_values = []
+        for subkey, cws_value in extension_values.items():
+            try:
+                found = _read_default(winreg, subkey)
+            except FileNotFoundError:
+                continue
+            if found == cws_value:
+                remaining_values.append({"key": subkey, "value": found})
+        remaining_keys = []
+        for subkey in owned_keys:
             try:
                 with winreg.OpenKey(winreg.HKEY_CURRENT_USER, subkey):
-                    remaining.append(subkey)
+                    remaining_keys.append(subkey)
             except FileNotFoundError:
                 pass
-        if remaining:
-            raise AssertionError(f"Association keys remained after uninstall: {remaining}")
+        if remaining_values or remaining_keys:
+            raise AssertionError(
+                "CWS associations remained after uninstall: "
+                f"values={remaining_values}, keys={remaining_keys}"
+            )
         _write_report(
             args.output,
             mode="uninstall_cleanup",
-            details={"checked_keys": len(keys), "remaining_keys": []},
+            details={
+                "checked_extension_values": len(extension_values),
+                "checked_owned_keys": len(owned_keys),
+                "remaining_cws_values": [],
+                "remaining_owned_keys": [],
+            },
         )
         print("windows_installer_association_smoke: uninstall cleanup OK")
         return 0
