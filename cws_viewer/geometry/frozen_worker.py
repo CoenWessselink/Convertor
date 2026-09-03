@@ -276,6 +276,33 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
             pass
 
 
+def _worker_command(
+    *,
+    executable: str,
+    host: str,
+    port: int,
+    token: str,
+    root: str | Path,
+) -> list[str]:
+    """Build an argparse-safe frozen worker command.
+
+    ``secrets.token_urlsafe`` may legally return a value beginning with ``-``.
+    Attaching the value to its long option prevents argparse from interpreting
+    that token as a new option in the packaged worker process.
+    """
+    return [
+        str(executable),
+        "--geometry-worker-service",
+        "--worker-host",
+        str(host),
+        "--worker-port",
+        str(int(port)),
+        f"--worker-token={token}",
+        "--worker-root",
+        str(root),
+    ]
+
+
 class FrozenIfcWorkerClient:
     """Persistent explicit worker process used by frozen Windows builds."""
 
@@ -308,18 +335,13 @@ class FrozenIfcWorkerClient:
         token = secrets.token_urlsafe(32)
         stderr_path = self._root / "worker-stderr.log"
         self._stderr_handle = stderr_path.open("wb")
-        command = [
-            sys.executable,
-            "--geometry-worker-service",
-            "--worker-host",
-            str(host),
-            "--worker-port",
-            str(port),
-            "--worker-token",
-            token,
-            "--worker-root",
-            str(self._root),
-        ]
+        command = _worker_command(
+            executable=sys.executable,
+            host=str(host),
+            port=int(port),
+            token=token,
+            root=self._root,
+        )
         creationflags = int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if os.name == "nt" else 0
         try:
             process = subprocess.Popen(

@@ -35,6 +35,30 @@ class GeometryWorkerAndDrawingRegressionTests(unittest.TestCase):
             self.assertEqual(result, 73)
             self.assertEqual(captured, {"host": "127.0.0.1", "port": 43117, "token": "acceptance-token", "root": root})
 
+    def test_frozen_worker_command_accepts_dash_leading_auth_token(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = frozen_worker._worker_command(
+                executable="CWS_Convertor_CLI.exe",
+                host="127.0.0.1",
+                port=43117,
+                token="-dash-leading-token",
+                root=root,
+            )
+            self.assertIn("--worker-token=-dash-leading-token", command)
+            self.assertNotIn("-dash-leading-token", command)
+
+            captured: dict[str, object] = {}
+
+            def fake_worker(*, host: str, port: int, token: str, root: Path) -> int:
+                captured.update(host=host, port=port, token=token, root=root)
+                return 74
+
+            with patch.object(frozen_worker, "run_geometry_worker_service", fake_worker):
+                result = CWS_Convertor_App.main(command[1:])
+            self.assertEqual(result, 74)
+            self.assertEqual(captured["token"], "-dash-leading-token")
+
     def test_iso_projection_keeps_manufacturing_axis_horizontal(self) -> None:
         vertices = np.array([
             [0.0, -50.0, -50.0], [0.0, 50.0, 50.0],
