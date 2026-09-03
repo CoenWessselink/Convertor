@@ -65,15 +65,15 @@ class LoadingPerformancePolicy:
             desired = 2
         elif count < 2000:
             # Medium/large IFC models are normally reduced to reusable geometry
-            # resources before dispatch. Six source shards keep the packaged
+            # resources before dispatch. Eight source shards keep the packaged
             # frozen-worker IPC below the five-second HVPC acceptance budget.
-            desired = 6
+            desired = 8
         else:
             desired = 6
         if format_name not in {"IFC", "MIXED"}:
             desired = min(desired, 4)
-        memory_cap = max(1, int(available_ram // (3 * 1024**3)))
-        worker_count = max(1, min(desired, memory_cap, max(1, cores // 2), 6))
+        memory_cap = max(1, int(available_ram // (2 * 1024**3)))
+        worker_count = max(1, min(desired, memory_cap, max(1, (cores + 2) // 2), 8))
         override = (
             os.environ.get("CWS_GEOMETRY_WORKERS", "").strip()
             or os.environ.get("CWS_VIEWER_IFC_WORKERS", "").strip()
