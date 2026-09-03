@@ -69,8 +69,8 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         """
         vtk = self._vtk
         assert vtk is not None
+        mesh = self.repository.require(geometry_id)
         def build():
-            mesh = self.repository.require(geometry_id)
             from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
             import numpy as np
 
@@ -99,7 +99,7 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
             return output
 
         output = SharedRenderResourceCache.get_or_create(
-            self.repository, "polydata", f"mesh-feel-v1|{geometry_id}", build
+            self.repository, "polydata", f"{geometry_id}|mesh-feel-v1|{mesh.mesh_hash}", build
         )
         self._cws_polydata_cache = getattr(self, "_cws_polydata_cache", {})
         self._cws_polydata_cache[str(geometry_id)] = output
@@ -193,7 +193,10 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         instances = vtk.vtkPolyData()
         instances.SetPoints(points)
         instances.GetPointData().AddArray(orientations)
-        source = self._feature_edges_polydata(self._mesh_polydata(geometry_id), geometry_id)
+        mesh = self.repository.require(geometry_id)
+        source = self._feature_edges_polydata(
+            self._mesh_polydata(geometry_id), f"{geometry_id}|{mesh.mesh_hash}"
+        )
         mapper = vtk.vtkGlyph3DMapper()
         mapper.SetInputData(instances)
         mapper.SetSourceData(source)

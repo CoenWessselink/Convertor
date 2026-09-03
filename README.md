@@ -259,14 +259,16 @@ De BOM is het centrale productie-werkblad en gebruikt uitsluitend de canonieke
 - checkbox-, Ctrl-, Shift-, groep-, filter-, Viewer-, kader-, vrije lasso- en
   werkelijk weergegeven-kleurselectie;
 - selecteren op hetzelfde profiel, materiaal, machine, status, fase of levering;
-- een persistent selectiemandje, vaste/dynamische selecties en opgeslagen
-  samengestelde EN/OF-query's met tekst-, status- en numerieke operatoren;
+- een persistent selectiemandje, vaste/dynamische selecties en opgeslagen,
+  recursief geneste EN/OF/NIET-query's met tekst-, status- en numerieke operatoren;
 - expliciete occurrence-, BOM-groep-, assembly- of vergelijkbare scope na een Viewer-pick;
 - selectie-impact met groepen, occurrences, assemblies, massa, verborgen selectie en blockers;
 - snapshotgebonden batchpreflight zonder stil overslaan, inclusief machinepartities;
-- 84 selectieafhankelijke acties met objectfamilie-, blocker- en readinessregels;
-- één transactie-/resultaatcontract voor mutaties, expliciete foutresultaten,
-  audittrail en undo die na gekoppelde externe vrijgave fail-closed blokkeert;
+- 87 selectieafhankelijke acties met objectfamilie-, blocker-, fysieke voorraad-,
+  tekening-, machine-, inkoop-, NC-, vrijgave- en readinessregels;
+- één transactie-/resultaatcontract voor mutaties, expliciete resultaten per
+  BOM-groep, audittrail en persistente undo na herstart; undo blokkeert fail-closed
+  bij latere projectwijziging of gekoppelde externe vrijgave;
 - contextacties voor bewerken, tekeningen, machines, optimalisatie, scribing,
   productie-vrijgave, BOM-export en alle afzonderlijke productieformaten;
 - acht gekoppelde detailtabs voor eigenschappen, productie, machine, tekeningen,
@@ -277,12 +279,14 @@ De BOM is het centrale productie-werkblad en gebruikt uitsluitend de canonieke
   3D-tombstones voor werkelijk verwijderde objecten;
 - 37 afzonderlijke BOM-kolommen, waaronder alle elf readinessstappen en alle
   voorraad-/inkoopvelden;
-- deterministische fysieke handelslengte-/reststukpacking met zaagverlies,
-  optimistische reserveringsrevisies, reserveringsledger en canonieke inkoopregels;
+- deterministische gemengde fysieke handelslengte-/reststukpacking per occurrence
+  met zaagverlies, partiële tekorten, optimistische reserveringsrevisies, één
+  atomaire reserveringsledger en canonieke inkoop-, vrijgave- en annuleringsacties;
 - synchronisatie van camera, visibility, kleuren, clipping en doorsneden tussen
   de hoofdviewer en gekoppelde BOM-viewers op dezelfde projectscene;
-- een procesbrede renderresourcecache per exacte `MeshRepository`, met gedeelde
-  immutable VTK-polydata/feature-edges, hit/build-statistiek en aparte actors per venster.
+- een procesbrede renderresourcecache per exacte `MeshRepository`, met mesh-hashgebonden
+  immutable VTK-polydata/feature-edges, automatische invalidatie, identity-hashbewijs,
+  hit/build/invalidation-statistiek en aparte actors per venster.
 
 Een preflight blijft fail-closed bij een verouderde snapshot of globale
 productieblokkade. Geblokkeerde regels vormen bij gemengde selecties een

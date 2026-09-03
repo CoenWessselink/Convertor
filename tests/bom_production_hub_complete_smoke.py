@@ -17,12 +17,17 @@ from cws_convertor.bom.production_hub import (
     BOMHubState,
     BOMProcurementService,
     BOMQueryClause,
+    BOMQueryGroup,
     BOMScopeEngine,
     BOMSmartQuery,
     BOMStockAllocator,
 )
-from cws_convertor.bom.workspace import BOMScope, BOMWorkspaceReadModel
-from cws_convertor.project import Part, ProjectModel, StockItem
+from cws_convertor.bom.workspace import (
+    BOMScope,
+    BOMWorkspaceReadModel,
+    PRODUCTION_READINESS_FIELDS,
+)
+from cws_convertor.project import Part, ProjectModel, Remnant, StockItem
 
 
 def part(entity_id: str, mark: str, profile: str, material: str, phase: str, length: float = 3000.0) -> Part:
@@ -165,6 +170,24 @@ class CompleteBomHubTests(unittest.TestCase):
             ),
         )
         self.assertEqual({"B2"}, {row.mark for row in self.engine.query(query)})
+        nested = BOMSmartQuery(
+            query_id="Q2", name="Geneste selectie", family="parts", match="all",
+            clauses=(BOMQueryClause("phase", "equals", "F1"),),
+            groups=(BOMQueryGroup(
+                match="any",
+                clauses=(
+                    BOMQueryClause("length_mm", "greater_than", "3100"),
+                    BOMQueryClause("mark", "equals", "B1"),
+                ),
+                groups=(BOMQueryGroup(
+                    match="all",
+                    clauses=(BOMQueryClause("material", "equals", "S235JR"),),
+                    negate=True,
+                ),),
+            ),),
+        )
+        self.assertEqual({"B1", "B2"}, {row.mark for row in self.engine.query(nested)})
+        self.assertEqual(nested, type(nested).from_dict(nested.to_dict()))
         state = BOMHubState(self.project)
         stored = state.save_smart_query(query.name, query.family, query.clauses, match=query.match)
         self.assertEqual(query.name, state.smart_queries()[0].name)
@@ -173,7 +196,7 @@ class CompleteBomHubTests(unittest.TestCase):
 
         ids = [definition.action_id for definition in ACTION_DEFINITIONS]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertGreaterEqual(len(ids), 75)
+        self.assertGreaterEqual(len(ids), 87)
         first = self.rows[0]
         availability = {
             definition.action_id: (enabled, reason)
@@ -181,9 +204,27 @@ class CompleteBomHubTests(unittest.TestCase):
                 (first,), production_ready=False
             )
         }
-        self.assertTrue(availability["stock.assign"][0])
+        self.assertFalse(availability["stock.assign"][0])
+        self.assertIn("Geen passende fysieke voorraad", availability["stock.assign"][1])
+        self.assertTrue(availability["purchase.generate"][0])
         self.assertFalse(availability["purchase.edit"][0])
         self.assertFalse(availability["production.release"][0])
+
+        self.project.add_entity(StockItem(
+            internal_id="ACTION-STOCK", name="Actievoorraad", profile="HEA200",
+            material="S355J2", stock_length_mm=6000.0, available_quantity=1.0,
+        ))
+        with_stock = BOMWorkspaceReadModel(
+            build_bom_snapshot(self.project, user="test", classify_if_needed=False),
+            self.project,
+        ).family_rows("parts")[0]
+        availability = {
+            definition.action_id: (enabled, reason)
+            for definition, enabled, reason in BOMActionMatrix().available(
+                (with_stock,), production_ready=False
+            )
+        }
+        self.assertTrue(availability["stock.assign"][0])
 
     def test_revision_compare_tracks_rekeyed_fields_and_removed_geometry(self) -> None:
         state = BOMHubState(self.project)
@@ -211,12 +252,19 @@ class CompleteBomHubTests(unittest.TestCase):
         self.assertEqual("gewijzigd", p1.status)
         self.assertIn("material", p1.changed_fields)
         self.assertIn("manufacturing", p1.changed_fields)
+        paths = {value.field_path for value in p1.field_deltas}
+        self.assertIn("material", paths)
+        self.assertIn("entity.P1.material", paths)
         removed = [
             delta for delta in deltas.values()
             if delta.status == "verwijderd" and delta.family == "parts"
         ]
         self.assertEqual(1, len(removed))
         self.assertEqual(["P3"], removed[0].before["entity_ids"])
+        self.assertTrue(any(
+            value.entity_id == "P3" and value.change == "removed"
+            for value in removed[0].field_deltas
+        ))
         bounds = state.removed_revision_bounds(changed_model)
         self.assertEqual("P3", bounds[0]["entity_id"])
         self.assertEqual(30.0, bounds[0]["bounds"]["maximum"]["z"])
@@ -267,6 +315,71 @@ class CompleteBomHubTests(unittest.TestCase):
         )
         self.assertFalse(stored["undo_available"])
 
+    def test_mixed_remnant_stock_plan_and_persistent_restart_undo(self) -> None:
+        self.project.add_entity(Remnant(
+            internal_id="REM-1", name="Reststuk", profile="HEA200",
+            material="S355J2", remaining_length_mm=3300.0,
+        ))
+        self.project.add_entity(StockItem(
+            internal_id="STOCK-MIX", name="Handelslengte", profile="HEA200",
+            material="S355J2", stock_length_mm=6000.0, available_quantity=1.0,
+        ))
+        selected = tuple(row for row in self.rows if row.profile == "HEA200")
+        allocator = BOMStockAllocator()
+        plan = allocator.plan(self.project, selected, kerf_mm=3.0)
+        self.assertTrue(plan.complete)
+        self.assertEqual({"remnant", "full_stock"}, {
+            value.source_type for value in plan.allocations
+        })
+        self.assertEqual(6200.0, plan.allocated_length_mm)
+        preflight = self.engine.preflight(
+            "stock", selected, expected_snapshot_sha256=self.snapshot.snapshot_sha256,
+            visible_rows=self.rows,
+        )
+        state = BOMHubState(self.project)
+        execution = state.execute_transaction(
+            "stock.assign", preflight,
+            lambda: allocator.reserve_plan(
+                self.project, state.data, plan, preflight, user="tester"
+            ),
+            user="tester",
+        )
+        self.assertEqual("reserved", self.project.remnants["REM-1"].status)
+        self.assertEqual(1.0, self.project.stock_items["STOCK-MIX"].reserved_quantity)
+        self.assertEqual("passed", execution.result.status)
+        self.assertTrue(execution.result.item_results)
+
+        reopened = ProjectModel.from_dict(self.project.to_dict())
+        reopened_state = BOMHubState(reopened)
+        reopened_state.undo_last(user="restart-test")
+        self.assertEqual("available", reopened.remnants["REM-1"].status)
+        self.assertEqual(0.0, reopened.stock_items["STOCK-MIX"].reserved_quantity)
+        self.assertFalse(reopened_state.data["stock_assignments"])
+        result = next(
+            value for value in reopened_state.data["batch_results"]
+            if value["transaction_id"] == execution.result.transaction_id
+        )
+        self.assertEqual("undone", result["status"])
+        self.assertFalse(result["undo_available"])
+
+    def test_stock_plan_fails_closed_when_reservation_revision_changes(self) -> None:
+        self.project.add_entity(Remnant(
+            internal_id="REM-STALE", name="Reststuk", profile="HEA200",
+            material="S355J2", remaining_length_mm=3300.0,
+        ))
+        selected = (next(row for row in self.rows if row.mark == "B1"),)
+        plan = BOMStockAllocator().plan(self.project, selected)
+        self.project.remnants["REM-STALE"].reservation_revision += 1
+        preflight = self.engine.preflight(
+            "stock", selected, expected_snapshot_sha256=self.snapshot.snapshot_sha256,
+            visible_rows=self.rows,
+        )
+        with self.assertRaisesRegex(Exception, "intussen gewijzigd"):
+            BOMStockAllocator.reserve_plan(
+                self.project, BOMHubState(self.project).data, plan, preflight,
+                user="tester",
+            )
+
     def test_uniform_transaction_records_failure_and_rolls_back(self) -> None:
         first = self.rows[0]
         preflight = self.engine.preflight(
@@ -284,6 +397,7 @@ class CompleteBomHubTests(unittest.TestCase):
             state.execute_transaction("edit.phase", preflight, invalid_mutation, entity_ids=("P1",))
         self.assertEqual(original, self.project.parts["P1"].properties["phase"])
         self.assertEqual("failed", state.data["batch_results"][-1]["status"])
+        self.assertEqual("failed", state.data["batch_results"][-1]["item_results"][0]["status"])
 
     def test_procurement_creation_edit_and_release_are_canonical(self) -> None:
         first = next(row for row in self.rows if row.mark == "B1")
@@ -369,6 +483,15 @@ class CompleteBomHubTests(unittest.TestCase):
             "Nesting", "NC-export", "Scribing", "Conflictvrij", "Vrijgegeven",
             "Geproduceerd", "Geleverd",
         }.issubset(columns))
+        self.assertEqual(11, len(PRODUCTION_READINESS_FIELDS))
+        self.assertEqual(
+            {label for label, _attribute in PRODUCTION_READINESS_FIELDS},
+            {
+                "Geometrie", "Materiaal gereed", "Tekening", "Machine gereed",
+                "Nesting", "NC-export", "Scribing", "Conflictvrij", "Vrijgegeven",
+                "Geproduceerd", "Geleverd",
+            },
+        )
 
 
 if __name__ == "__main__":

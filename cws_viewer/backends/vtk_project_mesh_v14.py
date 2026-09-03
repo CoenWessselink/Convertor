@@ -249,6 +249,54 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
             previous = current
         return inside
 
+    @staticmethod
+    def _segments_intersect(
+        first_start: tuple[float, float],
+        first_end: tuple[float, float],
+        second_start: tuple[float, float],
+        second_end: tuple[float, float],
+    ) -> bool:
+        def orientation(a, b, c) -> float:
+            return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+
+        def on_segment(a, b, c) -> bool:
+            return (
+                min(a[0], b[0]) - 1e-9 <= c[0] <= max(a[0], b[0]) + 1e-9
+                and min(a[1], b[1]) - 1e-9 <= c[1] <= max(a[1], b[1]) + 1e-9
+            )
+
+        o1 = orientation(first_start, first_end, second_start)
+        o2 = orientation(first_start, first_end, second_end)
+        o3 = orientation(second_start, second_end, first_start)
+        o4 = orientation(second_start, second_end, first_end)
+        if (o1 > 0) != (o2 > 0) and (o3 > 0) != (o4 > 0):
+            return True
+        return (
+            (abs(o1) <= 1e-9 and on_segment(first_start, first_end, second_start))
+            or (abs(o2) <= 1e-9 and on_segment(first_start, first_end, second_end))
+            or (abs(o3) <= 1e-9 and on_segment(second_start, second_end, first_start))
+            or (abs(o4) <= 1e-9 and on_segment(second_start, second_end, first_end))
+        )
+
+    @classmethod
+    def _polygon_intersects_rect(
+        cls,
+        polygon: tuple[tuple[float, float], ...],
+        rect: tuple[float, float, float, float],
+    ) -> bool:
+        left, bottom, right, top = rect
+        corners = ((left, bottom), (right, bottom), (right, top), (left, top))
+        if any(cls._point_in_polygon(corner, polygon) for corner in corners):
+            return True
+        if any(left <= point[0] <= right and bottom <= point[1] <= top for point in polygon):
+            return True
+        polygon_edges = tuple(zip(polygon, (*polygon[1:], polygon[0])))
+        rect_edges = tuple(zip(corners, (*corners[1:], corners[0])))
+        return any(
+            cls._segments_intersect(a, b, c, d)
+            for a, b in polygon_edges for c, d in rect_edges
+        )
+
     def nodes_in_screen_polygon(
         self,
         points: tuple[tuple[int, int], ...],
@@ -269,10 +317,11 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
             bounds = index.world_bounds_by_node[node_id]
             offset = state.explode_offsets.get(node_id, Vector3.zero())
             screen = tuple(self.world_to_display(corner + offset)[:2] for corner in bounds.corners())
-            center = self.world_to_display(bounds.center + offset)[:2]
-            if self._point_in_polygon(center, polygon) or any(
-                self._point_in_polygon(point, polygon) for point in screen
-            ):
+            rect = (
+                min(value[0] for value in screen), min(value[1] for value in screen),
+                max(value[0] for value in screen), max(value[1] for value in screen),
+            )
+            if self._polygon_intersects_rect(polygon, rect):
                 hits.append(node_id)
         return tuple(hits)
 

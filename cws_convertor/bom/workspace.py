@@ -33,6 +33,20 @@ BOM_FAMILY_LABELS = {
     "conflicts": "Blokkeringen",
 }
 
+PRODUCTION_READINESS_FIELDS = (
+    ("Geometrie", "geometry_status"),
+    ("Materiaal gereed", "material_status"),
+    ("Tekening", "document_status"),
+    ("Machine gereed", "machine_status"),
+    ("Nesting", "nesting_status"),
+    ("NC-export", "nc_status"),
+    ("Scribing", "scribing_status"),
+    ("Conflictvrij", "conflict_status"),
+    ("Vrijgegeven", "release_status"),
+    ("Geproduceerd", "production_status"),
+    ("Geleverd", "delivery_status"),
+)
+
 
 def _unique(values: Iterable[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(str(value) for value in values if str(value)))
@@ -129,6 +143,13 @@ class BOMWorkspaceRow:
                 *self.entity_ids,
             )
         ).casefold()
+
+    @property
+    def production_readiness(self) -> dict[str, str]:
+        return {
+            label: str(getattr(self, attribute) or "-")
+            for label, attribute in PRODUCTION_READINESS_FIELDS
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -454,18 +475,71 @@ class BOMWorkspaceReadModel:
         assignment = dict((hub.get("stock_assignments") or {}).get(group_id) or {})
         source_type = str(assignment.get("source_type") or "")
         source_id = str(assignment.get("source_id") or "")
-        return {
+        sources = tuple(assignment.get("sources") or ())
+        stock_ids = _unique(
+            str(value.get("source_id") or "") for value in sources
+            if str(value.get("source_type") or "") == "full_stock"
+        )
+        remnant_ids = _unique(
+            str(value.get("source_id") or "") for value in sources
+            if str(value.get("source_type") or "") == "remnant"
+        )
+        if not sources and source_type == "full_stock" and source_id:
+            stock_ids = (source_id,)
+        if not sources and source_type == "remnant" and source_id:
+            remnant_ids = (source_id,)
+
+        ready_values = {"ready", "released", "approved", "ok", "valid", "completed", "produced", "delivered", "gereed", "vrijgegeven", "geproduceerd", "geleverd"}
+        blocked_values = {"blocked", "failed", "invalid", "error", "geblokkeerd", "afgekeurd"}
+
+        def readiness(raw: str, *, relevant: bool, empty: str = "Review") -> str:
+            if not relevant:
+                return "Niet van toepassing"
+            value = str(raw or "").strip().casefold()
+            if value in ready_values:
+                return "Gereed"
+            if value in blocked_values:
+                return "Geblokkeerd"
+            return empty
+
+        normalized_scribing = _mixed((
+            "Niet van toepassing"
+            if str(value).casefold() in {"not_required", "niet van toepassing"}
+            else readiness(str(value), relevant=True)
+            for value in scribing_values
+        ), empty="Niet van toepassing")
+
+        drawing_relevant = any(
+            getattr(entity, "entity_type", "") in {"part", "assembly"} for entity in entities
+        )
+        nesting_raw = self._entity_field(ids, "nesting_status")
+        release_raw = self._entity_field(ids, "release_status", "review_status", "status")
+        production_raw = self._entity_field(ids, "production_status", "fabrication_status")
+        delivery_raw = self._entity_field(ids, "delivery_status", "shipment_status")
+        assignment_status = str(assignment.get("status") or "")
+        result = {
             "geometry_status": "Gereed" if geometry_ready else "Geblokkeerd",
             "material_status": (
                 "Gereed" if known_material else "Niet van toepassing" if not material_relevant else "Geblokkeerd"
             ),
             "machine_status": "Gereed" if machine_ready else ("Niet van toepassing" if not parts else "Review"),
+            "document_status": readiness(document_status, relevant=drawing_relevant, empty="Ontbreekt"),
+            "nesting_status": readiness(nesting_raw, relevant=bool(parts)),
             "nc_status": "Gereed" if nc_ready else ("Niet van toepassing" if not parts else "Geblokkeerd"),
-            "scribing_status": _mixed(scribing_values, empty="Niet van toepassing"),
+            "scribing_status": normalized_scribing,
             "conflict_status": "Geblokkeerd" if blocked else "Conflictvrij",
-            "assigned_stock": source_id if source_type == "full_stock" else "",
-            "assigned_remnant": source_id if source_type == "remnant" else "",
+            "release_status": readiness(release_raw, relevant=bool(entities)),
+            "production_status": readiness(production_raw, relevant=bool(parts) or drawing_relevant),
+            "delivery_status": readiness(delivery_raw, relevant=bool(entities)),
+            "assigned_stock": ", ".join(stock_ids),
+            "assigned_remnant": ", ".join(remnant_ids),
         }
+        if assignment:
+            result["stock_status"] = (
+                "Toegewezen" if assignment_status == "allocated" else "Gedeeltelijk"
+            )
+            result["shortage_mm"] = float(assignment.get("unallocated_length_mm") or 0.0)
+        return result
 
     def _stock_fields(
         self, *, profile: str, material: str, required_length_mm: float
@@ -543,7 +617,7 @@ class BOMWorkspaceReadModel:
                     profile=item.profile, material=item.material, length_mm=item.length_mm,
                     quantity=item.quantity, total_mass_kg=item.total_mass_kg,
                     total_surface_m2=item.total_surface_area_m2,
-                    machine=machine, document_status=document,
+                    machine=machine,
                     **workflow,
                     status=item.status, blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
@@ -560,7 +634,6 @@ class BOMWorkspaceReadModel:
                     family=family, group_id=item.group_id, entity_ids=_unique(item.assembly_ids),
                     mark=item.assembly_mark, description=item.name, quantity=item.quantity,
                     total_mass_kg=item.total_weight_kg, total_surface_m2=item.total_surface_area_m2,
-                    document_status=document,
                     **workflow,
                     status="blocked" if item.blocked else "ready", blocked=item.blocked,
                     blocking_reasons=tuple(item.blocking_reasons), raw=item,
@@ -985,7 +1058,7 @@ __all__ = [
     "BOMSelectionSummary",
     "BOMWorkspaceReadModel",
     "BOMWorkspaceRow",
-    "BOM_FAMILIES",
+    "BOM_FAMILIES", "PRODUCTION_READINESS_FIELDS",
     "BOM_FAMILY_LABELS",
     "scoped_bom_snapshot",
 ]

@@ -305,8 +305,8 @@ class VtkProjectMeshBackend(VtkProjectBackend):
     def _mesh_polydata(self, geometry_id: str):
         vtk = self._vtk
         assert vtk is not None
+        mesh = self.repository.require(geometry_id)
         def build():
-            mesh = self.repository.require(geometry_id)
             from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
             import numpy as np
 
@@ -337,7 +337,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             return output
 
         output = SharedRenderResourceCache.get_or_create(
-            self.repository, "polydata", f"mesh-v3|{geometry_id}", build
+            self.repository, "polydata", f"{geometry_id}|mesh-v3|{mesh.mesh_hash}", build
         )
         self._cws_polydata_cache = getattr(self, "_cws_polydata_cache", {})
         self._cws_polydata_cache[str(geometry_id)] = output

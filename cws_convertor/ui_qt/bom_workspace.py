@@ -25,6 +25,7 @@ from cws_convertor.bom.production_hub import (
     BOMHubState,
     BOMProcurementService,
     BOMQueryClause,
+    BOMQueryGroup,
     BOMScopeEngine,
     BOMStockAllocator,
     QUERY_FIELDS,
@@ -283,7 +284,8 @@ if qt_available():
                 return "Rendercache niet beschikbaar"
             return (
                 f"Gedeelde rendercache {stats.repository_identity} · "
-                f"{stats.shared_item_count} resources · {stats.hits} hits/{stats.misses} builds"
+                f"{stats.shared_item_count} resources · {stats.hits} hits/{stats.misses} builds · "
+                f"{stats.invalidations} invalidaties · bewijs {stats.resource_identity_sha256[:12]}"
             )
 
         def isolate_selection(self) -> None:
@@ -746,8 +748,14 @@ if qt_available():
                 route = "export" if action_id == "production.nc_preview" else "production_workflow"
                 self._route_scoped_action(action_id, route)
                 return
+            if action_id == "stock.plan":
+                self._show_stock_plan()
+                return
             if action_id == "stock.assign":
                 self._assign_stock()
+                return
+            if action_id == "stock.release":
+                self._release_stock_assignment()
                 return
             if action_id == "stock.shortage":
                 shortage = sum(row.shortage_mm for row in self._selected_rows())
@@ -764,6 +772,9 @@ if qt_available():
                 return
             if action_id == "purchase.release":
                 self._release_purchase()
+                return
+            if action_id == "purchase.cancel":
+                self._cancel_purchase()
                 return
             if action_id.startswith("optimize."):
                 self._route_scoped_action(action_id, "optimize")
@@ -800,6 +811,11 @@ if qt_available():
         def _show_batch_result(self, result: Any) -> None:
             outputs = "\n".join(f"• {value}" for value in result.outputs) or "• Geen bestanden"
             messages = "\n".join(f"• {value}" for value in result.messages) or "• Geen meldingen"
+            item_lines = "\n".join(
+                f"• {value.get('group_id', '-')}: {value.get('status', '-')}"
+                + (f" — {value.get('message')}" if value.get("message") else "")
+                for value in result.item_results[:25]
+            ) or "• Geen regels"
             QtWidgets.QMessageBox.information(
                 self,
                 "BOM-resultaatrapport",
@@ -809,7 +825,9 @@ if qt_available():
                 f"Preflight: {result.preflight_sha256[:16]}\n"
                 f"Geschikt/geblokkeerd: {len(result.eligible_group_ids)}/{len(result.blocked_group_ids)}\n"
                 f"Gewijzigde objecten: {len(result.changed_entity_ids)}\n"
+                f"Duur: {result.duration_ms:.1f} ms\n"
                 f"Undo: {'beschikbaar' if result.undo_available else 'niet van toepassing'}\n\n"
+                f"Resultaat per BOM-groep:\n{item_lines}\n\n"
                 f"Uitvoer:\n{outputs}\n\nMeldingen:\n{messages}",
             )
 
@@ -1219,8 +1237,58 @@ if qt_available():
                     break
             if not clauses:
                 return
+            groups: list[BOMQueryGroup] = []
+            while QtWidgets.QMessageBox.question(
+                self, "Samengestelde slimme selectie",
+                "Een geneste EN/OF-subgroep toevoegen?",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            ) == QtWidgets.QMessageBox.StandardButton.Yes:
+                group_logic, accepted = QtWidgets.QInputDialog.getItem(
+                    self, "Querysubgroep", "Logica binnen subgroep:",
+                    ("Alle voorwaarden (EN)", "Minimaal één voorwaarde (OF)"), 0, False,
+                )
+                if not accepted:
+                    break
+                group_clauses: list[BOMQueryClause] = []
+                while True:
+                    field, accepted = QtWidgets.QInputDialog.getItem(
+                        self, "Querysubgroep", "Veld:", QUERY_FIELDS, 0, False
+                    )
+                    if not accepted:
+                        break
+                    operator, accepted = QtWidgets.QInputDialog.getItem(
+                        self, "Querysubgroep", "Operator:", QUERY_OPERATORS, 0, False
+                    )
+                    if not accepted:
+                        break
+                    value = ""
+                    if operator not in {"is_empty", "is_not_empty"}:
+                        value, accepted = QtWidgets.QInputDialog.getText(
+                            self, "Querysubgroep", "Vergelijkingswaarde:"
+                        )
+                        if not accepted:
+                            break
+                    group_clauses.append(BOMQueryClause(str(field), str(operator), str(value)))
+                    if QtWidgets.QMessageBox.question(
+                        self, "Querysubgroep", "Nog een voorwaarde in deze subgroep?",
+                        QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                        QtWidgets.QMessageBox.StandardButton.No,
+                    ) != QtWidgets.QMessageBox.StandardButton.Yes:
+                        break
+                if group_clauses:
+                    negate = QtWidgets.QMessageBox.question(
+                        self, "Querysubgroep", "Uitkomst van deze subgroep omkeren (NIET)?",
+                        QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                        QtWidgets.QMessageBox.StandardButton.No,
+                    ) == QtWidgets.QMessageBox.StandardButton.Yes
+                    groups.append(BOMQueryGroup(
+                        match="all" if group_logic.startswith("Alle") else "any",
+                        clauses=tuple(group_clauses), negate=negate,
+                    ))
             query = self._hub_state.save_smart_query(
                 name, self._family(), clauses,
+                groups=groups,
                 match="all" if match_label.startswith("Alle") else "any",
             )
             self._mark_project_dirty()
@@ -1625,20 +1693,13 @@ if qt_available():
                 if delta is None:
                     continue
                 changes = []
-                for field_name in delta.changed_fields[:8]:
-                    if field_name in {"geometry", "manufacturing", "production_features"}:
-                        before_evidence = tuple(delta.before.get("entity_evidence") or ())
-                        after_evidence = tuple(delta.after.get("entity_evidence") or ())
-                        evidence_key = {
-                            "geometry": "geometry_hash", "manufacturing": "manufacturing_hash",
-                            "production_features": "production_features",
-                        }[field_name]
-                        before_value = [value.get(evidence_key) for value in before_evidence]
-                        after_value = [value.get(evidence_key) for value in after_evidence]
-                    else:
-                        before_value = delta.before.get(field_name, "∅")
-                        after_value = delta.after.get(field_name, "∅")
-                    changes.append(f"{field_name}: {before_value} → {after_value}")
+                for field_delta in delta.field_deltas[:12]:
+                    identity = f" [{field_delta.entity_id}]" if field_delta.entity_id else ""
+                    changes.append(
+                        f"{field_delta.field_path}{identity}: "
+                        f"{field_delta.before if field_delta.before is not None else '∅'} → "
+                        f"{field_delta.after if field_delta.after is not None else '∅'}"
+                    )
                 fields = "; ".join(changes) if changes else "geen veldwijzigingen"
                 delta_lines.append(f"{row.mark or row.group_id}: {delta.status}\n  {fields}")
             self.detail_labels["revision"].setText(
@@ -2064,6 +2125,49 @@ if qt_available():
         def _cut_plan(lengths: Iterable[float], source_length: float, kerf: float) -> tuple[tuple[float, ...], ...]:
             return BOMStockAllocator.cut_plan(lengths, source_length, kerf)
 
+        def _stock_plan(self, rows: tuple[BOMWorkspaceRow, ...]) -> Any:
+            if self._workspace is None:
+                raise ValueError("Geen project geopend")
+            kerf = float(((self._workspace.project.settings.get("profile_nesting") or {}).get("kerf_mm") or 3.0))
+            return BOMStockAllocator().plan(
+                self._workspace.project, rows, kerf_mm=kerf,
+                preference="remnants_first",
+            )
+
+        @staticmethod
+        def _stock_plan_text(plan: Any) -> str:
+            source_lines = [
+                f"• {'Reststuk' if value.source_type == 'remnant' else 'Voorraad'} "
+                f"{value.source_id} #{value.source_instance + 1}: "
+                f"{len(value.pieces)} deel/delen, {value.used_length_mm:.0f} mm gebruikt, "
+                f"{value.remaining_length_mm:.0f} mm over"
+                for value in plan.allocations
+            ]
+            return (
+                f"Benodigd: {plan.required_length_mm:.0f} mm\n"
+                f"Fysiek toegewezen: {plan.allocated_length_mm:.0f} mm\n"
+                f"Niet toegewezen / inkoop: {plan.shortage_length_mm:.0f} mm\n"
+                f"Zaagverlies: {plan.kerf_mm:.1f} mm per tussenzaagsnede\n\n"
+                + ("\n".join(source_lines) if source_lines else "• Geen passende fysieke bronnen")
+            )
+
+        def _show_stock_plan(self) -> None:
+            if self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            try:
+                plan = self._stock_plan(rows)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.information(self, "Voorraadplan", str(exc))
+                return
+            self._record_routed_result(
+                "stock.plan",
+                f"{len(plan.allocations)} fysieke bronstukken; {plan.shortage_length_mm:.0f} mm inkooptekort",
+            )
+            QtWidgets.QMessageBox.information(
+                self, "Voorraad- en reststukplan", self._stock_plan_text(plan)
+            )
+
         def _assign_stock(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
@@ -2072,37 +2176,35 @@ if qt_available():
                 QtWidgets.QMessageBox.information(self, "Voorraadtoewijzing", "Selecteer uitsluitend onderdeelregels.")
                 return
             project = self._workspace.project
-            kerf = float(((project.settings.get("profile_nesting") or {}).get("kerf_mm") or 3.0))
-            try:
-                options = BOMStockAllocator().options(project, rows, kerf_mm=kerf)
-            except ValueError as exc:
-                QtWidgets.QMessageBox.information(self, "Voorraadtoewijzing", str(exc))
-                return
-            if not options:
-                QtWidgets.QMessageBox.warning(
-                    self, "Voorraadtoewijzing", "Geen fysiek voorraad- of reststuk past inclusief zaagverlies."
-                )
-                return
-            labels = tuple(
-                f"{'Voorraad' if option.source_type == 'full_stock' else 'Reststuk'} · "
-                f"{option.source_id} · {option.source_quantity} bronstuk(ken) · "
-                f"{option.net_length_mm:.0f} mm netto"
-                for option in options
-            )
-            selected, accepted = QtWidgets.QInputDialog.getItem(
-                self, "Fysieke voorraad toewijzen", "Bron:", labels, 0, False
-            )
-            if not accepted:
-                return
-            option = options[labels.index(selected)]
             preflight = self._confirm_preflight("stock", rows)
             if preflight is None:
                 return
-            entity_ids = self._eligible_entity_ids(rows, preflight)
+            allowed = set(preflight.eligible_group_ids)
+            eligible = tuple(row for row in rows if row.group_id in allowed)
+            try:
+                plan = self._stock_plan(eligible)
+            except ValueError as exc:
+                QtWidgets.QMessageBox.information(self, "Voorraadtoewijzing", str(exc))
+                return
+            if not plan.allocations:
+                QtWidgets.QMessageBox.warning(
+                    self, "Voorraadtoewijzing",
+                    "Geen fysiek voorraad- of reststuk past inclusief zaagverlies. Genereer een inkoopbehoefte.",
+                )
+                return
+            answer = QtWidgets.QMessageBox.question(
+                self, "Fysieke voorraad toewijzen",
+                self._stock_plan_text(plan) + "\n\nDit exacte plan atomair reserveren?",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.Cancel,
+                QtWidgets.QMessageBox.StandardButton.Cancel,
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                return
+            entity_ids = self._eligible_entity_ids(eligible, preflight)
 
             def mutate() -> Any:
-                return BOMStockAllocator.reserve(
-                    project, self._hub_state.data, rows, option, preflight,
+                return BOMStockAllocator.reserve_plan(
+                    project, self._hub_state.data, plan, preflight,
                     user="bom-operator",
                 )
 
@@ -2110,8 +2212,9 @@ if qt_available():
                 execution = self._hub_state.execute_transaction(
                     "stock.assign", preflight, mutate, entity_ids=entity_ids,
                     messages=(
-                        f"Fysieke bron {option.source_id} gereserveerd",
-                        f"{option.source_quantity} bronstuk(ken)",
+                        f"{len(plan.allocations)} fysieke bronstukken atomair gereserveerd",
+                        f"{plan.allocated_length_mm:.0f} mm toegewezen",
+                        f"{plan.shortage_length_mm:.0f} mm resterende inkoopbehoefte",
                     ),
                 )
                 self._mark_project_dirty()
@@ -2119,6 +2222,36 @@ if qt_available():
                 self._show_batch_result(execution.result)
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Voorraadtoewijzing geblokkeerd", str(exc))
+
+        def _release_stock_assignment(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._selected_rows()
+            preflight = self._confirm_preflight("stock", rows)
+            if preflight is None:
+                return
+            group_ids = tuple(
+                row.group_id for row in rows
+                if row.group_id in set(preflight.eligible_group_ids)
+            )
+
+            def mutate() -> tuple[str, ...]:
+                return BOMStockAllocator.release_assignments(
+                    self._workspace.project, self._hub_state.data, group_ids,
+                    user="bom-operator",
+                )
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "stock.release", preflight, mutate,
+                    entity_ids=self._eligible_entity_ids(rows, preflight),
+                    messages=("Fysieke voorraadreservering vrijgegeven",),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Voorraadvrijgave geblokkeerd", str(exc))
 
         def _generate_purchase_need(self) -> None:
             if self._workspace is None or self._hub_state is None:
@@ -2230,6 +2363,40 @@ if qt_available():
                 ))
             except Exception as exc:
                 QtWidgets.QMessageBox.warning(self, "Inkoopvrijgave geblokkeerd", str(exc))
+
+        def _cancel_purchase(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            ids = self._selected_purchase_ids()
+            if not ids:
+                QtWidgets.QMessageBox.information(self, "Inkoop annuleren", "Selecteer inkoopregels.")
+                return
+            reason, accepted = QtWidgets.QInputDialog.getText(
+                self, "Inkoop annuleren", "Reden (verplicht):"
+            )
+            if not accepted or not reason.strip():
+                return
+            rows = self._selected_rows()
+            preflight = self._confirm_preflight("purchase", rows)
+            if preflight is None:
+                return
+
+            def mutate() -> int:
+                return BOMProcurementService.cancel(
+                    self._workspace.project, self._hub_state.data, ids,
+                    reason=reason,
+                )
+
+            try:
+                execution = self._hub_state.execute_transaction(
+                    "purchase.cancel", preflight, mutate, entity_ids=ids,
+                    messages=(f"Inkoop geannuleerd: {reason.strip()}",),
+                )
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Inkoopannulering geblokkeerd", str(exc))
 
         def _set_workflow_status(self, action: str, field_name: str, value: str) -> None:
             self._execute_field_transaction(action, field_name, value)

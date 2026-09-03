@@ -55,7 +55,7 @@ en voert dezelfde eindgate uit als CI. De eindgebruiker heeft geen Python nodig.
 | Fase 1 | reproduceerbare 5.000-objecten-IFC, alle uniforme brongates |
 | Fase 2 | alle 16 uniforme integratiegates |
 | Fase 3 | volledige regression en minimaal 600 seconden soak |
-| BOM | echte `BomWorkspacePanel`, HVPC-project, acht PNG-captures met SHA-256, 37 kolommen en minimaal 75 matrixacties |
+| BOM | echte `BomWorkspacePanel`, HVPC-project, acht PNG-captures met SHA-256, 37 kolommen en minimaal 87 matrixacties |
 | Dist | PyInstaller onedir, native inventory, GUI/CLI/conversie/project-roundtrip zonder externe Python |
 | Portable | schoon uitgepakte ZIP, volledige packaged-runtime-smoke zonder externe Python |
 | Installer | stille per-user-installatie, volledige packaged-runtime-smoke, zes associaties en PDF-contextactie |

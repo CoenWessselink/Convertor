@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.21-beta-dev - BOM production hub full extended closure
+
+- Selectieafhankelijke actiematrix uitgebreid naar 87 acties met concrete
+  voorraad-, inkoop-, tekening-, machine-, NC- en vrijgavevoorwaarden.
+- Revisievergelijking levert exacte before/after-veldpaden per BOM-groep en
+  canoniek object, inclusief verwijderde objecten en opgeslagen 3D-bounds.
+- Gemengde reststuk-/handelslengteplanning reserveert meerdere fysieke bronnen
+  atomair en zet alleen werkelijk niet-toegewezen occurrences door naar inkoop.
+- Slimme selecties ondersteunen recursieve EN/OF/NIET-groepen; de vrije lasso
+  verwerkt ook volledige omsluiting en randkruising.
+- Transacties schrijven resultaatregels per BOM-groep en persistente inverse
+  patches; releasegebonden undo werkt na projectherstart en faalt gesloten bij
+  een nieuwere projectinhoud.
+- De gedeelde rendercache is mesh-hashgebonden, invalideert bij vervanging en
+  publiceert controleerbaar resource-identitybewijs.
+
 ## 0.9.0-alpha-dev - V9 viewer, centrale werkruimtes en A3-tekening
 
 - V9 Viewer componentgewijs geintegreerd met behoud van projectmodel 2.5 en de bestaande Part Workbench.

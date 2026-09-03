@@ -236,7 +236,7 @@ def main() -> int:
         for action in panel.matrix_menu.actions()
         if action.menu() is not None
     )
-    if panel.table.columnCount() != 37 or action_matrix_count < 75:
+    if panel.table.columnCount() != 37 or action_matrix_count < 87:
         raise RuntimeError(
             f"Onvolledige BOM-runtimeprojectie: {panel.table.columnCount()} kolommen, "
             f"{action_matrix_count} matrixacties"
