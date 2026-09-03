@@ -626,12 +626,13 @@ _ORIGINAL_CWS_V2_RENDER = VtkProjectMeshFeelV2Backend.render
 
 
 def _cws_render_with_safe_clipping(self):
-    _ORIGINAL_CWS_V2_RENDER(self)
     renderer = getattr(self, "_renderer", None)
     if renderer is None:
+        _ORIGINAL_CWS_V2_RENDER(self)
         return
     camera = renderer.GetActiveCamera()
     if camera is None:
+        _ORIGINAL_CWS_V2_RENDER(self)
         return
     near_value, far_value = camera.GetClippingRange()
     safe_near = max(0.001, float(near_value) * 0.20)
@@ -643,9 +644,7 @@ def _cws_render_with_safe_clipping(self):
             prop = actor.GetProperty()
             if prop is not None:
                 prop.SetOpacity(opacity)
-    window = renderer.GetRenderWindow()
-    if window is not None:
-        window.Render()
+    _ORIGINAL_CWS_V2_RENDER(self)
 
 
 VtkProjectMeshFeelV2Backend.set_global_opacity = _cws_set_global_opacity
