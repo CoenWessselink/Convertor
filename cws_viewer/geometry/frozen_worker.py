@@ -136,7 +136,10 @@ def _write_mesh(path: Path, mesh: MeshData) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_name(path.name + ".tmp")
     with temp_path.open("wb") as stream:
-        np.savez_compressed(
+        # Worker payloads are short-lived local IPC artifacts. Compression
+        # added a full deflate/inflate cycle for every exact mesh and delayed
+        # large IFC first paint without reducing permanent MeshCache V2 size.
+        np.savez(
             stream,
             vertices=np.asarray(mesh.vertices, dtype=np.float64),
             triangles=np.asarray(mesh.triangles, dtype=np.int32),

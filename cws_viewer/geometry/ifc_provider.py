@@ -571,12 +571,15 @@ def _cws_ifcopenshell_load_many(
             entity_requests = by_entity_id.get(int(shape.id), ())
             if not entity_requests:
                 continue
-            vertices = np.asarray(shape.geometry.verts, dtype=np.float64).reshape((-1, 3)).copy()
-            triangles = np.asarray(shape.geometry.faces, dtype=np.int64).reshape((-1, 3)).copy()
+            vertices = np.asarray(shape.geometry.verts, dtype=np.float64).reshape((-1, 3))
+            triangles = np.asarray(shape.geometry.faces, dtype=np.int32).reshape((-1, 3))
             if vertices.size == 0 or triangles.size == 0:
                 continue
             vertices *= 1000.0
-            mesh_digest = hashlib.sha256(vertices.tobytes() + triangles.tobytes()).hexdigest()
+            mesh_hasher = hashlib.sha256()
+            mesh_hasher.update(memoryview(vertices))
+            mesh_hasher.update(memoryview(triangles))
+            mesh_digest = mesh_hasher.hexdigest()
             for request in entity_requests:
                 metadata = dict(request.metadata_dict)
                 metadata.update(

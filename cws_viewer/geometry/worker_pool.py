@@ -4,7 +4,11 @@ from __future__ import annotations
 import atexit
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import replace
+import hashlib
 import math
+import os
+from pathlib import Path
+import tempfile
 import threading
 from typing import Callable, Iterable
 
@@ -15,6 +19,93 @@ from cws_viewer.contracts.geometry import (
     TessellationSettings,
 )
 from cws_viewer.geometry.isolated import IsolatedIfcMeshProvider
+
+
+_SOURCE_MIRROR_LOCK = threading.RLock()
+_SOURCE_MIRROR_MAX_FILES = 32
+_SOURCE_MIRROR_MAX_BYTES = 4 * 1024**3
+
+
+def _source_mirror_root() -> Path:
+    configured = str(os.environ.get("CWS_VIEWER_SOURCE_MIRROR_ROOT", "")).strip()
+    if configured:
+        return Path(configured).expanduser().resolve()
+    local_data = str(os.environ.get("LOCALAPPDATA", "")).strip()
+    base = Path(local_data) if local_data else Path(tempfile.gettempdir())
+    return (base / "CWS Convertor" / "ViewerSourceMirrorV2").resolve()
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while True:
+            chunk = stream.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _prune_source_mirror(root: Path, keep: Path) -> None:
+    files = sorted(
+        (item for item in root.iterdir() if item.is_file() and not item.name.endswith(".tmp")),
+        key=lambda item: item.stat().st_mtime_ns,
+        reverse=True,
+    )
+    total = 0
+    retained = 0
+    for item in files:
+        size = int(item.stat().st_size)
+        if item == keep or (retained < _SOURCE_MIRROR_MAX_FILES and total + size <= _SOURCE_MIRROR_MAX_BYTES):
+            total += size
+            retained += 1
+            continue
+        try:
+            item.unlink()
+        except OSError:
+            pass
+
+
+def _stage_ifc_source(source_path: str, source_sha256: str) -> Path:
+    """Return an atomic, content-addressed local mirror of one IFC source."""
+    source = Path(source_path).expanduser().resolve()
+    if not source.is_file():
+        raise FileNotFoundError(f"IFC-bronbestand ontbreekt: {source}")
+    root = _source_mirror_root()
+    suffix = source.suffix.lower() if source.suffix else ".ifc"
+    target = root / f"{source_sha256.lower()}{suffix}"
+    if source == target:
+        return target
+
+    with _SOURCE_MIRROR_LOCK:
+        root.mkdir(parents=True, exist_ok=True)
+        if target.is_file() and _sha256_file(target) == source_sha256.lower():
+            os.utime(target, None)
+            return target
+        target.unlink(missing_ok=True)
+        descriptor, temp_name = tempfile.mkstemp(prefix=f".{target.stem}.", suffix=".tmp", dir=root)
+        temp_path = Path(temp_name)
+        digest = hashlib.sha256()
+        try:
+            with source.open("rb") as input_stream, os.fdopen(descriptor, "wb") as output_stream:
+                while True:
+                    chunk = input_stream.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    output_stream.write(chunk)
+                    digest.update(chunk)
+                output_stream.flush()
+                os.fsync(output_stream.fileno())
+            actual = digest.hexdigest()
+            if actual != source_sha256.lower():
+                raise RuntimeError(
+                    f"IFC-source mirror hash wijkt af: verwacht {source_sha256}, ontvangen {actual}"
+                )
+            os.replace(temp_path, target)
+        finally:
+            temp_path.unlink(missing_ok=True)
+        _prune_source_mirror(root, target)
+        return target
 
 
 class PersistentGeometryWorkerPool:
@@ -225,6 +316,29 @@ class PersistentGeometryWorkerPool:
         values = tuple(requests)
         if not values:
             return {}
+        mirrored_sources: dict[tuple[str, str], str] = {}
+        mirrored_values: list[GeometryRequest] = []
+        for request in values:
+            if request.source_format.upper() != "IFC" or not Path(request.source_path).is_file():
+                mirrored_values.append(request)
+                continue
+            source_key = (str(request.source_path), str(request.source_sha256))
+            mirror = mirrored_sources.get(source_key)
+            if mirror is None:
+                mirror = str(_stage_ifc_source(*source_key))
+                mirrored_sources[source_key] = mirror
+            metadata = request.metadata_dict
+            metadata["ifc_source_mirror"] = "content_hash_local_v2"
+            metadata["ifc_original_source_path"] = str(request.source_path)
+            mirrored_values.append(
+                replace(
+                    request,
+                    source_path=mirror,
+                    metadata=tuple(sorted(metadata.items())),
+                    source_path_verified=True,
+                )
+            )
+        values = tuple(mirrored_values)
         # Keep entities from one source together. Round-robin distribution made
         # every child parse the complete IFC independently.
         source_groups: dict[tuple[str, str, str], list[GeometryRequest]] = {}
