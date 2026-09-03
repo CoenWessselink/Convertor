@@ -3,9 +3,9 @@
 PyInstaller executables should not rely on Python's ``multiprocessing.spawn``
 re-entering the GUI executable for production geometry loading.  This module
 starts the same CWS_Viewer.exe in a private ``--geometry-worker-service`` mode
-and uses an authenticated localhost socket for small control messages. Mesh
-arrays are exchanged through private temporary NPZ files (``allow_pickle`` is
-never used).
+and uses an authenticated localhost socket for small control messages. Single
+meshes use temporary NPZ files; trusted same-version child batches use one
+private atomic pickle payload to avoid thousands of filesystem roundtrips.
 
 The native IFC/OCP provider remains entirely inside the child process. A native
 access violation therefore terminates the worker, not the GUI process.
@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import pickle
 import secrets
 import select
 import shutil
@@ -166,6 +167,31 @@ def _read_mesh(path: Path) -> MeshData:
     )
 
 
+def _write_mesh_batch(path: Path, meshes: dict[str, MeshData]) -> None:
+    """Write one trusted-child batch payload instead of thousands of NPZ files."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(path.name + ".tmp")
+    with temp_path.open("wb") as stream:
+        pickle.dump(dict(meshes), stream, protocol=pickle.HIGHEST_PROTOCOL)
+        stream.flush()
+    os.replace(temp_path, path)
+
+
+def _read_mesh_batch(path: Path) -> dict[str, MeshData]:
+    # The payload is produced by the authenticated same-version child process
+    # inside its private random temp root. It is never accepted from a caller.
+    with path.open("rb") as stream:
+        payload = pickle.load(stream)
+    if not isinstance(payload, dict):
+        raise FrozenWorkerProtocolError("IFC-worker batchpayload is geen dictionary")
+    result: dict[str, MeshData] = {}
+    for geometry_id, mesh in payload.items():
+        if not isinstance(geometry_id, str) or not isinstance(mesh, MeshData):
+            raise FrozenWorkerProtocolError("IFC-worker batchpayload bevat een ongeldig meshitem")
+        result[geometry_id] = mesh
+    return result
+
+
 def _is_within(path: Path, root: Path) -> bool:
     try:
         path.resolve().relative_to(root.resolve())
@@ -226,21 +252,16 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
                     requests = tuple(_request_from_dict(dict(value)) for value in message.get("requests", ()))
                     result_path.mkdir(parents=True, exist_ok=True)
                     meshes = provider.load_many(requests, settings)
-                    results = []
-                    for index, request in enumerate(requests):
-                        mesh = meshes.get(request.geometry_id)
-                        if mesh is None:
-                            continue
-                        mesh_path = result_path / f"{index:06d}.npz"
-                        _write_mesh(mesh_path, mesh)
-                        results.append({"geometry_id": request.geometry_id, "path": str(mesh_path)})
+                    batch_path = result_path / "meshes.batch"
+                    _write_mesh_batch(batch_path, meshes)
                     _send_message(
                         sock,
                         {
                             "protocol": _PROTOCOL,
                             "ok": True,
                             "job_id": job_id,
-                            "results": results,
+                            "batch_path": str(batch_path),
+                            "mesh_count": len(meshes),
                             "requested": len(requests),
                         },
                     )
@@ -555,16 +576,18 @@ class FrozenIfcWorkerClient:
                 raise FrozenWorkerProtocolError("IFC-worker retourneerde een onbekende batch-job-id")
             if not bool(reply.get("ok")):
                 raise FrozenWorkerProtocolError(str(reply.get("error") or "Onbekende IFC-batchfout"))
-            meshes = {}
-            results = tuple(reply.get("results") or ())
+            batch_path = Path(str(reply.get("batch_path") or "")).resolve()
             try:
-                for index, item in enumerate(results, start=1):
-                    mesh_path = Path(str(item.get("path") or "")).resolve()
-                    if not _is_within(mesh_path, result_root) or not mesh_path.is_file():
-                        raise FrozenWorkerProtocolError("IFC-worker batchresultaatpad is ongeldig")
-                    mesh = _read_mesh(mesh_path)
-                    geometry_id = str(item.get("geometry_id") or "")
-                    meshes[geometry_id] = mesh
+                if not _is_within(batch_path, result_root) or not batch_path.is_file():
+                    raise FrozenWorkerProtocolError("IFC-worker batchresultaatpad is ongeldig")
+                meshes = _read_mesh_batch(batch_path)
+                if int(reply.get("mesh_count") or -1) != len(meshes):
+                    raise FrozenWorkerProtocolError("IFC-worker batchaantal wijkt af")
+                for index, request in enumerate(values, start=1):
+                    geometry_id = request.geometry_id
+                    mesh = meshes.get(geometry_id)
+                    if mesh is None:
+                        continue
                     if on_mesh is not None:
                         on_mesh(geometry_id, mesh)
                     if progress is not None:

@@ -355,10 +355,10 @@ class PersistentGeometryWorkerPool:
             # idle while one child tessellated every product. Split only large
             # groups; small sources still benefit from one parsed model/session.
             desired_shards = 1
-            if self.worker_count > 1 and len(group) >= 384:
+            if self.worker_count > 1 and len(group) >= 256:
                 desired_shards = min(
                     self.worker_count,
-                    max(2, math.ceil(len(group) / 384)),
+                    max(2, math.ceil(len(group) / 256)),
                 )
             shard_size = math.ceil(len(group) / desired_shards)
             shards = [
