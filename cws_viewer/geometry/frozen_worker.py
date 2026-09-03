@@ -35,6 +35,7 @@ from cws_viewer.contracts.geometry import GeometryRequest, MeshData, Tessellatio
 
 _PROTOCOL = "cws-frozen-ifc-worker-v1"
 _MAX_MESSAGE_BYTES = 16 * 1024 * 1024
+_MAX_BATCH_BYTES = 512 * 1024 * 1024
 
 
 class FrozenWorkerProtocolError(RuntimeError):
@@ -177,11 +178,7 @@ def _write_mesh_batch(path: Path, meshes: dict[str, MeshData]) -> None:
     os.replace(temp_path, path)
 
 
-def _read_mesh_batch(path: Path) -> dict[str, MeshData]:
-    # The payload is produced by the authenticated same-version child process
-    # inside its private random temp root. It is never accepted from a caller.
-    with path.open("rb") as stream:
-        payload = pickle.load(stream)
+def _validate_mesh_batch(payload: object) -> dict[str, MeshData]:
     if not isinstance(payload, dict):
         raise FrozenWorkerProtocolError("IFC-worker batchpayload is geen dictionary")
     result: dict[str, MeshData] = {}
@@ -190,6 +187,27 @@ def _read_mesh_batch(path: Path) -> dict[str, MeshData]:
             raise FrozenWorkerProtocolError("IFC-worker batchpayload bevat een ongeldig meshitem")
         result[geometry_id] = mesh
     return result
+
+
+def _serialize_mesh_batch(meshes: dict[str, MeshData]) -> bytes:
+    return pickle.dumps(dict(meshes), protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def _deserialize_mesh_batch(payload: bytes) -> dict[str, MeshData]:
+    try:
+        return _validate_mesh_batch(pickle.loads(payload))
+    except FrozenWorkerProtocolError:
+        raise
+    except Exception as exc:
+        raise FrozenWorkerProtocolError("IFC-worker socketbatch is ongeldig") from exc
+
+
+def _read_mesh_batch(path: Path) -> dict[str, MeshData]:
+    # The payload is produced by the authenticated same-version child process
+    # inside its private random temp root. It is never accepted from a caller.
+    with path.open("rb") as stream:
+        payload = pickle.load(stream)
+    return _validate_mesh_batch(payload)
 
 
 def _is_within(path: Path, root: Path) -> bool:
@@ -236,6 +254,10 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": True, "type": "shutdown"})
                 return 0
             if command == "prewarm":
+                import ifcopenshell
+                import ifcopenshell.geom
+
+                ifcopenshell.geom.settings()
                 _send_message(sock, {"protocol": _PROTOCOL, "ok": True, "type": "prewarm"})
                 continue
             if command not in {"load", "load_many"}:
@@ -250,21 +272,27 @@ def run_geometry_worker_service(*, host: str, port: int, token: str, root: str |
                 settings = _settings_from_dict(dict(message["settings"]))
                 if command == "load_many":
                     requests = tuple(_request_from_dict(dict(value)) for value in message.get("requests", ()))
-                    result_path.mkdir(parents=True, exist_ok=True)
                     meshes = provider.load_many(requests, settings)
-                    batch_path = result_path / "meshes.batch"
-                    _write_mesh_batch(batch_path, meshes)
-                    _send_message(
-                        sock,
-                        {
-                            "protocol": _PROTOCOL,
-                            "ok": True,
-                            "job_id": job_id,
-                            "batch_path": str(batch_path),
-                            "mesh_count": len(meshes),
-                            "requested": len(requests),
-                        },
-                    )
+                    batch_payload = _serialize_mesh_batch(meshes)
+                    reply = {
+                        "protocol": _PROTOCOL,
+                        "ok": True,
+                        "job_id": job_id,
+                        "mesh_count": len(meshes),
+                        "requested": len(requests),
+                    }
+                    if len(batch_payload) <= _MAX_BATCH_BYTES:
+                        reply["batch_bytes"] = len(batch_payload)
+                        reply["batch_transport"] = "socket_pickle_v1"
+                        _send_message(sock, reply)
+                        sock.sendall(batch_payload)
+                    else:
+                        result_path.mkdir(parents=True, exist_ok=True)
+                        batch_path = result_path / "meshes.batch"
+                        _write_mesh_batch(batch_path, meshes)
+                        reply["batch_path"] = str(batch_path)
+                        reply["batch_transport"] = "private_file_pickle_v1"
+                        _send_message(sock, reply)
                     continue
                 request = _request_from_dict(dict(message["request"]))
                 mesh = provider.load(request, settings)
@@ -576,11 +604,17 @@ class FrozenIfcWorkerClient:
                 raise FrozenWorkerProtocolError("IFC-worker retourneerde een onbekende batch-job-id")
             if not bool(reply.get("ok")):
                 raise FrozenWorkerProtocolError(str(reply.get("error") or "Onbekende IFC-batchfout"))
-            batch_path = Path(str(reply.get("batch_path") or "")).resolve()
             try:
-                if not _is_within(batch_path, result_root) or not batch_path.is_file():
-                    raise FrozenWorkerProtocolError("IFC-worker batchresultaatpad is ongeldig")
-                meshes = _read_mesh_batch(batch_path)
+                batch_bytes = int(reply.get("batch_bytes") or 0)
+                if batch_bytes:
+                    if batch_bytes < 0 or batch_bytes > _MAX_BATCH_BYTES:
+                        raise FrozenWorkerProtocolError("IFC-worker socketbatchgrootte is ongeldig")
+                    meshes = _deserialize_mesh_batch(_recv_exact(sock, batch_bytes))
+                else:
+                    batch_path = Path(str(reply.get("batch_path") or "")).resolve()
+                    if not _is_within(batch_path, result_root) or not batch_path.is_file():
+                        raise FrozenWorkerProtocolError("IFC-worker batchresultaatpad is ongeldig")
+                    meshes = _read_mesh_batch(batch_path)
                 if int(reply.get("mesh_count") or -1) != len(meshes):
                     raise FrozenWorkerProtocolError("IFC-worker batchaantal wijkt af")
                 for index, request in enumerate(values, start=1):
