@@ -356,10 +356,10 @@ if qt_available():
                     max(1, int(pending[1])),
                 )
                 self._controller.resize(*logical_size)
-                render_window = getattr(self, "_RenderWindow", None)
-                if render_window is not None:
-                    render_window.SetSize(*logical_size)
-                    render_window.Render()
+                # The controller/backend already owns the VTK size. A second
+                # unconditional Render() here can run before QVTK has a stable
+                # native OpenGL context in a freshly copied portable runtime.
+                # Scene loads and normal paint/input paths perform rendering.
                 self.update()
 
             def closeEvent(self, event: Any) -> None:

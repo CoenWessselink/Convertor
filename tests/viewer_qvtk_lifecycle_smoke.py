@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 class ViewerQvtkLifecycleSmoke(unittest.TestCase):
     def test_qvtk_owns_native_interactor_show_and_close_lifecycle(self) -> None:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-        from PySide6 import QtWidgets
+        from PySide6 import QtTest, QtWidgets
         from cws_viewer.geometry.loader import MeshRepository
         from cws_viewer.ui_qt.vtk_real_project_widget import VtkRealProjectWidget
 
@@ -24,6 +24,8 @@ class ViewerQvtkLifecycleSmoke(unittest.TestCase):
         self.assertIsNotNone(widget.GetRenderWindow().GetInteractor())
         widget.resize(640, 420)
         widget.show()
+        application.processEvents()
+        QtTest.QTest.qWait(90)
         application.processEvents()
         widget.close()
         application.processEvents()
