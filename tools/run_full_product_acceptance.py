@@ -619,7 +619,10 @@ def run_runtime_acceptance_evidence(project: Path | None) -> list[dict[str, Any]
         (
             "project_cancel",
             [sys.executable, str(ROOT / "tests" / "full_acceptance_project_cancel_smoke.py"), str(project), "--output", str(OUTPUT / "PROJECT_CANCEL_RESULTS.json")],
-            60,
+            # The smoke reports its functional result before Qt and the shared
+            # geometry-worker runtime have fully torn down.  On a loaded Windows
+            # acceptance host that deterministic cleanup can exceed one minute.
+            180,
         ),
         (
             "stress_matrix",
