@@ -1349,7 +1349,7 @@ def build_snap_candidates(
         candidates.setdefault(
             key,
             SnapCandidate(
-                candidate_id=f"{page_number}:{subshape_id}:{kind}:{index}",
+                candidate_id=f"{page_number}:{view_id}:{anchor.entity_id}:{subshape_id}:{kind}:{index}",
                 point=point_value,
                 snap_type=kind,
                 label=f"{kind} · {feature_id or subshape_id}",
@@ -1529,7 +1529,7 @@ def nearest_snap_candidate(
         proof="canonical_projection" if canonical else "review_projection",
     )
     return SnapCandidate(
-        candidate_id=f"{page_number}:{anchor.subshape_id}:nearest:{identity}",
+        candidate_id=f"{page_number}:{anchor.view_id}:{anchor.entity_id}:{anchor.subshape_id}:nearest:{identity}",
         point=nearest,
         snap_type=SnapType.NEAREST.value,
         label=f"nearest · {feature_id or anchor.subshape_id}",
