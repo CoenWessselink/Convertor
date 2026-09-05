@@ -72,8 +72,14 @@ class LoadingPerformancePolicy:
             desired = 6
         if format_name not in {"IFC", "MIXED"}:
             desired = min(desired, 4)
-        memory_cap = max(1, int(available_ram // (2 * 1024**3)))
-        worker_count = max(1, min(desired, memory_cap, max(1, (cores + 2) // 2), 8))
+        # IFC workers are isolated native tessellation processes.  Limiting
+        # them to roughly half the logical cores made the eight-shard policy
+        # above unreachable on the four-core Windows release runner (three
+        # workers processed the 1,496-resource HVPC model).  Permit up to two
+        # workers per logical core while retaining an explicit 1 GiB-per-child
+        # memory guard and the absolute product cap of eight.
+        memory_cap = max(1, int(available_ram // (1 * 1024**3)))
+        worker_count = max(1, min(desired, memory_cap, max(1, cores * 2), 8))
         override = (
             os.environ.get("CWS_GEOMETRY_WORKERS", "").strip()
             or os.environ.get("CWS_VIEWER_IFC_WORKERS", "").strip()

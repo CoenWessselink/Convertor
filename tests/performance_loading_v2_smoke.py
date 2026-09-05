@@ -4,6 +4,7 @@ import hashlib
 import gc
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -90,6 +91,18 @@ class PerformanceLoadingV2Smoke(unittest.TestCase):
         queue.enqueue(2, ("new",))
         self.assertEqual(queue.claim(2), ("new",))
         self.assertEqual(queue.stale_rejected, 1)
+
+    def test_large_ifc_policy_can_reach_eight_release_shards(self):
+        with (
+            patch("cws_viewer.performance.policy.os.cpu_count", return_value=4),
+            patch(
+                "cws_viewer.performance.policy._available_memory_bytes",
+                return_value=(16 * 1024**3, 12 * 1024**3),
+            ),
+            patch.dict("os.environ", {}, clear=True),
+        ):
+            policy = LoadingPerformancePolicy.detect(1496, source_format="IFC")
+        self.assertEqual(8, policy.worker_count)
 
     def test_cache_v2_integrity_and_memory_hit(self):
         with tempfile.TemporaryDirectory() as directory:
