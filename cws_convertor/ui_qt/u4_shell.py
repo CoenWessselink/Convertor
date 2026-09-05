@@ -1168,6 +1168,16 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 "product-ui/last-workspace",
                 self._workspace_name(self.tabs.currentWidget()) or "import",
             )
+            # The geometry process pool is intentionally shared for the full
+            # desktop session.  Closing the main window is the session
+            # boundary; shut the pool down here so cancelled project loads do
+            # not leave non-daemon worker processes keeping the app alive.
+            try:
+                from cws_viewer.geometry.worker_pool import PersistentGeometryWorkerPool
+
+                PersistentGeometryWorkerPool.shutdown_shared()
+            except Exception:
+                pass
             super().closeEvent(event)
 
 
