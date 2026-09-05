@@ -685,7 +685,7 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
         old_revision = panel._dimension_document.drawing_revision
         panel._dimension_model.begin_revision(reason="Componentpositie gewijzigd", user="pdf12-evidence")
         panel._dimension_model.select((orphan.dimension_id,))
-        panel._dimension_model.delete_selected(user="pdf12-evidence")
+        panel._dimension_model.move_selected((8.0, 5.0), text_only=True, user="pdf12-evidence")
         if not panel._dimension_document.dimensions:
             raise RuntimeError("Revisievergelijking verwijderde alle persistente A1-maatobjecten")
         panel._persist_dimension_editor("drawing.dimension_revision_compared")
@@ -707,6 +707,8 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
 
         if [item["test_id"] for item in evidence] != [f"PDF12-GUI-{index:03d}" for index in range(1, 36)]:
             raise RuntimeError("PDF-12 runtimebewijs is niet aaneengesloten 1..35")
+        if not panel._dimension_document.dimensions:
+            raise RuntimeError("PDF-12 eindproject bevat geen persistente A1-maatobjecten")
         panel._persist_dimension_editor("drawing.pdf12_evidence_finalized")
         reopened.save(project_path, user="pdf12-evidence", revision_message="PDF-12 eindstatus en audit")
         audit_path = generated / "PDF12_REVISION_AUDIT_EXAMPLE.json"
