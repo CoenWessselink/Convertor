@@ -180,6 +180,7 @@ def source_inventories() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
 
 def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtCore import QPointF
     from PySide6.QtGui import QAction, QPixmap
     from PySide6.QtWidgets import (
         QApplication,
@@ -350,6 +351,21 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
         residual_report=None,
     )
     safe_method_arguments: dict[str, tuple[Any, ...]] = {
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_drawing": (
+            QPixmap(200, 100),
+            SimpleNamespace(pages=()),
+            (),
+        ),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_active_page": (0,),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_candidates": ((),),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_draft": ((), None),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_selected_ids": ((),),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_selection_mode": (True,),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.zoom_to_selected": (),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.sheet_to_widget": ((0.0, 0.0),),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.widget_to_sheet": (QPointF(0.0, 0.0),),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.dimension_at": ((0.0, 0.0), ()),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.cycle_candidate": (),
         "cws_convertor.ui_qt.converter_panel._ModelPreview.set_caption": ("Acceptance",),
         "cws_convertor.ui_qt.converter_panel.ConverterPanel.add_files": ([],),
         "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.delete_selected_features": (),
@@ -412,6 +428,22 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
                 safe_methods_exercised += 1
             except Exception as exc:
                 safe_method_errors.append(f"{key}: {type(exc).__name__}: {exc}")
+    safe_properties = {
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas": (
+            "current_candidate",
+            "page_index",
+        ),
+    }
+    for item in all_widgets:
+        owner = f"{type(item).__module__}.{type(item).__qualname__.split('.')[0]}"
+        for property_name in safe_properties.get(owner, ()):
+            try:
+                getattr(item, property_name)
+                safe_methods_exercised += 1
+            except Exception as exc:
+                safe_method_errors.append(
+                    f"{owner}.{property_name}: {type(exc).__name__}: {exc}"
+                )
     from unittest.mock import patch
     from cws_convertor.output import DocumentOutputService
 
