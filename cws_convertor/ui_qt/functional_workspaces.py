@@ -5,6 +5,7 @@ import copy
 import csv
 import json
 from pathlib import Path
+import tempfile
 from typing import Any
 from uuid import uuid4
 
@@ -13,6 +14,19 @@ from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
 if qt_available():
     QtCore, QtGui, QtWidgets = require_qt()
+    from cws_convertor.drawings.interactive import (
+        DIMENSION_EDITOR_SCHEMA,
+        DimensionDocumentStore,
+        DimensionEditorModel,
+        DimensionInteractionController,
+        DimensionKind,
+        DimensionStyle,
+        DrawingRole,
+        InteractionState,
+        SnapFilter,
+        build_snap_candidates,
+    )
+    from cws_convertor.ui_qt.drawing_dimension_canvas import InteractiveDrawingCanvas
 
     def _selection_id(selection: Any | None) -> str:
         if selection is None:
@@ -1402,6 +1416,14 @@ if qt_available():
             self._entity_id = ""
             self._last_png: Path | None = None
             self._manual_dimensions: list[dict[str, Any]] = []
+            self._drawing_document = None
+            self._dimension_document = None
+            self._dimension_model = None
+            self._dimension_controller = DimensionInteractionController()
+            self._dimension_tool = "select"
+            self._loaded_lock_version = 0
+            self._snap_candidates = []
+            self._dimension_clipboard: list[dict[str, Any]] = []
             self._build()
             self.generate_pdf.connect(self.export_pdf)
 
@@ -1441,7 +1463,7 @@ if qt_available():
             views = QtWidgets.QHBoxLayout()
             views.addWidget(QtWidgets.QLabel("Aanzichten"))
             self.view_buttons: dict[str, Any] = {}
-            for key, label in (("front", "Voor"), ("top", "Boven"), ("side", "Zij"), ("3d", "3D"), ("iso", "Iso")):
+            for key, label in (("front", "Voor"), ("top", "Boven"), ("side", "Zij"), ("end", "Eind"), ("3d", "3D"), ("iso", "Iso")):
                 button = QtWidgets.QPushButton(label)
                 button.setCheckable(True)
                 button.setChecked(key in {"front", "top", "side"})
@@ -1463,7 +1485,7 @@ if qt_available():
             self.details_button.setCheckable(True)
             self.details_button.setChecked(True)
             self.add_dimension_button = QtWidgets.QPushButton("Eigen maat toevoegen...")
-            self.clear_dimensions_button = QtWidgets.QPushButton("Eigen maten wissen")
+            self.clear_dimensions_button = QtWidgets.QPushButton("Selectie verwijderen")
             views.addSpacing(18)
             views.addWidget(self.dimensions_button)
             views.addWidget(self.dimension_mode)
@@ -1472,17 +1494,47 @@ if qt_available():
             views.addWidget(self.add_dimension_button)
             views.addWidget(self.clear_dimensions_button)
             views.addWidget(self.title_block_button)
+            views.addSpacing(12)
+            views.addWidget(QtWidgets.QLabel("Blad"))
+            self.page_selector = QtWidgets.QComboBox()
+            self.page_selector.addItem("1 / 1", 0)
+            self.page_selector.setToolTip("Wissel tussen tekenbladen zonder selectie of maatbewerking te verliezen")
+            views.addWidget(self.page_selector)
             views.addStretch(1)
             root.addLayout(views)
+            self._build_dimension_toolbar(root)
             self.sheet_frame = QtWidgets.QFrame()
             self.sheet_frame.setObjectName("drawingSheetFrame")
-            sheet_layout = QtWidgets.QVBoxLayout(self.sheet_frame)
+            sheet_layout = QtWidgets.QHBoxLayout(self.sheet_frame)
             sheet_layout.setContentsMargins(18, 14, 18, 14)
-            self.preview = QtWidgets.QLabel("Selecteer een onderdeel en kies Voorbeeld vernieuwen")
-            self.preview.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            self.preview.setMinimumHeight(500)
-            self.preview.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+            self.preview = InteractiveDrawingCanvas(self.sheet_frame)
             sheet_layout.addWidget(self.preview, 1)
+            properties = QtWidgets.QFrame(self.sheet_frame)
+            properties.setObjectName("drawingDimensionProperties")
+            properties.setMinimumWidth(255)
+            properties.setMaximumWidth(330)
+            property_layout = QtWidgets.QVBoxLayout(properties)
+            property_layout.setContentsMargins(8, 4, 4, 4)
+            property_title = QtWidgets.QLabel("Maateigenschappen")
+            property_title.setObjectName("workspaceTitle")
+            property_layout.addWidget(property_title)
+            self.dimension_properties = QtWidgets.QTreeWidget(properties)
+            self.dimension_properties.setHeaderLabels(("Veld", "Waarde"))
+            self.dimension_properties.setRootIsDecorated(False)
+            self.dimension_properties.setAlternatingRowColors(True)
+            property_layout.addWidget(self.dimension_properties, 1)
+            self.revision_summary = QtWidgets.QLabel("Revisievergelijking: geen vrijgegeven basis", properties)
+            self.revision_summary.setWordWrap(True)
+            self.revision_summary.setObjectName("mutedText")
+            property_layout.addWidget(self.revision_summary)
+            self.dimension_issue_summary = QtWidgets.QLabel("Problemen: nog niet gelint", properties)
+            self.dimension_issue_summary.setWordWrap(True)
+            self.dimension_issue_summary.setObjectName("safetyStatus")
+            property_layout.addWidget(self.dimension_issue_summary)
+            self.edit_properties_button = QtWidgets.QPushButton("Eigenschappen wijzigen…")
+            self.edit_properties_button.setEnabled(False)
+            property_layout.addWidget(self.edit_properties_button)
+            sheet_layout.addWidget(properties)
             root.addWidget(self.sheet_frame, 1)
             self.status = QtWidgets.QLabel("Geen project geopend")
             self.status.setObjectName("mutedText")
@@ -1501,6 +1553,983 @@ if qt_available():
             self.dimension_mode.currentTextChanged.connect(lambda _text: self.refresh_preview())
             self.add_dimension_button.clicked.connect(self._add_manual_dimension)
             self.clear_dimensions_button.clicked.connect(self._clear_manual_dimensions)
+            self.preview.sheet_clicked.connect(self._on_dimension_canvas_click)
+            self.preview.pointer_moved.connect(self._on_dimension_pointer)
+            self.preview.command_requested.connect(self._on_dimension_command)
+            self.preview.dimension_dragged.connect(self._on_dimension_dragged)
+            self.preview.area_selected.connect(self._on_dimension_area_selected)
+            self.edit_properties_button.clicked.connect(self._edit_dimension_properties)
+            self.page_selector.currentIndexChanged.connect(lambda _index: self._show_pixmap())
+
+        def _build_dimension_toolbar(self, root: Any) -> None:
+            toolbar_frame = QtWidgets.QFrame(self)
+            toolbar_frame.setObjectName("dimensionEditorToolbar")
+            toolbar = QtWidgets.QHBoxLayout(toolbar_frame)
+            toolbar.setContentsMargins(4, 3, 4, 3)
+            toolbar.setSpacing(3)
+            tools = (
+                ("select", "⌖", "Selecteren/bewerken (S)"),
+                (DimensionKind.HORIZONTAL.value, "↔", "Horizontale maat (H)"),
+                (DimensionKind.VERTICAL.value, "↕", "Verticale maat (V)"),
+                (DimensionKind.ALIGNED.value, "⟷", "Uitgelijnde maat (A)"),
+                (DimensionKind.CHAIN.value, "⛓", "Kettingmaat; Enter sluit de reeks"),
+                (DimensionKind.BASELINE.value, "⌞", "Baseline-/nulpuntmaat"),
+                (DimensionKind.ORDINATE_X.value, "X₀", "Ordinaatmaat X"),
+                (DimensionKind.ORDINATE_Y.value, "Y₀", "Ordinaatmaat Y"),
+                (DimensionKind.ANGLE.value, "∠", "Hoekmaat"),
+                (DimensionKind.RADIUS.value, "R", "Radiusmaat"),
+                (DimensionKind.DIAMETER.value, "Ø", "Diametermaat"),
+                (DimensionKind.CENTER_DISTANCE.value, "⊙↔⊙", "Hart-op-hartmaat"),
+                (DimensionKind.LEADER.value, "↗", "Leader/callout"),
+                (DimensionKind.TEXT.value, "T", "Tekstnotitie"),
+            )
+            self.dimension_tool_buttons: dict[str, Any] = {}
+            group = QtWidgets.QButtonGroup(self)
+            group.setExclusive(True)
+            for key, label, tooltip in tools:
+                button = QtWidgets.QToolButton(toolbar_frame)
+                button.setText(label)
+                button.setToolTip(tooltip)
+                button.setCheckable(True)
+                button.setAutoRaise(False)
+                button.setMinimumSize(32, 28)
+                button.clicked.connect(lambda _checked=False, value=key: self._activate_dimension_tool(value))
+                group.addButton(button)
+                toolbar.addWidget(button)
+                self.dimension_tool_buttons[key] = button
+            self.dimension_tool_buttons["select"].setChecked(True)
+            toolbar.addSpacing(8)
+            self.snap_filter = QtWidgets.QComboBox(toolbar_frame)
+            for label, value in (
+                ("Snap: alles", SnapFilter.ALL.value),
+                ("Punten", SnapFilter.POINTS.value),
+                ("Randen", SnapFilter.EDGES.value),
+                ("Gaten/centra", SnapFilter.CENTERS.value),
+                ("Hartlijnen", SnapFilter.CENTERLINES.value),
+                ("Features", SnapFilter.FEATURES.value),
+                ("Maatobjecten", SnapFilter.DIMENSIONS.value),
+                ("Tekst/leaders", SnapFilter.TEXT_LEADERS.value),
+            ):
+                self.snap_filter.addItem(label, value)
+            self.snap_filter.setToolTip("Selectiefilter voor geometrische snapreferenties")
+            self.snap_filter.currentIndexChanged.connect(lambda _index: self._refresh_snap_candidates())
+            toolbar.addWidget(self.snap_filter)
+            self.annotation_kind = QtWidgets.QComboBox(toolbar_frame)
+            for label, value in (
+                ("Vrije annotatie", "free"), ("Featurecallout", "feature"), ("Gatcallout", "hole"),
+                ("Sleufcallout", "slot"), ("Verzinking", "countersink"), ("Afschuining/verstek", "chamfer_miter"),
+                ("Scribing/markering", "scribing"), ("Lassymbool", "weld_symbol"), ("Datumsymbool", "datum_symbol"),
+                ("Geometrische tolerantie", "geometric_tolerance"), ("Oppervlakteruwheid", "surface_roughness"),
+                ("Schroefdraad", "thread"), ("Plaatdikte", "plate_thickness"), ("Profielrichting", "profile_direction"),
+                ("Montage/controle", "assembly_inspection"), ("Revisiewolk", "revision_cloud"),
+            ):
+                self.annotation_kind.addItem(label, value)
+            self.annotation_kind.setToolTip("Semantisch type voor de volgende leader of tekstnotitie")
+            self.annotation_kind.setMaximumWidth(145)
+            toolbar.addWidget(self.annotation_kind)
+            self.dimension_action_buttons: dict[str, Any] = {}
+            for label, tooltip, callback in (
+                ("◉", "Verberg/toon selectie", self._toggle_selected_dimension),
+                ("⛓", "Geselecteerd anker opnieuw kiezen", self._start_reanchor),
+                ("⧉", "Selectie dupliceren", self._duplicate_dimensions),
+                ("⌫", "Verwijder alleen geselecteerde maat (Delete)", self._delete_selected_dimensions),
+                ("↶", "Ongedaan maken (Ctrl+Z)", self._undo_dimensions),
+                ("↷", "Opnieuw (Ctrl+Y)", self._redo_dimensions),
+                ("Fit", "Tekening passend tonen", lambda: self.preview.fit_to_view()),
+                ("Zoom", "Zoom naar geselecteerde maat", lambda: self.preview.zoom_to_selected()),
+                ("Reset", "Reset automatische maatlayout", self._reset_dimension_layout),
+                ("✓", "Conceptmaatvoering vrijgeven (rol: vrijgever)", self._release_dimension_revision),
+            ):
+                button = QtWidgets.QToolButton(toolbar_frame)
+                button.setText(label)
+                button.setToolTip(tooltip)
+                button.clicked.connect(callback)
+                toolbar.addWidget(button)
+                self.dimension_action_buttons[tooltip] = button
+            more_button = QtWidgets.QToolButton(toolbar_frame)
+            more_button.setText("Meer ▾")
+            more_button.setToolTip("Kopiëren, plakken, uitlijnen, verdelen, spiegelen en clustervolgorde")
+            more_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+            more_menu = QtWidgets.QMenu(more_button)
+            for label, callback in (
+                ("Kopiëren", self._copy_dimensions),
+                ("Plakken", self._paste_dimensions),
+                ("Horizontaal uitlijnen", lambda: self._align_dimensions("horizontal")),
+                ("Verticaal uitlijnen", lambda: self._align_dimensions("vertical")),
+                ("Horizontaal verdelen", lambda: self._distribute_dimensions("horizontal")),
+                ("Verticaal verdelen", lambda: self._distribute_dimensions("vertical")),
+                ("Naar andere zijde spiegelen", self._mirror_dimensions),
+                ("Cluster naar voren", lambda: self._change_dimension_order(1)),
+                ("Cluster naar achteren", lambda: self._change_dimension_order(-1)),
+                ("Leaderknikpunt instellen…", self._set_leader_bend),
+                ("Maatstijlprofiel…", self._edit_dimension_style),
+            ):
+                more_menu.addAction(label, callback)
+            more_button.setMenu(more_menu)
+            toolbar.addWidget(more_button)
+            toolbar.addStretch(1)
+            self.dimension_instruction = QtWidgets.QLabel("Selecteer een maatgereedschap")
+            self.dimension_instruction.setObjectName("safetyStatus")
+            toolbar.addWidget(self.dimension_instruction)
+            root.addWidget(toolbar_frame)
+
+        def _current_user(self) -> str:
+            if self._workspace is None:
+                return "system"
+            project = self._workspace.project
+            return str(getattr(project, "created_by", "") or "desktop-user")
+
+        def _current_drawing_role(self) -> str:
+            if self._workspace is None:
+                return DrawingRole.READ_ONLY.value
+            roles = dict(self._workspace.project.settings.get("drawing_user_roles") or {})
+            return str(roles.get(self._current_user()) or DrawingRole.DRAFTER.value)
+
+        def _entity_revision_context(self) -> tuple[str, str, str]:
+            if self._workspace is None or not self._entity_id:
+                return "", "", ""
+            project = self._workspace.project
+            entity = next(
+                (
+                    collection[self._entity_id]
+                    for collection in (project.parts, project.assemblies, project.purchased_items, project.fasteners, project.welds)
+                    if self._entity_id in collection
+                ),
+                None,
+            )
+            workbench = getattr(entity, "workbench", {}) if entity is not None else {}
+            revision = dict(workbench.get("current_revision") or {}) if isinstance(workbench, dict) else {}
+            source_revision = str(
+                getattr(entity, "revision", "")
+                or revision.get("revision_number")
+                or revision.get("revision")
+                or "A"
+            )
+            properties = getattr(entity, "properties", {}) if entity is not None else {}
+            drawing_state = dict(properties.get("drawing_state") or {}) if isinstance(properties, dict) else {}
+            geometry_sha256 = str(drawing_state.get("geometry_sha256") or "")
+            manufacturing_sha256 = str(getattr(entity, "manufacturing_hash", "") or "")
+            return source_revision, geometry_sha256, manufacturing_sha256
+
+        def _load_dimension_editor(self) -> None:
+            if self._workspace is None or not self._entity_id:
+                self._dimension_document = None
+                self._dimension_model = None
+                self._loaded_lock_version = 0
+                self._update_dimension_properties()
+                return
+            source_revision, geometry_sha256, manufacturing_sha256 = self._entity_revision_context()
+            self._dimension_document = DimensionDocumentStore.load(
+                self._workspace.project,
+                entity_id=self._entity_id,
+                source_revision=source_revision,
+                geometry_sha256=geometry_sha256,
+                manufacturing_sha256=manufacturing_sha256,
+                user=self._current_user(),
+            )
+            self._loaded_lock_version = int(self._dimension_document.lock_version)
+            self._dimension_model = DimensionEditorModel(self._dimension_document)
+            self._manual_dimensions.clear()
+            self._update_dimension_properties()
+
+        def _persist_dimension_editor(self, action: str) -> bool:
+            if self._workspace is None or self._dimension_document is None:
+                return False
+            try:
+                self._loaded_lock_version = DimensionDocumentStore.save(
+                    self._workspace.project,
+                    self._dimension_document,
+                    expected_lock_version=self._loaded_lock_version,
+                    user=self._current_user(),
+                )
+                project = self._workspace.project
+                if hasattr(project, "audit"):
+                    project.audit(
+                        action,
+                        user=self._current_user(),
+                        entity_id=self._entity_id,
+                        details={
+                            "drawing_id": self._dimension_document.drawing_id,
+                            "drawing_revision": self._dimension_document.drawing_revision,
+                            "dimension_ids": sorted(self._dimension_model.selected_ids if self._dimension_model else ()),
+                            "lock_version": self._loaded_lock_version,
+                        },
+                    )
+                session = getattr(self._workspace, "session", None)
+                if session is not None:
+                    session.dirty = True
+                    if getattr(session, "path", None) is not None and not getattr(session, "read_only", False):
+                        try:
+                            session.autosave()
+                        except Exception as exc:
+                            self.status.setText(f"Maat opgeslagen; autosave-waarschuwing: {exc}")
+                return True
+            except RuntimeError as exc:
+                self.status.setText(str(exc))
+                QtWidgets.QMessageBox.warning(self, "Maatvoeringsconflict", str(exc))
+                return False
+            except Exception as exc:
+                self.status.setText(f"Maatvoering opslaan mislukt: {exc}")
+                return False
+
+        def _manual_dimension_records(self) -> tuple[dict[str, Any], ...]:
+            records = []
+            if self._dimension_document is not None:
+                records.extend(self._dimension_document.render_records())
+            records.extend(dict(item) for item in self._manual_dimensions)
+            return tuple(records)
+
+        def _sheet_to_projected(self, point: tuple[float, float], view_id: str) -> tuple[float, float]:
+            if self._drawing_document is None:
+                return ()
+            context = next(
+                (
+                    dict(item) for item in self._drawing_document.view_contexts
+                    if str(item.get("view_id") or "") == str(view_id)
+                ),
+                None,
+            )
+            if context is None:
+                return ()
+            scale = float(context.get("scale") or 1.0)
+            projected_center = tuple(float(value) for value in context.get("projected_center") or (0.0, 0.0))
+            sheet_center = tuple(float(value) for value in context.get("sheet_center") or (0.0, 0.0))
+            return (
+                (float(point[0]) - sheet_center[0]) / scale + projected_center[0],
+                -(float(point[1]) - sheet_center[1]) / scale + projected_center[1],
+            )
+
+        def _sync_layout_projection(self, dimension: Any) -> None:
+            dimension.line_projected_position = self._sheet_to_projected(dimension.line_position, dimension.view_id)
+            dimension.text_projected_position = self._sheet_to_projected(dimension.text_position, dimension.view_id)
+
+        def _ensure_dimension_editable(self) -> bool:
+            if self._workspace is None or self._dimension_document is None or self._dimension_model is None:
+                return False
+            session = getattr(self._workspace, "session", None)
+            if session is not None and bool(getattr(session, "read_only", False)):
+                self.status.setText("Project is alleen-lezen; maatvoering kan niet worden gewijzigd")
+                return False
+            if self._dimension_document.status != "released":
+                return True
+            reason, accepted = QtWidgets.QInputDialog.getText(
+                self,
+                "Nieuwe tekeningsrevisie",
+                "De maatvoering is vrijgegeven. Geef de wijzigingsreden voor een nieuwe conceptrevisie:",
+            )
+            if not accepted or not reason.strip():
+                self.status.setText("Vrijgegeven maatvoering blijft ongewijzigd")
+                return False
+            self._dimension_model.begin_revision(reason=reason.strip(), user=self._current_user())
+            self._persist_dimension_editor("drawing.dimension_revision_forked")
+            return True
+
+        def _activate_dimension_tool(self, kind: str) -> None:
+            self._dimension_tool = str(kind)
+            if kind == "select":
+                self.preview.set_selection_mode(True)
+                self._dimension_controller.cancel()
+                self._dimension_controller.set_state(InteractionState.IDLE)
+                self.dimension_instruction.setText("Selecteer een maatobject; Ctrl voor multiselectie")
+                self.preview.set_draft(())
+                return
+            if self._workspace is None or not self._entity_id:
+                self.dimension_tool_buttons["select"].setChecked(True)
+                self._dimension_tool = "select"
+                self.status.setText("Selecteer eerst een geometrisch onderdeel")
+                return
+            if not self._ensure_dimension_editable():
+                self.dimension_tool_buttons["select"].setChecked(True)
+                self._dimension_tool = "select"
+                return
+            self.preview.set_selection_mode(False)
+            if self._drawing_document is None:
+                self.refresh_preview()
+            self._dimension_controller.arm(kind)
+            self.dimension_instruction.setText(self._dimension_controller.instruction)
+            self.preview.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+
+        def _on_dimension_pointer(self, point: object, candidate: object) -> None:
+            if not isinstance(point, tuple):
+                return
+            self._dimension_controller.pointer = point
+            self.preview.set_draft(
+                (anchor.sheet_point for anchor in self._dimension_controller.anchors),
+                point,
+            )
+            if candidate is not None and self._dimension_tool != "select":
+                valid = "geldig" if candidate.valid else f"ongeldig: {candidate.reason}"
+                self.status.setText(f"Snap {candidate.label} · {valid} · Tab wisselt overlappende kandidaten")
+
+        def _on_dimension_canvas_click(self, point: object, candidate: object, modifiers: object) -> None:
+            if not isinstance(point, tuple) or self._dimension_model is None or self._dimension_document is None:
+                return
+            if self._dimension_tool.startswith("reanchor:"):
+                if candidate is None or not candidate.valid:
+                    self.status.setText("Selecteer een geldige nieuwe snapreferentie")
+                    return
+                dimension_id, anchor_index = self._dimension_tool.split(":", 2)[1:]
+                try:
+                    self._dimension_model.reanchor(
+                        dimension_id,
+                        int(anchor_index),
+                        candidate.anchor,
+                        user=self._current_user(),
+                    )
+                except (IndexError, StopIteration, ValueError) as exc:
+                    self.status.setText(str(exc))
+                    return
+                self._persist_dimension_editor("drawing.dimension_reanchored")
+                self._dimension_tool = "select"
+                self.preview.set_selection_mode(True)
+                self.dimension_tool_buttons["select"].setChecked(True)
+                self.dimension_instruction.setText("Anker opnieuw gekoppeld")
+                self._update_dimension_properties()
+                self.refresh_preview()
+                return
+            if self._dimension_tool == "select" or self._dimension_controller.state == InteractionState.IDLE:
+                dimension_id = self.preview.dimension_at(
+                    point,
+                    (item.dimension_id for item in self._dimension_document.dimensions),
+                )
+                extend = bool(modifiers & QtCore.Qt.KeyboardModifier.ControlModifier)
+                self._dimension_model.select((dimension_id,) if dimension_id else (), extend=extend)
+                self.preview.set_selected_ids(self._dimension_model.selected_ids)
+                self._dimension_controller.set_state(
+                    InteractionState.EDIT_SELECTED if self._dimension_model.selected_ids else InteractionState.IDLE
+                )
+                self._update_dimension_properties()
+                return
+            state = self._dimension_controller.state
+            if state in {InteractionState.PICK_FIRST_ANCHOR, InteractionState.PICK_NEXT_ANCHOR}:
+                if candidate is None or not candidate.valid:
+                    self.status.setText("Geen geldige snapreferentie; wijs een gemarkeerd punt, rand of centrum aan")
+                    return
+                if self._dimension_tool in {DimensionKind.RADIUS.value, DimensionKind.DIAMETER.value} and not candidate.anchor.curve_parameter:
+                    self.status.setText("Selecteer voor radius/diameter het gemarkeerde centrum van een cirkel of gat")
+                    return
+                try:
+                    self._dimension_controller.accept_anchor(candidate.anchor)
+                except (ValueError, RuntimeError) as exc:
+                    self.status.setText(str(exc))
+                    return
+                self.dimension_instruction.setText(self._dimension_controller.instruction)
+                self.preview.set_draft((anchor.sheet_point for anchor in self._dimension_controller.anchors), point)
+                return
+            if state in {InteractionState.PLACE_DIMENSION_LINE, InteractionState.PLACE_TEXT}:
+                if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier and self._dimension_controller.anchors:
+                    reference = self._dimension_controller.anchors[-1].sheet_point
+                    if abs(point[0] - reference[0]) >= abs(point[1] - reference[1]):
+                        point = (point[0], reference[1])
+                    else:
+                        point = (reference[0], point[1])
+                label = ""
+                if not self._dimension_controller.anchors and self._drawing_document is not None:
+                    active_page = int(self.page_selector.currentData() or 0) + 1
+                    context = next(
+                        (
+                            dict(item) for item in self._drawing_document.view_contexts
+                            if int(item.get("page_number") or 1) == active_page
+                            and len(item.get("rectangle") or ()) == 4
+                            and float(item["rectangle"][0]) <= point[0] <= float(item["rectangle"][2])
+                            and float(item["rectangle"][1]) <= point[1] <= float(item["rectangle"][3])
+                        ),
+                        None,
+                    )
+                    if context is None:
+                        self.status.setText("Plaats een tekstnotitie binnen een geldig aanzicht")
+                        return
+                    self._dimension_document.extensions["active_view_id"] = str(context.get("view_id") or "")
+                    self._dimension_document.extensions["active_page_number"] = active_page
+                if self._dimension_tool in {DimensionKind.LEADER.value, DimensionKind.TEXT.value}:
+                    label, accepted = QtWidgets.QInputDialog.getText(self, "Annotatietekst", "Tekst")
+                    if not accepted:
+                        return
+                try:
+                    dimension = self._dimension_controller.place(
+                        point,
+                        document=self._dimension_document,
+                        user=self._current_user(),
+                        label=str(label).strip(),
+                    )
+                    if dimension.kind in {DimensionKind.LEADER.value, DimensionKind.TEXT.value}:
+                        dimension.metadata["annotation_kind"] = str(self.annotation_kind.currentData() or "free")
+                    self._sync_layout_projection(dimension)
+                    self._dimension_model.add(dimension, user=self._current_user())
+                except (ValueError, RuntimeError) as exc:
+                    self.status.setText(str(exc))
+                    return
+                self._persist_dimension_editor("drawing.dimension_added")
+                self._dimension_tool = "select"
+                self.preview.set_selection_mode(True)
+                self.dimension_tool_buttons["select"].setChecked(True)
+                self._dimension_controller.set_state(InteractionState.IDLE)
+                self.preview.set_draft(())
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _on_dimension_area_selected(self, start: object, end: object, modifiers: object) -> None:
+            if (
+                self._dimension_model is None
+                or self._dimension_document is None
+                or self._drawing_document is None
+                or not isinstance(start, tuple)
+                or not isinstance(end, tuple)
+            ):
+                return
+            left, right = sorted((float(start[0]), float(end[0])))
+            top, bottom = sorted((float(start[1]), float(end[1])))
+            crossing = float(end[0]) < float(start[0])
+            valid_ids = {item.dimension_id for item in self._dimension_document.dimensions}
+            selected: set[str] = set()
+            page = self._drawing_document.pages[self.preview.page_index]
+            for primitive in page.primitives:
+                dimension_id = str(primitive.semantic_id or "")
+                if dimension_id not in valid_ids:
+                    continue
+                bounds = primitive.bounds()
+                if not bounds:
+                    continue
+                contained = left <= bounds[0] and top <= bounds[1] and bounds[2] <= right and bounds[3] <= bottom
+                intersects = not (bounds[2] < left or bounds[0] > right or bounds[3] < top or bounds[1] > bottom)
+                if contained or (crossing and intersects):
+                    selected.add(dimension_id)
+            extend = bool(modifiers & QtCore.Qt.KeyboardModifier.ControlModifier)
+            self._dimension_model.select(selected, extend=extend)
+            self.preview.set_selected_ids(self._dimension_model.selected_ids)
+            self._update_dimension_properties()
+            self.status.setText(
+                f"Vensterselectie: {len(selected)} maatobject(en) · "
+                + ("kruisend" if crossing else "volledig binnen venster")
+            )
+
+        def _on_dimension_command(self, command: str) -> None:
+            if command.startswith("tool:"):
+                tool = command.split(":", 1)[1]
+                button = self.dimension_tool_buttons.get(tool)
+                if button is not None:
+                    button.setChecked(True)
+                self._activate_dimension_tool(tool)
+            elif command == "cancel":
+                self._dimension_controller.cancel()
+                self._dimension_tool = "select"
+                self.preview.set_selection_mode(True)
+                self.dimension_tool_buttons["select"].setChecked(True)
+                self.dimension_instruction.setText("Bewerking geannuleerd")
+                self.preview.set_draft(())
+            elif command == "backspace" and self._dimension_tool != "select":
+                self._dimension_controller.backspace()
+                self.dimension_instruction.setText(self._dimension_controller.instruction)
+                self.preview.set_draft(anchor.sheet_point for anchor in self._dimension_controller.anchors)
+            elif command == "delete":
+                self._delete_selected_dimensions()
+            elif command == "undo":
+                self._undo_dimensions()
+            elif command == "redo":
+                self._redo_dimensions()
+            elif command == "enter":
+                if self._dimension_controller.kind in {
+                    DimensionKind.CHAIN.value,
+                    DimensionKind.BASELINE.value,
+                } and self._dimension_controller.state == InteractionState.PICK_NEXT_ANCHOR:
+                    try:
+                        self._dimension_controller.finish_anchor_series()
+                        self.dimension_instruction.setText(self._dimension_controller.instruction)
+                    except ValueError as exc:
+                        self.status.setText(str(exc))
+                elif self._dimension_controller.state in {InteractionState.PLACE_DIMENSION_LINE, InteractionState.PLACE_TEXT} and self._dimension_controller.pointer:
+                    self._on_dimension_canvas_click(
+                        self._dimension_controller.pointer,
+                        None,
+                        QtCore.Qt.KeyboardModifier.NoModifier,
+                    )
+
+        def _delete_selected_dimensions(self) -> None:
+            if self._dimension_model is None or not self._dimension_model.selected_ids:
+                self.status.setText("Selecteer eerst één of meer handmatige maatobjecten")
+                return
+            if not self._ensure_dimension_editable():
+                return
+            count = len(self._dimension_model.selected_ids)
+            if count > 1 and QtWidgets.QMessageBox.question(
+                self,
+                "Maten verwijderen",
+                f"{count} geselecteerde maatobjecten verwijderen?",
+            ) != QtWidgets.QMessageBox.StandardButton.Yes:
+                return
+            removed = self._dimension_model.delete_selected(user=self._current_user())
+            if removed:
+                self._persist_dimension_editor("drawing.dimensions_deleted")
+                self.preview.set_selected_ids(())
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _copy_dimensions(self) -> None:
+            if self._dimension_model is None:
+                return
+            self._dimension_clipboard = self._dimension_model.copy_selected()
+            self.status.setText(f"{len(self._dimension_clipboard)} maatobject(en) gekopieerd")
+
+        def _paste_dimensions(self) -> None:
+            if self._dimension_model is None or not self._dimension_clipboard or not self._ensure_dimension_editable():
+                return
+            if self._dimension_model.paste(self._dimension_clipboard, user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor("drawing.dimensions_pasted")
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _align_dimensions(self, axis: str) -> None:
+            if self._dimension_model is None or not self._ensure_dimension_editable():
+                return
+            if self._dimension_model.align_selected(axis, user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor(f"drawing.dimensions_aligned_{axis}")
+                self.refresh_preview()
+
+        def _distribute_dimensions(self, axis: str) -> None:
+            if self._dimension_model is None or not self._ensure_dimension_editable():
+                return
+            if self._dimension_model.distribute_selected(axis, user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor(f"drawing.dimensions_distributed_{axis}")
+                self.refresh_preview()
+
+        def _mirror_dimensions(self) -> None:
+            if self._dimension_model is None or not self._ensure_dimension_editable():
+                return
+            if self._dimension_model.mirror_selected(user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor("drawing.dimensions_mirrored")
+                self.refresh_preview()
+
+        def _change_dimension_order(self, delta: int) -> None:
+            if self._dimension_model is None or not self._ensure_dimension_editable():
+                return
+            if self._dimension_model.change_cluster_order(delta, user=self._current_user()):
+                self._persist_dimension_editor("drawing.dimension_cluster_order_changed")
+                self.refresh_preview()
+
+        def _set_leader_bend(self) -> None:
+            if self._dimension_model is None or not self._ensure_dimension_editable():
+                return
+            selected = [
+                item for item in self._dimension_document.dimensions
+                if item.dimension_id in self._dimension_model.selected_ids and item.kind == DimensionKind.LEADER.value
+            ]
+            if not selected:
+                self.status.setText("Selecteer eerst één of meer leaders")
+                return
+            reference = selected[0].line_position
+            x, accepted = QtWidgets.QInputDialog.getDouble(self, "Leaderknikpunt", "X op blad", reference[0], -10000, 10000, 2)
+            if not accepted:
+                return
+            y, accepted = QtWidgets.QInputDialog.getDouble(self, "Leaderknikpunt", "Y op blad", reference[1], -10000, 10000, 2)
+            if not accepted:
+                return
+            if self._dimension_model.set_leader_bend(
+                (x, y),
+                projected_point=self._sheet_to_projected((x, y), selected[0].view_id),
+                user=self._current_user(),
+            ):
+                self._persist_dimension_editor("drawing.leader_bend_changed")
+                self.refresh_preview()
+
+        def _edit_dimension_style(self) -> None:
+            if self._dimension_model is None or self._dimension_document is None or not self._ensure_dimension_editable():
+                return
+            current = self._dimension_document.style
+            dialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle("DimensionStyle-profiel")
+            form = QtWidgets.QFormLayout(dialog)
+            scope = QtWidgets.QComboBox(dialog)
+            for label, value in (("CWS-standaard", "standard"), ("Bedrijf", "company"), ("Project", "project"), ("Maatobject", "object")):
+                scope.addItem(label, value)
+            scope.setCurrentIndex(max(0, scope.findData(current.profile_scope)))
+            style_id = QtWidgets.QLineEdit(current.style_id, dialog)
+            version = QtWidgets.QLineEdit(current.version, dialog)
+            text_height = QtWidgets.QDoubleSpinBox(dialog)
+            text_height.setRange(2.0, 12.0)
+            text_height.setDecimals(2)
+            text_height.setValue(current.text_height_mm)
+            arrow_size = QtWidgets.QDoubleSpinBox(dialog)
+            arrow_size.setRange(0.5, 12.0)
+            arrow_size.setDecimals(2)
+            arrow_size.setValue(current.arrow_size_mm)
+            decimals = QtWidgets.QSpinBox(dialog)
+            decimals.setRange(0, 6)
+            decimals.setValue(current.decimals)
+            decimal_separator = QtWidgets.QComboBox(dialog)
+            decimal_separator.addItems((",", "."))
+            decimal_separator.setCurrentText(current.decimal_separator)
+            trailing = QtWidgets.QCheckBox("Trailing zeros tonen", dialog)
+            trailing.setChecked(current.trailing_zeros)
+            reason = QtWidgets.QLineEdit(dialog)
+            reason.setPlaceholderText("Verplichte wijzigingsreden")
+            form.addRow("Profielscope", scope)
+            form.addRow("Stijl-ID", style_id)
+            form.addRow("Versie", version)
+            form.addRow("Teksthoogte op papier", text_height)
+            form.addRow("Pijlgrootte", arrow_size)
+            form.addRow("Decimalen", decimals)
+            form.addRow("Decimaalteken", decimal_separator)
+            form.addRow(trailing)
+            form.addRow("Wijzigingsreden", reason)
+            buttons = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+                parent=dialog,
+            )
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            form.addRow(buttons)
+            if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+                return
+            scope_value = str(scope.currentData() or "standard")
+            if scope_value == "standard":
+                updated = DimensionStyle.cws_standard()
+            else:
+                updated = DimensionStyle.from_dict(current.to_dict())
+                updated.profile_scope = scope_value
+                updated.style_id = style_id.text().strip()
+                updated.version = version.text().strip()
+                updated.text_height_mm = float(text_height.value())
+                updated.arrow_size_mm = float(arrow_size.value())
+                updated.decimals = int(decimals.value())
+                updated.decimal_separator = decimal_separator.currentText()
+                updated.trailing_zeros = trailing.isChecked()
+            try:
+                self._dimension_model.update_style(
+                    updated,
+                    reason=reason.text().strip(),
+                    role=self._current_drawing_role(),
+                    user=self._current_user(),
+                )
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "Maatstijl", str(exc))
+                return
+            self._persist_dimension_editor("drawing.dimension_style_changed")
+            self.refresh_preview()
+            # The first render proves the new style and revalidates STALE
+            # objects; the second refresh exposes the resulting lint verdict.
+            self.refresh_preview()
+
+        def _on_dimension_dragged(self, dimension_id: str, delta: object, text_only: bool) -> None:
+            if self._dimension_model is None or not isinstance(delta, tuple):
+                return
+            if not self._ensure_dimension_editable():
+                return
+            self._dimension_model.select((dimension_id,))
+            self._dimension_controller.set_state(
+                InteractionState.DRAG_TEXT if bool(text_only) else InteractionState.DRAG_DIMENSION
+            )
+            if self._dimension_model.move_selected(delta, text_only=bool(text_only), user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor(
+                    "drawing.dimension_text_moved" if text_only else "drawing.dimension_line_moved"
+                )
+                self._update_dimension_properties()
+                self.refresh_preview()
+            self._dimension_controller.set_state(InteractionState.EDIT_SELECTED)
+
+        def _start_reanchor(self) -> None:
+            if self._dimension_model is None or self._dimension_document is None or len(self._dimension_model.selected_ids) != 1:
+                self.status.setText("Selecteer precies één maat om opnieuw te ankeren")
+                return
+            if not self._ensure_dimension_editable():
+                return
+            item = next(value for value in self._dimension_document.dimensions if value.dimension_id in self._dimension_model.selected_ids)
+            if not item.anchors:
+                self.status.setText("Deze annotatie heeft geen geometrisch anker")
+                return
+            anchor_index = 0
+            if len(item.anchors) > 1:
+                labels = [f"Anker {index + 1}: {anchor.anchor_type} · {anchor.feature_id or anchor.subshape_id}" for index, anchor in enumerate(item.anchors)]
+                selected, accepted = QtWidgets.QInputDialog.getItem(
+                    self,
+                    "Opnieuw ankeren",
+                    "Welk anker wilt u vervangen?",
+                    labels,
+                    0,
+                    False,
+                )
+                if not accepted:
+                    return
+                anchor_index = labels.index(selected)
+            self._dimension_tool = f"reanchor:{item.dimension_id}:{anchor_index}"
+            self.preview.set_selection_mode(False)
+            self._dimension_controller.set_state(
+                InteractionState.REANCHOR_FIRST if anchor_index == 0 else InteractionState.REANCHOR_SECOND
+            )
+            self.dimension_instruction.setText(f"Selecteer nieuw geometrisch anker {anchor_index + 1} · Esc annuleert")
+            self.preview.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+
+        def _duplicate_dimensions(self) -> None:
+            if self._dimension_model is None or not self._dimension_model.selected_ids:
+                self.status.setText("Selecteer eerst één of meer handmatige maten")
+                return
+            if not self._ensure_dimension_editable():
+                return
+            if self._dimension_model.duplicate_selected(user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor("drawing.dimensions_duplicated")
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _toggle_selected_dimension(self) -> None:
+            if self._dimension_model is None or not self._dimension_model.selected_ids:
+                self.status.setText("Selecteer eerst een handmatige maat")
+                return
+            if not self._ensure_dimension_editable():
+                return
+            selected = [
+                item for item in self._dimension_document.dimensions
+                if item.dimension_id in self._dimension_model.selected_ids
+            ]
+            visible = not all(item.visible for item in selected)
+            self._dimension_model.set_visibility(visible, user=self._current_user())
+            self._persist_dimension_editor("drawing.dimensions_visibility_changed")
+            self._update_dimension_properties()
+            self.refresh_preview()
+
+        def _undo_dimensions(self) -> None:
+            if not self._ensure_dimension_editable():
+                return
+            if self._dimension_model is not None and self._dimension_model.undo(user=self._current_user()):
+                self._persist_dimension_editor("drawing.dimension_undo")
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _redo_dimensions(self) -> None:
+            if not self._ensure_dimension_editable():
+                return
+            if self._dimension_model is not None and self._dimension_model.redo(user=self._current_user()):
+                self._persist_dimension_editor("drawing.dimension_redo")
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _reset_dimension_layout(self) -> None:
+            if not self._ensure_dimension_editable():
+                return
+            if self._dimension_model is not None and self._dimension_model.reset_layout(user=self._current_user()):
+                for item in self._dimension_document.dimensions:
+                    if not self._dimension_model.selected_ids or item.dimension_id in self._dimension_model.selected_ids:
+                        self._sync_layout_projection(item)
+                self._persist_dimension_editor("drawing.dimension_layout_reset")
+                self._update_dimension_properties()
+                self.refresh_preview()
+
+        def _release_dimension_revision(self) -> None:
+            if self._dimension_model is None or self._dimension_document is None:
+                return
+            if self._drawing_document is None:
+                self.refresh_preview()
+            ignored = {"DRAWING_DIMENSION_EDITOR_NOT_RELEASED"}
+            blocking = [
+                item for item in dict(getattr(self._drawing_document, "lint", {}) or {}).get("issues", ())
+                if bool(item.get("blocking", True)) and str(item.get("code") or "") not in ignored
+            ]
+            if blocking:
+                message = "Vrijgave geblokkeerd door DrawingLinter: " + ", ".join(
+                    str(item.get("code") or "DRAWING_BLOCKED") for item in blocking[:5]
+                )
+                self.status.setText(message)
+                QtWidgets.QMessageBox.warning(self, "Maatvoering vrijgeven", message)
+                return
+            try:
+                self._dimension_model.release(role=self._current_drawing_role(), user=self._current_user())
+            except (PermissionError, ValueError) as exc:
+                self.status.setText(str(exc))
+                QtWidgets.QMessageBox.warning(self, "Maatvoering vrijgeven", str(exc))
+                return
+            self._persist_dimension_editor("drawing.dimension_revision_released")
+            self.status.setText(f"Maatvoering {self._dimension_document.drawing_revision} vrijgegeven")
+            self._update_dimension_properties()
+            self.refresh_preview()
+
+        def _update_dimension_properties(self) -> None:
+            if not hasattr(self, "dimension_properties"):
+                return
+            self.dimension_properties.clear()
+            released = []
+            if self._dimension_document is not None:
+                released = list(self._dimension_document.extensions.get("released_revisions") or ())
+            if released:
+                previous = dict(released[-1])
+                old_ids = {str(item.get("dimension_id") or "") for item in previous.get("dimensions") or ()}
+                current_ids = {item.dimension_id for item in self._dimension_document.dimensions}
+                self.revision_summary.setText(
+                    f"Revisievergelijking {previous.get('drawing_revision', '-') } → {self._dimension_document.drawing_revision}: "
+                    f"+{len(current_ids - old_ids)} / −{len(old_ids - current_ids)} / behouden {len(old_ids & current_ids)}"
+                )
+            else:
+                self.revision_summary.setText("Revisievergelijking: geen vrijgegeven basis")
+            lint_issues = list(dict(getattr(self._drawing_document, "lint", {}) or {}).get("issues", ()))
+            blockers = [str(value.get("code") or "") for value in lint_issues if bool(value.get("blocking", True))]
+            self.dimension_issue_summary.setText(
+                "Problemen: geen blokkerende meldingen"
+                if not blockers
+                else "Problemen / vrijgave geblokkeerd: " + ", ".join(blockers[:4])
+            )
+            selected = []
+            if self._dimension_model is not None and self._dimension_document is not None:
+                selected = [
+                    item for item in self._dimension_document.dimensions
+                    if item.dimension_id in self._dimension_model.selected_ids
+                ]
+            self.edit_properties_button.setEnabled(bool(selected))
+            if not selected:
+                total = len(self._dimension_document.dimensions) if self._dimension_document is not None else 0
+                QtWidgets.QTreeWidgetItem(self.dimension_properties, ("Selectie", f"geen · {total} maatobject(en)"))
+                return
+            if len(selected) > 1:
+                QtWidgets.QTreeWidgetItem(self.dimension_properties, ("Selectie", f"{len(selected)} maatobjecten"))
+                return
+            item = selected[0]
+            values = (
+                ("Maat-ID", item.dimension_id),
+                ("Type", item.kind),
+                ("Waarde", f"{item.nominal_value_mm:g} mm"),
+                ("Tekst", item.label or "automatisch"),
+                ("Prefix / suffix", f"{item.prefix or '-'} / {item.suffix or '-'}"),
+                ("Eenheid / decimalen", f"{self._dimension_document.style.unit} / {self._dimension_document.style.decimals}"),
+                (
+                    "Tolerantie",
+                    f"+{float(item.tolerance_upper_mm or 0.0):g} / {float(item.tolerance_lower_mm or 0.0):g} mm",
+                ),
+                ("Aanzicht / blad", f"{item.view_id} / {item.page_number}"),
+                ("Status", item.state),
+                ("REF / inspectie", f"{'ja' if item.reference else 'nee'} / {'ja' if item.inspection else 'nee'}"),
+                ("Zichtbaar", "ja" if item.visible else "nee"),
+                ("Ankers", str(len(item.anchors))),
+                ("Bronrevisie", item.source_revision),
+                ("Tekeningrevisie", item.drawing_revision),
+                ("Stijl", f"{item.style_id} {item.style_version}"),
+                ("Annotatiesemantiek", str(item.metadata.get("annotation_kind") or "-")),
+                ("Hoekmodus", str(item.metadata.get("angle_mode") or "-")),
+                ("Override reden", item.override_reason or "-"),
+                ("Override goedgekeurd", item.override_approved_by or "nee"),
+                ("Waarschuwing", "vrijgave geblokkeerd" if item.state in {"ORPHANED", "ORPHANED_VIEW", "CONFLICT", "STALE"} else "geen"),
+                ("Gewijzigd door", item.modified_by),
+            )
+            for label, value in values:
+                QtWidgets.QTreeWidgetItem(self.dimension_properties, (label, str(value)))
+            self.dimension_properties.resizeColumnToContents(0)
+
+        def _edit_dimension_properties(self) -> None:
+            if self._dimension_model is None or self._dimension_document is None or not self._dimension_model.selected_ids:
+                return
+            if not self._ensure_dimension_editable():
+                return
+            selected_items = [value for value in self._dimension_document.dimensions if value.dimension_id in self._dimension_model.selected_ids]
+            item = selected_items[0]
+            dialog = QtWidgets.QDialog(self)
+            dialog.setWindowTitle(
+                f"Maateigenschappen · {item.dimension_id}"
+                if len(selected_items) == 1
+                else f"Maateigenschappen · {len(selected_items)} geselecteerd"
+            )
+            form = QtWidgets.QFormLayout(dialog)
+            label = QtWidgets.QLineEdit(item.label, dialog)
+            override_reason = QtWidgets.QLineEdit(item.override_reason, dialog)
+            override_reason.setPlaceholderText("Verplicht wanneer geometrische maattekst wordt aangepast")
+            prefix = QtWidgets.QLineEdit(item.prefix, dialog)
+            suffix = QtWidgets.QLineEdit(item.suffix, dialog)
+            upper = QtWidgets.QDoubleSpinBox(dialog)
+            lower = QtWidgets.QDoubleSpinBox(dialog)
+            for control in (upper, lower):
+                control.setRange(-1000.0, 1000.0)
+                control.setDecimals(3)
+                control.setSuffix(" mm")
+            upper.setValue(float(item.tolerance_upper_mm or 0.0))
+            lower.setValue(float(item.tolerance_lower_mm or 0.0))
+            reference = QtWidgets.QCheckBox("REF / referentiemaat", dialog)
+            reference.setChecked(item.reference)
+            inspection = QtWidgets.QCheckBox("Controle-/inspectiemaat", dialog)
+            inspection.setChecked(item.inspection)
+            visible = QtWidgets.QCheckBox("Zichtbaar", dialog)
+            visible.setChecked(item.visible)
+            angle_mode = QtWidgets.QComboBox(dialog)
+            for mode_label, mode_value in (("Binnenhoek", "inside"), ("Buitenhoek", "outside"), ("Supplementair", "supplementary")):
+                angle_mode.addItem(mode_label, mode_value)
+            angle_mode.setCurrentIndex(max(0, angle_mode.findData(str(item.metadata.get("angle_mode") or "inside"))))
+            form.addRow(
+                "Berekende waarde",
+                QtWidgets.QLabel(
+                    f"{item.nominal_value_mm:g} mm (alleen-lezen)"
+                    if len(selected_items) == 1
+                    else "Meerdere geometrische waarden (alleen-lezen)"
+                ),
+            )
+            form.addRow("Tekst", label)
+            form.addRow("Reden tekstoverride", override_reason)
+            form.addRow("Prefix", prefix)
+            form.addRow("Suffix", suffix)
+            form.addRow("Boventolerantie", upper)
+            form.addRow("Ondertolerantie", lower)
+            form.addRow(reference)
+            form.addRow(inspection)
+            form.addRow(visible)
+            if any(value.kind == DimensionKind.ANGLE.value for value in selected_items):
+                form.addRow("Hoekmodus", angle_mode)
+            buttons = QtWidgets.QDialogButtonBox(
+                QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+                parent=dialog,
+            )
+            buttons.accepted.connect(dialog.accept)
+            buttons.rejected.connect(dialog.reject)
+            form.addRow(buttons)
+            if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+                return
+            new_label = label.text().strip()
+            geometric = any(value.kind not in {DimensionKind.TEXT.value, DimensionKind.LEADER.value} for value in selected_items)
+            override_changed = geometric and new_label != item.label
+            if override_changed and not override_reason.text().strip():
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "Maattekstoverride",
+                    "Een aangepaste geometrische maattekst vereist een wijzigingsreden en formele controle.",
+                )
+                return
+            self._dimension_model.update_selected(
+                {
+                    "label": item.label if override_changed else new_label,
+                    "prefix": prefix.text(),
+                    "suffix": suffix.text(),
+                    "tolerance_upper_mm": float(upper.value()),
+                    "tolerance_lower_mm": float(lower.value()),
+                    "reference": reference.isChecked(),
+                    "inspection": inspection.isChecked(),
+                    "visible": visible.isChecked(),
+                },
+                user=self._current_user(),
+            )
+            if override_changed:
+                self._dimension_model.override_selected(
+                    display_text=new_label,
+                    reason=override_reason.text().strip(),
+                    role=self._current_drawing_role(),
+                    user=self._current_user(),
+                )
+            if any(value.kind == DimensionKind.ANGLE.value for value in selected_items):
+                self._dimension_model.set_angle_mode(
+                    str(angle_mode.currentData() or "inside"),
+                    user=self._current_user(),
+                )
+            self._persist_dimension_editor("drawing.dimension_properties_changed")
+            self._update_dimension_properties()
+            self.refresh_preview()
 
         def _add_manual_dimension(self) -> None:
             if not self._entity_id:
@@ -1567,7 +2596,7 @@ if qt_available():
             if abs(end.value() - start.value()) < 1.0e-9:
                 QtWidgets.QMessageBox.information(self, "Eigen maat", "Begin en einde moeten van elkaar verschillen.")
                 return
-            self._manual_dimensions.append({
+            legacy_record = {
                 "view": str(view.currentData()), "axis": str(axis.currentData()),
                 "start": float(start.value()), "end": float(end.value()), "label": label.text().strip(),
                 "entity_id": self._entity_id,
@@ -1577,15 +2606,28 @@ if qt_available():
                 "nominal_value_mm": abs(float(end.value()) - float(start.value())),
                 "tolerance_mm": float(tolerance.value()),
                 "provenance": {"method": "user", "surface": "review_snapshot"},
-            })
+            }
+            if self._dimension_document is None:
+                self._load_dimension_editor()
+            if self._dimension_document is not None:
+                if not self._ensure_dimension_editable():
+                    return
+                DimensionDocumentStore.migrate_legacy(
+                    (legacy_record,),
+                    self._dimension_document,
+                    user=self._current_user(),
+                )
+                self._dimension_model = DimensionEditorModel(self._dimension_document)
+                self._persist_dimension_editor("drawing.legacy_dimension_added")
+            else:
+                self._manual_dimensions.append(legacy_record)
             self.dimensions_button.setChecked(True)
-            self.status.setText(f"Eigen maat toegevoegd ({len(self._manual_dimensions)} totaal)")
+            total = len(self._dimension_document.dimensions) if self._dimension_document is not None else len(self._manual_dimensions)
+            self.status.setText(f"Eigen maat toegevoegd ({total} totaal); legacy offset blijft reviewplichtig")
             self.refresh_preview()
 
         def _clear_manual_dimensions(self) -> None:
-            self._manual_dimensions.clear()
-            self.status.setText("Eigen maatvoering gewist")
-            self.refresh_preview()
+            self._delete_selected_dimensions()
 
         def set_context(self, context: object, selection: object | None = None) -> None:
             workspace, entity, entity_id = _workspace_entity(context, selection)
@@ -1597,6 +2639,8 @@ if qt_available():
             self.title.setText(f"Review-PDF / Tekening - {name}" if name else "Review-PDF / Tekening")
             self.status.setText("Gereed voor live tekenvoorbeeld" if self._workspace is not None else "Geen project geopend")
             if self._workspace is not None and self._entity_id and self._entity_id != previous_entity_id:
+                self._drawing_document = None
+                self._load_dimension_editor()
                 QtCore.QTimer.singleShot(0, self.refresh_preview)
 
         def show_project_selection(self, selection: object) -> None:
@@ -1686,6 +2730,8 @@ if qt_available():
                 return None
             if resolved_part_id != self._entity_id:
                 self._entity_id = resolved_part_id
+                self._drawing_document = None
+                self._load_dimension_editor()
                 part = next(
                     collection[resolved_part_id]
                     for collection in (
@@ -1708,11 +2754,28 @@ if qt_available():
                     views=selected_views, dimensions=self.dimensions_button.isChecked(),
                     title_block=self.title_block_button.isChecked(),
                     dimension_mode=self.dimension_mode.currentText(),
-                    manual_dimensions=tuple(self._manual_dimensions),
+                    manual_dimensions=self._manual_dimension_records(),
+                    dimension_style=(self._dimension_document.style.to_dict() if self._dimension_document is not None else {}),
+                    dimension_audit=(tuple(self._dimension_document.audit) if self._dimension_document is not None else ()),
+                    dimension_editor_schema=(DIMENSION_EDITOR_SCHEMA if self._dimension_document is not None else ""),
+                    dimension_editor_status=(self._dimension_document.status if self._dimension_document is not None else ""),
                     orientation=str(self.orientation.currentData() or "landscape"),
                     include_sections=self.sections_button.isChecked(),
                     include_details=self.details_button.isChecked(),
                 )
+                self._drawing_document = result.document
+                if self._dimension_document is not None and result.document is not None:
+                    if not self._dimension_document.dimensions:
+                        self._dimension_document.geometry_sha256 = result.document.geometry_sha256
+                        self._dimension_document.manufacturing_sha256 = result.document.manufacturing_sha256
+                    previous_states = [item.state for item in self._dimension_document.dimensions]
+                    self._dimension_model.revalidate(
+                        result.document,
+                        valid_view_ids=(str(item.get("view_id") or item.get("view") or "") for item in result.document.view_contexts),
+                    )
+                    if previous_states != [item.state for item in self._dimension_document.dimensions]:
+                        self._persist_dimension_editor("drawing.dimension_anchors_revalidated")
+                self._update_page_selector(result.page_count)
                 if result.png_path:
                     self._last_png = Path(result.png_path)
                     self._show_pixmap()
@@ -1722,6 +2785,7 @@ if qt_available():
                     f"Reviewdocument gegenereerd op schaal {result.scale_label}: "
                     f"{result.pdf_path or result.png_path}{warning} | {result.page_count} blad(en) | {release}"
                 )
+                self._update_dimension_properties()
                 return result
             except Exception as exc:
                 self.status.setText("Tekening genereren mislukt")
@@ -1740,12 +2804,55 @@ if qt_available():
         def _show_pixmap(self) -> None:
             if self._last_png is None or not self._last_png.is_file():
                 return
-            pixmap = QtGui.QPixmap(str(self._last_png))
-            self.preview.setPixmap(pixmap.scaled(self.preview.size() - QtCore.QSize(12, 12), QtCore.Qt.AspectRatioMode.KeepAspectRatio, QtCore.Qt.TransformationMode.SmoothTransformation))
+            page_index = int(self.page_selector.currentData() or 0)
+            if page_index == 0 or self._drawing_document is None:
+                pixmap = QtGui.QPixmap(str(self._last_png))
+            else:
+                from cws_convertor.drawings import ProductionDrawingRenderer
+
+                with tempfile.TemporaryDirectory(prefix="cws_drawing_page_") as folder:
+                    temporary_pdf = Path(folder) / "preview.pdf"
+                    temporary_png = Path(folder) / "preview.png"
+                    ProductionDrawingRenderer.render_pdf(self._drawing_document, temporary_pdf)
+                    ProductionDrawingRenderer.render_png(
+                        temporary_pdf,
+                        temporary_png,
+                        page_number=page_index,
+                    )
+                    pixmap = QtGui.QPixmap(str(temporary_png)).copy()
+            self._refresh_snap_candidates()
+            self.preview.set_drawing(pixmap, self._drawing_document, self._snap_candidates)
+            self.preview.set_active_page(page_index)
+            if self._dimension_model is not None:
+                self.preview.set_selected_ids(self._dimension_model.selected_ids)
+
+        def _update_page_selector(self, page_count: int) -> None:
+            current = min(int(self.page_selector.currentData() or 0), max(0, int(page_count) - 1))
+            blocker = QtCore.QSignalBlocker(self.page_selector)
+            self.page_selector.clear()
+            for index in range(max(1, int(page_count))):
+                title = ""
+                if self._drawing_document is not None and index < len(self._drawing_document.pages):
+                    title = f" · {self._drawing_document.pages[index].title}"
+                self.page_selector.addItem(f"{index + 1} / {max(1, int(page_count))}{title}", index)
+            self.page_selector.setCurrentIndex(current)
+            del blocker
+
+        def _refresh_snap_candidates(self) -> None:
+            if self._drawing_document is None:
+                self._snap_candidates = []
+            else:
+                self._snap_candidates = build_snap_candidates(
+                    self._drawing_document,
+                    entity_id=self._entity_id,
+                    snap_filter=str(self.snap_filter.currentData() or SnapFilter.ALL.value),
+                )
+            if hasattr(self, "preview"):
+                self.preview.set_candidates(self._snap_candidates)
 
         def resizeEvent(self, event: Any) -> None:
             super().resizeEvent(event)
-            self._show_pixmap()
+            self.preview.update()
 else:
     class _Unavailable:
         def __init__(self, *_: Any, **__: Any) -> None:

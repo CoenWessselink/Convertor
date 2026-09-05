@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from cws_convertor.drawings import (
     DrawingBuildRequest,
+    DrawingDocument,
     DrawingProjectionModel,
     ProductionDrawingEngine,
     ProductionDrawingRenderer,
@@ -34,6 +35,7 @@ class DrawingOutput:
     release_ready: bool = False
     lint_issues: tuple[Mapping[str, Any], ...] = ()
     page_count: int = 0
+    document: DrawingDocument | None = None
 
 
 class EngineeringDrawingGenerator:
@@ -279,6 +281,67 @@ class EngineeringDrawingGenerator:
         if vertices.size == 0 or triangles.size == 0:
             raise ValueError("Het geselecteerde onderdeel heeft lege 3D-geometrie")
         return entity, node, resolved_entity_id, self._principal_orientation(vertices), triangles
+
+    def _assembly_component_geometry(
+        self,
+        assembly: Any,
+    ) -> tuple[np.ndarray, np.ndarray, tuple[dict[str, Any], ...]] | None:
+        """Return child meshes in one assembly/world coordinate system."""
+
+        raw_components: list[tuple[str, np.ndarray, np.ndarray]] = []
+        assembly_entity_ids = tuple(
+            dict.fromkeys(
+                str(value)
+                for attribute in ("part_ids", "purchased_item_ids", "fastener_ids", "weld_ids")
+                for value in (getattr(assembly, attribute, ()) or ())
+                if str(value)
+            )
+        )
+        for entity_id in assembly_entity_ids:
+            try:
+                node_id = self.workspace.interaction.node_for_entity(str(entity_id))
+                node = self.workspace.controller.index.node(node_id)
+                mesh = self.workspace.load_result.repository.get(node.geometry_id) if node.geometry_id else None
+                if mesh is None:
+                    continue
+                local = np.asarray(mesh.vertices, dtype=float).reshape((-1, 3))
+                faces = np.asarray(mesh.triangles, dtype=int).reshape((-1, 3))
+                matrix = np.asarray(
+                    self.workspace.controller.index.world_transform_by_node[node_id].to_rows(),
+                    dtype=float,
+                )
+                homogeneous = np.column_stack((local, np.ones(len(local), dtype=float)))
+                world = (homogeneous @ matrix.T)[:, :3]
+                raw_components.append((str(entity_id), world, faces))
+            except Exception:
+                continue
+        if len(raw_components) < 2:
+            return None
+        combined_world = np.concatenate([item[1] for item in raw_components], axis=0)
+        center = combined_world.mean(axis=0)
+        centered = combined_world - center
+        covariance = np.cov(centered, rowvar=False)
+        values, vectors = np.linalg.eigh(covariance)
+        axes = vectors[:, np.argsort(values)[::-1]]
+        if np.linalg.det(axes) < 0.0:
+            axes[:, 2] *= -1.0
+        oriented_all = centered @ axes
+        extreme = int(np.argmax(np.abs(oriented_all[:, 0])))
+        if oriented_all[extreme, 0] < 0.0:
+            axes[:, 0] *= -1.0
+            oriented_all = centered @ axes
+        components: list[dict[str, Any]] = []
+        triangles: list[np.ndarray] = []
+        vertex_offset = 0
+        cursor = 0
+        for entity_id, world, faces in raw_components:
+            count = len(world)
+            oriented = (world - center) @ axes
+            components.append({"entity_id": entity_id, "vertices": oriented, "triangles": faces})
+            triangles.append(faces + vertex_offset)
+            vertex_offset += count
+            cursor += count
+        return oriented_all, np.concatenate(triangles, axis=0), tuple(components)
 
     @staticmethod
     def _principal_orientation(vertices: np.ndarray) -> np.ndarray:
@@ -534,10 +597,21 @@ class EngineeringDrawingGenerator:
         views: Sequence[str] = ("front", "top", "side", "iso"), dimensions: bool = True,
         title_block: bool = True, dimension_mode: str = "Hoofdmaten",
         manual_dimensions: Sequence[Mapping[str, Any]] = (),
+        dimension_style: Mapping[str, Any] | None = None,
+        dimension_audit: Sequence[Mapping[str, Any]] = (),
+        dimension_editor_schema: str = "",
+        dimension_editor_status: str = "",
         orientation: str = "landscape", include_sections: bool = True,
         include_details: bool = True, require_production_ready: bool = False,
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
+        project = self.workspace.project
+        is_assembly = resolved_entity_id in getattr(project, "assemblies", {})
+        assembly_components: tuple[dict[str, Any], ...] = ()
+        if is_assembly:
+            component_geometry = self._assembly_component_geometry(entity)
+            if component_geometry is not None:
+                vertices, triangles, assembly_components = component_geometry
         aliases = {
             "drill": "hole",
             "drilling": "hole",
@@ -605,7 +679,7 @@ class EngineeringDrawingGenerator:
                 cut_parameters.setdefault("end", end_name)
                 normalized_features.append({"kind": "miter", "parameters": cut_parameters})
         production_features = tuple(normalized_features)
-        selected_views = tuple(view for view in views if view in {"front", "top", "side", "3d", "iso"})
+        selected_views = tuple(view for view in views if view in {"front", "top", "side", "end", "3d", "iso"})
         if not selected_views:
             raise ValueError("Selecteer ten minste een aanzicht")
         sheet_key = sheet_format if sheet_format in SHEET_MM else "A3"
@@ -621,6 +695,8 @@ class EngineeringDrawingGenerator:
         canonical_rebuild_current = False
         workbench = getattr(entity, "workbench", {}) or {}
         try:
+            if is_assembly:
+                raise RuntimeError("Assemblyweergave gebruikt afzonderlijk traceerbare componentmeshes")
             from cws_convertor.project.canonical_rebuild import rebuild_and_compare
 
             rebuilt = rebuild_and_compare(entity)
@@ -683,7 +759,6 @@ class EngineeringDrawingGenerator:
         except Exception as exc:
             warnings.append(f"DimensionGraph kon niet worden geladen: {exc}")
 
-        project = self.workspace.project
         part_label = str(
             getattr(entity, "part_position", "")
             or getattr(entity, "assembly_mark", "")
@@ -709,7 +784,6 @@ class EngineeringDrawingGenerator:
             or getattr(project, "project_id", "")
             or "CWS project"
         )
-        is_assembly = resolved_entity_id in getattr(project, "assemblies", {})
         bom: list[dict[str, Any]] = []
         if is_assembly:
             part_ids = list(getattr(entity, "part_ids", ()) or ())
@@ -781,6 +855,10 @@ class EngineeringDrawingGenerator:
             dimensions=semantic_dimensions,
             dimension_chains=dimension_chains,
             manual_dimensions=manual_dimensions,
+            dimension_style=dict(dimension_style or {}),
+            dimension_audit=dimension_audit,
+            dimension_editor_schema=dimension_editor_schema,
+            dimension_editor_status=dimension_editor_status,
             title_block=title_values,
             revisions=({"revision": revision, "status": status},),
             bom=bom,
@@ -799,6 +877,7 @@ class EngineeringDrawingGenerator:
             canonical_payload_current=canonical_current,
             roundtrip_current=roundtrip_current,
             exact_shape=exact_shape,
+            assembly_components=assembly_components,
         )
         document = ProductionDrawingEngine.build(request)
         lint_issues = tuple(dict(item) for item in document.lint.get("issues") or ())
@@ -849,4 +928,5 @@ class EngineeringDrawingGenerator:
             release_ready=release_ready,
             lint_issues=lint_issues,
             page_count=len(document.pages),
+            document=document,
         )

@@ -13,8 +13,9 @@ import math
 from typing import Any, Mapping, Sequence
 
 
-DRAWING_DOCUMENT_SCHEMA = "cws.production-drawing-document.v1"
-DRAWING_ENGINE_VERSION = "cws-production-drawing-engine-v1"
+DRAWING_DOCUMENT_SCHEMA = "cws.production-drawing-document.v2"
+LEGACY_DRAWING_DOCUMENT_SCHEMAS = {"cws.production-drawing-document.v1"}
+DRAWING_ENGINE_VERSION = "cws-production-drawing-engine-v2"
 
 
 def _stable_hash(value: Mapping[str, Any]) -> str:
@@ -106,6 +107,11 @@ class DrawingDocument:
     dimension_chains: list[dict[str, Any]] = field(default_factory=list)
     features: list[dict[str, Any]] = field(default_factory=list)
     manual_dimensions: list[dict[str, Any]] = field(default_factory=list)
+    view_contexts: list[dict[str, Any]] = field(default_factory=list)
+    dimension_style: dict[str, Any] = field(default_factory=dict)
+    dimension_audit: list[dict[str, Any]] = field(default_factory=list)
+    dimension_editor_schema: str = ""
+    dimension_editor_status: str = ""
     expected_manufacturing_sha256: str = ""
     hlr_method: str = "mesh_fallback"
     sections_requested: bool = False
@@ -158,6 +164,17 @@ class DrawingDocument:
     @classmethod
     def from_dict(cls, raw: Mapping[str, Any]) -> "DrawingDocument":
         data = dict(raw)
+        if str(data.get("schema_version") or "") in LEGACY_DRAWING_DOCUMENT_SCHEMAS:
+            data["schema_version"] = DRAWING_DOCUMENT_SCHEMA
+            data.setdefault("view_contexts", [])
+            data.setdefault("dimension_style", {})
+            data.setdefault("dimension_audit", [])
+            data.setdefault("dimension_editor_schema", "")
+            data.setdefault("dimension_editor_status", "")
+            # A v1 seal covered the original schema and fields.  The migrated
+            # in-memory v2 document receives a fresh seal after validation by
+            # the caller; retaining the legacy digest would be misleading.
+            data["document_sha256"] = ""
         data["pages"] = [
             DrawingPage(
                 **{

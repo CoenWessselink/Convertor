@@ -58,6 +58,7 @@ jobs:
           python tools/build_phase1_reproducible_evidence.py
           python tools/run_phase2_unified_gates.py
           python tools/run_phase3_gates.py
+          python tools/run_pdf12_v2_tests.py
 
       - name: Upload source acceptance diagnostics on failure
         if: failure()
@@ -159,6 +160,11 @@ jobs:
           if ($proof.items.Count -ne 43) { throw "PDF proof matrix does not contain 43 requirements" }
           if (@($proof.items | Where-Object status -ne PASS).Count -ne 0) { throw "PDF proof matrix contains a non-PASS item" }
           if ($proof.counts.missing_evidence -ne 0) { throw "PDF proof matrix has missing visual evidence" }
+          python tools/build_pdf12_v2_proof.py
+          $pdf12 = Get-Content validation/pdf12_interactive_dimension_v2/PDF12_INTERACTIVE_DIMENSION_V2_PROOF_MATRIX.json -Raw | ConvertFrom-Json
+          if ($pdf12.items.Count -ne 42) { throw "PDF-12 V2 proof matrix does not contain 42 evidence items" }
+          if ($pdf12.coverage_percent -ne 100) { throw "PDF-12 V2 coverage is not 100 percent" }
+          if (@($pdf12.items | Where-Object status -ne PASS).Count -ne 0) { throw "PDF-12 V2 contains a non-PASS item" }
 
       - name: Record fresh checkout evidence
         shell: pwsh
@@ -208,6 +214,7 @@ jobs:
           path: |
             release/final/**
             validation/pdf_function_proof/**
+            validation/pdf12_interactive_dimension_v2/**
             validation/full_acceptance/FULL_ACCEPTANCE_CHECKLIST.json
             validation/full_acceptance/FULL_ACCEPTANCE_REPORT.md
             validation/full_acceptance/FULL_ACCEPTANCE_EVIDENCE_MATRIX.json

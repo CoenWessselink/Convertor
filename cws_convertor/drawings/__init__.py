@@ -9,6 +9,27 @@ from .document import (
 )
 from .engine import DrawingBuildRequest, ProductionDrawingEngine
 from .linter import DrawingLintIssue, DrawingLintResult, DrawingLinter
+from .interactive import (
+    DIMENSION_EDITOR_SCHEMA,
+    DIMENSION_SETTINGS_KEY,
+    DimensionDocumentStore,
+    DimensionEditorDocument,
+    DimensionEditorModel,
+    DimensionInteractionController,
+    DimensionKind,
+    DimensionState,
+    DimensionStyle,
+    DrawingAnchor,
+    DrawingRole,
+    InteractionState,
+    InteractiveDimension,
+    SnapCandidate,
+    SnapFilter,
+    SnapType,
+    build_snap_candidates,
+    calculate_nominal_value,
+    nearest_snap_candidate,
+)
 from .projection import DrawingProjectionModel, ProjectedView
 from .renderer import EMBEDDED_DOCUMENT_NAME, ProductionDrawingRenderer
 
@@ -21,10 +42,29 @@ __all__ = [
     "DrawingLinter",
     "DrawingPage",
     "DrawingPrimitive",
+    "DIMENSION_EDITOR_SCHEMA",
+    "DIMENSION_SETTINGS_KEY",
+    "DimensionDocumentStore",
+    "DimensionEditorDocument",
+    "DimensionEditorModel",
+    "DimensionInteractionController",
+    "DimensionKind",
+    "DimensionState",
+    "DimensionStyle",
+    "DrawingAnchor",
+    "DrawingRole",
+    "InteractionState",
+    "InteractiveDimension",
     "DrawingProjectionModel",
     "EMBEDDED_DOCUMENT_NAME",
     "ProductionDrawingEngine",
     "ProductionDrawingRenderer",
     "ProjectedView",
+    "SnapCandidate",
+    "SnapFilter",
+    "SnapType",
+    "build_snap_candidates",
+    "calculate_nominal_value",
+    "nearest_snap_candidate",
     "page_size_mm",
 ]

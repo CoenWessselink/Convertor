@@ -72,6 +72,7 @@ class DrawingProjectionModel:
         if view == "front": return np.array((1.,0.,0.)),np.array((0.,1.,0.)),np.array((0.,0.,1.))
         if view == "top": return np.array((1.,0.,0.)),np.array((0.,0.,1.)),np.array((0.,-1.,0.))
         if view == "side": return np.array((0.,1.,0.)),np.array((0.,0.,1.)),np.array((1.,0.,0.))
+        if view == "end": return np.array((0.,-1.,0.)),np.array((0.,0.,1.)),np.array((-1.,0.,0.))
         # ISO is an exact parallel isometric projection.  The separate 3D
         # review direction deliberately has a lower elevation, so the two UI
         # options no longer render the same view.

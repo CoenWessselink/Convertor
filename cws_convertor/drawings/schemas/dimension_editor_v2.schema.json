@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cws.example/schemas/dimension_editor_v2.schema.json",
+  "title": "CWS interactive drawing dimensions V2",
+  "type": "object",
+  "required": ["schema", "project_id", "entity_id", "drawing_id", "drawing_revision", "dimensions", "style", "lock_version"],
+  "properties": {
+    "schema": {"const": "cws.drawing-dimension-editor.v2"},
+    "project_id": {"type": "string", "minLength": 1},
+    "entity_id": {"type": "string", "minLength": 1},
+    "drawing_id": {"type": "string", "minLength": 1},
+    "source_revision": {"type": "string"},
+    "drawing_revision": {"type": "string", "minLength": 1},
+    "geometry_sha256": {"type": "string", "pattern": "^$|^[0-9a-fA-F]{64}$"},
+    "manufacturing_sha256": {"type": "string", "pattern": "^$|^[0-9a-fA-F]{64}$"},
+    "status": {"enum": ["draft", "saved", "released"]},
+    "lock_version": {"type": "integer", "minimum": 0},
+    "style": {"$ref": "#/$defs/style"},
+    "dimensions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/dimension"}
+    },
+    "audit": {"type": "array", "items": {"type": "object"}},
+    "extensions": {"type": "object"}
+  },
+  "$defs": {
+    "point2": {
+      "type": "array",
+      "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "anchor": {
+      "type": "object",
+      "required": ["entity_id", "view_id", "sheet_id", "page_number", "anchor_type", "projected_point", "sheet_point", "geometry_sha256", "manufacturing_sha256", "proof", "resolved"],
+      "properties": {
+        "entity_id": {"type": "string", "minLength": 1},
+        "feature_id": {"type": "string"},
+        "subshape_id": {"type": "string"},
+        "view_id": {"type": "string", "minLength": 1},
+        "sheet_id": {"type": "string", "minLength": 1},
+        "page_number": {"type": "integer", "minimum": 1},
+        "anchor_type": {"enum": ["vertex", "endpoint", "midpoint", "nearest", "intersection", "center", "tangent", "datum", "feature", "existing_anchor"]},
+        "projected_point": {"$ref": "#/$defs/point2"},
+        "sheet_point": {"$ref": "#/$defs/point2"},
+        "model_point": {"type": "array", "items": {"type": "number"}},
+        "curve_parameter": {"type": ["number", "null"]},
+        "source_revision": {"type": "string"},
+        "geometry_sha256": {"type": "string"},
+        "manufacturing_sha256": {"type": "string"},
+        "proof": {"enum": ["canonical_projection", "review_projection", "legacy_offset", "non_geometric_annotation"]},
+        "resolved": {"type": "boolean"}
+      }
+    },
+    "dimension": {
+      "type": "object",
+      "required": ["dimension_id", "kind", "entity_ids", "drawing_id", "view_id", "sheet_id", "page_number", "anchors", "nominal_value_mm", "line_position", "text_position", "visible", "state", "style_id", "style_version"],
+      "properties": {
+        "dimension_id": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["horizontal", "vertical", "aligned", "chain", "baseline", "ordinate_x", "ordinate_y", "angle", "radius", "diameter", "center_distance", "leader", "text"]},
+        "entity_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "drawing_id": {"type": "string", "minLength": 1},
+        "view_id": {"type": "string", "minLength": 1},
+        "sheet_id": {"type": "string", "minLength": 1},
+        "page_number": {"type": "integer", "minimum": 1},
+        "anchors": {"type": "array", "items": {"$ref": "#/$defs/anchor"}},
+        "nominal_value_mm": {"type": "number", "minimum": 0},
+        "line_position": {"$ref": "#/$defs/point2"},
+        "text_position": {"$ref": "#/$defs/point2"},
+        "line_projected_position": {"type": "array", "items": {"type": "number"}, "maxItems": 2},
+        "text_projected_position": {"type": "array", "items": {"type": "number"}, "maxItems": 2},
+        "visible": {"type": "boolean"},
+        "state": {"enum": ["RESOLVED", "MOVED", "ORPHANED", "ORPHANED_VIEW", "CONFLICT", "OVERRIDDEN", "STALE"]},
+        "style_id": {"type": "string", "minLength": 1},
+        "style_version": {"type": "string", "minLength": 1},
+        "metadata": {"type": "object"}
+      }
+    },
+    "style": {
+      "type": "object",
+      "required": ["style_id", "version", "arrow_type", "arrow_size_mm", "font_family", "text_height_mm", "line_width_mm", "line_color", "extension_offset_mm", "extension_overshoot_mm", "chain_spacing_mm", "decimals", "decimal_separator", "trailing_zeros", "unit", "profile_scope", "base_style_id"],
+      "properties": {
+        "style_id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "arrow_type": {"type": "string"},
+        "arrow_size_mm": {"type": "number", "exclusiveMinimum": 0},
+        "font_family": {"type": "string", "minLength": 1},
+        "text_height_mm": {"type": "number", "exclusiveMinimum": 0},
+        "line_width_mm": {"type": "number", "exclusiveMinimum": 0},
+        "line_color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "extension_offset_mm": {"type": "number", "minimum": 0},
+        "extension_overshoot_mm": {"type": "number", "minimum": 0},
+        "chain_spacing_mm": {"type": "number", "exclusiveMinimum": 0},
+        "decimals": {"type": "integer", "minimum": 0, "maximum": 6},
+        "decimal_separator": {"enum": [",", "."]},
+        "trailing_zeros": {"type": "boolean"},
+        "unit": {"enum": ["mm", "cm"]},
+        "text_position_mode": {"enum": ["centered", "above", "outside"]},
+        "text_inside_arrows": {"enum": ["auto", "always", "never"]},
+        "space_fallback": {"enum": ["outside", "leader", "stack"]},
+        "diameter_symbol": {"type": "string", "minLength": 1},
+        "radius_prefix": {"type": "string", "minLength": 1},
+        "angle_suffix": {"type": "string", "minLength": 1},
+        "tolerance_format": {"enum": ["upper_lower", "symmetric", "limits"]},
+        "quantity_format": {"type": "string", "minLength": 1},
+        "rounding_rule": {"enum": ["half_up", "half_even", "truncate"]},
+        "minimum_text_height_mm": {"type": "number", "minimum": 2},
+        "profile_scope": {"enum": ["standard", "company", "project", "object"]},
+        "base_style_id": {"type": "string", "minLength": 1},
+        "approved_by": {"type": "string"},
+        "extensions": {"type": "object"}
+      }
+    }
+  }
+}

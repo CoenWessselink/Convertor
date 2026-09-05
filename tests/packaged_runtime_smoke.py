@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -57,6 +58,14 @@ EN
 """
 
 WINDOWS_STACK_BUFFER_OVERRUN = 0xC0000409
+
+
+def _digest(path: Path) -> str:
+    value = sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            value.update(block)
+    return value.hexdigest()
 
 
 def _clean_runtime_environment() -> dict[str, str]:
@@ -179,7 +188,13 @@ def _run_gui_with_bounded_shutdown_retry(
     }
 
 
-def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dict[str, Any]:
+def run_packaged_runtime(
+    runtime_dir: Path,
+    label: str,
+    result_dir: Path,
+    *,
+    pdf12_evidence: bool = False,
+) -> dict[str, Any]:
     runtime_dir = runtime_dir.resolve()
     result_dir = result_dir.resolve()
     result_dir.mkdir(parents=True, exist_ok=True)
@@ -226,6 +241,73 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             {"casadi", "cadquery_ocp", "pyside6", "viewer_integration", "exact_occt_viewer", "vtk_viewer", "gui"},
         )
         assert gui_screenshot.is_file() and gui_screenshot.stat().st_size > 10_000, gui_screenshot
+        pdf12_directory = result_dir / f"{label}-pdf12"
+        pdf12_report = result_dir / f"{label}-pdf12-evidence.json"
+        pdf12_process: dict[str, Any] = {"status": "not_requested"}
+        pdf12_restart_process: dict[str, Any] = {"status": "not_requested"}
+        pdf12_result: dict[str, Any] = {"counts": {"passed": 0}}
+        if pdf12_evidence:
+            _, pdf12_process = _run_gui_with_bounded_shutdown_retry(
+                [
+                    str(gui),
+                    "--pdf12-evidence",
+                    "--evidence-dir",
+                    str(pdf12_directory),
+                    "--output",
+                    str(pdf12_report),
+                ],
+                environment=environment,
+                cwd=work,
+                report_path=pdf12_report,
+                timeout=600,
+            )
+            pdf12_result = json.loads(pdf12_report.read_text(encoding="utf-8"))
+            assert pdf12_result["status"] == "passed", pdf12_result
+            assert pdf12_result["counts"] == {"required": 35, "passed": 35, "failed": 0, "skipped": 0}, pdf12_result
+            assert len(pdf12_result["items"]) == 35, pdf12_result
+            restart_report = result_dir / f"{label}-pdf12-app-restart.json"
+            restart_screenshot = pdf12_directory / "images" / "PDF12-GUI-030_APP_RESTART_PASS.png"
+            _, pdf12_restart_process = _run_gui_with_bounded_shutdown_retry(
+                [
+                    str(gui),
+                    "--pdf12-reopen-evidence",
+                    "--project",
+                    str(pdf12_result["project"]),
+                    "--screenshot",
+                    str(restart_screenshot),
+                    "--output",
+                    str(restart_report),
+                ],
+                environment=environment,
+                cwd=work,
+                report_path=restart_report,
+                timeout=180,
+            )
+            restart_result = json.loads(restart_report.read_text(encoding="utf-8"))
+            assert restart_result["status"] == "passed", restart_result
+            assert restart_result["frozen"] is True, restart_result
+            assert int(restart_result["process_id"]) != int(pdf12_result["process_id"]), restart_result
+            assert restart_result["project_sha256"] == pdf12_result["project_sha256"], restart_result
+            restart_item = next(item for item in pdf12_result["items"] if item["test_id"] == "PDF12-GUI-030")
+            restart_item.update(
+                {
+                    "runtime": f"{label}-windows-restarted-process",
+                    "actual_result": (
+                        "Een tweede CWS_Convertor.exe-proces heropende hetzelfde project en "
+                        f"vond {restart_result['dimension_count']} persistente maatobject(en)"
+                    ),
+                    "image": str(restart_screenshot),
+                    "image_sha256": _digest(restart_screenshot),
+                    "output_file": str(pdf12_result["project"]),
+                    "output_sha256": _digest(Path(pdf12_result["project"])),
+                    "process_id": restart_result["process_id"],
+                    "previous_process_id": pdf12_result["process_id"],
+                }
+            )
+            pdf12_result["app_restart"] = restart_result
+            pdf12_report.write_text(json.dumps(pdf12_result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            internal_report = pdf12_directory / "PDF12_RUNTIME_EVIDENCE.json"
+            internal_report.write_text(json.dumps(pdf12_result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
         version = _run([str(cli), "--version"], environment=environment, cwd=work)
         assert f"{APP_NAME} {APP_VERSION}" in version.stdout, version.stdout
@@ -349,6 +431,14 @@ def run_packaged_runtime(runtime_dir: Path, label: str, result_dir: Path) -> dic
             "gui_process_attempts": {
                 "native_selftest": selftest_process,
                 "gui_smoke": gui_process,
+                "pdf12_evidence": pdf12_process,
+                "pdf12_app_restart": pdf12_restart_process,
+            },
+            "pdf12_interactive_dimensioning": {
+                "status": "passed" if pdf12_evidence else "not_requested",
+                "report": str(pdf12_report) if pdf12_evidence else "",
+                "evidence_directory": str(pdf12_directory) if pdf12_evidence else "",
+                "passed": pdf12_result["counts"]["passed"],
             },
             "cli_version": version.stdout.strip(),
             "project_smoke": "passed",
@@ -378,13 +468,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--runtime-dir", type=Path)
     parser.add_argument("--label", default="dist")
     parser.add_argument("--result-dir", type=Path, default=ROOT / "validation" / "results" / "windows-runtime")
+    parser.add_argument("--pdf12-evidence", action="store_true")
     arguments = parser.parse_args(argv)
     if arguments.runtime_dir is None:
         result = run_native_self_test()
         assert result["status"] == "passed", result
         print("packaged_runtime_smoke: source fallback OK")
         return 0
-    summary = run_packaged_runtime(arguments.runtime_dir, arguments.label, arguments.result_dir)
+    summary = run_packaged_runtime(
+        arguments.runtime_dir,
+        arguments.label,
+        arguments.result_dir,
+        pdf12_evidence=arguments.pdf12_evidence,
+    )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 

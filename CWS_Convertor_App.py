@@ -38,6 +38,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--quick-self-test", action="store_true")
     parser.add_argument("--gui-smoke", action="store_true")
+    parser.add_argument("--pdf12-evidence", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--pdf12-reopen-evidence", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--evidence-dir", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--screenshot", type=Path, help=argparse.SUPPRESS)
     # Compatibility with the pre-V9 packaged commands/workflows.
     parser.add_argument("--viewer-self-test", action="store_true", help=argparse.SUPPRESS)
@@ -286,6 +289,50 @@ def main(argv: list[str] | None = None) -> int:
             }
         _write_report(report_path, payload)
         return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
+    if args.pdf12_evidence:
+        try:
+            from cws_convertor.ui_qt.pdf12_evidence import run_pdf12_evidence
+
+            target = args.evidence_dir or Path.cwd() / "pdf12-evidence"
+            payload = run_pdf12_evidence(
+                target,
+                runtime_label="packaged" if bool(getattr(sys, "frozen", False)) else "source",
+            )
+        except Exception as exc:
+            payload = {
+                "schema": "cws-pdf12-runtime-evidence-2.0",
+                "status": "failed",
+                "error": {
+                    "type": type(exc).__name__,
+                    "message": str(exc),
+                    "traceback": traceback.format_exc(),
+                },
+            }
+        _write_report(report_path, payload)
+        return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
+    if args.pdf12_reopen_evidence:
+        try:
+            if project is None or args.screenshot is None:
+                raise ValueError("--pdf12-reopen-evidence vereist --project en --screenshot")
+            from cws_convertor.ui_qt.pdf12_evidence import run_pdf12_reopen_evidence
+
+            payload = run_pdf12_reopen_evidence(
+                project,
+                args.screenshot,
+                runtime_label="packaged" if bool(getattr(sys, "frozen", False)) else "source",
+            )
+        except Exception as exc:
+            payload = {
+                "schema": "cws-pdf12-app-restart-evidence-2.0",
+                "status": "failed",
+                "error": {
+                    "type": type(exc).__name__,
+                    "message": str(exc),
+                    "traceback": traceback.format_exc(),
+                },
+            }
+        _write_report(report_path, payload)
+        return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
 
     initial_files = list(args.paths)
     if project is not None:
@@ -314,6 +361,8 @@ if __name__ == "__main__":
             "--gui-smoke",
             "--viewer-self-test",
             "--viewer-gui-smoke",
+            "--pdf12-evidence",
+            "--pdf12-reopen-evidence",
             "--geometry-worker-service",
         }
         if bool(getattr(sys, "frozen", False)) and diagnostic_flags.intersection(sys.argv[1:]):

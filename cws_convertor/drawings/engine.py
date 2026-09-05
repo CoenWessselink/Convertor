@@ -19,6 +19,7 @@ VIEW_LABELS = {
     "front": "VOORAANZICHT",
     "top": "BOVENAANZICHT",
     "side": "ZIJAANZICHT",
+    "end": "EINDAANZICHT",
     "iso": "ISOMETRISCH",
     "3d": "3D-AANZICHT",
 }
@@ -142,6 +143,10 @@ class DrawingBuildRequest:
     dimensions: Sequence[Mapping[str, Any]] = ()
     dimension_chains: Sequence[Mapping[str, Any]] = ()
     manual_dimensions: Sequence[Mapping[str, Any]] = ()
+    dimension_style: Mapping[str, Any] = field(default_factory=dict)
+    dimension_audit: Sequence[Mapping[str, Any]] = ()
+    dimension_editor_schema: str = ""
+    dimension_editor_status: str = ""
     title_block: Mapping[str, Any] = field(default_factory=dict)
     revisions: Sequence[Mapping[str, Any]] = ()
     bom: Sequence[Mapping[str, Any]] = ()
@@ -156,6 +161,7 @@ class DrawingBuildRequest:
     canonical_payload_current: bool = False
     roundtrip_current: bool = False
     exact_shape: Any | None = None
+    assembly_components: Sequence[Mapping[str, Any]] = ()
 
 
 class ProductionDrawingEngine:
@@ -288,12 +294,53 @@ class ProductionDrawingEngine:
         for index, item in enumerate(values, start=1):
             record = dict(item)
             record["id"] = str(record.get("id") or record.get("dimension_id") or f"manual-{index:03d}")
-            record["critical"] = True
-            record["value_mm"] = abs(
-                _number(record, "nominal_value_mm", default=_number(record, "end") - _number(record, "start"))
-            )
+            is_interactive = bool(record.get("anchors"))
+            record["critical"] = bool(record.get("critical", not is_interactive))
+            record["value_mm"] = abs(_number(
+                record,
+                "nominal_value_mm",
+                "value_mm",
+                default=_number(record, "end") - _number(record, "start"),
+            ))
             result.append(record)
         return result
+
+    @staticmethod
+    def _projected_to_sheet(
+        point: Sequence[float],
+        geometry: tuple[np.ndarray, np.ndarray, float, tuple[float, float, float, float]],
+    ) -> tuple[float, float]:
+        projected, _screen, scale, rectangle = geometry
+        center = (projected.min(axis=0) + projected.max(axis=0)) * 0.5
+        target_center = np.array(((rectangle[0] + rectangle[2]) * 0.5, (rectangle[1] + rectangle[3]) * 0.5 + 2.0))
+        return (
+            (float(point[0]) - float(center[0])) * scale + float(target_center[0]),
+            float(target_center[1]) - (float(point[1]) - float(center[1])) * scale,
+        )
+
+    @classmethod
+    def _interactive_anchor_point(
+        cls,
+        anchor: Mapping[str, Any],
+        geometry: tuple[np.ndarray, np.ndarray, float, tuple[float, float, float, float]],
+    ) -> tuple[float, float] | None:
+        if str(anchor.get("proof") or "") == "non_geometric_annotation":
+            sheet = anchor.get("sheet_point")
+            if isinstance(sheet, Sequence) and not isinstance(sheet, (str, bytes)) and len(sheet) >= 2:
+                return float(sheet[0]), float(sheet[1])
+        projected = anchor.get("projected_point")
+        if isinstance(projected, Sequence) and not isinstance(projected, (str, bytes)) and len(projected) >= 2:
+            try:
+                return cls._projected_to_sheet((float(projected[0]), float(projected[1])), geometry)
+            except (TypeError, ValueError):
+                return None
+        sheet = anchor.get("sheet_point")
+        if isinstance(sheet, Sequence) and not isinstance(sheet, (str, bytes)) and len(sheet) >= 2:
+            try:
+                return float(sheet[0]), float(sheet[1])
+            except (TypeError, ValueError):
+                return None
+        return None
 
     @staticmethod
     def _screen_transform(
@@ -321,6 +368,7 @@ class ProductionDrawingEngine:
         rectangle: tuple[float, float, float, float],
         denominator: int,
         exact_shape: Any | None,
+        assembly_components: Sequence[Mapping[str, Any]] = (),
     ) -> tuple[np.ndarray, np.ndarray, float, str]:
         view_id = f"sheet-{page.number}-{view}-{len(page.view_ids) + 1}"
         page.view_ids.append(view_id)
@@ -332,12 +380,36 @@ class ProductionDrawingEngine:
         )
         projected, _depth = DrawingProjectionModel.project(vertices, view)
         screen, scale = cls._screen_transform(projected, rectangle, denominator)
-        visible, hidden, hlr_method = DrawingProjectionModel.edge_layers(
-            vertices,
-            triangles,
-            view,
-            exact_shape=exact_shape,
-        )
+        layers: list[tuple[str, list[list[tuple[float, float]]], list[list[tuple[float, float]]], str]] = []
+        if assembly_components:
+            for component in assembly_components:
+                component_vertices = np.asarray(component.get("vertices", ()), dtype=float).reshape((-1, 3))
+                component_triangles = np.asarray(component.get("triangles", ()), dtype=int).reshape((-1, 3))
+                if component_vertices.size == 0 or component_triangles.size == 0:
+                    continue
+                component_visible, component_hidden, component_method = DrawingProjectionModel.edge_layers(
+                    component_vertices,
+                    component_triangles,
+                    view,
+                    exact_shape=component.get("exact_shape"),
+                )
+                layers.append(
+                    (
+                        str(component.get("entity_id") or "component"),
+                        component_visible,
+                        component_hidden,
+                        component_method,
+                    )
+                )
+        if not layers:
+            visible, hidden, hlr_method = DrawingProjectionModel.edge_layers(
+                vertices,
+                triangles,
+                view,
+                exact_shape=exact_shape,
+            )
+            layers = [("", visible, hidden, hlr_method)]
+        hlr_method = "occt_hlr" if layers and all(value[3] == "occt_hlr" for value in layers) else "mesh_fallback"
         center = (projected.min(axis=0) + projected.max(axis=0)) * 0.5
         target_center = np.array(((rectangle[0] + rectangle[2]) * 0.5, (rectangle[1] + rectangle[3]) * 0.5 + 2.0))
 
@@ -347,34 +419,39 @@ class ProductionDrawingEngine:
                 float(target_center[1]) - (float(point[1]) - float(center[1])) * scale,
             ]
 
-        for index, polyline in enumerate(hidden):
-            points = [place(point) for point in polyline]
-            if len(points) >= 2:
-                page.primitives.append(
-                    DrawingPrimitive(
-                        "polyline",
-                        "hidden",
-                        points=points,
-                        color="#70879d",
-                        width=0.15,
-                        dash=[2.0, 1.2],
-                        semantic_id=f"{view_id}-hidden-{index + 1}",
+        for component_index, (component_id, visible, hidden, _method) in enumerate(layers, start=1):
+            reference = [f"entity:{component_id}"] if component_id else []
+            semantic_component = f"component-{component_id}-" if component_id else ""
+            for index, polyline in enumerate(hidden):
+                points = [place(point) for point in polyline]
+                if len(points) >= 2:
+                    page.primitives.append(
+                        DrawingPrimitive(
+                            "polyline",
+                            "hidden",
+                            points=points,
+                            color="#70879d",
+                            width=0.15,
+                            dash=[2.0, 1.2],
+                            refs=reference,
+                            semantic_id=f"{view_id}-{semantic_component}hidden-{component_index}-{index + 1}",
+                        )
                     )
-                )
-        for index, polyline in enumerate(visible):
-            points = [place(point) for point in polyline]
-            if len(points) >= 2:
-                page.primitives.append(
-                    DrawingPrimitive(
-                        "polyline",
-                        "visible",
-                        points=points,
-                        color="#173b5d",
-                        width=0.28,
-                        semantic_id=f"{view_id}-visible-{index + 1}",
+            for index, polyline in enumerate(visible):
+                points = [place(point) for point in polyline]
+                if len(points) >= 2:
+                    page.primitives.append(
+                        DrawingPrimitive(
+                            "polyline",
+                            "visible",
+                            points=points,
+                            color="#173b5d",
+                            width=0.28,
+                            refs=reference,
+                            semantic_id=f"{view_id}-{semantic_component}visible-{component_index}-{index + 1}",
+                        )
                     )
-                )
-        if view in {"front", "top", "side"}:
+        if view in {"front", "top", "side", "end"}:
             minimum, maximum = screen.min(axis=0), screen.max(axis=0)
             center_x = float((minimum[0] + maximum[0]) * 0.5)
             center_y = float((minimum[1] + maximum[1]) * 0.5)
@@ -397,7 +474,7 @@ class ProductionDrawingEngine:
             candidates.append("side")
         if kind in {"miter", "scribe"}:
             candidates.extend(("front", "top"))
-        candidates.extend(("front", "top", "side"))
+        candidates.extend(("front", "top", "side", "end"))
         return next((value for value in candidates if value in views), views[0])
 
     @classmethod
@@ -524,31 +601,104 @@ class ProductionDrawingEngine:
         dimension_id: str,
         vertical: bool = False,
         refs: Sequence[str] = (),
+        color: str = "#0066dc",
+        width: float = 0.2,
+        text_size: float = 2.2,
+        arrow: float = 1.6,
     ) -> None:
-        color = "#0066dc"
-        page.primitives.append(_line("dimensions", start, end, color=color, width=0.2, refs=refs, semantic_id=dimension_id))
+        page.primitives.append(_line("dimensions", start, end, color=color, width=width, refs=refs, semantic_id=dimension_id))
         if vertical:
             x, y = start
             page.primitives.extend(
                 (
-                    _line("dimensions", (x - 1.0, y + 1.6), (x, y), color=color, width=0.2),
-                    _line("dimensions", (x + 1.0, y + 1.6), (x, y), color=color, width=0.2),
-                    _line("dimensions", (end[0] - 1.0, end[1] - 1.6), end, color=color, width=0.2),
-                    _line("dimensions", (end[0] + 1.0, end[1] - 1.6), end, color=color, width=0.2),
-                    _text("dimensions", x + 1.8, (y + end[1]) / 2.0, label, size=2.2, color=color),
+                    _line("dimensions", (x - arrow * 0.625, y + arrow), (x, y), color=color, width=width, semantic_id=dimension_id),
+                    _line("dimensions", (x + arrow * 0.625, y + arrow), (x, y), color=color, width=width, semantic_id=dimension_id),
+                    _line("dimensions", (end[0] - arrow * 0.625, end[1] - arrow), end, color=color, width=width, semantic_id=dimension_id),
+                    _line("dimensions", (end[0] + arrow * 0.625, end[1] - arrow), end, color=color, width=width, semantic_id=dimension_id),
+                    _text("dimensions", x + 1.8, (y + end[1]) / 2.0, label, size=text_size, color=color, semantic_id=dimension_id),
                 )
             )
         else:
             x, y = start
             page.primitives.extend(
                 (
-                    _line("dimensions", (x + 1.6, y - 1.0), (x, y), color=color, width=0.2),
-                    _line("dimensions", (x + 1.6, y + 1.0), (x, y), color=color, width=0.2),
-                    _line("dimensions", (end[0] - 1.6, end[1] - 1.0), end, color=color, width=0.2),
-                    _line("dimensions", (end[0] - 1.6, end[1] + 1.0), end, color=color, width=0.2),
-                    _text("dimensions", (x + end[0]) / 2.0 - len(label) * 0.55, y - 1.8, label, size=2.2, color=color),
+                    _line("dimensions", (x + arrow, y - arrow * 0.625), (x, y), color=color, width=width, semantic_id=dimension_id),
+                    _line("dimensions", (x + arrow, y + arrow * 0.625), (x, y), color=color, width=width, semantic_id=dimension_id),
+                    _line("dimensions", (end[0] - arrow, end[1] - arrow * 0.625), end, color=color, width=width, semantic_id=dimension_id),
+                    _line("dimensions", (end[0] - arrow, end[1] + arrow * 0.625), end, color=color, width=width, semantic_id=dimension_id),
+                    _text("dimensions", (x + end[0]) / 2.0 - len(label) * 0.55, y - 1.8, label, size=text_size, color=color, semantic_id=dimension_id),
                 )
             )
+
+    @staticmethod
+    def _aligned_dimension_line(
+        page: DrawingPage,
+        *,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        label: str,
+        dimension_id: str,
+        refs: Sequence[str] = (),
+        color: str = "#0066dc",
+        width: float = 0.2,
+        text_size: float = 2.2,
+        arrow: float = 1.4,
+    ) -> None:
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        length = max(1.0e-9, math.hypot(dx, dy))
+        nx, ny = -dy / length, dx / length
+        page.primitives.extend(
+            (
+                _line("dimensions", start, end, color=color, width=width, refs=refs, semantic_id=dimension_id),
+                _line("dimensions", (start[0] + dx / length * arrow + nx, start[1] + dy / length * arrow + ny), start, color=color, width=width, semantic_id=dimension_id),
+                _line("dimensions", (start[0] + dx / length * arrow - nx, start[1] + dy / length * arrow - ny), start, color=color, width=width, semantic_id=dimension_id),
+                _line("dimensions", (end[0] - dx / length * arrow + nx, end[1] - dy / length * arrow + ny), end, color=color, width=width, semantic_id=dimension_id),
+                _line("dimensions", (end[0] - dx / length * arrow - nx, end[1] - dy / length * arrow - ny), end, color=color, width=width, semantic_id=dimension_id),
+                _text("dimensions", (start[0] + end[0]) * 0.5, (start[1] + end[1]) * 0.5 - 1.5, label, size=text_size, color=color, semantic_id=dimension_id),
+            )
+        )
+
+    @staticmethod
+    def _interactive_label(item: Mapping[str, Any], unit: str) -> str:
+        label = str(item.get("label") or "").strip()
+        style = dict(item.get("style") or {})
+        if not label:
+            kind = str(item.get("kind") or "")
+            numeric = _number(item, "nominal_value_mm", "value_mm") / (10.0 if unit == "cm" else 1.0)
+            decimals = max(0, min(6, int(style.get("decimals", 1))))
+            value_text = f"{numeric:.{decimals}f}"
+            if not bool(style.get("trailing_zeros", False)):
+                value_text = value_text.rstrip("0").rstrip(".")
+            if str(style.get("decimal_separator") or ",") == ",":
+                value_text = value_text.replace(".", ",")
+            value = f"{value_text} {unit}"
+            if kind == "diameter":
+                value = f"{style.get('diameter_symbol') or 'Ø'}{value}"
+            elif kind == "radius":
+                value = f"{style.get('radius_prefix') or 'R'}{value}"
+            elif kind == "angle":
+                value = f"{value_text}{style.get('angle_suffix') or '°'}"
+            quantity = int(dict(item.get("metadata") or {}).get("quantity") or 0)
+            if quantity > 1:
+                value = str(style.get("quantity_format") or "{count}x {value}").format(count=quantity, value=value)
+            label = value
+        prefix = str(item.get("prefix") or "")
+        suffix = str(item.get("suffix") or "")
+        upper = item.get("tolerance_upper_mm")
+        lower = item.get("tolerance_lower_mm")
+        tolerance = ""
+        try:
+            if upper is not None or lower is not None:
+                divisor = 10.0 if unit == "cm" else 1.0
+                upper_value = float(upper or 0.0) / divisor
+                lower_value = float(lower or 0.0) / divisor
+                tolerance = f" +{upper_value:g}/{lower_value:g}"
+        except (TypeError, ValueError):
+            tolerance = ""
+        reference = " REF" if bool(item.get("reference", False)) else ""
+        inspection = " ⌑" if bool(item.get("inspection", False)) else ""
+        typical = " TYP" if bool(dict(item.get("metadata") or {}).get("typical", False)) else ""
+        return f"{prefix}{label}{suffix}{tolerance}{reference}{inspection}{typical}"
 
     @classmethod
     def _add_dimensions(
@@ -561,6 +711,7 @@ class ProductionDrawingEngine:
         manual_dimensions: Sequence[Mapping[str, Any]],
         unit: str,
         enabled: bool,
+        include_overall: bool = True,
     ) -> None:
         if not enabled:
             return
@@ -572,29 +723,156 @@ class ProductionDrawingEngine:
         span = projected.max(axis=0) - projected.min(axis=0)
         x_value = _number(overall_x or {}, "value_mm", default=float(span[0]))
         y_value = _number(overall_y or {}, "value_mm", default=float(span[1]))
-        cls._dimension_line(
-            page,
-            start=(float(minimum[0]), min(rectangle[3] - 3.0, float(maximum[1]) + 6.0)),
-            end=(float(maximum[0]), min(rectangle[3] - 3.0, float(maximum[1]) + 6.0)),
-            label=_format_value(x_value, unit),
-            dimension_id="overall-x",
-            refs=tuple(overall_x.get("feature_refs") or ()) if overall_x else (),
-        )
-        cls._dimension_line(
-            page,
-            start=(max(rectangle[0] + 3.0, float(minimum[0]) - 6.0), float(minimum[1])),
-            end=(max(rectangle[0] + 3.0, float(minimum[0]) - 6.0), float(maximum[1])),
-            label=_format_value(y_value, unit),
-            dimension_id="overall-y",
-            vertical=True,
-            refs=tuple(overall_y.get("feature_refs") or ()) if overall_y else (),
-        )
+        if include_overall:
+            cls._dimension_line(
+                page,
+                start=(float(minimum[0]), min(rectangle[3] - 3.0, float(maximum[1]) + 6.0)),
+                end=(float(maximum[0]), min(rectangle[3] - 3.0, float(maximum[1]) + 6.0)),
+                label=_format_value(x_value, unit),
+                dimension_id="overall-x",
+                refs=tuple(overall_x.get("feature_refs") or ()) if overall_x else (),
+            )
+            cls._dimension_line(
+                page,
+                start=(max(rectangle[0] + 3.0, float(minimum[0]) - 6.0), float(minimum[1])),
+                end=(max(rectangle[0] + 3.0, float(minimum[0]) - 6.0), float(maximum[1])),
+                label=_format_value(y_value, unit),
+                dimension_id="overall-y",
+                vertical=True,
+                refs=tuple(overall_y.get("feature_refs") or ()) if overall_y else (),
+            )
         for index, item in enumerate(manual_dimensions):
-            view = str(item.get("view") or primary_view)
+            if int(item.get("page_number") or 1) != page.number:
+                continue
+            if not bool(item.get("visible", True)):
+                continue
+            view = str(item.get("view") or item.get("view_id") or primary_view)
+            if view not in geometry and "-" in view:
+                view = next((name for name in geometry if f"-{name}-" in str(item.get("view_id") or "")), primary_view)
             if view == "iso" and "iso" not in geometry:
                 continue
             target = geometry.get(view, geometry[primary_view])
             target_projected, target_screen, target_scale, target_rectangle = target
+            anchors = [dict(value) for value in item.get("anchors") or () if isinstance(value, Mapping)]
+            if anchors:
+                points = [cls._interactive_anchor_point(anchor, target) for anchor in anchors]
+                points = [point for point in points if point is not None]
+                if not points:
+                    continue
+                dimension_id = str(item.get("id") or f"manual-{index + 1:03d}")
+                label = cls._interactive_label(item, unit)
+                refs = tuple(dict.fromkeys(
+                    str(value)
+                    for anchor in anchors
+                    for value in (anchor.get("entity_id"), anchor.get("feature_id"), anchor.get("subshape_id"))
+                    if str(value or "")
+                ))
+                projected_position = item.get("line_projected_position")
+                position_raw = item.get("line_position") or item.get("text_position") or points[-1]
+                try:
+                    if isinstance(projected_position, Sequence) and not isinstance(projected_position, (str, bytes)) and len(projected_position) >= 2:
+                        position = cls._projected_to_sheet(projected_position, target)
+                    else:
+                        position = (float(position_raw[0]), float(position_raw[1]))
+                except (TypeError, ValueError, IndexError):
+                    position = points[-1]
+                kind = str(item.get("kind") or "aligned")
+                style = dict(item.get("style") or {})
+                color = str(style.get("line_color") or "#0066dc")
+                line_width = max(0.05, _number(style, "line_width_mm", default=0.2))
+                text_size = max(1.0, _number(style, "text_height_mm", default=2.2))
+                arrow_size = max(0.5, _number(style, "arrow_size_mm", default=1.6))
+                if kind in {"leader", "text"}:
+                    start = points[0]
+                    metadata = dict(item.get("metadata") or {})
+                    projected_bends = [
+                        cls._projected_to_sheet((float(value[0]), float(value[1])), target)
+                        for value in metadata.get("leader_bend_projected_points") or ()
+                        if isinstance(value, Sequence)
+                        and not isinstance(value, (str, bytes))
+                        and len(value) >= 2
+                    ]
+                    bend_points = projected_bends or [
+                        (float(value[0]), float(value[1]))
+                        for value in metadata.get("leader_bend_points") or ()
+                        if isinstance(value, Sequence)
+                        and not isinstance(value, (str, bytes))
+                        and len(value) >= 2
+                    ]
+                    page.primitives.append(
+                        DrawingPrimitive(
+                            "polyline",
+                            "dimensions",
+                            points=[start, *bend_points, position],
+                            color=color,
+                            width=line_width,
+                            refs=list(refs),
+                            semantic_id=dimension_id,
+                        )
+                    )
+                    page.primitives.append(
+                        _text(
+                            "dimensions",
+                            position[0] + 1.0,
+                            position[1],
+                            label or "NOTITIE",
+                            size=text_size,
+                            color=color,
+                            refs=refs,
+                            semantic_id=dimension_id,
+                        )
+                    )
+                elif kind == "angle" and len(points) >= 3:
+                    vertex = points[1]
+                    page.primitives.extend(
+                        (
+                            _line("dimensions", vertex, points[0], color=color, width=line_width, refs=refs, semantic_id=dimension_id),
+                            _line("dimensions", vertex, points[2], color=color, width=line_width, refs=refs, semantic_id=dimension_id),
+                            _text("dimensions", position[0], position[1], label, size=text_size, color=color, refs=refs, semantic_id=dimension_id),
+                        )
+                    )
+                elif kind in {"radius", "diameter"}:
+                    start = points[0]
+                    cls._aligned_dimension_line(page, start=start, end=position, label=label, dimension_id=dimension_id, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size)
+                elif kind in {"chain", "baseline"} and len(points) >= 2:
+                    pairs = zip(points, points[1:]) if kind == "chain" else ((points[0], point) for point in points[1:])
+                    segment_ids = list(dict(item.get("metadata") or {}).get("segment_ids") or ())
+                    for segment_index, (first, second) in enumerate(pairs):
+                        delta = (position[0] - (first[0] + second[0]) * 0.5, position[1] - (first[1] + second[1]) * 0.5)
+                        cls._aligned_dimension_line(
+                            page,
+                            start=(first[0] + delta[0], first[1] + delta[1]),
+                            end=(second[0] + delta[0], second[1] + delta[1]),
+                            label=label if segment_index == 0 else _format_value(math.hypot(second[0] - first[0], second[1] - first[1]) / max(target_scale, 1.0e-9), unit),
+                            dimension_id=dimension_id,
+                            refs=(*refs, str(segment_ids[segment_index])) if segment_index < len(segment_ids) else refs,
+                            color=color,
+                            width=line_width,
+                            text_size=text_size,
+                            arrow=arrow_size,
+                        )
+                elif len(points) >= 2:
+                    first, second = points[0], points[1]
+                    if kind in {"horizontal", "ordinate_x"}:
+                        cls._dimension_line(page, start=(first[0], position[1]), end=(second[0], position[1]), label=label, dimension_id=dimension_id, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size)
+                    elif kind in {"vertical", "ordinate_y"}:
+                        cls._dimension_line(page, start=(position[0], first[1]), end=(position[0], second[1]), label=label, dimension_id=dimension_id, vertical=True, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size)
+                    else:
+                        midpoint = ((first[0] + second[0]) * 0.5, (first[1] + second[1]) * 0.5)
+                        delta = (position[0] - midpoint[0], position[1] - midpoint[1])
+                        cls._aligned_dimension_line(
+                            page,
+                            start=(first[0] + delta[0], first[1] + delta[1]),
+                            end=(second[0] + delta[0], second[1] + delta[1]),
+                            label=label,
+                            dimension_id=dimension_id,
+                            refs=refs,
+                            color=color,
+                            width=line_width,
+                            text_size=text_size,
+                            arrow=arrow_size,
+                        )
+                continue
             target_min = target_projected.min(axis=0)
             target_center = (target_screen.min(axis=0) + target_screen.max(axis=0)) * 0.5
             start_offset = _number(item, "start")
@@ -684,7 +962,7 @@ class ProductionDrawingEngine:
         rectangle: tuple[float, float, float, float],
         denominator: int,
         exact_shape: Any | None,
-    ) -> str:
+    ) -> tuple[str, tuple[np.ndarray, np.ndarray, float, tuple[float, float, float, float]]]:
         view_id = f"sheet-{page.number}-section-a-a"
         try:
             if exact_shape is None:
@@ -694,7 +972,7 @@ class ProductionDrawingEngine:
             # This remains useful as a review projection, while the linter
             # prevents it from masquerading as a production section.
             primitive_start = len(page.primitives)
-            cls._add_view(
+            projected, screen, scale, _method = cls._add_view(
                 page,
                 vertices=vertices,
                 triangles=triangles,
@@ -703,6 +981,13 @@ class ProductionDrawingEngine:
                 denominator=denominator,
                 exact_shape=exact_shape,
             )
+            generated_id = page.view_ids[-1]
+            page.view_ids[-1] = view_id
+            for primitive in page.primitives[primitive_start:]:
+                if primitive.semantic_id == generated_id:
+                    primitive.semantic_id = view_id
+                elif primitive.semantic_id.startswith(f"{generated_id}-"):
+                    primitive.semantic_id = f"{view_id}{primitive.semantic_id[len(generated_id):]}"
             for primitive in page.primitives[primitive_start:]:
                 if primitive.layer == "views" and primitive.kind == "text":
                     primitive.text = "SECTION A-A"
@@ -718,7 +1003,7 @@ class ProductionDrawingEngine:
                     color="#a23b32",
                 )
             )
-            return "projection_fallback"
+            return "projection_fallback", (projected, screen, scale, rectangle)
 
         page.view_ids.append(view_id)
         page.primitives.extend(
@@ -800,7 +1085,7 @@ class ProductionDrawingEngine:
                     )
                 )
             hatch_value += 3.0
-        return "occt_brep_section"
+        return "occt_brep_section", (all_points, screen_points, scale, rectangle)
 
     @classmethod
     def build(cls, request: DrawingBuildRequest) -> DrawingDocument:
@@ -851,6 +1136,7 @@ class ProductionDrawingEngine:
             ]
         page = cls._base_page(1, "TECHNISCHE WERKPLAATSTEKENING", width, height)
         geometry: dict[str, tuple[np.ndarray, np.ndarray, float, tuple[float, float, float, float]]] = {}
+        view_contexts: list[dict[str, Any]] = []
         hlr_methods: list[str] = []
         section_method = "not_requested"
         for view, rectangle in zip(views, rectangles):
@@ -862,8 +1148,25 @@ class ProductionDrawingEngine:
                 rectangle=rectangle,
                 denominator=denominator,
                 exact_shape=request.exact_shape,
+                assembly_components=request.assembly_components,
             )
             geometry[view] = (projected, screen, scale, rectangle)
+            projected_center = (projected.min(axis=0) + projected.max(axis=0)) * 0.5
+            view_contexts.append(
+                {
+                    "view": view,
+                    "view_id": page.view_ids[-1],
+                    "page_number": page.number,
+                    "sheet_id": f"sheet-{page.number}",
+                    "rectangle": [float(value) for value in rectangle],
+                    "projected_center": [float(value) for value in projected_center],
+                    "sheet_center": [
+                        float((rectangle[0] + rectangle[2]) * 0.5),
+                        float((rectangle[1] + rectangle[3]) * 0.5 + 2.0),
+                    ],
+                    "scale": float(scale),
+                }
+            )
             hlr_methods.append(method)
         cls._add_features(page, features=features, views=views, geometry=geometry, unit=unit)
         cls._add_dimensions(
@@ -891,13 +1194,38 @@ class ProductionDrawingEngine:
             half = width * 0.5
             if request.include_sections:
                 section_rect = (10.0, top, half - 4.0, min(height * 0.48, height - 52.0))
-                section_method = cls._add_section_view(
+                section_method, section_geometry = cls._add_section_view(
                     detail_page,
                     vertices=vertices,
                     triangles=triangles,
                     rectangle=section_rect,
                     denominator=denominator,
                     exact_shape=request.exact_shape,
+                )
+                section_projected, _section_screen, section_scale, _section_rectangle = section_geometry
+                section_id = detail_page.view_ids[-1]
+                section_center = (section_projected.min(axis=0) + section_projected.max(axis=0)) * 0.5
+                view_contexts.append(
+                    {
+                        "view": "section",
+                        "view_id": section_id,
+                        "page_number": detail_page.number,
+                        "sheet_id": f"sheet-{detail_page.number}",
+                        "rectangle": [float(value) for value in section_rect],
+                        "projected_center": [float(value) for value in section_center],
+                        "sheet_center": [float((section_rect[0] + section_rect[2]) * 0.5), float((section_rect[1] + section_rect[3]) * 0.5 + 2.0)],
+                        "scale": float(section_scale),
+                    }
+                )
+                cls._add_dimensions(
+                    detail_page,
+                    geometry={"section": section_geometry},
+                    primary_view="section",
+                    dimensions=(),
+                    manual_dimensions=tuple(item for item in manual if str(item.get("view_id") or item.get("view") or "") == section_id),
+                    unit=unit,
+                    enabled=request.dimensions_enabled,
+                    include_overall=False,
                 )
             if request.include_details and features:
                 detail_rect = (half + 4.0, top, width - 10.0, min(height * 0.48, height - 52.0))
@@ -915,6 +1243,22 @@ class ProductionDrawingEngine:
                     exact_shape=request.exact_shape,
                 )
                 hlr_methods.append(method)
+                detail_id = detail_page.view_ids[-1]
+                detail_center = (detail_projected.min(axis=0) + detail_projected.max(axis=0)) * 0.5
+                view_contexts.append(
+                    {
+                        "view": detail_view,
+                        "view_id": detail_id,
+                        "page_number": detail_page.number,
+                        "sheet_id": f"sheet-{detail_page.number}",
+                        "rectangle": [float(value) for value in detail_rect],
+                        "projected_center": [float(value) for value in detail_center],
+                        "sheet_center": [float((detail_rect[0] + detail_rect[2]) * 0.5), float((detail_rect[1] + detail_rect[3]) * 0.5 + 2.0)],
+                        "scale": float(detail_scale),
+                        "feature_id": str(first.get("feature_id") or ""),
+                        "detail": True,
+                    }
+                )
                 cls._add_features(
                     detail_page,
                     features=(first,),
@@ -924,6 +1268,16 @@ class ProductionDrawingEngine:
                 )
                 first_feature = str(first.get("feature_id") or "H1")
                 detail_page.primitives.append(_text("annotations", detail_rect[0] + 2.0, detail_rect[1] + 10.0, f"DETAIL {first_feature}", size=2.6, bold=True, refs=(first_feature,), semantic_id=f"{first_feature}-detail"))
+                cls._add_dimensions(
+                    detail_page,
+                    geometry={detail_view: (detail_projected, detail_screen, detail_scale, detail_rect)},
+                    primary_view=detail_view,
+                    dimensions=(),
+                    manual_dimensions=tuple(item for item in manual if str(item.get("view_id") or item.get("view") or "") == detail_id),
+                    unit=unit,
+                    enabled=request.dimensions_enabled,
+                    include_overall=False,
+                )
 
             schedule_top = max(height * 0.50, 82.0)
             dimension_rows = [
@@ -997,6 +1351,22 @@ class ProductionDrawingEngine:
                             exact_shape=request.exact_shape,
                         )
                         hlr_methods.append(method)
+                        detail_id = detail_sheet.view_ids[-1]
+                        detail_center = (projected.min(axis=0) + projected.max(axis=0)) * 0.5
+                        view_contexts.append(
+                            {
+                                "view": feature_view,
+                                "view_id": detail_id,
+                                "page_number": detail_sheet.number,
+                                "sheet_id": f"sheet-{detail_sheet.number}",
+                                "rectangle": [float(value) for value in feature_rectangle],
+                                "projected_center": [float(value) for value in detail_center],
+                                "sheet_center": [float((feature_rectangle[0] + feature_rectangle[2]) * 0.5), float((feature_rectangle[1] + feature_rectangle[3]) * 0.5 + 2.0)],
+                                "scale": float(detail_scale),
+                                "feature_id": feature_id,
+                                "detail": True,
+                            }
+                        )
                         cls._add_features(
                             detail_sheet,
                             features=(feature,),
@@ -1015,6 +1385,16 @@ class ProductionDrawingEngine:
                                 refs=(feature_id,),
                                 semantic_id=f"{feature_id}-detail",
                             )
+                        )
+                        cls._add_dimensions(
+                            detail_sheet,
+                            geometry={feature_view: (projected, screen, detail_scale, feature_rectangle)},
+                            primary_view=feature_view,
+                            dimensions=(),
+                            manual_dimensions=tuple(item for item in manual if str(item.get("view_id") or item.get("view") or "") == detail_id),
+                            unit=unit,
+                            enabled=request.dimensions_enabled,
+                            include_overall=False,
                         )
                     pages.append(detail_sheet)
 
@@ -1087,6 +1467,11 @@ class ProductionDrawingEngine:
             dimension_chains=[dict(item) for item in request.dimension_chains],
             features=features,
             manual_dimensions=manual,
+            view_contexts=view_contexts,
+            dimension_style=dict(request.dimension_style),
+            dimension_audit=[dict(item) for item in request.dimension_audit],
+            dimension_editor_schema=str(request.dimension_editor_schema),
+            dimension_editor_status=str(request.dimension_editor_status),
             hlr_method="occt_hlr" if hlr_methods and all(value == "occt_hlr" for value in hlr_methods) else "mesh_fallback",
             sections_requested=bool(request.include_sections),
             section_method=section_method,

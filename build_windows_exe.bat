@@ -30,6 +30,7 @@ if not exist "%CWS_RESULTS%" mkdir "%CWS_RESULTS%"
 ".venv-build\Scripts\python.exe" -m compileall -q . || goto :error
 ".venv-build\Scripts\python.exe" validation\run_all_smokes_v9.py --headless-windows --output "%CWS_RESULTS%\source-smokes" || goto :error
 ".venv-build\Scripts\python.exe" tests\edit_workspace_ui_smoke.py || goto :error
+".venv-build\Scripts\python.exe" tools\run_pdf12_v2_tests.py || goto :error
 ".venv-build\Scripts\python.exe" cli.py --version || goto :error
 ".venv-build\Scripts\python.exe" CWS_Convertor_App.py --self-test --output "%CWS_RESULTS%\source-native-selftest.json" || goto :error
 ".venv-build\Scripts\python.exe" CWS_Convertor_App.py --gui-smoke --output "%CWS_RESULTS%\source-gui-smoke.json" || goto :error
@@ -45,13 +46,13 @@ if not exist "dist\%CWS_DIST%\CWS_Convertor_CLI.exe" goto :error
 ".venv-build\Scripts\python.exe" validation\inspect_windows_native_dependencies.py "dist\%CWS_DIST%" --output "%CWS_RESULTS%\dist-native-inventory.json" || goto :error
 
 echo [5/9] Dist testen zonder Python op child-PATH...
-".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "dist\%CWS_DIST%" --label dist --result-dir "%CWS_RESULTS%" || goto :error
+".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "dist\%CWS_DIST%" --label dist --result-dir "%CWS_RESULTS%" --pdf12-evidence || goto :error
 
 echo [6/9] Portable ZIP maken, schoon uitpakken en testen...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%CWS_DIST%' -DestinationPath 'dist\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip' -Force" || goto :error
 if exist "%CWS_PORTABLE%" rmdir /s /q "%CWS_PORTABLE%"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive 'dist\CWS_Convertor_Final_%CWS_VERSION%_%CWS_COMMIT7%_Portable.zip' -DestinationPath '%CWS_PORTABLE%'" || goto :error
-".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_PORTABLE%\%CWS_DIST%" --label portable --result-dir "%CWS_RESULTS%" || goto :error
+".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_PORTABLE%\%CWS_DIST%" --label portable --result-dir "%CWS_RESULTS%" --pdf12-evidence || goto :error
 
 echo [7/9] Installer bouwen...
 set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
@@ -65,7 +66,7 @@ if not exist "%ISCC%" (
 echo [8/9] Installeren, volledig testen en verwijderen...
 if exist "%CWS_INSTALL_DIR%" rmdir /s /q "%CWS_INSTALL_DIR%"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CD%\dist_installer\CWS_Convertor_Setup_%CWS_VERSION%_%CWS_COMMIT7%_x64.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/CURRENTUSER','/TASKS=fileassoc','/DIR=%CWS_INSTALL_DIR%') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
-".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" --label installed --result-dir "%CWS_RESULTS%" || goto :error
+".venv-build\Scripts\python.exe" tests\packaged_runtime_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" --label installed --result-dir "%CWS_RESULTS%" --pdf12-evidence || goto :error
 ".venv-build\Scripts\python.exe" tests\windows_installer_association_smoke.py --runtime-dir "%CWS_INSTALL_DIR%" || goto :error
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$p=Start-Process -FilePath '%CWS_INSTALL_DIR%\unins000.exe' -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode" || goto :error
 if exist "%CWS_INSTALL_DIR%\CWS_Convertor.exe" goto :error

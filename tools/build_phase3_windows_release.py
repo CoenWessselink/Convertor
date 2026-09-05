@@ -165,7 +165,7 @@ def main() -> int:
         raise FileNotFoundError("Complete one-folder GUI/CLI runtime is missing")
     commands["onedir_runtime"] = run(
         [sys.executable, str(ROOT / "tests" / "packaged_runtime_smoke.py"), "--runtime-dir", str(ONEDIR),
-         "--label", "phase3-dist", "--result-dir", str(RESULTS)], timeout=1200,
+         "--label", "phase3-dist", "--result-dir", str(RESULTS), "--pdf12-evidence"], timeout=1800,
     )
     portable = RELEASE / f"CWS_Convertor_Final_{VERSION}_{REVISION_TAG}_Portable.zip"
     zip_onedir(ONEDIR, portable)
@@ -175,7 +175,7 @@ def main() -> int:
     commands["portable_runtime"] = run(
         [sys.executable, str(ROOT / "tests" / "packaged_runtime_smoke.py"),
          "--runtime-dir", str(PORTABLE_ROOT / "CWS_Convertor"), "--label", "phase3-portable",
-         "--result-dir", str(RESULTS)], timeout=1200,
+         "--result-dir", str(RESULTS), "--pdf12-evidence"], timeout=1800,
     )
     if not args.skip_build:
         commands["onefile_build"] = run(
@@ -216,7 +216,7 @@ def main() -> int:
     commands["silent_install"] = run(install_command, timeout=900)
     commands["installed_runtime"] = run(
         [sys.executable, str(ROOT / "tests" / "packaged_runtime_smoke.py"), "--runtime-dir", str(INSTALL_ROOT),
-         "--label", "phase3-installed", "--result-dir", str(RESULTS)], timeout=1200,
+         "--label", "phase3-installed", "--result-dir", str(RESULTS), "--pdf12-evidence"], timeout=1800,
     )
     commands["installed_associations"] = run(
         [sys.executable, str(ROOT / "tests" / "windows_installer_association_smoke.py"),
