@@ -885,11 +885,21 @@ def main() -> int:
     phases = phase_gates(args.inventory_only, args.reuse_fresh_phase3_evidence)
     active_classes = set(runtime_result.get("active_product_classes", ()))
     executed_functions = set(runtime_result.get("executed_product_functions", ()))
+    executed_file_names = {
+        (parts[0], parts[2])
+        for entry in executed_functions
+        if len(parts := entry.rsplit(":", 2)) == 3
+    }
     for item in functions:
         item["required"] = bool(item["public"] and item["qualified_owner"] in active_classes)
         item["covered"] = bool(
             (not item["required"])
             or item["id"] in executed_functions
+            # Decorated functions and properties report the decorator line as
+            # co_firstlineno, while AST FunctionDef.lineno identifies the def
+            # line.  File + function name is the stable cross-representation
+            # identity for this one-line offset.
+            or (item["file"], item["name"]) in executed_file_names
         )
     uncovered = [item for item in functions if item["required"] and not item["covered"]]
     inventory_status = (
