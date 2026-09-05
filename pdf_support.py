@@ -1853,6 +1853,11 @@ def create_trusted_pdf(
             }
         )
         prepared.validate()
+        # CanonicalPart.from_dict applies supported 1.x migrations (notably
+        # mirroring legacy header data into product data).  Persist the
+        # normalized representation so the semantic hash is stable when the
+        # embedded model is read back and validated strictly.
+        prepared = CanonicalPart.from_dict(prepared.to_dict())
         model_bytes = prepared.to_json_bytes(include_attachments=True)
         manifest = {
             "format": TRUSTED_PDF_FORMAT,

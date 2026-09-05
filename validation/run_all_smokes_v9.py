@@ -191,7 +191,12 @@ def main() -> int:
     }
     summary = output / "VIEWER_V9_FULL_SMOKE_SUMMARY.json"
     summary.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"summary": str(summary), **counts}, indent=2), flush=True)
+    failures = [
+        {"script": item["script"], "status": item["status"], "failure_excerpt": item["failure_excerpt"]}
+        for item in records
+        if item["status"] in {"failed", "timeout"}
+    ]
+    print(json.dumps({"summary": str(summary), **counts, "failures": failures}, indent=2), flush=True)
     return 0 if counts["failed"] == 0 and counts["timeout"] == 0 else 2
 
 

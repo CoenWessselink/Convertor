@@ -53,12 +53,19 @@ jobs:
         run: |
           python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py
           python tests/conversion_one_phase_contract_smoke.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/capture_phase1_repository_ci.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/run_phase1_unified_gates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/build_phase1_reproducible_evidence.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/run_phase2_unified_gates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/run_phase3_gates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/run_pdf12_v2_tests.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload source acceptance diagnostics on failure
         if: failure()
@@ -249,6 +256,7 @@ jobs:
             validation/phases/PHASE_*_CHECKLIST.json
             validation/phases/PHASE_*_CHECKLIST.md
             validation/full_acceptance/**
+            validation/results/phase3/**
             release_audit/**
             release/phase1/PHASE_1_WINDOWS_MANIFEST.json
           if-no-files-found: warn
