@@ -208,6 +208,19 @@ if qt_available():
                 self._hover_index = (self._hover_index + 1) % len(self._hover_candidates)
                 self.update()
 
+        def event(self, event: Any) -> bool:
+            # QWidget normally consumes Tab for focus traversal before
+            # keyPressEvent.  In the drawing surface Tab is an editor command:
+            # cycle through coincident semantic snap targets.
+            if (
+                event.type() == QtCore.QEvent.Type.KeyPress
+                and event.key() == QtCore.Qt.Key.Key_Tab
+            ):
+                self.cycle_candidate()
+                event.accept()
+                return True
+            return super().event(event)
+
         def _update_hover(self, widget_point: Any) -> None:
             sheet = self.widget_to_sheet(widget_point)
             self._pointer_sheet = sheet
