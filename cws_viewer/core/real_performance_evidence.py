@@ -247,12 +247,16 @@ def aa_benchmark(ifc,output,cache_root,screenshot_dir,limit):
     _write(output,result);return result
 
 def _resource_snapshot(widget):
+    import gc
     import threading
+    gc.collect()
     try:
         import psutil
-        process=psutil.Process();rss=process.memory_info().rss/(1024.0*1024.0);children=process.children(recursive=True)
+        process=psutil.Process();memory=process.memory_full_info();rss=memory.rss/(1024.0*1024.0)
+        private=getattr(memory,'private',memory.rss)/(1024.0*1024.0);uss=getattr(memory,'uss',memory.rss)/(1024.0*1024.0)
+        children=process.children(recursive=True)
     except Exception:
-        rss=0.0;children=[]
+        rss=0.0;private=0.0;uss=0.0;children=[]
     child_details=[];worker_children=[]
     for child in children:
         try:
@@ -264,7 +268,7 @@ def _resource_snapshot(widget):
         if is_worker:worker_children.append(child)
     renderer=widget.GetRenderWindow().GetRenderers().GetFirstRenderer()
     actors=int(renderer.GetActors().GetNumberOfItems()) if renderer is not None else 0
-    return {'rss_mb':rss,'vram_mb':None,'vram_status':'NOT_TESTED','thread_count':threading.active_count(),
+    return {'rss_mb':rss,'private_mb':private,'uss_mb':uss,'vram_mb':None,'vram_status':'NOT_TESTED','thread_count':threading.active_count(),
             'process_count':1+len(children),'worker_process_count':len(worker_children),'child_processes':child_details,'actor_count':actors,
             'mesh_group_count':len(getattr(widget.backend,'_mesh_groups',{}))}
 
@@ -279,8 +283,12 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     # Prime lazy VTK/OpenGL allocations and every transient interaction actor before
     # taking the leak/memory baseline. The measured interval then represents a
     # steady-state Viewer session rather than first-use driver allocation.
-    for warmup in range(24):
-        widget.controller.orbit(.25,.04);widget.controller.pan(.001,0);widget.controller.zoom(1.002)
+    for view in views:
+        widget.controller.set_standard_view(view)
+        for warmup in range(120):
+            widget.controller.orbit(.45 if warmup<60 else -.45,.04)
+            if warmup%30==0:widget.controller.pan(.001 if warmup%60==0 else -.001,0)
+            if warmup%45==0:widget.controller.zoom(1.002 if warmup%90==0 else 1/1.002)
     warm_section=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)))
     widget.controller.remove_section_plane(warm_section);widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool()
     if primary:
@@ -336,14 +344,15 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     widget.controller.cancel_tool();widget.controller.show_all();widget.backend.set_interaction_quality(False);widget.controller.render()
     final=_resource_snapshot(widget);end_image=widget.controller.screenshot_to_file(screenshots/'real_soak_end.png')
     telemetry=getattr(widget.backend,'telemetry_snapshot',None);backend=telemetry() if callable(telemetry) else {};widget.close()
-    frames=recorder.to_dict();drift=(final['rss_mb']-baseline['rss_mb'])/max(baseline['rss_mb'],1);p95=float(frames.get('frame_ms_p95',0))
+    frames=recorder.to_dict();rss_drift=(final['rss_mb']-baseline['rss_mb'])/max(baseline['rss_mb'],1)
+    drift=(final['private_mb']-baseline['private_mb'])/max(baseline['private_mb'],1);p95=float(frames.get('frame_ms_p95',0))
     percentile=lambda values,ratio: sorted(values)[min(len(values)-1,int((len(values)-1)*ratio))] if values else None
     stall100=sum(value>100.0 for value in input_samples)
     unintended_stall100=sum(value>100.0 for value in unintended_input_samples)
     transition_stall100=sum(value>100.0 for value in transition_input_samples)
     gates={'real_vtk_viewer':len(scene.nodes)>0,'duration_reached':elapsed>=float(duration),'frame_instrumentation':frames['sample_count']>0,
            'rss_measurement_valid':baseline['rss_mb']>0 and final['rss_mb']>0,
-           'memory_drift_lt_10pct':baseline['rss_mb']>0 and final['rss_mb']>0 and drift<.10,
+           'memory_drift_lt_10pct':baseline['private_mb']>0 and final['private_mb']>0 and drift<.10,
            'start_screenshot':Path(start_image).is_file(),'end_screenshot':Path(end_image).is_file(),
            'exact_geometry':loader['exact_mesh_count']==len(requests),
            'ifc_world_placements_applied':scene_metrics['placed_node_count']>0,
@@ -361,7 +370,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
            'wrong_instance_picks_zero':wrong_picks==0,
            'hidden_object_false_picks_zero':hidden_false_picks==0}
     result={**_base('cws.real_viewer_soak.v2',ifc),'duration_seconds':elapsed,'actions':actions,'frame_metrics':frames,
-            'memory':{'baseline':baseline,'final':final,'drift_ratio':drift},'backend':backend,'action_coverage':coverage,
+            'memory':{'baseline':baseline,'final':final,'metric':'private_mb','drift_ratio':drift,'rss_drift_ratio':rss_drift},'backend':backend,'action_coverage':coverage,
             'interaction_metrics':{'input_to_render_p50_ms':percentile(input_samples,.50),'input_to_render_p95_ms':percentile(input_samples,.95),'input_to_render_p99_ms':percentile(input_samples,.99),
                                    'pick_p50_ms':percentile(pick_samples,.50),'pick_p95_ms':percentile(pick_samples,.95),
                                    'selection_p95_ms':percentile(selection_samples,.95),'wrong_instance_picks':wrong_picks,

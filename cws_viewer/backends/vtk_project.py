@@ -70,6 +70,7 @@ class _ActorGroup:
 
 
 class VtkProjectBackend:
+    PERSISTENT_BASE_GROUPS = False
     """Instanced VTK renderer for the complete V2 project scene."""
 
     def __init__(self, *, render_window: Any | None = None, offscreen: bool = True) -> None:
@@ -454,12 +455,29 @@ class VtkProjectBackend:
                 planes.append(plane)
         return planes
 
-    @staticmethod
-    def _apply_planes_to_groups(groups: Iterable[_ActorGroup], planes: Iterable[Any]) -> None:
+    def _apply_planes_to_groups(self, groups: Iterable[_ActorGroup], planes: Iterable[Any]) -> None:
         plane_values = tuple(planes)
         for group in groups:
             mapper = group.mapper
             if not hasattr(mapper, "RemoveAllClippingPlanes"):
+                continue
+            if self.PERSISTENT_BASE_GROUPS:
+                collection = mapper.GetClippingPlanes()
+                existing_count = 0 if collection is None else int(collection.GetNumberOfItems())
+                for index, plane in enumerate(plane_values):
+                    if index < existing_count:
+                        target = collection.GetItemAsObject(index)
+                        target.SetOrigin(*plane.GetOrigin())
+                        target.SetNormal(*plane.GetNormal())
+                    else:
+                        mapper.AddClippingPlane(plane)
+                if collection is not None:
+                    for index in range(len(plane_values), existing_count):
+                        disabled = collection.GetItemAsObject(index)
+                        disabled.SetOrigin(-1.0e20, 0.0, 0.0)
+                        disabled.SetNormal(1.0, 0.0, 0.0)
+                if len(plane_values) > existing_count:
+                    mapper.Modified()
                 continue
             mapper.RemoveAllClippingPlanes()
             for plane in plane_values:
@@ -508,7 +526,8 @@ class VtkProjectBackend:
         has_clipping = bool(state.section_planes) or (
             state.clipping_box is not None and state.clipping_box.enabled
         )
-        if base_rebuilt or clipping_signature != self._clipping_signature:
+        base_requires_clipping = base_rebuilt and not self.PERSISTENT_BASE_GROUPS
+        if base_requires_clipping or clipping_signature != self._clipping_signature:
             planes = self._clip_planes(state)
             self._apply_planes_to_groups(self._groups, planes)
             self._apply_planes_to_groups(self._selection_groups, planes)

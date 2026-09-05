@@ -74,6 +74,7 @@ class _MeshActorGroup:
 
 
 class VtkProjectMeshBackend(VtkProjectBackend):
+    PERSISTENT_BASE_GROUPS = True
     SOURCE_TABLE_CHUNK_SIZE = 64
     # Source-table glyph groups preserve exact source geometry and per-instance
     # colours while already keeping draw calls bounded. Expanding all instances
@@ -580,7 +581,9 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             self._configure_group_mode(
                 group, effective_mode, state.display_preferences.edge_width
             )
-            changed = False
+            points_changed = False
+            mask_changed = False
+            colors_changed = False
             for instance_index, node_id in enumerate(group.node_ids):
                 node = index.node(node_id)
                 base_position = index.world_transform_by_node[node_id].translation_vector
@@ -588,12 +591,12 @@ class VtkProjectMeshBackend(VtkProjectBackend):
                 current_position = Vector3(*group.points.GetPoint(instance_index))
                 if not current_position.almost_equal(desired_position, tolerance=1e-9):
                     group.points.SetPoint(instance_index, *desired_position.to_tuple())
-                    changed = True
+                    points_changed = True
                 show = node_id in visible
                 desired_mask = 1 if show else 0
                 if int(group.mask.GetValue(instance_index)) != desired_mask:
                     group.mask.SetValue(instance_index, desired_mask)
-                    changed = True
+                    mask_changed = True
                 _, color = self._style_for_node(
                     node,
                     colors=colors,
@@ -607,12 +610,13 @@ class VtkProjectMeshBackend(VtkProjectBackend):
                 )
                 if current_color != desired_color:
                     group.colors.SetTypedTuple(instance_index, desired_color)
-                    changed = True
-            if changed:
+                    colors_changed = True
+            if points_changed:
+                group.points.Modified()
+            if mask_changed:
                 group.mask.Modified()
+            if colors_changed:
                 group.colors.Modified()
-                group.polydata.Modified()
-                group.mapper.Modified()
 
     def _build_mesh_group(
         self,
