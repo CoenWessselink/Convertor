@@ -808,7 +808,11 @@ def phase_gates(skip: bool, reuse_fresh_phase3: bool = False) -> list[dict[str, 
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=1800,
+            # Phase 3 intentionally includes the complete source-smoke matrix
+            # followed by a mandatory 600-second soak.  A 30-minute parent
+            # timeout can therefore abort a healthy run just as the soak
+            # starts, especially on Windows CI and release workstations.
+            timeout=7200,
             check=False,
         )
         log = OUTPUT / f"{runner.stem}.log"
