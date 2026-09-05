@@ -605,6 +605,18 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
         assembly_dimension = panel._dimension_document.dimensions[-1]
         if set(assembly_dimension.entity_ids) != {"P1", "P2"}:
             raise RuntimeError("Assemblymaat verloor de twee componentidentiteiten")
+        # Keep an independent assembly dimension in the persisted document.  The
+        # revision proof below deliberately orphans and deletes the first one;
+        # the restart proof must therefore reload this unaffected dimension
+        # from the project instead of accepting an empty A1 document.
+        persistent_assembly_dimension = place_two(
+            DimensionKind.HORIZONTAL.value,
+            assembly_p1,
+            assembly_p2,
+            34.0,
+        )
+        if set(persistent_assembly_dimension.entity_ids) != {"P1", "P2"}:
+            raise RuntimeError("Persistente assemblymaat verloor de twee componentidentiteiten")
         capture(28, "Maatankers behouden afzonderlijk component P1 en P2")
 
         project_path = generated / "PDF12_INTERACTIVE_DIMENSION_V2_EXAMPLE.cwscproj"
@@ -674,6 +686,8 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
         panel._dimension_model.begin_revision(reason="Componentpositie gewijzigd", user="pdf12-evidence")
         panel._dimension_model.select((orphan.dimension_id,))
         panel._dimension_model.delete_selected(user="pdf12-evidence")
+        if not panel._dimension_document.dimensions:
+            raise RuntimeError("Revisievergelijking verwijderde alle persistente A1-maatobjecten")
         panel._persist_dimension_editor("drawing.dimension_revision_compared")
         panel._update_dimension_properties()
         capture(33, f"Released snapshot {old_revision} bleef bewaard naast {panel._dimension_document.drawing_revision}")
