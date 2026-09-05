@@ -223,7 +223,14 @@ if qt_available():
                 distance = math.hypot(widget_candidate.x() - float(widget_point.x()), widget_candidate.y() - float(widget_point.y()))
                 if distance <= 11.0:
                     nearby.append((distance, candidate.candidate_id, candidate))
-            self._hover_candidates = [item[2] for item in sorted(nearby)]
+            # A projected feature can be emitted by more than one vector primitive
+            # (for example its visible line and annotation helper).  Candidate IDs
+            # are semantic identities, so keep one entry per identity; otherwise
+            # Tab appears to cycle while resolving to the exact same snap target.
+            distinct: dict[str, SnapCandidate] = {}
+            for _distance, _candidate_id, candidate in sorted(nearby):
+                distinct.setdefault(candidate.candidate_id, candidate)
+            self._hover_candidates = list(distinct.values())
             if not self._hover_candidates and self._document is not None:
                 page_width, _page_height = self._page_size()
                 rect = self._drawing_rect()
