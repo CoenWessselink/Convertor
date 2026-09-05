@@ -135,6 +135,27 @@ class TrustedPDFTests(unittest.TestCase):
         pdf_to_nc1(trusted, restored)
         self.assertEqual(self.sample_nc1.read_bytes(), restored.read_bytes())
 
+    def test_trusted_pdf_normalizes_legacy_header_product_fields_before_hash(self) -> None:
+        trusted = self.folder / "header_only_trusted.pdf"
+        part = CanonicalPart(
+            part_id="P1",
+            source_format="CWS",
+            header=CanonicalHeader(
+                part_number="P1",
+                position_number="P1",
+                profile="PL200x80x20",
+                material="S355",
+                length=200.0,
+            ),
+        )
+
+        create_trusted_pdf(part, trusted)
+        restored = load_trusted_pdf(trusted, strict=True).part
+
+        self.assertEqual(restored.product.profile_designation, "PL200x80x20")
+        self.assertEqual(restored.product.material_code, "S355")
+        self.assertEqual(restored.product.length_mm, 200.0)
+
     @unittest.skipUnless(REAL_P1811.is_file(), "P1811 handover fixture is not available")
     def test_real_p1811_trusted_roundtrip_is_exact(self) -> None:
         trusted = self.folder / "P1811.pdf"
