@@ -74,22 +74,37 @@ def contact_sheet(images: Iterable[tuple[str, Path]], target: Path, *, columns: 
 
 
 def build_proofbook(items: list[dict[str, Any]], target: Path, *, commit: str, score: float) -> Path:
+    from xml.sax.saxutils import escape
+
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import Image as RLImage, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     styles = getSampleStyleSheet()
+    cell_style = ParagraphStyle(
+        "CwsProofCell",
+        parent=styles["BodyText"],
+        fontSize=6.3,
+        leading=7.2,
+        spaceAfter=0,
+        wordWrap="CJK",
+        splitLongWords=True,
+    )
+
+    def cell(value: Any) -> Paragraph:
+        return Paragraph(escape(str(value)), cell_style)
+
     document = SimpleDocTemplate(str(target), pagesize=A4, rightMargin=13 * mm, leftMargin=13 * mm, topMargin=12 * mm, bottomMargin=12 * mm)
     story: list[Any] = [
         Paragraph("CWS CONVERTOR PDF-12 INTERACTIEVE MAATVOERING V2", styles["Title"]),
         Spacer(1, 6 * mm),
         Paragraph(f"Exacte commit: {commit}", styles["BodyText"]),
         Paragraph(f"Acceptatiescore: {score:.1f}%", styles["Heading2"]),
-        Paragraph("Beeldbewijs: 42/42 · mislukt: 0 · overgeslagen: 0", styles["Heading2"]),
+        Paragraph("Beeldbewijs: 42/42 - mislukt: 0 - overgeslagen: 0", styles["Heading2"]),
         Paragraph(
-            "Bewijs 1–35 is door echte Qt-events in de geïnstalleerde applicatie gemaakt. Bewijs 36–40 komt uit echte gegenereerde en onafhankelijk gerenderde documenten. Bewijs 41–42 bindt de geïnstalleerde en portable runtime.",
+            "Bewijs 1-35 is door echte Qt-events in de geïnstalleerde applicatie gemaakt. Bewijs 36-40 komt uit echte gegenereerde en onafhankelijk gerenderde documenten. Bewijs 41-42 bindt de geïnstalleerde en portable runtime.",
             styles["BodyText"],
         ),
         PageBreak(),
@@ -101,9 +116,9 @@ def build_proofbook(items: list[dict[str, Any]], target: Path, *, commit: str, s
         ratio = min((178 * mm) / width, (155 * mm) / height)
         table = Table(
             [
-                ["Status", item["status"], "Runtime", item["runtime"]],
-                ["Verwacht", item["expected_result"], "Werkelijk", item["actual_result"]],
-                ["Uitvoer", item["output_file"], "SHA-256", item["image_sha256"]],
+                [cell("Status"), cell(item["status"]), cell("Runtime"), cell(item["runtime"])],
+                [cell("Verwacht"), cell(item["expected_result"]), cell("Werkelijk"), cell(item["actual_result"])],
+                [cell("Uitvoer"), cell(item["output_file"]), cell("SHA-256"), cell(item["image_sha256"])],
             ],
             colWidths=[20 * mm, 68 * mm, 20 * mm, 72 * mm],
         )
@@ -120,7 +135,7 @@ def build_proofbook(items: list[dict[str, Any]], target: Path, *, commit: str, s
         )
         story.extend(
             [
-                Paragraph(f"{item['test_id']} — {item['title']}", styles["Heading1"]),
+                Paragraph(f"{item['test_id']} - {item['title']}", styles["Heading1"]),
                 table,
                 Spacer(1, 4 * mm),
                 RLImage(str(image_path), width=width * ratio, height=height * ratio),

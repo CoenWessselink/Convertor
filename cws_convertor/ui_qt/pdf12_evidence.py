@@ -68,6 +68,22 @@ def _digest(path: Path) -> str:
     return value.hexdigest()
 
 
+def _install_evidence_fonts(application: Any, QtGui: Any) -> None:
+    """Load readable Windows UI fonts for frozen offscreen Qt evidence."""
+
+    fonts_directory = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+    families: list[str] = []
+    for filename in ("bahnschrift.ttf", "segoeui.ttf", "arial.ttf"):
+        font_path = fonts_directory / filename
+        if not font_path.is_file():
+            continue
+        font_id = QtGui.QFontDatabase.addApplicationFont(str(font_path))
+        if font_id >= 0:
+            families.extend(QtGui.QFontDatabase.applicationFontFamilies(font_id))
+    if families:
+        application.setFont(QtGui.QFont(families[0], 9))
+
+
 def _mesh(offset: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> tuple[np.ndarray, np.ndarray]:
     x, y, z = offset
     vertices = np.asarray(
@@ -117,6 +133,7 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     application.setApplicationName("CWS PDF-12 Evidence")
     application.setOrganizationName("CWS")
+    _install_evidence_fonts(application, QtGui)
 
     session = ProjectSession.new("PDF-12 V2 bewijsproject", created_by="pdf12-evidence")
     session.project.settings["drawing_user_roles"] = {"pdf12-evidence": DrawingRole.RELEASER.value}
@@ -791,7 +808,7 @@ def run_pdf12_reopen_evidence(
 
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     os.environ.setdefault("CWS_HEADLESS_GUI_SMOKE", "1")
-    from PySide6 import QtCore, QtWidgets
+    from PySide6 import QtCore, QtGui, QtWidgets
 
     from cws_convertor.drawings import DimensionDocumentStore, DimensionEditorModel
     from cws_convertor.project.service import ProjectSession
@@ -803,6 +820,7 @@ def run_pdf12_reopen_evidence(
         raise FileNotFoundError(f"PDF-12 herstartproject ontbreekt: {project}")
     application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     application.setApplicationName("CWS PDF-12 Restart Evidence")
+    _install_evidence_fonts(application, QtGui)
     session = ProjectSession.open(project, read_only=True)
     window = QtWidgets.QMainWindow()
     panel = DrawingWorkspacePanel()
