@@ -661,12 +661,27 @@ if qt_available():
                 else:
                     viewer = VtkRealProjectWidget(load_result.repository)
                 widget_ready = time.perf_counter()
+                # Compile and publish the first exact frame at interaction
+                # quality.  Eight-sample MSAA is restored by
+                # _complete_preview_geometry immediately after publication;
+                # paying that GPU setup cost here made an otherwise 0.1 s
+                # warmstart miss the five-second first-frame contract.
+                backend = getattr(viewer, "backend", None)
+                render_window = getattr(backend, "_render_window", None)
+                if render_window is not None:
+                    render_window.SetMultiSamples(
+                        int(getattr(backend, "INTERACTIVE_MULTISAMPLES", 0))
+                    )
                 viewer.load_scene(load_result.scene)
                 scene_bound = time.perf_counter()
                 self.viewer = viewer
                 self._preview_result = load_result
                 self.host_layout.addWidget(viewer)
                 self.stack.setCurrentWidget(self.host)
+                # load_scene() has completed the exact VTK render and the host
+                # is now the active stack page.  Publish that real first-frame
+                # milestone before draining unrelated queued Qt work.
+                self._load_progress_changed(66, "Eerste interactieve modelweergave gereed")
                 viewer.update()
                 QtWidgets.QApplication.processEvents(
                     QtCore.QEventLoop.ProcessEventsFlag.ExcludeUserInputEvents
@@ -678,7 +693,6 @@ if qt_available():
                     "first_events_seconds": first_events - scene_bound,
                     "preview_total_seconds": first_events - preview_started,
                 }
-                self._load_progress_changed(66, "Eerste interactieve modelweergave gereed")
                 QtCore.QTimer.singleShot(0, self._complete_preview_geometry)
             finally:
                 if worker is not None:
