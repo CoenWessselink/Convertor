@@ -743,6 +743,10 @@ if qt_available():
             return QtGui.QIcon(pixmap)
 
         def _queue_thumbnail(self, source_path: Path) -> None:
+            import os
+
+            if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
+                return
             if source_path.suffix.casefold() not in {".ifc", ".cwscproj"}:
                 return
             key = str(source_path.resolve())
