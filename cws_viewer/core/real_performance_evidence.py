@@ -364,6 +364,10 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
         widget.controller.set_selection_level(SelectionLevel.PART);widget.controller.set_selection((primary,),mode='replace')
         widget.controller.hide((primary,));widget.controller.show((primary,));widget.controller.isolate((primary,));widget.controller.show_all()
         widget.controller.isolate((primary,),ghost_context=True);widget.controller.show_all()
+        widget.controller.set_selection_level(SelectionLevel.ASSEMBLY);widget.controller.set_selection((primary,),mode='replace')
+        if len(node_ids)>1:
+            widget.controller.set_selection_level(SelectionLevel.PART);widget.controller.set_selection(node_ids[:2],mode='replace')
+        widget.controller.set_selection_level(SelectionLevel.PART);widget.controller.set_selection((primary,),mode='replace')
     widget.controller.fit_all();widget.controller.render()
     for _ in range(20):widget.process_events();time.sleep(.01)
     screenshots=Path(screenshot_dir);screenshots.mkdir(parents=True,exist_ok=True);start_image=widget.controller.screenshot_to_file(screenshots/'real_soak_start.png')
@@ -399,7 +403,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
     operation_intervals=(('pan',50),('zoom',90),('fit',150),('standard_view',220),('part_selection',260),('pick',300),('assembly_selection',520),('multiselect',780),('hide_show',1040),('isolate',1300),('ghost',1560),('section',1820),('measure',2080))
     section_id='';transition_grace_frames=0
     while time.perf_counter()-started<float(duration):
-        explicit_transition=any(actions%interval==0 for interval in (150,220,260,520,780,1040,1300,1560,1820,2080))
+        explicit_transition=any(actions%interval==0 for interval in (150,220,260,300,520,780,1040,1300,1560,1820,2080))
         transition_frame=explicit_transition or transition_grace_frames>0
         frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12))
         elapsed_frame=(time.perf_counter()-frame)*1000.0;recorder.record(elapsed_frame);input_samples.append(elapsed_frame);coverage['orbit']+=1
@@ -435,17 +439,21 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
             widget.controller.remove_section_plane(section_id);section_id=''
         if actions%2080==0:widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool();coverage['measure']+=1
         if explicit_transition:
-            transition_input_samples.append((time.perf_counter()-transition_started)*1000.0);transition_grace_frames=1
+            transition_input_samples.append((time.perf_counter()-transition_started)*1000.0);transition_grace_frames=32
         elif transition_grace_frames>0:transition_grace_frames-=1
         if transition_frame:transition_frame_samples.append(elapsed_frame)
         else:unintended_input_samples.append(elapsed_frame)
         if primary and actions%300==0:
-            bounds=widget.controller.index.world_bounds_by_node.get(primary)
-            if bounds is not None:
-                x,y=widget.backend.world_to_display(bounds.center);tick=time.perf_counter();picked=widget.controller.pick_at(int(x),int(y),mode='replace')
-                pick_samples.append((time.perf_counter()-tick)*1000.0)
-                picked_id=str(getattr(picked,'node_id','') or getattr(picked,'object_id','')) if picked is not None else ''
-                if picked_id and picked_id!=primary:wrong_picks+=1
+            widget.controller.set_selection_level(SelectionLevel.PART);widget.controller.isolate((primary,));widget.controller.render()
+            try:
+                bounds=widget.controller.index.world_bounds_by_node.get(primary)
+                if bounds is not None:
+                    x,y=widget.backend.world_to_display(bounds.center);tick=time.perf_counter();picked=widget.controller.pick_at(int(x),int(y),mode='replace')
+                    pick_samples.append((time.perf_counter()-tick)*1000.0)
+                    picked_id=str(getattr(picked,'node_id','') or getattr(picked,'object_id','')) if picked is not None else ''
+                    if picked_id and picked_id!=primary:wrong_picks+=1
+            finally:
+                widget.controller.show_all();widget.controller.render()
         actions+=1
         event_tick=time.perf_counter();widget.process_events();event_pump_samples.append((time.perf_counter()-event_tick)*1000.0)
         time.sleep(.02)
@@ -453,7 +461,9 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
     widget.backend.set_camera=original_set_camera;widget.backend.render=original_render;widget.backend.apply_state=original_apply_state;widget.controller._emit_selection=original_emit_selection
     if trace_gc in gc.callbacks:gc.callbacks.remove(trace_gc)
     if section_id:widget.controller.remove_section_plane(section_id)
-    widget.controller.cancel_tool();widget.controller.show_all();widget.backend.set_interaction_quality(False);widget.controller.render()
+    widget.controller.cancel_tool();widget.controller.show_all();widget.controller.set_selection_level(SelectionLevel.PART)
+    if primary:widget.controller.set_selection((primary,),mode='replace')
+    widget.backend.set_interaction_quality(False);widget.controller.render()
     final=_resource_snapshot(widget);end_image=widget.controller.screenshot_to_file(screenshots/'real_soak_end.png')
     telemetry=getattr(widget.backend,'telemetry_snapshot',None);backend=telemetry() if callable(telemetry) else {};widget.close()
     frames=recorder.to_dict();rss_drift=(final['rss_mb']-baseline['rss_mb'])/max(baseline['rss_mb'],1)

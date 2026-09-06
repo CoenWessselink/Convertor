@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 import time
 import unittest
+from unittest.mock import patch
 
+from CWS_Convertor_CLI import _requires_frozen_native_fast_exit
 from cws_viewer.contracts.geometry import GeometryRequest
 from cws_viewer.core.performance_evidence import METRIC_FIELDS, ViewerPerformanceEvidence
 from cws_viewer.performance import GeometryPriorityScheduler, ViewerPerformanceGovernor
@@ -24,6 +27,13 @@ def request(identity: str, **metadata: str) -> GeometryRequest:
 
 
 class ViewerPerformanceCloseoutSmoke(unittest.TestCase):
+    def test_frozen_viewer_evidence_commands_use_native_fast_exit(self) -> None:
+        with patch.object(sys, "frozen", True, create=True):
+            self.assertTrue(_requires_frozen_native_fast_exit(["viewer-real-soak"]))
+            self.assertTrue(_requires_frozen_native_fast_exit(["viewer-real-benchmark"]))
+            self.assertFalse(_requires_frozen_native_fast_exit(["project-info"]))
+        self.assertFalse(_requires_frozen_native_fast_exit(["viewer-real-soak"]))
+
     def test_metric_contract_is_complete_and_null_safe(self) -> None:
         required = {
             "proxy_scene_ready_ms", "exact_100_ms", "frame_p99_ms", "orbit_latency_p95_ms",
