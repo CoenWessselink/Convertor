@@ -627,6 +627,7 @@ def main(argv: list[str] | None = None) -> int:
     validate_matrix(items)
     matrix = {
         "schema": "cws-pdf-function-proof-matrix-1.0",
+        "status": "PASS",
         "product": APP_NAME,
         "version": APP_VERSION,
         "branch": branch,
