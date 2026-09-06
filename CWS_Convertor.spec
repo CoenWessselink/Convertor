@@ -46,6 +46,7 @@ datas = [
     ),
 ]
 hiddenimports = [
+    "_tkinter",
     "fitz",
     "ifcopenshell.api",
     "ifcopenshell.geom",
@@ -60,6 +61,7 @@ hiddenimports = [
     "reportlab.pdfbase._fontdata_enc_symbol",
     "reportlab.pdfbase._fontdata_enc_winansi",
     "reportlab.pdfbase._fontdata_enc_zapfdingbats",
+    "tkinter",
     "vtkmodules.vtkCommonCore",
     "vtkmodules.vtkCommonDataModel",
     "vtkmodules.vtkCommonMath",
