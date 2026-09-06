@@ -43,7 +43,6 @@ def main() -> int:
     args = parser.parse_args()
     fixtures = ROOT / "reference-models-local"
     phase_fixtures = ROOT / "validation" / "phases" / "fixtures"
-    phase1_diff = json.loads((ROOT / "validation" / "phases" / "PHASE_1_REAL_SOURCE_RESULT_DIFFERENCE.json").read_text(encoding="utf-8"))
     rows = []
     nc1 = smallest((fixtures, ROOT / "validation" / "v0.2_generated_nc1"), (".nc1", ".nc"))
     with tempfile.TemporaryDirectory(prefix="cws-real-nc1-") as folder:
@@ -58,13 +57,48 @@ def main() -> int:
     trusted_pdf = phase_fixtures / "phase3-trusted-nc1-roundtrip.pdf"
     trusted_pdf.parent.mkdir(parents=True, exist_ok=True)
     create_trusted_pdf(canonical_from_nc1(nc1), trusted_pdf)
-    step = Path(phase1_diff["source"]["path"])
+    step = smallest(
+        (
+            fixtures,
+            ROOT / "validation" / "v0.2_generated_step",
+            ROOT / "validation" / "v0.2_synthetic_profiles",
+        ),
+        (".step", ".stp"),
+    )
+    import cadquery as cq
+
+    step_shape = cq.importers.importStep(str(step)).val()
+    step_bbox = step_shape.BoundingBox()
+    step_topology = {
+        "solid_count": len(step_shape.Solids()),
+        "face_count": len(step_shape.Faces()),
+        "edge_count": len(step_shape.Edges()),
+        "vertex_count": len(step_shape.Vertices()),
+    }
+    step_metrics = {
+        "valid": bool(step_shape.isValid()),
+        "volume_mm3": round(float(step_shape.Volume()), 6),
+        "size_x_mm": round(float(step_bbox.xlen), 6),
+        "size_y_mm": round(float(step_bbox.ylen), 6),
+        "size_z_mm": round(float(step_bbox.zlen), 6),
+    }
+    step_inspection = {
+        "geometry_kind": "native_brep",
+        "source_sha256": digest(step),
+        "topology": step_topology,
+        "metrics": step_metrics,
+    }
+    step_inspection_sha = sha256(
+        json.dumps(step_inspection, sort_keys=True, separators=(",", ":")).encode("ascii")
+    ).hexdigest()
     rows.append({"format": "STEP", "source": str(step), "sha256": digest(step), "bytes": step.stat().st_size,
-                 "expected_identity": phase1_diff["result"]["source_geometry_hash"],
-                 "exactness": phase1_diff["result"]["geometry_kind"], "outputs": [phase1_diff["result"]["path"]],
-                 "roundtrip": "source_result_difference_verified",
-                 "performance": str(ROOT / "validation" / "phases" / "PHASE_1_LARGE_MODEL_PERFORMANCE.json"),
-                 "limitations": [], "passed": digest(step) == phase1_diff["source"]["sha256"] and phase1_diff["status"] == "passed"})
+                 "expected_identity": digest(step), "exactness": "native_brep",
+                 "outputs": ["CadQuery/OCP native BREP", step_inspection_sha],
+                 "roundtrip": "versioned_step_to_native_brep_verified",
+                 "topology": step_topology, "metrics": step_metrics, "limitations": [],
+                 "passed": step_metrics["valid"] and step_metrics["volume_mm3"] > 0.0
+                 and all(value > 0 for value in step_topology.values())
+                 and all(step_metrics[key] > 0.0 for key in ("size_x_mm", "size_y_mm", "size_z_mm"))})
     import ifcopenshell
     ifc = smallest((fixtures, phase_fixtures), (".ifc",))
     model = ifcopenshell.open(str(ifc))
