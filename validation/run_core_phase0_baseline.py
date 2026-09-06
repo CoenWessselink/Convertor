@@ -363,7 +363,8 @@ def collect_reference_inventory(
 ) -> dict:
     model_roots = default_model_roots() if model_roots is None else model_roots
     result_roots = default_result_roots() if result_roots is None else result_roots
-    supporting_roots = supporting_roots or [ROOT / "validation", ROOT / "reference-results-local"]
+    if supporting_roots is None:
+        supporting_roots = [ROOT / "validation", ROOT / "reference-results-local"]
 
     model_counts: Counter[str] = Counter()
     model_bytes: Counter[str] = Counter()
