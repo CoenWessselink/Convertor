@@ -218,6 +218,65 @@ class _OffscreenBenchmarkHost:
             self._closed=True
             self.controller.shutdown()
 
+    def process_events(self):
+        return None
+
+
+class _OnscreenBenchmarkHost:
+    """Open a source in the complete production shell and expose its QVTK viewer."""
+
+    def __init__(self,source_path,width=1440,height=900):
+        import os
+        os.environ.setdefault('CWS_DISABLE_BACKGROUND_THUMBNAILS','1')
+        from cws_viewer.ui_qt.qt_compat import require_qt
+        from cws_convertor.ui_qt.u4_shell import CWSMainWindow
+        from cws_viewer.ui_qt.vtk_real_project_widget_feel_v2 import VtkRealProjectWidgetFeelV2
+        QtCore,_QtGui,QtWidgets=require_qt()
+        app=QtWidgets.QApplication.instance()
+        self._owns_app=app is None
+        self._app=app or QtWidgets.QApplication([])
+        self._window=CWSMainWindow();self._window.resize(int(width),int(height));self._window.show();self._window.raise_();self._window.activateWindow()
+        load_started=time.perf_counter();self._window.open_initial_paths([Path(source_path).resolve()]);deadline=time.monotonic()+240.0;viewer=None;workers_active=True
+        self.first_frame_seconds=None;self.first_frame_node_count=0;self.first_frame_bound_count=0
+        self.preview_timings={}
+        while time.monotonic()<deadline:
+            self._app.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents,50)
+            viewer=self._window.findChild(VtkRealProjectWidgetFeelV2,'cwsVtkRealProjectWidget')
+            project_page=self._window.project_page
+            if viewer is not None and self.first_frame_seconds is None:
+                controller=getattr(viewer,'controller',None);backend=getattr(viewer,'backend',None)
+                index=getattr(controller,'index',None) if controller is not None else None
+                if index is not None:
+                    self.first_frame_node_count=len(tuple(index.renderable_node_ids))
+                    self.first_frame_bound_count=len(getattr(backend,'_node_instance',{}))
+                    if self.first_frame_node_count and self.first_frame_bound_count:
+                        self.first_frame_seconds=time.perf_counter()-load_started
+                        self.preview_timings=dict(getattr(project_page,'_preview_timings',{}) or {})
+            workers_active=any(value is not None for value in (project_page._worker,project_page._exact_worker))
+            if viewer is not None and self._window.workspace is not None and not workers_active:break
+            time.sleep(0.01)
+        if viewer is None or self._window.workspace is None or workers_active:
+            self._window.close();self._app.processEvents();raise RuntimeError('Echte CWS QVTK Viewer is niet tijdig volledig gepubliceerd')
+        if not self._window.workspace_router.open_workspace('viewer'):
+            self._window.close();self._app.processEvents();raise RuntimeError('Viewer-workspace kon niet worden geactiveerd')
+        self._widget=viewer;self.application_load_seconds=time.perf_counter()-load_started
+        for _ in range(20):self._app.processEvents();time.sleep(0.01)
+        self.backend=self._widget.backend;self.controller=self._widget.controller;self._closed=False
+
+    def GetRenderWindow(self):
+        return self._widget.GetRenderWindow()
+
+    def load_scene(self,scene):
+        return None
+
+    def process_events(self):
+        self._app.processEvents()
+
+    def close(self):
+        if self._closed:return
+        self._closed=True;self._window.close();self._app.processEvents()
+        if self._owns_app:self._app.quit()
+
 def aa_benchmark(ifc,output,cache_root,screenshot_dir,limit):
     requests=build_requests(ifc,limit);meshes,loader=_load(requests,cache_root);scene,repository,scene_metrics=_scene(requests,meshes)
     widget=_OffscreenBenchmarkHost(repository)
@@ -272,13 +331,22 @@ def _resource_snapshot(widget):
             'process_count':1+len(children),'worker_process_count':len(worker_children),'child_processes':child_details,'actor_count':actors,
             'mesh_group_count':len(getattr(widget.backend,'_mesh_groups',{}))}
 
-def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
+def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
+    import gc
     requests=build_requests(ifc,limit);meshes,loader=_load(requests,cache_root);scene,repository,scene_metrics=_scene(requests,meshes)
     from cws_viewer.contracts.enums import MeasurementKind,SelectionLevel,StandardView
     from cws_viewer.contracts.state import SectionPlane
     from cws_viewer.math3d import Vector3
-    widget=_OffscreenBenchmarkHost(repository)
-    widget.load_scene(scene);widget.controller.fit_all()
+    widget=_OnscreenBenchmarkHost(ifc) if onscreen else _OffscreenBenchmarkHost(repository)
+    if not onscreen:widget.load_scene(scene)
+    widget.controller.fit_all()
+    actual_node_count=len(tuple(widget.controller.index.renderable_node_ids));actual_bound_count=len(getattr(widget.backend,'_node_instance',{}))
+    visible,ghosted=widget.controller.session.visible_and_ghosted(widget.controller.index);actual_visible_count=len(set(visible)|set(ghosted))
+    expected_node_count=actual_node_count if onscreen else len(scene.nodes)
+    render_window=widget.GetRenderWindow();offscreen_rendering=True
+    try:offscreen_rendering=bool(render_window.GetOffScreenRendering())
+    except Exception:offscreen_rendering=bool(getattr(widget.backend,'_offscreen',True))
+    hardware_accelerated=bool(onscreen and not bool(getattr(widget.backend,'_offscreen',True)) and not offscreen_rendering)
     node_ids=tuple(widget.controller.index.renderable_node_ids);primary=node_ids[0] if node_ids else '';views=tuple(StandardView)
     # Prime lazy VTK/OpenGL allocations and every transient interaction actor before
     # taking the leak/memory baseline. The measured interval then represents a
@@ -289,6 +357,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
             widget.controller.orbit(.45 if warmup<60 else -.45,.04)
             if warmup%30==0:widget.controller.pan(.001 if warmup%60==0 else -.001,0)
             if warmup%45==0:widget.controller.zoom(1.002 if warmup%90==0 else 1/1.002)
+            if warmup%8==0:widget.process_events()
     warm_section=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)))
     widget.controller.remove_section_plane(warm_section);widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool()
     if primary:
@@ -296,15 +365,49 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
         widget.controller.hide((primary,));widget.controller.show((primary,));widget.controller.isolate((primary,));widget.controller.show_all()
         widget.controller.isolate((primary,),ghost_context=True);widget.controller.show_all()
     widget.controller.fit_all();widget.controller.render()
+    for _ in range(20):widget.process_events();time.sleep(.01)
     screenshots=Path(screenshot_dir);screenshots.mkdir(parents=True,exist_ok=True);start_image=widget.controller.screenshot_to_file(screenshots/'real_soak_start.png')
-    baseline=_resource_snapshot(widget);recorder=FrameTimeRecorder(max_samples=65536);started=time.perf_counter();actions=0
-    input_samples=[];unintended_input_samples=[];transition_input_samples=[];pick_samples=[];selection_samples=[];wrong_picks=0;hidden_false_picks=0
+    gc.collect();baseline=_resource_snapshot(widget);recorder=FrameTimeRecorder(max_samples=65536);started=time.perf_counter();actions=1
+    input_samples=[];unintended_input_samples=[];transition_input_samples=[];transition_frame_samples=[];pick_samples=[];selection_samples=[];event_pump_samples=[];wrong_picks=0;hidden_false_picks=0;stall_events=[];gc_events=[];gc_started={};backend_stage_events=[]
+    def trace_gc(phase,info):
+        generation=int(info.get('generation',-1))
+        if phase=='start':gc_started[generation]=time.perf_counter();return
+        began=gc_started.pop(generation,None)
+        if began is not None and len(gc_events)<256:
+            gc_events.append({'action_index':actions,'generation':generation,'elapsed_ms':(time.perf_counter()-began)*1000.0,
+                              'collected':int(info.get('collected',0)),'uncollectable':int(info.get('uncollectable',0))})
+    gc.callbacks.append(trace_gc)
+    original_set_camera=widget.backend.set_camera;original_render=widget.backend.render;original_apply_state=widget.backend.apply_state;original_emit_selection=widget.controller._emit_selection
+    def traced_set_camera(camera):
+        tick=time.perf_counter();result=original_set_camera(camera);elapsed_ms=(time.perf_counter()-tick)*1000.0
+        if elapsed_ms>50.0 and len(backend_stage_events)<256:backend_stage_events.append({'action_index':actions,'stage':'set_camera','elapsed_ms':elapsed_ms})
+        return result
+    def traced_render():
+        tick=time.perf_counter();result=original_render();elapsed_ms=(time.perf_counter()-tick)*1000.0
+        if elapsed_ms>50.0 and len(backend_stage_events)<256:backend_stage_events.append({'action_index':actions,'stage':'render','elapsed_ms':elapsed_ms})
+        return result
+    def traced_apply_state(state,index):
+        tick=time.perf_counter();result=original_apply_state(state,index);elapsed_ms=(time.perf_counter()-tick)*1000.0
+        if elapsed_ms>20.0 and len(backend_stage_events)<256:backend_stage_events.append({'action_index':actions,'stage':'apply_state','elapsed_ms':elapsed_ms})
+        return result
+    def traced_emit_selection():
+        tick=time.perf_counter();result=original_emit_selection();elapsed_ms=(time.perf_counter()-tick)*1000.0
+        if elapsed_ms>20.0 and len(backend_stage_events)<256:backend_stage_events.append({'action_index':actions,'stage':'emit_selection','elapsed_ms':elapsed_ms})
+        return result
+    widget.backend.set_camera=traced_set_camera;widget.backend.render=traced_render;widget.backend.apply_state=traced_apply_state;widget.controller._emit_selection=traced_emit_selection
     coverage={name:0 for name in ('orbit','pan','zoom','fit','standard_views','part_selection','assembly_selection','multiselect','hide_show','isolate','ghost','section','measure')}
-    section_id=''
+    operation_intervals=(('pan',50),('zoom',90),('fit',150),('standard_view',220),('part_selection',260),('pick',300),('assembly_selection',520),('multiselect',780),('hide_show',1040),('isolate',1300),('ghost',1560),('section',1820),('measure',2080))
+    section_id='';transition_grace_frames=0
     while time.perf_counter()-started<float(duration):
         explicit_transition=any(actions%interval==0 for interval in (150,220,260,520,780,1040,1300,1560,1820,2080))
+        transition_frame=explicit_transition or transition_grace_frames>0
         frame=time.perf_counter();widget.controller.orbit(.45 if actions%120<60 else -.45,.08*math.sin(actions/12))
         elapsed_frame=(time.perf_counter()-frame)*1000.0;recorder.record(elapsed_frame);input_samples.append(elapsed_frame);coverage['orbit']+=1
+        if elapsed_frame>100.0 and len(stall_events)<256:
+            previous_action=actions-1
+            stall_events.append({'action_index':actions,'elapsed_ms':elapsed_frame,
+                                 'current_operations':[name for name,interval in operation_intervals if actions%interval==0],
+                                 'previous_operations':[name for name,interval in operation_intervals if previous_action>=0 and previous_action%interval==0]})
         transition_started=time.perf_counter()
         if actions%50==0:widget.controller.pan(.002 if (actions//50)%2==0 else -.002,0);coverage['pan']+=1
         if actions%90==0:widget.controller.zoom(1.015 if (actions//90)%2==0 else 1/1.015);coverage['zoom']+=1
@@ -328,8 +431,13 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
         if actions%1820==0:
             if section_id:widget.controller.remove_section_plane(section_id)
             section_id=widget.controller.add_section_plane(SectionPlane(Vector3(0,0,0),Vector3(1,0,0)));coverage['section']+=1
+        elif section_id and actions%1820==60:
+            widget.controller.remove_section_plane(section_id);section_id=''
         if actions%2080==0:widget.controller.begin_measurement(MeasurementKind.DISTANCE);widget.controller.cancel_tool();coverage['measure']+=1
-        if explicit_transition:transition_input_samples.append((time.perf_counter()-transition_started)*1000.0)
+        if explicit_transition:
+            transition_input_samples.append((time.perf_counter()-transition_started)*1000.0);transition_grace_frames=1
+        elif transition_grace_frames>0:transition_grace_frames-=1
+        if transition_frame:transition_frame_samples.append(elapsed_frame)
         else:unintended_input_samples.append(elapsed_frame)
         if primary and actions%300==0:
             bounds=widget.controller.index.world_bounds_by_node.get(primary)
@@ -338,8 +446,12 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
                 pick_samples.append((time.perf_counter()-tick)*1000.0)
                 picked_id=str(getattr(picked,'node_id','') or getattr(picked,'object_id','')) if picked is not None else ''
                 if picked_id and picked_id!=primary:wrong_picks+=1
-        actions+=1;time.sleep(.02)
+        actions+=1
+        event_tick=time.perf_counter();widget.process_events();event_pump_samples.append((time.perf_counter()-event_tick)*1000.0)
+        time.sleep(.02)
     elapsed=time.perf_counter()-started
+    widget.backend.set_camera=original_set_camera;widget.backend.render=original_render;widget.backend.apply_state=original_apply_state;widget.controller._emit_selection=original_emit_selection
+    if trace_gc in gc.callbacks:gc.callbacks.remove(trace_gc)
     if section_id:widget.controller.remove_section_plane(section_id)
     widget.controller.cancel_tool();widget.controller.show_all();widget.backend.set_interaction_quality(False);widget.controller.render()
     final=_resource_snapshot(widget);end_image=widget.controller.screenshot_to_file(screenshots/'real_soak_end.png')
@@ -349,8 +461,10 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
     percentile=lambda values,ratio: sorted(values)[min(len(values)-1,int((len(values)-1)*ratio))] if values else None
     stall100=sum(value>100.0 for value in input_samples)
     unintended_stall100=sum(value>100.0 for value in unintended_input_samples)
-    transition_stall100=sum(value>100.0 for value in transition_input_samples)
-    gates={'real_vtk_viewer':len(scene.nodes)>0,'duration_reached':elapsed>=float(duration),'frame_instrumentation':frames['sample_count']>0,
+    transition_operation_stall100=sum(value>100.0 for value in transition_input_samples)
+    transition_frame_stall100=sum(value>100.0 for value in transition_frame_samples)
+    transition_stall100=transition_operation_stall100+transition_frame_stall100
+    gates={'real_vtk_viewer':actual_node_count>0,'duration_reached':elapsed>=float(duration),'frame_instrumentation':frames['sample_count']>0,
            'rss_measurement_valid':baseline['rss_mb']>0 and final['rss_mb']>0,
            'memory_drift_lt_10pct':baseline['private_mb']>0 and final['private_mb']>0 and drift<.10,
            'start_screenshot':Path(start_image).is_file(),'end_screenshot':Path(end_image).is_file(),
@@ -370,17 +484,37 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit):
            'wrong_instance_picks_zero':wrong_picks==0,
            'hidden_object_false_picks_zero':hidden_false_picks==0}
     result={**_base('cws.real_viewer_soak.v2',ifc),'duration_seconds':elapsed,'actions':actions,'frame_metrics':frames,
+             'runtime_host':{'mode':'onscreen_qvtk' if onscreen else 'offscreen_vtk','hardware_accelerated':hardware_accelerated,'qt_event_pump':bool(onscreen)},
             'memory':{'baseline':baseline,'final':final,'metric':'private_mb','drift_ratio':drift,'rss_drift_ratio':rss_drift},'backend':backend,'action_coverage':coverage,
             'interaction_metrics':{'input_to_render_p50_ms':percentile(input_samples,.50),'input_to_render_p95_ms':percentile(input_samples,.95),'input_to_render_p99_ms':percentile(input_samples,.99),
-                                   'pick_p50_ms':percentile(pick_samples,.50),'pick_p95_ms':percentile(pick_samples,.95),
+                                    'pick_p50_ms':percentile(pick_samples,.50),'pick_p95_ms':percentile(pick_samples,.95),
+                                    'qt_event_pump_p50_ms':percentile(event_pump_samples,.50),'qt_event_pump_p95_ms':percentile(event_pump_samples,.95),'qt_event_pump_p99_ms':percentile(event_pump_samples,.99),
                                    'selection_p95_ms':percentile(selection_samples,.95),'wrong_instance_picks':wrong_picks,
                                    'hidden_object_false_picks':hidden_false_picks,'stall_33ms_count':sum(v>33 for v in input_samples),
                                    'stall_50ms_count':sum(v>50 for v in input_samples),'stall_100ms_count':stall100,
                                    'unintended_stall_100ms_count':unintended_stall100,
-                                   'explicit_transition_stall_100ms_count':transition_stall100},
+                                   'explicit_transition_stall_100ms_count':transition_stall100,
+                                    'transition_operation_stall_100ms_count':transition_operation_stall100,
+                                    'transition_stabilization_stall_100ms_count':transition_frame_stall100,
+                                    'transition_stabilization_frames':len(transition_frame_samples),
+                                    'stall_events':stall_events,'gc_events':gc_events,'backend_stage_events':backend_stage_events},
             'msaa_microtuning':{'interaction_samples':0 if p95>16.7 else 2,'idle_samples':8,'basis':'real_soak_p95','p95_ms':p95},
             'loader':loader,'scene':scene_metrics,'screenshots':{'start':str(start_image),'end':str(end_image)},
             'gates':gates,'status':'PASS' if all(gates.values()) else 'FAIL'}
+    result['runtime_host'].update({'backend_type':type(widget.backend).__name__,'expected_node_count':expected_node_count,
+                                    'render_node_count':actual_node_count,'visible_node_count':actual_visible_count,'bound_node_count':actual_bound_count,
+                                    'first_frame_seconds':getattr(widget,'first_frame_seconds',None),
+                                    'first_frame_node_count':getattr(widget,'first_frame_node_count',0),
+                                    'first_frame_bound_count':getattr(widget,'first_frame_bound_count',0),
+                                    'preview_timings':getattr(widget,'preview_timings',{}),
+                                    'application_load_seconds':getattr(widget,'application_load_seconds',None)})
+    result['gates']['all_physical_objects_render_bound']=(actual_node_count==expected_node_count and actual_visible_count==expected_node_count and actual_bound_count==expected_node_count)
+    if onscreen:
+        first_seconds=getattr(widget,'first_frame_seconds',None);first_nodes=int(getattr(widget,'first_frame_node_count',0));first_bound=int(getattr(widget,'first_frame_bound_count',0))
+        result['gates']['real_windows_qvtk_hardware_host']=hardware_accelerated
+        result['gates']['first_full_model_frame_lte_5_seconds']=first_seconds is not None and float(first_seconds)<=5.0
+        result['gates']['first_frame_all_physical_objects_render_bound']=first_nodes==expected_node_count and first_bound==expected_node_count
+    result['status']='PASS' if all(result['gates'].values()) else 'FAIL'
     _write(output,result);return result
 
 def _write(path,value):
@@ -392,10 +526,10 @@ def main(argv=None):
     for command in (b,s,w,session,aa):
         command.add_argument('--ifc',required=True,type=Path);command.add_argument('--output',required=True,type=Path)
         command.add_argument('--cache-dir',required=True,type=Path);command.add_argument('--limit',type=int,default=96)
-    s.add_argument('--duration-seconds',type=float,default=600);s.add_argument('--screenshot-dir',required=True,type=Path)
+    s.add_argument('--duration-seconds',type=float,default=600);s.add_argument('--screenshot-dir',required=True,type=Path);s.add_argument('--onscreen',action='store_true')
     session.add_argument('--iterations',type=int,default=10);aa.add_argument('--screenshot-dir',required=True,type=Path);args=parser.parse_args(argv)
     if args.mode=='benchmark':result=benchmark(args.ifc,args.output,args.cache_dir,args.limit)
-    elif args.mode=='soak':result=soak(args.ifc,args.output,args.cache_dir,args.screenshot_dir,args.duration_seconds,args.limit)
+    elif args.mode=='soak':result=soak(args.ifc,args.output,args.cache_dir,args.screenshot_dir,args.duration_seconds,args.limit,args.onscreen)
     elif args.mode=='warm':result=cache_read_probe(args.ifc,args.output,args.cache_dir,args.limit,1)
     elif args.mode=='session':result=cache_read_probe(args.ifc,args.output,args.cache_dir,args.limit,args.iterations)
     else:result=aa_benchmark(args.ifc,args.output,args.cache_dir,args.screenshot_dir,args.limit)

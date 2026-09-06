@@ -68,7 +68,11 @@ def main() -> int:
     args = parser.parse_args()
     output = args.output.expanduser().resolve()
     logs = output / "logs"
+    runtime_temp = output / "runtime-temp"
+    mgi_cache = output / "mgi-cache"
     logs.mkdir(parents=True, exist_ok=True)
+    runtime_temp.mkdir(parents=True, exist_ok=True)
+    mgi_cache.mkdir(parents=True, exist_ok=True)
     all_scripts = sorted(
         (
             path
@@ -96,6 +100,14 @@ def main() -> int:
         timed_out = False
         try:
             child_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+            child_env.update(
+                {
+                    "TEMP": str(runtime_temp),
+                    "TMP": str(runtime_temp),
+                    "TMPDIR": str(runtime_temp),
+                    "CWS_MGI_CACHE_DIR": str(mgi_cache),
+                }
+            )
             child_env["PYTHONPATH"] = os.pathsep.join(
                 value
                 for value in (

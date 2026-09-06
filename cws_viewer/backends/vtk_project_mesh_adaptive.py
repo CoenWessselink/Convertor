@@ -37,6 +37,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         super().__init__(*args, **kwargs)
         self._interaction_quality_active = False
         self._idle_multisamples = 8
+        self._idle_swap_control = 1
         self._pick_locator_cache: dict[int, _PickLocatorEntry] = {}
         self._surface_distance_cache: dict[str, Any] = {}
         self._pick_explode_signature: Any = None
@@ -79,6 +80,12 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
                 )
             except Exception:
                 pass
+            swap_control = getattr(window, "SetSwapControl", None)
+            if callable(swap_control):
+                try:
+                    swap_control(0 if requested else self._idle_swap_control)
+                except Exception:
+                    pass
         renderer = self._renderer
         if renderer is not None:
             try:

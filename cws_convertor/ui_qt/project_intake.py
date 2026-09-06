@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import shutil
+import zipfile
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -33,6 +34,53 @@ def suggest_project_path(project_name: str, root: str | Path | None = None) -> P
         candidate = base / f"{stem} ({index}).cwscproj"
         index += 1
     return candidate
+
+
+def find_reusable_project(
+    paths: Iterable[str | Path],
+    root: str | Path | None = None,
+) -> Path | None:
+    """Return the newest package containing exactly the unchanged model sources.
+
+    Source SHA-256 values are stored in the package manifest.  Reading that
+    small entry avoids repeating a complete semantic import merely because the
+    same IFC/STEP file was opened again.  ProjectStore performs the full package
+    integrity verification when the selected package is subsequently opened.
+    """
+
+    model_sources = tuple(
+        Path(value).expanduser().resolve()
+        for value in paths
+        if Path(value).suffix.lower() in {".ifc", ".step", ".stp"}
+    )
+    if not model_sources or any(not path.is_file() for path in model_sources):
+        return None
+    required = {
+        (hashlib.sha256(path.read_bytes()).hexdigest().lower(), int(path.stat().st_size))
+        for path in model_sources
+    }
+    project_root = Path(root) if root else Path.home() / "Documents" / "CWS Convertor Projects"
+    if not project_root.is_dir():
+        return None
+    candidates = sorted(
+        project_root.glob("*.cwscproj"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for candidate in candidates:
+        try:
+            with zipfile.ZipFile(candidate, "r") as archive:
+                manifest = json.loads(archive.read("manifest.json").decode("utf-8"))
+            embedded = {
+                (str(item.get("sha256") or "").lower(), int(item.get("size", -1)))
+                for item in manifest.get("embedded_sources", ())
+                if item.get("sha256") and item.get("size") is not None
+            }
+        except (OSError, ValueError, KeyError, TypeError, zipfile.BadZipFile, json.JSONDecodeError):
+            continue
+        if embedded == required:
+            return candidate.resolve()
+    return None
 
 
 def build_project_from_models(

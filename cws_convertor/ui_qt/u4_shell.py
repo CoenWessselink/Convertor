@@ -975,6 +975,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 self.workspace_router.observe_current_page(self.tabs.currentWidget())
 
         def _workspace_changed(self, workspace: str) -> None:
+            super()._workspace_changed(workspace)
             if not hasattr(self, "status_workspace"):
                 return
             # QVTK owns a native child window and cannot safely be reparented
@@ -1027,22 +1028,38 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.status_validation.setText(
                 "Validatie: BLOCKED" if snapshot.integrity_blocking_codes else "Validatie: context OK"
             )
-            selection = snapshot.selection if snapshot.project_attached else None
-            workspace = self.workspace if snapshot.project_attached else None
-            self.edit_page.set_context(self.workspace, snapshot.selection)
-            self.pdf_page.set_context(self.workspace, snapshot.selection)
-            for page in (self.project_overview_page, self.project_structure_page, self.project_profiles_page, self.project_reviews_page, self.profiles_page, self.plate_nesting_page, self.print_center_page, self.manufacturability_page):
-                page.set_context(workspace, selection)
-            self.bom_excel_page.set_context(workspace, selection)
-            self.production_workflow_page.set_context(workspace, selection)
+
+        def _apply_selection_to_page(
+            self,
+            page: Any | None,
+            workspace: Any | None,
+            selection: Any | None,
+        ) -> bool:
+            if super()._apply_selection_to_page(page, workspace, selection):
+                return True
+            for page_name in (
+                "project_overview_page",
+                "project_structure_page",
+                "project_profiles_page",
+                "project_reviews_page",
+                "plate_nesting_page",
+                "print_center_page",
+                "manufacturability_page",
+            ):
+                target = getattr(self, page_name, None)
+                if page is target:
+                    target.set_context(workspace, selection)
+                    return True
             settings = getattr(self, "settings_page", None)
-            if settings is not None and workspace is not None:
+            if page is settings and settings is not None:
                 if hasattr(settings, "set_context"):
                     settings.set_context(workspace, selection)
-                elif hasattr(settings, "set_workspace"):
+                elif workspace is not None and hasattr(settings, "set_workspace"):
                     settings.set_workspace(workspace)
-                elif hasattr(settings, "set_project"):
+                elif workspace is not None and hasattr(settings, "set_project"):
                     settings.set_project(workspace.project)
+                return True
+            return False
 
         def _route_action(self, action: str) -> None:
             key = str(action)

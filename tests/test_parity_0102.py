@@ -22,8 +22,9 @@ class Parity0102Tests(unittest.TestCase):
         self.assertEqual(EngineeringDrawingGenerator._next_standard_scale(21.0), 25)
         self.assertEqual(EngineeringDrawingGenerator._next_standard_scale(51.0), 100)
 
-    def test_navigation_does_not_reduce_multisampling(self) -> None:
-        self.assertEqual(VtkProjectMeshAdaptiveBackend.INTERACTIVE_MULTISAMPLES, 8)
+    def test_navigation_uses_bounded_interaction_multisampling(self) -> None:
+        self.assertEqual(VtkProjectMeshAdaptiveBackend.INTERACTIVE_MULTISAMPLES, 0)
+        self.assertGreaterEqual(VtkProjectMeshAdaptiveBackend.MIN_IDLE_MULTISAMPLES, 8)
 
 
 if __name__ == "__main__":

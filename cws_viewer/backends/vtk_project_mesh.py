@@ -709,8 +709,9 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         points.SetDataTypeToFloat()
         vertices = vtk.vtkCellArray()
         node_ids: list[str] = []
+        visible = state.visible_set
         for node_id in index.renderable_node_ids:
-            if node_id not in state.visible_set:
+            if node_id not in visible:
                 continue
             node = index.node(node_id)
             if not node.geometry_id or self.repository.get(node.geometry_id) is None:

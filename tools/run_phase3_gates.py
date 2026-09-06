@@ -47,6 +47,18 @@ GROUPS = {
 def run(command: list[str], *, timeout: int) -> dict[str, object]:
     started = time.perf_counter()
     environment = os.environ.copy()
+    runtime_temp = RESULTS / "runtime-temp"
+    mgi_cache = RESULTS / "mgi-cache"
+    runtime_temp.mkdir(parents=True, exist_ok=True)
+    mgi_cache.mkdir(parents=True, exist_ok=True)
+    environment.update(
+        {
+            "TEMP": str(runtime_temp),
+            "TMP": str(runtime_temp),
+            "TMPDIR": str(runtime_temp),
+            "CWS_MGI_CACHE_DIR": str(mgi_cache),
+        }
+    )
     environment["PYTHONPATH"] = os.pathsep.join(
         value
         for value in (str(ROOT), str(ROOT / "src"), environment.get("PYTHONPATH", ""))

@@ -75,6 +75,16 @@ if qt_available():
             self.columns = tuple(column for column in grid_model.columns if column.visible)
             self.result = grid_model.execute(GridQuery())
             self.entries = _flatten_groups(self.result)
+            self._rebuild_entity_row_index()
+
+        def _rebuild_entity_row_index(self) -> None:
+            rows: dict[str, list[int]] = {}
+            for row_index, entry in enumerate(self.entries):
+                if entry.kind == "row":
+                    rows.setdefault(str(entry.row.entity_id), []).append(row_index)
+            self._row_indexes_by_entity = {
+                entity_id: tuple(indexes) for entity_id, indexes in rows.items()
+            }
 
         def set_columns(self, columns: Iterable[GridColumn]) -> None:
             self.beginResetModel()
@@ -85,6 +95,7 @@ if qt_available():
             self.beginResetModel()
             self.result = result
             self.entries = _flatten_groups(result)
+            self._rebuild_entity_row_index()
             self.endResetModel()
 
         def rowCount(self, parent: Any = QtCore.QModelIndex()) -> int:  # noqa: N802
@@ -391,9 +402,12 @@ if qt_available():
             wanted = set(map(str, entity_ids))
             selection = QtCore.QItemSelection()
             first_match = None
-            for row_index in range(self.model.rowCount()):
-                entity_id = self.model.entity_id_at(row_index)
-                if entity_id in wanted:
+            row_indexes = sorted(
+                row_index
+                for entity_id in wanted
+                for row_index in self.model._row_indexes_by_entity.get(entity_id, ())
+            )
+            for row_index in row_indexes:
                     left = self.model.index(row_index, 0)
                     right = self.model.index(row_index, max(0, self.model.columnCount() - 1))
                     selection.select(left, right)

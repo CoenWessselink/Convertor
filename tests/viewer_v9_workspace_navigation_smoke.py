@@ -10,6 +10,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("CWS_HEADLESS_GUI_SMOKE", "1")
 
 from cws_viewer.ui_qt.qt_compat import qt_available
 

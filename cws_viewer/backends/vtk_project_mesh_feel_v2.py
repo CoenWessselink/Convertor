@@ -222,11 +222,11 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
 
     def _sync_selection_fill(self, state: Any, index: Any) -> None:
         selected = self._renderable_selection(state, index)
-        affected = (
-            set(index.renderable_node_ids)
-            if self._ral_override is not None or self._ral_refresh_all
-            else self._highlighted_nodes | selected
-        )
+        # Selection is rendered by dedicated fill/outline actors below.  Do not
+        # recolour a source-table glyph group for every click: one such group can
+        # contain the entire 5,725-object HVPC scene and invalidating its mapper
+        # turns all subsequent frames into a deferred multi-second upload.
+        affected = set(index.renderable_node_ids) if self._ral_override is not None or self._ral_refresh_all else set()
         changed_groups: set[int] = set()
         for node_id in affected:
             entry = self._node_instance.get(node_id)
@@ -244,8 +244,6 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
             rgba = self._rgba_bytes(color)
             if self._ral_override is not None:
                 rgba = (*self._ral_override, rgba[3])
-            if node_id in selected:
-                rgba = self._blend_selection(rgba)
             current = tuple(int(value) for value in group.colors.GetTuple(instance_index))
             if current != rgba:
                 group.colors.SetTypedTuple(instance_index, rgba)
@@ -575,8 +573,14 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         self.render()
 
     def render(self) -> None:
-        if self._renderer is not None:
+        if self._renderer is not None and not bool(getattr(self, "interaction_quality_active", False)):
             self._renderer.ResetCameraClippingRange()
+            camera = self._renderer.GetActiveCamera()
+            if camera is not None:
+                near_value, far_value = camera.GetClippingRange()
+                safe_near = max(0.001, float(near_value) * 0.20)
+                safe_far = max(safe_near + 1.0, float(far_value) * 1.75)
+                camera.SetClippingRange(safe_near, safe_far)
         self._position_measurement_labels(self._measurement_label_bindings)
         self._position_measurement_labels(self._measurement_preview_labels)
         super().render()
@@ -627,19 +631,8 @@ _ORIGINAL_CWS_V2_RENDER = VtkProjectMeshFeelV2Backend.render
 
 def _cws_render_with_safe_clipping(self):
     renderer = getattr(self, "_renderer", None)
-    if renderer is None:
-        _ORIGINAL_CWS_V2_RENDER(self)
-        return
-    camera = renderer.GetActiveCamera()
-    if camera is None:
-        _ORIGINAL_CWS_V2_RENDER(self)
-        return
-    near_value, far_value = camera.GetClippingRange()
-    safe_near = max(0.001, float(near_value) * 0.20)
-    safe_far = max(safe_near + 1.0, float(far_value) * 1.75)
-    camera.SetClippingRange(safe_near, safe_far)
     opacity = float(getattr(self, "_cws_global_opacity", 1.0))
-    if opacity < 0.999:
+    if renderer is not None and opacity < 0.999:
         for actor in _cws_iter_model_actors(self):
             prop = actor.GetProperty()
             if prop is not None:

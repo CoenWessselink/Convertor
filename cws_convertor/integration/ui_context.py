@@ -464,10 +464,22 @@ class UnifiedApplicationContext:
         entity_ids = _unique(getattr(selection, "entity_ids", ()) or ())
         primary = str(getattr(selection, "primary_entity_id", "") or "") or None
         origin = str(getattr(selection, "origin", "interaction") or "interaction")
+        current = self._selection
+        same_identity = (
+            tuple(current.entity_ids) == entity_ids
+            and current.primary_entity_id == primary
+        )
+        context_echo = origin in {
+            current.origin,
+            f"u3_context:{current.origin}",
+        }
+        preserve_detail = same_identity and context_echo
         bus_selection = self._workspace.selection_bus.publish(
             entity_ids,
             primary_entity_id=primary,
-            origin=origin,
+            feature_id=current.feature_id if preserve_detail else None,
+            subshape_id=current.subshape_id if preserve_detail else None,
+            origin=current.origin if preserve_detail else origin,
         )
         # Exact echoes are intentionally not re-emitted by the bus.  Ensure the
         # context still reflects the interaction if this was the first binding.

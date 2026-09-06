@@ -200,6 +200,9 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
 
     def _ensure_static_groups(self, index: Any) -> None:
         super()._ensure_static_groups(index)
+
+    def _ensure_hidden_line_actors(self) -> None:
+        """Build the expensive feature-line resources only when requested."""
         if self._hidden_line_actors or self._renderer is None or self._vtk is None:
             return
         vtk = self._vtk
@@ -242,6 +245,8 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
     def _update_instance_state(self, state: Any, index: Any) -> None:
         super()._update_instance_state(state, index)
         hidden_line = state.display_preferences.render_mode == RenderMode.HIDDEN_LINE
+        if hidden_line:
+            self._ensure_hidden_line_actors()
         for actor in self._hidden_line_actors:
             actor.SetVisibility(hidden_line)
 

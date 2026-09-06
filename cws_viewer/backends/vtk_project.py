@@ -552,11 +552,15 @@ class VtkProjectBackend:
             vtk_camera.ParallelProjectionOff()
         vtk_camera.SetClippingRange(camera.near_plane, camera.far_plane)
         vtk_camera.OrthogonalizeViewUp()
-        self._renderer.ResetCameraClippingRange()
+        if not bool(getattr(self, "interaction_quality_active", False)):
+            self._renderer.ResetCameraClippingRange()
 
     def render(self) -> None:
         self._ensure_initialized()
         assert self._render_window is not None
+        if not bool(getattr(self, "interaction_quality_active", False)):
+            self._render_window.Render()
+            return
         self._render_window.Render()
 
     def world_to_display(self, point: Vector3) -> tuple[int, int]:

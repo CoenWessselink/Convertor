@@ -16,13 +16,14 @@ from cws_viewer.geometry import MeshRepository
 
 class ViewerHiddenLinePipelineContractTests(unittest.TestCase):
     def test_production_backend_uses_feature_edges_with_depth_writing_surface(self) -> None:
-        source = inspect.getsource(VtkProjectMeshFeelV2Backend._ensure_static_groups)
+        source = inspect.getsource(VtkProjectMeshFeelV2Backend._ensure_hidden_line_actors)
         mode = inspect.getsource(VtkProjectMeshFeelV2Backend._configure_group_mode)
         update = inspect.getsource(VtkProjectMeshFeelV2Backend._update_instance_state)
         self.assertIn("_feature_edges_polydata", source)
         self.assertIn("ScalarVisibilityOff", mode)
         self.assertIn("EdgeVisibilityOff", mode)
         self.assertIn("RenderMode.HIDDEN_LINE", update)
+        self.assertIn("_ensure_hidden_line_actors", update)
 
 
 @unittest.skipUnless(

@@ -627,7 +627,11 @@ if qt_available():
                     self.statusBar().showMessage("Er wordt al een modelproject opgebouwd.", 5000)
                     return
 
-            from cws_convertor.ui_qt.project_intake import ModelIntakeWorker, suggest_project_path
+            from cws_convertor.ui_qt.project_intake import (
+                ModelIntakeWorker,
+                find_reusable_project,
+                suggest_project_path,
+            )
 
             first = Path(paths[0])
             name_widget = getattr(self.import_page, "project_name", None)
@@ -637,6 +641,13 @@ if qt_available():
             project_name = project_name or first.stem
             project_number = number_widget.text().strip() if number_widget is not None else ""
             material = material_widget.currentText().strip() if material_widget is not None else "S355JR"
+            reusable = find_reusable_project(paths)
+            if reusable is not None:
+                self.statusBar().showMessage(
+                    f"Ongewijzigde bron herkend; geverifieerd project hergebruiken: {reusable.name}"
+                )
+                self._open_project(reusable)
+                return
             target = suggest_project_path(project_name)
 
             self.tabs.setCurrentWidget(self.import_page)
@@ -644,6 +655,10 @@ if qt_available():
             open_button = getattr(self.import_page, "open_button", None)
             if open_button is not None:
                 open_button.setEnabled(False)
+
+            if first.suffix.lower() == ".ifc":
+                self.project_page.open_source_preview(first)
+                self.workspace_router.open_workspace("viewer")
 
             worker = ModelIntakeWorker(
                 paths,
@@ -722,11 +737,69 @@ if qt_available():
             self.context_strip.apply_snapshot(snapshot)
 
         def _workspace_changed(self, workspace_name: str) -> None:
+            self._active_workspace_name = str(workspace_name).strip().lower()
             canonical_name = {
                 "edit": "workbench",
                 "report": "production_workflow",
             }.get(str(workspace_name), str(workspace_name))
             self.application_context.set_active_surface(canonical_name)
+            snapshot = self.application_context.snapshot
+            workspace = self.workspace if snapshot.project_attached else None
+            selection = snapshot.selection if snapshot.project_attached else None
+            self._apply_selection_to_active_page(
+                workspace,
+                selection,
+                workspace_name=self._active_workspace_name,
+            )
+
+        def _apply_selection_to_active_page(
+            self,
+            workspace: Any | None,
+            selection: Any | None,
+            *,
+            workspace_name: str | None = None,
+        ) -> None:
+            route = str(
+                workspace_name or getattr(self, "_active_workspace_name", "")
+            ).strip().lower()
+            router = getattr(self, "workspace_router", None)
+            page = router.pages.get(route) if route and router is not None else None
+            if page is None:
+                page = self.tabs.currentWidget() if hasattr(self, "tabs") else None
+            self._apply_selection_to_page(page, workspace, selection)
+
+        def _apply_selection_to_page(
+            self,
+            page: Any | None,
+            workspace: Any | None,
+            selection: Any | None,
+        ) -> bool:
+            if page is None or page is self.project_page:
+                return False
+            if page is self.converter_page:
+                self.converter_page.set_project_selection(workspace, selection)
+                return True
+            if page is self.pdf_page:
+                set_context = getattr(self.pdf_page, "set_context", None)
+                if callable(set_context):
+                    set_context(workspace, selection)
+                else:
+                    self.pdf_page.show_project_selection(selection or object())
+                return True
+            for target in (
+                self.edit_page,
+                self.drawings_page,
+                self.scribing_page,
+                self.profiles_page,
+                self.optimization_page,
+                self.bom_excel_page,
+                self.production_workflow_page,
+                self.export_page,
+            ):
+                if page is target:
+                    target.set_context(workspace, selection)
+                    return True
+            return False
 
         def _project_loaded(self, path: str) -> None:
             self.statusBar().showMessage(f"Project geopend: {path}")
@@ -778,17 +851,7 @@ if qt_available():
                     self.application_context.attach_workspace(workspace)
                 snapshot = self.application_context.ingest_interaction_selection(selection)
                 selection = snapshot.selection
-            self.converter_page.set_project_selection(workspace, selection)
-            self.pdf_page.show_project_selection(selection or object())
-            self.edit_page.set_context(workspace, selection)
-            self.drawings_page.set_context(workspace, selection)
-            self.scribing_page.set_context(workspace, selection)
-            self.profiles_page.set_context(workspace, selection)
-            if self.optimization_page is not self.profiles_page:
-                self.optimization_page.set_context(workspace, selection)
-            self.bom_excel_page.set_context(workspace, selection)
-            self.production_workflow_page.set_context(workspace, selection)
-            self.export_page.set_context(workspace, selection)
+            self._apply_selection_to_active_page(workspace, selection)
 
         def _route_action(self, action: str) -> None:
             routes = {

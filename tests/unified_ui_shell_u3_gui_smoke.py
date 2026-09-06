@@ -78,12 +78,14 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
             window.application_context.request_selection(("part-v9",), origin="u3-gui")
             application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
             self.assertEqual("part-v9", window.workspace.interaction.selection.primary_entity_id)
-            self.assertEqual("part-v9", window.edit_page._selection.primary_entity_id)
-            self.assertEqual("part-v9", window.scribing_page._selection.primary_entity_id)
-            self.assertEqual("part-v9", window.export_page._selection.primary_entity_id)
             self.assertIn("part-v9", window._u3_bom_context.text())
             self.assertIn("part-v9", window.context_strip.selection.text())
 
+            contextual_pages = {
+                "edit": window.edit_page,
+                "scribing": window.scribing_page,
+                "export": window.export_page,
+            }
             for route, expected_surface in (
                 ("viewer", "viewer"),
                 ("edit", "workbench"),
@@ -95,6 +97,12 @@ class UnifiedUiShellU3GuiTests(unittest.TestCase):
                 application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
                 self.assertEqual(expected_surface, window.application_context.active_surface)
                 self.assertEqual("part-v9", window.context_snapshot.selection.primary_entity_id)
+                contextual_page = contextual_pages.get(route)
+                if contextual_page is not None:
+                    self.assertEqual(
+                        "part-v9",
+                        contextual_page._selection.primary_entity_id,
+                    )
 
             # PDF feature selection must update both application context and the
             # same viewer interaction selection, not a parallel highlight state.

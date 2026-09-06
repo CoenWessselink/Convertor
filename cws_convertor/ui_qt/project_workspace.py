@@ -19,6 +19,7 @@ if qt_available():
         persist_exact_scene_warmstart,
     )
     from cws_viewer.adapters.source_geometry import ProjectSourceResolver
+    from cws_viewer.adapters.raw_ifc_preview import load_exact_ifc_preview
     from cws_viewer.backends.memory import MemoryRenderBackend
     from cws_viewer.cache import MeshCache
     from cws_viewer.contracts.geometry import GeometryLoadStatus, TessellationSettings
@@ -414,6 +415,45 @@ if qt_available():
                 self.finished.emit()
 
 
+    class _SourcePreviewWorker(QtCore.QObject):
+        preview_ready = QtCore.Signal(int, object)
+        progress = QtCore.Signal(int, int, str)
+        failed = QtCore.Signal(int, str)
+        finished = QtCore.Signal(int, object)
+
+        def __init__(self, path: Path, generation: int) -> None:
+            super().__init__()
+            self.path = path
+            self.generation = int(generation)
+            self.token = CancellationToken()
+
+        def request_cancel(self) -> None:
+            self.token.cancel()
+
+        @QtCore.Slot()
+        def run(self, context: Any | None = None) -> None:
+            try:
+                def report(percent: int, message: str) -> None:
+                    self.token.check()
+                    if context is not None:
+                        context.update(max(0.0, min(1.0, percent / 100.0)), message)
+                    self.progress.emit(self.generation, percent, message)
+
+                result = load_exact_ifc_preview(
+                    self.path,
+                    progress=report,
+                    cancel_check=self.token.check,
+                )
+                self.token.check()
+                self.preview_ready.emit(self.generation, result)
+            except GeometryLoadCancelled:
+                pass
+            except Exception as exc:
+                self.failed.emit(self.generation, f"{type(exc).__name__}: {exc}")
+            finally:
+                self.finished.emit(self.generation, self)
+
+
     class IntegratedProjectWorkspaceWidget(QtWidgets.QWidget):
         """Tree, V8 grid, VTK model, properties, BOM and V6 exact review."""
 
@@ -434,12 +474,17 @@ if qt_available():
             self._worker: _LoadWorker | None = None
             self._exact_worker: _ExactGeometryWorker | None = None
             self._exact_job_id: str | None = None
+            self._source_preview_worker: _SourcePreviewWorker | None = None
+            self._source_preview_job_id: str | None = None
             self._preview_result: Any | None = None
             self._load_elapsed = QtCore.QElapsedTimer()
             self._load_heartbeat = QtCore.QTimer(self)
             self._load_heartbeat.setInterval(1000)
             self._load_heartbeat.timeout.connect(self._loading_tick)
             self._tree_items: dict[str, Any] = {}
+            self._selected_tree_items: set[Any] = set()
+            self._pending_interaction_selection: Any | None = None
+            self._selection_sync_scheduled = False
             self._syncing = False
             self._interaction_unsubscribe: Any | None = None
             self._grid_entity_ids: set[str] = set()
@@ -573,6 +618,57 @@ if qt_available():
             if name:
                 self.open_project(Path(name))
 
+        def open_source_preview(self, path: str | Path) -> bool:
+            """Publish exact raw IFC geometry while canonical intake continues."""
+
+            source = Path(path).expanduser().resolve()
+            if source.suffix.lower() != ".ifc" or not source.is_file():
+                return False
+            self.close_project()
+            generation = self._load_generation
+            self.stack.setCurrentWidget(self.loading)
+            self.status.setText(f"Exacte IFC-bronpreview laden: {source.name}")
+            self._load_elapsed.start()
+            self._load_heartbeat.start()
+            if self._job_manager is None:
+                raise RuntimeError("Bronpreview vereist de applicatiebrede JobManager")
+            worker = _SourcePreviewWorker(source, generation)
+            queued = QtCore.Qt.ConnectionType.QueuedConnection
+            worker.progress.connect(self._load_progress_guarded, queued)
+            worker.preview_ready.connect(self._source_preview_ready, queued)
+            worker.failed.connect(self._source_preview_failed, queued)
+            worker.finished.connect(self._source_preview_finished, queued)
+            self._source_preview_worker = worker
+            self._source_preview_job_id = self._job_manager.submit(
+                "source_exact_geometry_preview",
+                lambda context: worker.run(context),
+                description=f"Exacte bronpreview: {source.name}",
+                project_id=str(source),
+                metadata={"progressive": True, "exact_geometry": True, "proxy_count": 0},
+                max_retries=0,
+            )
+            return True
+
+        def _source_preview_ready(self, generation: int, result: Any) -> None:
+            if generation != self._load_generation:
+                return
+            self._project_preview_guarded(generation, result)
+            self.status.setText(
+                f"Exacte IFC-bronpreview · {result.physical_object_count:,} objecten · "
+                f"{result.elapsed_seconds:.2f} s"
+            )
+
+        def _source_preview_failed(self, generation: int, message: str) -> None:
+            if generation == self._load_generation:
+                self.status.setText(f"Bronpreview niet beschikbaar; canonical import loopt door · {message}")
+
+        def _source_preview_finished(self, generation: int, worker: Any) -> None:
+            if self._source_preview_worker is worker:
+                self._source_preview_worker = None
+                if generation == self._load_generation:
+                    self._source_preview_job_id = None
+            worker.deleteLater()
+
         def open_project(self, path: str | Path, *, load_geometry: bool = True) -> None:
             self.close_project()
             self._load_generation += 1
@@ -667,6 +763,9 @@ if qt_available():
                 # paying that GPU setup cost here made an otherwise 0.1 s
                 # warmstart miss the five-second first-frame contract.
                 backend = getattr(viewer, "backend", None)
+                interaction_quality = getattr(backend, "set_interaction_quality", None)
+                if callable(interaction_quality):
+                    interaction_quality(True)
                 render_window = getattr(backend, "_render_window", None)
                 if render_window is not None:
                     render_window.SetMultiSamples(
@@ -693,7 +792,7 @@ if qt_available():
                     "first_events_seconds": first_events - scene_bound,
                     "preview_total_seconds": first_events - preview_started,
                 }
-                QtCore.QTimer.singleShot(0, self._complete_preview_geometry)
+                QtCore.QTimer.singleShot(180, self._complete_preview_geometry)
             finally:
                 if worker is not None:
                     worker.acknowledge_preview()
@@ -705,14 +804,14 @@ if qt_available():
             backend = getattr(viewer, "backend", None)
             set_filter = getattr(backend, "set_geometry_filter", None)
             if callable(set_filter):
-                render_window = getattr(backend, "_render_window", None)
-                if render_window is not None:
-                    render_window.SetMultiSamples(
-                        int(getattr(backend, "MIN_IDLE_MULTISAMPLES", 8))
-                    )
-                set_filter(None)
-                viewer.controller.refresh_geometry(None)
-                viewer.update()
+                if getattr(backend, "_geometry_filter", None) is not None:
+                    set_filter(None)
+                    viewer.controller.refresh_geometry(None)
+            interaction_quality = getattr(backend, "set_interaction_quality", None)
+            changed = bool(interaction_quality(False)) if callable(interaction_quality) else False
+            if changed:
+                viewer.controller.render()
+            viewer.update()
 
         def _loading_tick(self) -> None:
             if self._load_job_id is None or not self._load_elapsed.isValid():
@@ -1036,7 +1135,7 @@ if qt_available():
 
         def _populate_tree(self) -> None:
             assert self.workspace is not None
-            self.tree.clear(); self._tree_items.clear()
+            self.tree.clear(); self._tree_items.clear(); self._selected_tree_items.clear()
             self._grid_entity_ids = {
                 str(row.entity_id) for row in self.workspace.interaction.grid_model.rows
             }
@@ -1044,9 +1143,11 @@ if qt_available():
             created: dict[str, Any] = {}
             while pending:
                 progress = False
-                for node in tuple(pending):
+                remaining = []
+                for node in pending:
                     parent = created.get(node.parent_node_id) if node.parent_node_id else None
                     if node.parent_node_id and parent is None:
+                        remaining.append(node)
                         continue
                     item = QtWidgets.QTreeWidgetItem(parent or self.tree)
                     item.setText(0, node.name or node.entity_id)
@@ -1056,7 +1157,7 @@ if qt_available():
                     item.setData(1, QtCore.Qt.ItemDataRole.UserRole, node.node_id)
                     created[node.node_id] = item
                     self._tree_items[node.entity_id] = item
-                    pending.remove(node); progress = True
+                    progress = True
                 if not progress:
                     # Defensive fallback for malformed parent references; scene
                     # validation should normally reject this before UI creation.
@@ -1067,7 +1168,8 @@ if qt_available():
                         item.setData(0, QtCore.Qt.ItemDataRole.UserRole, node.entity_id)
                         item.setData(1, QtCore.Qt.ItemDataRole.UserRole, node.node_id)
                         self._tree_items[node.entity_id] = item
-                    break
+                    remaining = []
+                pending = remaining
             self.tree.expandToDepth(1)
 
         def _populate_bom(self) -> None:
@@ -1099,13 +1201,32 @@ if qt_available():
         def _interaction_selection_changed(self, selection: Any) -> None:
             if self.workspace is None:
                 return
+            self._pending_interaction_selection = selection
+            if self._selection_sync_scheduled:
+                return
+            self._selection_sync_scheduled = True
+            QtCore.QTimer.singleShot(0, self._flush_interaction_selection)
+
+        def _flush_interaction_selection(self) -> None:
+            self._selection_sync_scheduled = False
+            selection = self._pending_interaction_selection
+            self._pending_interaction_selection = None
+            if self.workspace is None or selection is None:
+                return
             self._syncing = True
             try:
-                self.tree.clearSelection()
-                for entity_id in selection.entity_ids:
-                    item = self._tree_items.get(entity_id)
-                    if item is not None:
-                        item.setSelected(True)
+                wanted_items = {
+                    item
+                    for entity_id in selection.entity_ids
+                    if (item := self._tree_items.get(entity_id)) is not None
+                }
+                tree_blocker = QtCore.QSignalBlocker(self.tree)
+                for item in self._selected_tree_items - wanted_items:
+                    item.setSelected(False)
+                for item in wanted_items - self._selected_tree_items:
+                    item.setSelected(True)
+                self._selected_tree_items = wanted_items
+                del tree_blocker
                 blocker = QtCore.QSignalBlocker(self.grid.table.selectionModel())
                 self.grid.select_entities(selection.entity_ids)
                 del blocker
@@ -1246,6 +1367,8 @@ if qt_available():
             )
 
         def close_project(self) -> None:
+            if self._source_preview_worker is not None:
+                self._source_preview_worker.request_cancel()
             if self._worker is not None:
                 self._worker.request_cancel()
             if self._exact_worker is not None:
@@ -1257,9 +1380,15 @@ if qt_available():
             if self._exact_job_id is not None and self._job_manager is not None:
                 self._job_manager.cancel(self._exact_job_id)
                 self._exact_job_id = None
+            if self._source_preview_job_id is not None and self._job_manager is not None:
+                self._job_manager.cancel(self._source_preview_job_id)
+                self._source_preview_job_id = None
             self._worker = None
             self._exact_worker = None
+            self._source_preview_worker = None
             self._preview_result = None
+            self._pending_interaction_selection = None
+            self._selection_sync_scheduled = False
             if self._interaction_unsubscribe is not None:
                 self._interaction_unsubscribe()
                 self._interaction_unsubscribe = None
@@ -1273,6 +1402,7 @@ if qt_available():
                 finally:
                     self.viewer = None
             self._tree_items.clear()
+            self._selected_tree_items.clear()
             self._grid_entity_ids.clear()
             self._set_actions_enabled(False)
             self.transparency_slider.blockSignals(True)

@@ -154,7 +154,7 @@ class ProjectSceneLoader:
         # proxy-first frame must therefore retain the same verified IFC colours
         # that are used after the background exact-mesh upgrade; otherwise the
         # completed viewer remains uniformly category-grey until a full reload.
-        t=time.perf_counter();adapter=SourceAppearanceProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository,enrich_source_appearance=not fast_proxy_catalog);timings.append(('build_scene',time.perf_counter()-t))
+        t=time.perf_counter();adapter=SourceAppearanceProjectSceneAdapter();scene=adapter.build_scene(project,SceneBuildOptions(),geometry_catalog=catalog,mesh_repository=repository,enrich_source_appearance=True);timings.append(('build_scene',time.perf_counter()-t))
         assert adapter.last_report is not None
         if progress:progress(1.0,'Viewer-scene en geometriecatalogus gereed')
         governor.set_background_loading(False)

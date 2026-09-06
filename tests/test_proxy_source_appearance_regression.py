@@ -13,7 +13,7 @@ class ProxySourceAppearanceRegressionTests(unittest.TestCase):
         self.assertIn("enrich_source_appearance=True", source)
         self.assertNotIn("enrich_source_appearance=not fast_proxy_catalog", source)
 
-    def test_exact_upgrade_republishes_source_appearance_scene(self) -> None:
+    def test_exact_upgrade_republishes_source_appearance_scene_preserving_state(self) -> None:
         source = (
             Path(__file__).resolve().parents[1]
             / "cws_convertor"
@@ -22,7 +22,10 @@ class ProxySourceAppearanceRegressionTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertIn('"source_appearance_scene": source_appearance_scene', source)
         self.assertIn("catalog._documents[source_file_id] = P21Document.load", source)
-        self.assertIn("self.viewer.load_scene(source_scene)", source)
+        self.assertIn(
+            "self.viewer.controller.replace_scene_preserving_state(source_scene)",
+            source,
+        )
 
     def test_empty_proxy_item_ids_are_recovered_from_ifc_entity(self) -> None:
         source = inspect.getsource(

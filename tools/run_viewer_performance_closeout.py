@@ -324,7 +324,11 @@ def phase2(cli: list[str], ifc: Path, output: Path, runtime_dir: Path | None, po
     summary = {"schema": "cws.load-benchmark-summary.v1", "status": PASS if cold["status"] == warm["status"] == session["status"] == PASS else FAIL, "models": summary_rows}
     write_json(phase / "LOAD_BENCHMARK_SUMMARY.json", summary); write_md(phase / "LOAD_BENCHMARK_SUMMARY.md", "Load benchmark summary", summary)
     soak_path=phase/"REAL_10MIN_SOAK.json"
-    soak=invoke_json(cli,["viewer-real-soak","--ifc",str(ifc),"--output",str(soak_path),"--cache-dir",str(phase/"cache"/"soak"),"--limit",str(large_limit),"--duration-seconds",str(soak_seconds),"--screenshot-dir",str(phase/"soak_screenshots")],soak_path,timeout=soak_seconds+1200)
+    soak=invoke_json(cli,["viewer-real-soak","--ifc",str(ifc),"--output",str(soak_path),"--cache-dir",str(phase/"cache"/"soak"),"--limit",str(large_limit),"--duration-seconds",str(soak_seconds),"--screenshot-dir",str(phase/"soak_screenshots"),"--onscreen"],soak_path,timeout=soak_seconds+1200)
+    host=soak.get("runtime_host",{})
+    soak.setdefault("gates",{})["real_windows_qvtk_hardware_host"]=host.get("mode")=="onscreen_qvtk" and host.get("hardware_accelerated") is True
+    soak["status"]=PASS if all(soak["gates"].values()) else FAIL
+    write_json(soak_path,soak)
     write_md(phase / "REAL_10MIN_SOAK.md", "Real 10-minute Viewer soak", soak)
     frame={"schema":"cws.frame-input-benchmark.v1","status":soak["status"],"frame_metrics":soak.get("frame_metrics"),"input_metrics":soak.get("interaction_metrics"),"action_coverage":soak.get("action_coverage")};write_json(phase/"FRAME_INPUT_BENCHMARK.json",frame)
     picking={"schema":"cws.picking-benchmark.v1","status":soak["status"],"metrics":soak.get("interaction_metrics")};write_json(phase/"PICKING_BENCHMARK.json",picking)
