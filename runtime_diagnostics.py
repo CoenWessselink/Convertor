@@ -628,12 +628,22 @@ def run_native_self_test() -> dict[str, Any]:
 
 def _python_on_path() -> str | None:
     path_entries = os.environ.get("PATH", "").split(os.pathsep)
+    current = Path(sys.executable).resolve()
     for entry in path_entries:
         if not entry:
             continue
         candidate = Path(entry) / "python.exe"
-        if candidate.is_file() and candidate.resolve() != Path(sys.executable).resolve():
-            return str(candidate.resolve())
+        try:
+            if not candidate.is_file():
+                continue
+            resolved = candidate.resolve()
+        except OSError:
+            # Windows Store execution aliases can be visible on PATH while
+            # denying metadata access (WinError 1920). They are not usable
+            # runtimes and must not abort packaged diagnostics.
+            continue
+        if resolved != current:
+            return str(resolved)
     return None
 
 

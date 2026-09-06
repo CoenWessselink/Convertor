@@ -180,6 +180,7 @@ def source_inventories() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
 
 def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    os.environ.setdefault("CWS_DISABLE_BACKGROUND_THUMBNAILS", "1")
     from PySide6.QtCore import QPointF
     from PySide6.QtGui import QAction, QPixmap
     from PySide6.QtWidgets import (
@@ -636,7 +637,10 @@ def run_runtime_acceptance_evidence(project: Path | None) -> list[dict[str, Any]
         ),
     )
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = str(ROOT)
+    inherited_pythonpath = environment.get("PYTHONPATH", "")
+    environment["PYTHONPATH"] = os.pathsep.join(
+        item for item in (str(ROOT), inherited_pythonpath) if item
+    )
     environment["QT_QPA_PLATFORM"] = "windows" if os.name == "nt" else "offscreen"
     environment["CWS_PROGRESSIVE_PROJECT_LOAD"] = "1"
     environment.pop("CWS_HEADLESS_GUI_SMOKE", None)

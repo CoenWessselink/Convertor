@@ -745,7 +745,10 @@ if qt_available():
         def _queue_thumbnail(self, source_path: Path) -> None:
             import os
 
-            if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
+            if (
+                os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1"
+                or os.environ.get("CWS_DISABLE_BACKGROUND_THUMBNAILS") == "1"
+            ):
                 return
             if source_path.suffix.casefold() not in {".ifc", ".cwscproj"}:
                 return
