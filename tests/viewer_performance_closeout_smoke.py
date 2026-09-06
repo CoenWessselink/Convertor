@@ -6,7 +6,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from CWS_Convertor_CLI import _requires_frozen_native_fast_exit
+from cli import _requires_frozen_native_fast_exit
 from cws_viewer.contracts.geometry import GeometryRequest
 from cws_viewer.core.performance_evidence import METRIC_FIELDS, ViewerPerformanceEvidence
 from cws_viewer.performance import GeometryPriorityScheduler, ViewerPerformanceGovernor
