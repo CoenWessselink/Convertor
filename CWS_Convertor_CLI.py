@@ -13,12 +13,8 @@ _NATIVE_VIEWER_EVIDENCE_COMMANDS = frozenset({
 })
 
 
-def _requires_frozen_native_fast_exit(arguments: list[str]) -> bool:
-    return bool(
-        getattr(sys, "frozen", False)
-        and arguments
-        and arguments[0] in _NATIVE_VIEWER_EVIDENCE_COMMANDS
-    )
+def _requires_native_fast_exit(arguments: list[str]) -> bool:
+    return bool(arguments and arguments[0] in _NATIVE_VIEWER_EVIDENCE_COMMANDS)
 
 
 def _flush_standard_streams() -> None:
@@ -54,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     forwarded = list(sys.argv[1:])
     exit_code = main(forwarded)
-    if _requires_frozen_native_fast_exit(forwarded):
+    if _requires_native_fast_exit(forwarded):
         _flush_standard_streams()
         os._exit(exit_code)
     raise SystemExit(exit_code)

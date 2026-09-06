@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import sys
 import time
 import unittest
-from unittest.mock import patch
 
-from cli import _requires_frozen_native_fast_exit
+from cli import _requires_native_fast_exit
 from cws_viewer.contracts.geometry import GeometryRequest
+from cws_viewer.core.real_performance_evidence import _longest_consecutive_action_run
 from cws_viewer.core.performance_evidence import METRIC_FIELDS, ViewerPerformanceEvidence
 from cws_viewer.performance import GeometryPriorityScheduler, ViewerPerformanceGovernor
 
@@ -27,12 +26,16 @@ def request(identity: str, **metadata: str) -> GeometryRequest:
 
 
 class ViewerPerformanceCloseoutSmoke(unittest.TestCase):
-    def test_frozen_viewer_evidence_commands_use_native_fast_exit(self) -> None:
-        with patch.object(sys, "frozen", True, create=True):
-            self.assertTrue(_requires_frozen_native_fast_exit(["viewer-real-soak"]))
-            self.assertTrue(_requires_frozen_native_fast_exit(["viewer-real-benchmark"]))
-            self.assertFalse(_requires_frozen_native_fast_exit(["project-info"]))
-        self.assertFalse(_requires_frozen_native_fast_exit(["viewer-real-soak"]))
+    def test_stall_runs_distinguish_isolated_driver_waits_from_freezes(self) -> None:
+        isolated = ({"action_index": 10}, {"action_index": 40}, {"action_index": 90})
+        sustained = ({"action_index": 10}, {"action_index": 11}, {"action_index": 30})
+        self.assertEqual(_longest_consecutive_action_run(isolated), 1)
+        self.assertEqual(_longest_consecutive_action_run(sustained), 2)
+
+    def test_viewer_evidence_commands_use_native_fast_exit(self) -> None:
+        self.assertTrue(_requires_native_fast_exit(["viewer-real-soak"]))
+        self.assertTrue(_requires_native_fast_exit(["viewer-real-benchmark"]))
+        self.assertFalse(_requires_native_fast_exit(["project-info"]))
 
     def test_metric_contract_is_complete_and_null_safe(self) -> None:
         required = {

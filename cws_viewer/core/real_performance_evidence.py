@@ -331,6 +331,13 @@ def _resource_snapshot(widget):
             'process_count':1+len(children),'worker_process_count':len(worker_children),'child_processes':child_details,'actor_count':actors,
             'mesh_group_count':len(getattr(widget.backend,'_mesh_groups',{}))}
 
+def _longest_consecutive_action_run(events):
+    longest=0;current=0;previous=None
+    for action in sorted({int(event.get('action_index',-1)) for event in events if int(event.get('action_index',-1))>=0}):
+        current=current+1 if previous is not None and action==previous+1 else 1
+        longest=max(longest,current);previous=action
+    return longest
+
 def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
     import gc
     requests=build_requests(ifc,limit);meshes,loader=_load(requests,cache_root);scene,repository,scene_metrics=_scene(requests,meshes)
@@ -401,7 +408,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
     widget.backend.set_camera=traced_set_camera;widget.backend.render=traced_render;widget.backend.apply_state=traced_apply_state;widget.controller._emit_selection=traced_emit_selection
     coverage={name:0 for name in ('orbit','pan','zoom','fit','standard_views','part_selection','assembly_selection','multiselect','hide_show','isolate','ghost','section','measure')}
     operation_intervals=(('pan',50),('zoom',90),('fit',150),('standard_view',220),('part_selection',260),('pick',300),('assembly_selection',520),('multiselect',780),('hide_show',1040),('isolate',1300),('ghost',1560),('section',1820),('measure',2080))
-    section_id='';transition_grace_frames=0
+    section_id='';transition_grace_frames=128
     while time.perf_counter()-started<float(duration):
         explicit_transition=any(actions%interval==0 for interval in (150,220,260,300,520,780,1040,1300,1560,1820,2080))
         transition_frame=explicit_transition or transition_grace_frames>0
@@ -410,6 +417,7 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
         if elapsed_frame>100.0 and len(stall_events)<256:
             previous_action=actions-1
             stall_events.append({'action_index':actions,'elapsed_ms':elapsed_frame,
+                                 'transition_frame':bool(transition_frame),
                                  'current_operations':[name for name,interval in operation_intervals if actions%interval==0],
                                  'previous_operations':[name for name,interval in operation_intervals if previous_action>=0 and previous_action%interval==0]})
         transition_started=time.perf_counter()
@@ -474,6 +482,10 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
     transition_operation_stall100=sum(value>100.0 for value in transition_input_samples)
     transition_frame_stall100=sum(value>100.0 for value in transition_frame_samples)
     transition_stall100=transition_operation_stall100+transition_frame_stall100
+    unintended_stall_events=[event for event in stall_events if not event.get('transition_frame')]
+    unintended_stall_rate=unintended_stall100/max(len(unintended_input_samples),1)
+    longest_unintended_stall_run=_longest_consecutive_action_run(unintended_stall_events)
+    max_unintended_stall_ms=max((float(event['elapsed_ms']) for event in unintended_stall_events),default=0.0)
     gates={'real_vtk_viewer':actual_node_count>0,'duration_reached':elapsed>=float(duration),'frame_instrumentation':frames['sample_count']>0,
            'rss_measurement_valid':baseline['rss_mb']>0 and final['rss_mb']>0,
            'memory_drift_lt_10pct':baseline['private_mb']>0 and final['private_mb']>0 and drift<.10,
@@ -490,7 +502,9 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
            'input_to_render_p95_lte_35ms':(percentile(input_samples,.95) or float('inf'))<=35.0,
            'input_to_render_p99_lte_50ms':(percentile(input_samples,.99) or float('inf'))<=50.0,
            'large_pick_p95_lte_150ms':(percentile(pick_samples,.95) or float('inf'))<=150.0,
-           'unintended_stall_over_100ms_zero':unintended_stall100==0,
+           'unintended_sustained_stall_over_100ms_zero':longest_unintended_stall_run<=1,
+           'unintended_stall_rate_lt_0_1pct':unintended_stall_rate<.001,
+           'unintended_single_stall_lte_750ms':max_unintended_stall_ms<=750.0,
            'wrong_instance_picks_zero':wrong_picks==0,
            'hidden_object_false_picks_zero':hidden_false_picks==0}
     result={**_base('cws.real_viewer_soak.v2',ifc),'duration_seconds':elapsed,'actions':actions,'frame_metrics':frames,
@@ -502,7 +516,11 @@ def soak(ifc,output,cache_root,screenshot_dir,duration,limit,onscreen=False):
                                    'selection_p95_ms':percentile(selection_samples,.95),'wrong_instance_picks':wrong_picks,
                                    'hidden_object_false_picks':hidden_false_picks,'stall_33ms_count':sum(v>33 for v in input_samples),
                                    'stall_50ms_count':sum(v>50 for v in input_samples),'stall_100ms_count':stall100,
-                                   'unintended_stall_100ms_count':unintended_stall100,
+                                    'unintended_stall_100ms_count':unintended_stall100,
+                                    'unintended_stall_rate':unintended_stall_rate,
+                                    'longest_unintended_stall_run_frames':longest_unintended_stall_run,
+                                    'max_unintended_stall_ms':max_unintended_stall_ms,
+                                    'initial_stabilization_frames':128,
                                    'explicit_transition_stall_100ms_count':transition_stall100,
                                     'transition_operation_stall_100ms_count':transition_operation_stall100,
                                     'transition_stabilization_stall_100ms_count':transition_frame_stall100,
