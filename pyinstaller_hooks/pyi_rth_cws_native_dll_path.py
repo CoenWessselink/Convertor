@@ -21,7 +21,7 @@ def _candidate_directories() -> tuple[Path, ...]:
         roots.append(Path(bundle_root))
     executable_root = Path(sys.executable).resolve().parent
     roots.extend((executable_root, executable_root / "_internal"))
-    package_names = ("casadi", "OCP", "cadquery", "ifcopenshell", "vtkmodules", "PySide6")
+    package_names = ("casadi", "OCP", "cadquery", "ifcopenshell", "vtk.libs", "vtkmodules", "PySide6")
     candidates: list[Path] = []
     for root in roots:
         candidates.append(root)

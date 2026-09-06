@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
+from importlib.util import find_spec
 from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_dynamic_libs, collect_submodules
 
 ROOT = Path(SPECPATH)
@@ -80,6 +81,19 @@ for package in native_packages:
 for package in data_packages:
     datas += collect_data_files(package)
     binaries += collect_dynamic_libs(package)
+
+# cadquery-ocp imports OCP before vtkmodules and OCP explicitly registers the
+# sibling ``vtk.libs`` directory. Preserve that wheel layout in frozen builds;
+# collecting vtkmodules alone flattens these DLLs into the bundle root.
+vtk_spec = find_spec("vtkmodules")
+if vtk_spec is not None and vtk_spec.origin:
+    vtk_libs = Path(vtk_spec.origin).resolve().parent.parent / "vtk.libs"
+    if vtk_libs.is_dir():
+        binaries += [
+            (str(path), "vtk.libs")
+            for path in sorted(vtk_libs.iterdir())
+            if path.is_file()
+        ]
 hiddenimports += collect_submodules("ifcopenshell.api")
 hiddenimports += collect_submodules("OCP")
 hiddenimports += collect_submodules("vtkmodules")
