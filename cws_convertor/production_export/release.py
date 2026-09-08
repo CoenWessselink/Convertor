@@ -992,7 +992,7 @@ class ProjectProductionExportEngine:
 
             part_ids = selected_part_ids
             import cadquery as cq
-            from ifc_native import write_native_ifc
+            from ifc_native import NativeIFCComponent, write_native_ifc
 
             transformed: list[tuple[str, cq.Shape]] = []
             for part in parts:
@@ -1006,7 +1006,10 @@ class ProjectProductionExportEngine:
                 "assembly_ids": sorted(item.internal_id for item in assemblies),
                 "quantity": sum(max(1, int(item.quantity or 1)) for item in assemblies),
                 "composition_sha256": composition_hash,
-                "parts": [item_by_id[part_id].to_dict() for part_id in part_ids],
+                "parts": [{**item_by_id[part_id].to_dict(),
+                           "material": canonicals[part_id].material,
+                           "material_grade": canonicals[part_id].product.material_grade}
+                          for part_id in part_ids],
                 "fastener_ids": sorted({item for assembly in assemblies for item in assembly.fastener_ids}),
                 "weld_ids": sorted({item for assembly in assemblies for item in assembly.weld_ids}),
                 "purchased_item_ids": sorted({item for assembly in assemblies for item in assembly.purchased_item_ids}),
@@ -1052,7 +1055,9 @@ class ProjectProductionExportEngine:
                     exportType="STEP",
                     mode="default",
                 )
-            synthetic = canonicals[part_ids[0]].clone()
+            # This record describes the assembly, not its first member. A
+            # clone would also leak that member's grade, density and evidence.
+            synthetic = CanonicalPart()
             bounds = compound.BoundingBox()
             synthetic.part_id = f"assembly:{mark}"
             synthetic.source_format = "CWSC"
@@ -1063,14 +1068,15 @@ class ProjectProductionExportEngine:
             synthetic.header.position_number = mark
             synthetic.header.profile = "ASSEMBLY"
             synthetic.header.profile_type = "ASSEMBLY"
-            synthetic.header.material = "MULTI"
+            synthetic.header.material = ""
             synthetic.header.quantity = assembly_manifest["quantity"]
             synthetic.header.length = max(bounds.xlen, bounds.ylen, bounds.zlen)
             synthetic.header.saw_length = synthetic.header.length
             synthetic.product.name = mark
             synthetic.product.mark = mark
             synthetic.product.profile_designation = "ASSEMBLY"
-            synthetic.product.material_code = "MULTI"
+            synthetic.product.material_code = ""
+            synthetic.product.material_grade = ""
             synthetic.product.main_dimensions_mm = [bounds.xlen, bounds.ylen, bounds.zlen]
             synthetic.contours = []
             synthetic.holes = []
@@ -1085,7 +1091,12 @@ class ProjectProductionExportEngine:
             artifacts.append(_artifact(root, assembly_step, "assembly_step", assembly_id=mark, source="canonical-assembly-compound"))
 
             assembly_ifc = assembly_dir / f"{safe_filename(mark)}_ASSEMBLY.ifc"
-            write_native_ifc(compound, assembly_ifc, name=mark, material="MULTI", canonical=synthetic)
+            write_native_ifc(
+                None, assembly_ifc, name=mark, material="", canonical=synthetic,
+                components=[NativeIFCComponent(part.internal_id,
+                            canonicals[part.internal_id].material, shape)
+                            for part, (_part_name, shape) in zip(parts, transformed)],
+            )
             _enrich_assembly_ifc(assembly_ifc, mark, assembly_manifest)
             artifacts.append(_artifact(root, assembly_ifc, "assembly_ifc", assembly_id=mark, source="canonical-assembly-compound"))
 

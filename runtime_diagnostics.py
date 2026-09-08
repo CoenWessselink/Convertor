@@ -233,6 +233,7 @@ def _integrated_viewer_contract_check() -> dict[str, Any]:
             ),
             profile="PL10",
             material="S355JR",
+            material_grade="S355JR",
             geometry_descriptor={
                 "source_geometry_hash": "d" * 64,
                 "bbox_mm": [100.0, 50.0, 10.0],
@@ -419,6 +420,7 @@ def _project_roundtrip_check() -> dict[str, Any]:
             ),
             profile="PL10",
             material="S355JR",
+            material_grade="S355JR",
             confidence=1.0,
             profile_confidence=1.0,
             geometry_descriptor={

@@ -45,7 +45,7 @@ class ReviewWorkflowTests(unittest.TestCase):
         payload = build_review_payload(
             analysis.part,
             reviewed_by="Review Tester",
-            confirm=["holes[0]"],
+            confirm=["holes[0]", "material"],
             comment="Visueel gecontroleerd in interactieve review",
         )
         reviewed = apply_review(analysis, payload)
@@ -77,7 +77,7 @@ class ReviewWorkflowTests(unittest.TestCase):
             analysis.part,
             reviewed_by="Review Tester",
             values={"holes[0].diameter": "18,0"},
-            confirm=["holes[0]"],
+            confirm=["holes[0]", "material"],
             answers=answers,
         )
         reviewed = apply_review(analysis, payload)
@@ -106,7 +106,7 @@ class ReviewWorkflowTests(unittest.TestCase):
             build_review_payload(
                 analysis.part,
                 reviewed_by="Review Tester",
-                confirm=["holes[0]"],
+                confirm=["holes[0]", "material"],
             ),
         )
         target = self.folder / "LO4_reviewed_trusted.pdf"

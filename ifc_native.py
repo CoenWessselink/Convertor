@@ -43,6 +43,15 @@ class NativeIFCMesh:
     triangles: np.ndarray
 
 
+@dataclass(frozen=True)
+class NativeIFCComponent:
+    """One explicitly identified assembly member, before any tessellation."""
+
+    name: str
+    material: str
+    shape: cq.Shape
+
+
 class NativeIFCParseError(ValueError):
     pass
 
@@ -103,13 +112,14 @@ def _chunk(text: str, size: int = 1800) -> list[str]:
 
 
 def write_native_ifc(
-    shape: cq.Shape,
+    shape: cq.Shape | None,
     target: str | Path,
     *,
     name: str,
     material: str,
     canonical: CanonicalPart,
     tolerance_mm: float = 0.20,
+    components: Iterable[NativeIFCComponent] | None = None,
 ) -> Path:
     """Schrijf IFC4-zichtgeometrie én één gehashte lossless propertyset.
 
@@ -120,9 +130,20 @@ def write_native_ifc(
 
     output = Path(target)
     output.parent.mkdir(parents=True, exist_ok=True)
-    meshes = _solid_meshes(shape, tolerance_mm)
-    if not meshes:
-        raise ValueError("Model bevat geen exporteerbare solid/mesh")
+    # Member/grade bindings are kept before tessellation. Do not reconstruct
+    # them from the ordering of an already combined compound's solids.
+    members = tuple(components) if components is not None else None
+    meshes = []
+    mesh_names: list[str] = []
+    mesh_materials: list[str] = []
+    if members is None:
+        if shape is None:
+            raise ValueError("Model bevat geen geometrie")
+        meshes = _solid_meshes(shape, tolerance_mm)
+        if not meshes:
+            raise ValueError("Model bevat geen exporteerbare solid/mesh")
+    elif shape is not None:
+        raise ValueError("Geef componentgeometrie of één shape, niet beide")
 
     canonical.validate()
     from material_database import MaterialDatabase, normalise_material
@@ -138,6 +159,26 @@ def write_native_ifc(
     if len(declared_identities) > 1:
         raise ValueError("IFC-materiaal conflicteert met de canonieke materiaalgegevens")
     material = str(material or canonical.material or "").strip()
+    if members is not None:
+        if declared_values or canonical.product.material_code:
+            raise ValueError("Een samenstelling mag geen geërfde materiaalkwaliteit bevatten")
+        if not members:
+            raise ValueError("Samenstelling bevat geen componenten")
+        seen_names: set[str] = set()
+        for member in members:
+            if not member.name.strip() or member.name in seen_names:
+                raise ValueError("Componentnamen moeten uniek en niet leeg zijn")
+            seen_names.add(member.name)
+            resolution = database.resolve(member.material)
+            if not resolution.resolved:
+                raise ValueError("Componentmateriaal is niet exact bekend: " + member.name)
+            member_meshes = _solid_meshes(member.shape, tolerance_mm)
+            if not member_meshes:
+                raise ValueError("Component bevat geen exporteerbare geometrie: " + member.name)
+            for index, mesh in enumerate(member_meshes, start=1):
+                meshes.append(mesh)
+                mesh_names.append(member.name if len(member_meshes) == 1 else f"{member.name}_{index:03d}")
+                mesh_materials.append(resolution.material_code)
     definition = database.find(material) if material else None
     material_category = f"'{_escape_ifc(definition.category)}'" if definition else "$"
     now = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
@@ -188,6 +229,7 @@ def write_native_ifc(
 
     next_id = 30
     element_ids: list[int] = []
+    component_material_refs: dict[str, list[int]] = {}
     for index, (solid, vertices_mm, faces_zero) in enumerate(meshes, start=1):
         point_id = next_id
         face_set_id = next_id + 1
@@ -207,6 +249,9 @@ def write_native_ifc(
             "(" + ",".join(str(int(value)) for value in row) + ")" for row in faces_one
         )
         element_name = name if len(meshes) == 1 else f"{name}_{index:03d}"
+        if members is not None:
+            element_name = mesh_names[index - 1]
+            component_material_refs.setdefault(mesh_materials[index - 1], []).append(element_id)
         ifc_class = _classify(solid)
         lines.extend(
             [
@@ -239,6 +284,17 @@ def write_native_ifc(
             f"#{material_relation_id}=IFCRELASSOCIATESMATERIAL("
             f"'{_guid22(name + ':material')}',#5,$,$,({element_refs}),#16);"
         )
+
+    for member_grade, ids in sorted(component_material_refs.items()):
+        definition = database.resolve(member_grade).definition
+        grade_id, relation_id = next_id, next_id + 1
+        next_id += 2
+        refs = ",".join(f"#{entity_id}" for entity_id in ids)
+        lines.extend([
+            f"#{grade_id}=IFCMATERIAL('{_escape_ifc(member_grade)}',$,'{_escape_ifc(definition.category)}');",
+            f"#{relation_id}=IFCRELASSOCIATESMATERIAL("
+            f"'{_guid22(name + ':component-material:' + member_grade)}',#5,$,$,({refs}),#{grade_id});",
+        ])
 
     properties: list[tuple[str, str, str]] = [
         ("SchemaVersion", "IFCTEXT", canonical.schema_version),

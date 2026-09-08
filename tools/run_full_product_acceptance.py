@@ -352,6 +352,23 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
         residual_report=None,
     )
     safe_method_arguments: dict[str, tuple[Any, ...]] = {
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.area_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.lasso_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.select_same_colour": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.shared_cache_summary": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.isolate_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.show_all": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.start_selected_step_recognition": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.cancel_selected_step_recognition": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.accept_material_candidate": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.reject_material_candidate": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.preview_bulk_material": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.apply_bulk_material": (),
+        "cws_convertor.ui_qt.functional_workspaces.EditWorkspacePanel.undo_bulk_material": (),
+        "cws_convertor.ui_qt.product_workspaces.ProductionWorkflowPanel.refresh": (),
+        "cws_convertor.ui_qt.bom_workspace.BomWorkspacePanel.refresh": (),
+        "cws_convertor.ui_qt.bom_workspace.BomWorkspacePanel.handle_ribbon": ("filter",),
+
         "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_drawing": (
             QPixmap(200, 100),
             SimpleNamespace(pages=()),

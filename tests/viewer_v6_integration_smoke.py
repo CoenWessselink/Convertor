@@ -156,6 +156,7 @@ class ViewerV6IntegrationTests(unittest.TestCase):
                 part.internal_id,
                 {
                     "part_form": "plate",
+                    "production_properties": {"profile": "PL10", "material": "S355J2", "material_grade": "S355J2"},
                     "recognition": {"candidate": "PL10", "confidence": 1.0, "confirmed": True},
                     "dimensions": {"length_mm": 100.0, "thickness_mm": 10.0, "diameter_mm": 0.0},
                     "reference_sides": [

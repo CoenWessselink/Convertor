@@ -56,7 +56,7 @@ def _workbench_part(part_id: str, profile_type: str, *, part_form: str = "profil
         part_position=part_id,
         profile="TEST",
         profile_type=profile_type,
-        material="S235",
+        material="S235JR",
         material_grade="S235JR",
         geometry_descriptor={"dimensions": [1000.0, 100.0, 100.0]},
     )
@@ -69,7 +69,7 @@ def _workbench_part(part_id: str, profile_type: str, *, part_form: str = "profil
     revision["dimensions"] = {"length_mm": 1000.0}
     revision["production_properties"] = {
         "profile": "TEST",
-        "material": "S235",
+        "material": "S235JR",
         "material_grade": "S235JR",
         "part_position": part_id,
         "assembly_position": "",

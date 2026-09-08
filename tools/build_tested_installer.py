@@ -135,7 +135,7 @@ def main() -> int:
         if not user_file.is_file() or digest(user_file) != user_digest:
             raise RuntimeError('Uninstall did not preserve the user-created file')
         run('association_cleanup', [sys.executable, str(ROOT / 'tests/windows_installer_association_smoke.py'),
-                                    '--expect-absent'], 180)
+                                    '--runtime-dir', str(STAGING), '--expect-absent'], 180)
         if git('status', '--porcelain=v1', '--untracked-files=no') or git('rev-parse', 'HEAD') != sha:
             raise RuntimeError('Tracked source changed during build or acceptance')
         target = RELEASE / name

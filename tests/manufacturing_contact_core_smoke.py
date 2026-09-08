@@ -42,7 +42,7 @@ def _workbench_part(part_id: str, placement: Transform3D) -> Part:
         part_position=part_id,
         profile="RHS_TEST",
         profile_type="M",
-        material="S235",
+        material="S235JR",
         material_grade="S235JR",
         length_mm=1000.0,
         local_placement=placement,
@@ -58,7 +58,7 @@ def _workbench_part(part_id: str, placement: Transform3D) -> Part:
     revision["dimensions"] = {"length_mm": 1000.0}
     revision["production_properties"] = {
         "profile": "RHS_TEST",
-        "material": "S235",
+        "material": "S235JR",
         "material_grade": "S235JR",
         "part_position": part_id,
         "assembly_position": "",
