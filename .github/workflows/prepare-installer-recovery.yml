@@ -14,24 +14,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Archive exact tracked source
-        run: |
-          mkdir -p build/installer-recovery
-          git archive --format=zip --output=build/installer-recovery/source.zip HEAD
-          git rev-parse HEAD > build/installer-recovery/COMMIT.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: CWS_Installer_Recovery_Source_${{ github.sha }}
-          path: |
-            build/installer-recovery/source.zip
-            build/installer-recovery/COMMIT.txt
-          retention-days: 7
+      - name: Install dependencies used by canonical release checks
+        run: python -m pip install PyMuPDF==1.26.7 pypdf==5.9.0 reportlab==4.4.9 XlsxWriter==3.2.9 numpy==2.3.5 lxml==6.1.1
       - name: Verify reviewed repair
         shell: python
         run: |
           import base64, hashlib, json, pathlib, subprocess, sys
           root = pathlib.Path.cwd()
           out = root / 'build/installer-recovery'
+          out.mkdir(parents=True, exist_ok=True)
           path = root / 'cws_convertor/bom/production_hub.py'
           def blob(data):
               return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
@@ -62,20 +53,41 @@ jobs:
           (out/'after.log').write_text(after.stdout+after.stderr, encoding='utf-8')
           if after.returncode or 'Ran 6 tests' not in after.stderr or 'skipped=' in after.stderr:
               raise RuntimeError('Repair tests not passed')
+          additional = [
+              ('tests/phase1_phase2_completion_smoke.py', 'c843f44c3e30759056bf963c006c4af9f924701e', '4fe14222d22230a7a31cccb350f53a63ed8e2057', '            profile="PL10",\n            profile_confidence=1.0,', '            profile="PL10",\n            material="S355J2",\n            material_grade="S355J2",\n            profile_confidence=1.0,'),
+              ('tools/run_material_model_recognition_acceptance.py', 'e154227538f3689286cdb163fb12d288a5e68233', '84e8418b1858b4144df6494310a2ad609de3fa81', '    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),', '    SuiteSpec("tests/bom_undo_refresh_smoke.py", "bom_undo_integrity"),\n    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),'),
+          ]
+          paths = ['cws_convertor/bom/production_hub.py']
+          for name, original, expected, old, new in additional:
+              p = root/name
+              data = p.read_bytes()
+              if blob(data) != original or data.decode('utf-8').count(old) != 1:
+                  raise RuntimeError('Concurrent source change: '+name)
+              data = data.decode('utf-8').replace(old,new).encode('utf-8')
+              if blob(data) != expected:
+                  raise RuntimeError('Output hash mismatch: '+name)
+              p.write_bytes(data)
+              paths.append(name)
+          entries = []
+          for name in paths:
+              data = (root/name).read_bytes()
+              compile(data, name, 'exec')
+              entries.append({'path':name,'sha':blob(data),'content':base64.b64encode(data).decode('ascii')})
           result = {'parent': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
                     'base_tree': subprocess.check_output(['git','rev-parse','HEAD^{tree}'], text=True).strip(),
-                    'path': 'cws_convertor/bom/production_hub.py', 'sha': blob(data),
-                    'content': base64.b64encode(data).decode('ascii')}
+                    'entries':entries}
           (out/'prepared.json').write_text(json.dumps(result), encoding='utf-8')
-      - name: Store repaired file object; do not move refs
+      - name: Store repaired file objects; do not move refs
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const data = JSON.parse(fs.readFileSync('build/installer-recovery/prepared.json','utf8'));
-            const result = await github.rest.git.createBlob({owner:context.repo.owner,repo:context.repo.repo,content:data.content,encoding:'base64'});
-            if(result.data.sha !== data.sha) throw new Error('Git blob hash mismatch');
-            delete data.content;
+            for(const file of data.entries) {
+              const result = await github.rest.git.createBlob({owner:context.repo.owner,repo:context.repo.repo,content:file.content,encoding:'base64'});
+              if(result.data.sha !== file.sha) throw new Error('Git blob hash mismatch');
+              delete file.content;
+            }
             fs.writeFileSync('build/installer-recovery/VERIFIED.json',JSON.stringify(data,null,2));
             core.info(JSON.stringify(data));
       - uses: actions/upload-artifact@v4
