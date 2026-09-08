@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 from validation.run_all_smokes_v9 import (
     SOURCE_SMOKE_EXCLUSIONS,
     _failure_excerpt,
+    _result_status,
     _workflow_command_escape,
 )
 
@@ -37,6 +38,24 @@ class ViewerV9SmokeRunnerReportingTests(unittest.TestCase):
             "conversion_one_phase_packaged_smoke.py",
             SOURCE_SMOKE_EXCLUSIONS,
         )
+
+    def test_successful_process_with_only_skips_is_not_a_pass(self) -> None:
+        self.assertEqual("skipped", _result_status(0, False, "Ran 2 tests\nOK (skipped=2)"))
+        self.assertEqual("skipped", _result_status(0, False, "Ran 0 tests\nOK (skipped=1)"))
+
+    def test_partial_skips_do_not_hide_executed_passing_tests(self) -> None:
+        self.assertEqual("passed", _result_status(0, False, "Ran 3 tests\nOK (skipped=1)"))
+
+    def test_empty_unittest_run_without_explicit_skip_is_not_relabelled(self) -> None:
+        self.assertEqual("passed", _result_status(0, False, "Ran 0 tests\nOK"))
+
+    def test_failure_and_timeout_take_precedence_over_skip_text(self) -> None:
+        self.assertEqual("failed", _result_status(1, False, "Ran 3 tests\nFAILED (failures=1, skipped=2)"))
+        self.assertEqual("timeout", _result_status(124, True, "Ran 2 tests\nOK (skipped=2)"))
+
+    def test_no_tests_exit_is_only_a_skip_with_explicit_evidence(self) -> None:
+        self.assertEqual("skipped", _result_status(5, False, "NO TESTS RAN; skipped=1"))
+        self.assertEqual("failed", _result_status(5, False, "unexpected error"))
 
 
 if __name__ == "__main__":

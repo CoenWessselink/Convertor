@@ -52,6 +52,30 @@ def _emit_github_failure(script: Path, status: str, returncode: int, excerpt: st
     )
 
 
+def _result_status(returncode: int, timed_out: bool, combined_output: str) -> str:
+    """A successful process can contain only skips; preserve that distinction."""
+    ran_match = re.search(r"Ran\s+(\d+)\s+tests?", combined_output)
+    skipped_match = re.search(r"skipped=(\d+)", combined_output)
+    all_reported_tests_skipped = bool(
+        ran_match
+        and skipped_match
+        and int(skipped_match.group(1)) >= int(ran_match.group(1))
+    )
+    explicitly_skipped = (
+        (returncode == 5 and "NO TESTS RAN" in combined_output and "skipped=" in combined_output)
+        or (returncode == 0 and all_reported_tests_skipped)
+    )
+    return (
+        "timeout"
+        if timed_out
+        else "skipped"
+        if explicitly_skipped
+        else "passed"
+        if returncode == 0
+        else "failed"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=ROOT / "validation" / "viewer_v9" / "full_smokes")
@@ -142,26 +166,7 @@ def main() -> int:
                 stderr = stderr.decode("utf-8", errors="replace")
         duration = time.perf_counter() - tick
         combined_output = f"{stdout}\n{stderr}"
-        ran_match = re.search(r"Ran\s+(\d+)\s+tests?", combined_output)
-        skipped_match = re.search(r"skipped=(\d+)", combined_output)
-        all_reported_tests_skipped = bool(
-            ran_match
-            and skipped_match
-            and int(skipped_match.group(1)) >= int(ran_match.group(1))
-        )
-        explicitly_skipped = (
-            (returncode == 5 and "NO TESTS RAN" in combined_output and "skipped=" in combined_output)
-            or (returncode == 0 and all_reported_tests_skipped)
-        )
-        status = (
-            "timeout"
-            if timed_out
-            else "passed"
-            if returncode == 0
-            else "skipped"
-            if explicitly_skipped
-            else "failed"
-        )
+        status = _result_status(returncode, timed_out, combined_output)
         failure_excerpt = ""
         if status in {"failed", "timeout"}:
             failure_excerpt = _failure_excerpt(stdout, stderr, returncode)
