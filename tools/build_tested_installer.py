@@ -117,6 +117,25 @@ def main() -> int:
         if json.loads((STAGING / 'BUILD_SOURCE.json').read_text()) != binding:
             raise RuntimeError('Installed source binding differs')
         smoke('installed', STAGING)
+        # Exercise all twelve directed NC1/STEP/IFC/PDF routes in the
+        # installed executable, with no Python visible to child processes.
+        matrix_path = OUT / 'installed-conversion-matrix.json'
+        run('installed_conversion_matrix', [
+            sys.executable, str(ROOT / 'tests/conversion_one_phase_packaged_smoke.py'),
+            '--runtime-dir', str(STAGING), '--output', str(matrix_path),
+            '--expected-sha', sha,
+        ], 1800)
+        matrix = json.loads(matrix_path.read_text(encoding='utf-8'))
+        expected_routes = {f'{a}-{b}' for a in ('nc1', 'step', 'ifc', 'pdf')
+                           for b in ('nc1', 'step', 'ifc', 'pdf') if a != b}
+        if (matrix.get('status') != 'PASS' or matrix.get('checkout_sha') != sha
+                or matrix.get('python_on_child_path') is not False
+                or matrix.get('executable_sha256') != binding['runtime_files']['CWS_Convertor.exe']
+                or {r.get('direction') for r in matrix.get('routes', [])} != expected_routes
+                or matrix.get('route_count') != 12):
+            raise RuntimeError('Installed conversion matrix lacks exact source/binary/route proof')
+        report['installed_conversion_routes_passed'] = 12
+        report['conversion_matrix_report'] = matrix_path.name
         run('associations', [sys.executable, str(ROOT / 'tests/windows_installer_association_smoke.py'),
                              '--runtime-dir', str(STAGING)], 180)
         user_file = STAGING / 'user-created-project-preservation.txt'
