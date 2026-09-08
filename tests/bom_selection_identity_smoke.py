@@ -256,7 +256,10 @@ class BomSelectionIdentityTests(unittest.TestCase):
         item = self.panel.table.item(self.index_for("P3"), 1)
         self.panel.table.scrollToItem(item)
         point = self.panel.table.visualItemRect(item).center()
-        with patch.object(self.widgets.QMenu, "exec", return_value=None):
+        class NonBlockingMenu(self.widgets.QMenu):
+            def exec(self, *_args):
+                return None
+        with patch.object(self.widgets, "QMenu", NonBlockingMenu):
             self.panel._show_table_menu(point)
         self.assert_selection({"P3"})
 
