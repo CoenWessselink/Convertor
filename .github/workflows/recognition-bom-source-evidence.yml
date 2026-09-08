@@ -18,18 +18,46 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Capture exact tracked source and identity
+      - name: Capture immutable BOM integration sources
         shell: bash
+        env:
+          BOM_HEAD: 528cf4326fc613746f1eb90354998492c656888d
+          MERGE_BASE: b91f768530ce54a5948606e80dd4a6628375f773
         run: |
           set -euo pipefail
-          mkdir -p build/source-evidence
-          git archive --format=zip --output=build/source-evidence/source.zip HEAD
-          git rev-parse HEAD > build/source-evidence/COMMIT.txt
-          git rev-parse HEAD^{tree} > build/source-evidence/TREE.txt
-          sha256sum build/source-evidence/source.zip > build/source-evidence/SHA256SUMS.txt
+          git fetch --depth=1 origin "$BOM_HEAD" "$MERGE_BASE"
+          python - <<'PY'
+          import hashlib, json, os, pathlib, subprocess, zipfile
+          out = pathlib.Path('build/source-evidence')
+          out.mkdir(parents=True, exist_ok=True)
+          base, head = os.environ['MERGE_BASE'], os.environ['BOM_HEAD']
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          paths = git('diff', '--name-only', '-z', base, head).decode().strip('\0').split('\0')
+          manifest = {'base': base, 'bom_head': head, 'integration_head': git('rev-parse', 'HEAD').decode().strip(), 'files': []}
+          with zipfile.ZipFile(out / 'bom-merge-sources.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+              for path in paths:
+                  record = {'path': path}
+                  for label, ref in (('base', base), ('bom', head)):
+                      listing = git('ls-tree', ref, '--', path).decode().strip()
+                      if not listing:
+                          record[label] = None
+                          continue
+                      mode, kind, sha = listing.split('\t', 1)[0].split()
+                      if kind != 'blob':
+                          raise RuntimeError('Unsupported git object: ' + listing)
+                      data = git('cat-file', 'blob', sha)
+                      archive.writestr(label + '/' + path, data)
+                      record[label] = {'sha': sha, 'mode': mode, 'sha256': hashlib.sha256(data).hexdigest()}
+                  manifest['files'].append(record)
+              archive.writestr('manifest.json', json.dumps(manifest, indent=2))
+          (out / 'bom.patch').write_bytes(git('diff', '--binary', base, head))
+          (out / 'integration-tree.txt').write_bytes(git('ls-tree', '-r', 'HEAD'))
+          (out / 'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in sorted(out.iterdir()) if p.is_file()), encoding='utf-8')
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: CWS_Recognition_BOM_Source_${{ github.sha }}
+          name: CWS_Recognition_BOM_Merge_Sources_${{ github.sha }}
           path: build/source-evidence/*
           if-no-files-found: error
           retention-days: 7
