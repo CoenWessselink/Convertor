@@ -959,7 +959,7 @@ def _field_level_deltas(
     return tuple(result)
 
 
-def _transaction_payload(project: Any) -> dict[str, Any]:
+def _transaction_payload(project: Any, *, include_bom_cache: bool = False) -> dict[str, Any]:
     """Stable business payload used for persistent, non-recursive undo."""
 
     payload = deepcopy(project.to_dict())
@@ -967,6 +967,10 @@ def _transaction_payload(project: Any) -> dict[str, Any]:
         payload.pop(key, None)
     settings = payload.get("settings")
     if isinstance(settings, dict):
+        # BOM snapshots are derived read caches, not user-authored project state.
+        # A refresh changes timestamps (and can refresh pre-edit quantities).
+        if not include_bom_cache:
+            settings.pop("bom", None)
         hub = settings.get(HUB_SETTINGS_KEY)
         if isinstance(hub, dict):
             for key in ("history", "undo", "batch_results"):
@@ -2029,7 +2033,7 @@ class BOMHubState:
             "entity_ids": list(current_entities), "runtime_project_restore": True,
             "persistent_inverse_patch": list(inverse_patch),
             "after_content_sha256": stable_sha256(after_content),
-            "undo_schema": "cws-bom-persistent-undo-2.0",
+            "undo_schema": "cws-bom-persistent-undo-2.1",
         }
         if inverse_patch:
             self._runtime_project_undo[transaction_id] = before_state
@@ -2138,7 +2142,11 @@ class BOMHubState:
         inverse_patch = tuple(record.get("persistent_inverse_patch") or ())
         if inverse_patch:
             expected = str(record.get("after_content_sha256") or "")
-            actual = stable_sha256(_transaction_payload(self.project))
+            actual = stable_sha256(_transaction_payload(
+                self.project, include_bom_cache=(
+                    record.get("undo_schema") != "cws-bom-persistent-undo-2.1"
+                ),
+            ))
             if expected and actual != expected:
                 raise ValueError(
                     "Undo is geblokkeerd omdat de projectinhoud na deze transactie verder is gewijzigd"
@@ -2146,6 +2154,8 @@ class BOMHubState:
             current_hash = stable_sha256(self.project.to_dict())
             payload = self.project.to_dict()
             _apply_inverse_patch(payload, inverse_patch)
+            # Never leave the derived pre-undo cache attached to restored parts.
+            payload.get("settings", {}).pop("bom", None)
             restored = type(self.project).from_dict(payload)
             self.project.__dict__.clear()
             self.project.__dict__.update(restored.__dict__)
