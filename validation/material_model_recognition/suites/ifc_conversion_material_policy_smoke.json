@@ -1,0 +1,98 @@
+{
+  "suite": "ifc_conversion_material_policy_smoke",
+  "path": "tests/ifc_conversion_material_policy_smoke.py",
+  "area": "conversion_material_policy",
+  "status": "PASS",
+  "tests_run": 12,
+  "tests_passed": 12,
+  "log": "logs/ifc_conversion_material_policy_smoke.log",
+  "result": "suites/ifc_conversion_material_policy_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/ifc_conversion_material_policy_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/ifc_conversion_material_policy_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_bare_step_without_material_skips_production_recognition",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_conflicting_source_payload_and_attached_nc1_block_before_geometry",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_explicit_fallback_only_fills_absent_source",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_external_ifc_without_material_blocks_before_geometry",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_missing_nc1_material_cannot_be_repaired_by_payload_without_rewrite",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_payload_material_has_priority_over_user_fallback",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_payload_validation_failure_preserves_existing_output",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_public_route_defaults_are_empty",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_source_material_is_preserved_ahead_of_user_fallback",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_step_payload_without_material_cannot_reach_conversion",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_unknown_and_missing_material_are_geometry_review_only",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_valid_material_payload_remains_lossless",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.676
+}

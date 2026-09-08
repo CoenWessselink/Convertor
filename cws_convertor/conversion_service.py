@@ -23,6 +23,43 @@ BATCH_SCHEMA = "cws.conversion.batch.v2"
 FORMATS = ("NC1", "STEP", "IFC", "PDF")
 
 
+def resolve_conversion_material(
+    material: str = "", *, source_material: str = "", required: bool = False,
+) -> str:
+    """Preserve declared source material; never fabricate a default grade.
+
+    A supplied value is an explicit fallback, not permission to overwrite an
+    existing source value. Production callers require an exact catalog identity.
+    Geometry-only exports may retain unknown source text for human review.
+    """
+    from material_database import MaterialDatabase
+
+    source = str(source_material or "").strip()
+    explicit = str(material or "").strip()
+    if not source and not explicit:
+        if required:
+            raise ValueError("MATERIAL_REVIEW_REQUIRED: materiaal ontbreekt; geometrie bewijst geen materiaal")
+        return ""
+    database = MaterialDatabase()
+    source_resolution = database.resolve(source)
+    explicit_resolution = database.resolve(explicit)
+    resolution = source_resolution if source else explicit_resolution
+    if required and not resolution.resolved:
+        raise ValueError("MATERIAL_REVIEW_REQUIRED: materiaal is niet exact bekend in de materialencatalogus")
+    return resolution.material_code if resolution.resolved else source or explicit
+
+
+def conversion_material_density(material: str) -> float:
+    """Return catalog density only when material mass calculation is permitted."""
+    from material_database import MaterialDatabase
+
+    code = resolve_conversion_material(material, required=True)
+    definition = MaterialDatabase().find(code)
+    if definition is None or not definition.mass_calculation_allowed or not math.isfinite(definition.density_kg_m3) or definition.density_kg_m3 <= 0.0:
+        raise ValueError("MATERIAL_DENSITY_REVIEW_REQUIRED: betrouwbare dichtheid voor massaberekening ontbreekt")
+    return float(definition.density_kg_m3)
+
+
 class ConversionStatus(str, Enum):
     SUPPORTED = "SUPPORTED"
     SUPPORTED_WITH_LIMITS = "SUPPORTED_WITH_LIMITS"
@@ -778,7 +815,7 @@ class ConversionService:
         output_directory: str | Path,
         direction: str,
         *,
-        material: str = "S235JR",
+        material: str = "",
         order_number: str = "CWS",
         profile_database: Any = None,
         preferred_profile: str = "",
@@ -862,7 +899,7 @@ class ConversionService:
         output_directory: str | Path,
         direction: str,
         *,
-        material: str = "S235JR",
+        material: str = "",
         profile_database: Any = None,
         progress: Callable[[int, str, dict[str, Any]], None] | None = None,
         cancel_check: Callable[[], None] | None = None,
@@ -935,7 +972,7 @@ class ConversionService:
         output_directory: str | Path,
         direction: str,
         *,
-        material: str = "S235JR",
+        material: str = "",
     ) -> dict[str, Any]:
         from cws_convertor.project import ProjectSession
 
@@ -1162,6 +1199,8 @@ class ConversionService:
             "route": direction,
             "scope": plan.scope,
             "serializer": plan.route.serializer,
+            "explicit_material_input": material,
+            "material_input_policy": "fallback_only_source_metadata_wins",
         }
 
         if (
@@ -1807,5 +1846,7 @@ __all__ = [
     "ConversionStatus",
     "normalise_direction",
     "normalise_format",
+    "resolve_conversion_material",
+    "conversion_material_density",
     "verify_evidence_manifest",
 ]

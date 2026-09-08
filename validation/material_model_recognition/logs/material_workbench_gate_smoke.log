@@ -1,0 +1,12 @@
+
+--- STDERR ---
+test_conflicting_and_unknown_grades_block_workbench_review (cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_conflicting_and_unknown_grades_block_workbench_review) ... ok
+test_entity_confidence_does_not_fake_profile_confidence (cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_entity_confidence_does_not_fake_profile_confidence) ... ok
+test_human_review_confirms_material_identity_and_provenance (cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_human_review_confirms_material_identity_and_provenance) ... ok
+test_material_edit_invalidates_old_field_confirmation (cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_material_edit_invalidates_old_field_confirmation) ... ok
+test_missing_material_and_grade_block_review (cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_missing_material_and_grade_block_review) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.274s
+
+OK

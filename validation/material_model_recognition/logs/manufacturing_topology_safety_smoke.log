@@ -1,0 +1,17 @@
+
+--- STDERR ---
+test_custom_union_cannot_be_proven_by_bbox_and_area (cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_custom_union_cannot_be_proven_by_bbox_and_area) ... ok
+test_invalid_observation_never_matches (cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_invalid_observation_never_matches) ... ok
+test_known_rectangle_remains_recognized (cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_known_rectangle_remains_recognized) ... ok
+test_missing_or_nonfinite_catalogue_area_never_matches (cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_missing_or_nonfinite_catalogue_area_never_matches) ... ok
+test_nonfinite_policy_cannot_allow_any_geometry (cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_nonfinite_policy_cannot_allow_any_geometry) ... ok
+test_two_within_policy_candidates_remain_ambiguous_without_score_tie (cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_two_within_policy_candidates_remain_ambiguous_without_score_tie) ... ok
+test_all_low_coplanar_faces_selected_but_not_high_end (cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_all_low_coplanar_faces_selected_but_not_high_end) ... ok
+test_corner_radius_does_not_replace_section_dimensions (cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_corner_radius_does_not_replace_section_dimensions) ... ok
+test_ellipse_is_not_round_bar (cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_ellipse_is_not_round_bar) ... ok
+test_opposite_equal_length_arcs_are_not_shared_seams (cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_opposite_equal_length_arcs_are_not_shared_seams) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.003s
+
+OK

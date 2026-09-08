@@ -1,0 +1,13 @@
+
+--- STDERR ---
+test_frozen_m18_224_authority_data_survives_roundtrip (cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_frozen_m18_224_authority_data_survives_roundtrip) ... ok
+test_future_226_fails_closed (cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_future_226_fails_closed) ... ok
+test_github_25_migrates_without_part_hash_drift (cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_github_25_migrates_without_part_hash_drift) ... ok
+test_global_schema_is_225 (cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_global_schema_is_225) ... ok
+test_serialized_225_safety_defaults_remain_closed (cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_serialized_225_safety_defaults_remain_closed) ... ok
+test_viewer_declares_224_and_225_compatibility (cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_viewer_declares_224_and_225_compatibility) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.033s
+
+OK

@@ -29,7 +29,6 @@ import sys
 import tempfile
 from typing import Any, Iterable, Sequence
 
-import cadquery as cq
 import numpy as np
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import (
@@ -77,6 +76,11 @@ from canonical_model import (
     utc_now_iso,
 )
 from dimension_graph import populate_dimension_graph, validate_dimension_graph
+from cws_convertor.importers.source_material_evidence import (
+    SourceTextEvidence,
+    collect_material_candidate_evidence,
+    confirm_material_candidate_evidence,
+)
 
 TRUSTED_MODEL_NAME = "converter-model.json"
 TRUSTED_MANIFEST_NAME = "converter-manifest.json"
@@ -262,7 +266,7 @@ def canonical_from_nc1(path: str | Path) -> CanonicalPart:
 def canonical_from_step(
     path: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
     preferred_profile: str = "",
     tolerance_mm: float = 1.0,
 ) -> CanonicalPart:
@@ -279,16 +283,24 @@ def canonical_from_step(
 
     from conversion import step_to_nc1
     from profile_database import ProfileDatabase
+    from material_database import MaterialDatabase
+    import cadquery as cq
 
+    material_resolution = MaterialDatabase().resolve(
+        material, provenance={"source_kind": "explicit_conversion_argument", "source_file": source.name},
+    )
+    resolved_material = material_resolution.material_code if material_resolution.resolved else ""
     shape = cq.importers.importStep(str(source)).val()
     box = shape.BoundingBox()
     try:
+        if not material_resolution.resolved:
+            raise CanonicalPayloadError("STEP bevat geen bewezen materiaalkwaliteit; een expliciete cataloguswaarde is vereist.")
         with tempfile.TemporaryDirectory(prefix="pdf_step_canonical_") as folder:
             nc1 = Path(folder) / f"{source.stem}.nc1"
             result = step_to_nc1(
                 source,
                 nc1,
-                material=material,
+                material=resolved_material,
                 order_number="PDF",
                 profile_database=ProfileDatabase(),
                 preferred_profile=preferred_profile,
@@ -311,6 +323,7 @@ def canonical_from_step(
                 }
             )
             canonical.validation.warnings.extend(result.warnings)
+            canonical.properties["material_resolution"] = material_resolution.to_dict()
             canonical.validation.export_status = "validated"
             canonical.validation.production_export_allowed = True
             canonical.refresh_export_gate()
@@ -332,13 +345,13 @@ def canonical_from_step(
             header=CanonicalHeader(
                 part_number=source.stem,
                 position_number=source.stem,
-                material=material,
+                material=resolved_material,
                 quantity=1,
             ),
             product=CanonicalProductData(
                 name=source.stem,
-                material_code=material,
-                material_grade=material,
+                material_code=resolved_material,
+                material_grade=resolved_material,
                 main_dimensions_mm=[float(box.xlen), float(box.ylen), float(box.zlen)],
             ),
             geometry={
@@ -353,6 +366,7 @@ def canonical_from_step(
                 "production_export_allowed": False,
             },
             warnings=[warning],
+            properties={"material_resolution": material_resolution.to_dict()},
             validation=CanonicalValidationData(
                 warnings=[warning],
                 errors=[],
@@ -361,6 +375,12 @@ def canonical_from_step(
             ),
         )
         canonical.add_attachment("step", source.name, "model/step", source.read_bytes())
+        if not material_resolution.resolved:
+            canonical.add_question(CanonicalQuestion(
+                question_id="step-material-required", field_path="header.material",
+                prompt="Selecteer de materiaalkwaliteit op basis van bronmetadata of een gecontroleerd document.",
+                reason="Geometrie, extrusie en profielvorm bewijzen de materiaalkwaliteit niet.",
+            ))
         canonical.add_question(
             CanonicalQuestion(
                 question_id="step-profile-classification",
@@ -372,7 +392,7 @@ def canonical_from_step(
         return _with_dimension_graph(canonical)
 
 
-def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> list[CanonicalPart]:
+def canonical_parts_from_ifc(path: str | Path, *, material: str = "") -> list[CanonicalPart]:
     source = Path(path)
     payload = extract_part_from_ifc(source, strict=False)
     if payload is not None:
@@ -383,10 +403,20 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
         return [_with_dimension_graph(part)]
 
     from ifc_support import load_ifc_geometry
+    from material_database import MaterialDatabase
 
     model = load_ifc_geometry(source)
+    material_database = MaterialDatabase()
     parts: list[CanonicalPart] = []
     for index, item in enumerate(model.items, start=1):
+        material_resolution = material_database.resolve(
+            item.material_name or material,
+            provenance={
+                "source_kind": "ifc_material_metadata" if item.material_name else "explicit_conversion_argument",
+                "source_file": source.name, "ifc_guid": item.guid,
+            },
+        )
+        resolved_material = material_resolution.material_code if material_resolution.resolved else ""
         dims = [float(value) for value in item.bbox_mm]
         warning = (
             "Extern IFC-element heeft geen geverifieerde converterpayload. De PDF kan als concept "
@@ -404,14 +434,14 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
             header=CanonicalHeader(
                 part_number=item.name or f"{source.stem}_{index}",
                 position_number=item.name or f"{source.stem}_{index}",
-                material=item.material_name or material,
+                material=resolved_material,
                 quantity=1,
                 length=max(dims) if dims else 0.0,
             ),
             product=CanonicalProductData(
                 name=item.name or f"{source.stem}_{index}",
-                material_code=item.material_name or material,
-                material_grade=item.material_name or material,
+                material_code=resolved_material,
+                material_grade=resolved_material,
                 length_mm=max(dims) if dims else 0.0,
                 main_dimensions_mm=dims,
             ),
@@ -428,6 +458,7 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
                 "production_export_allowed": False,
             },
             warnings=[warning],
+            properties={"material_resolution": material_resolution.to_dict()},
             validation=CanonicalValidationData(
                 warnings=[warning],
                 export_status="concept",
@@ -442,6 +473,12 @@ def canonical_parts_from_ifc(path: str | Path, *, material: str = "S355JR") -> l
                 reason="Extern IFC bevat geen lossless productiedata van de converter.",
             )
         )
+        if not material_resolution.resolved:
+            part.add_question(CanonicalQuestion(
+                question_id=f"ifc-material-required-{index}", field_path="header.material",
+                prompt="Selecteer de materiaalkwaliteit op basis van gecontroleerd bronbewijs.",
+                reason=material_resolution.reason,
+            ))
         parts.append(_with_dimension_graph(part))
     return parts
 
@@ -2105,7 +2142,7 @@ def _parse_profile(profile: str) -> dict[str, Any]:
 _TABLE_ROW_RE = re.compile(
     r"\b(?P<position>[A-Za-z][A-Za-z0-9_.-]{1,20})\s+"
     r"(?P<profile>(?:STRIP|PL|PLAAT|HEA|HEB|HEM|IPE|IPN|UPN|UNP|UPE|RHS|SHS|CHS|KOKER|D|L)[A-Za-z0-9*×x/.,-]*)\s+"
-    r"(?P<material>S\d{3}[A-Za-z0-9+.-]*)\s+"
+    r"(?P<material>[A-Za-z0-9][A-Za-z0-9/+_.-]*)\s+"
     r"(?P<length>\d+(?:[.,]\d+)?)\s+"
     r"(?P<quantity>\d+)\s+"
     r"(?P<mark>[A-Za-z0-9_.-]+)\b",
@@ -2501,6 +2538,7 @@ def analyze_external_pdf(
     pages: list[PDFPageAnalysis] = []
     all_lines: list[_LineRecord] = []
     all_paths: list[_VectorPath] = []
+    document_metadata = dict(document.metadata or {})
     try:
         for index, page in enumerate(document, start=1):
             words = page.get_text("words", sort=True)
@@ -2568,19 +2606,55 @@ def analyze_external_pdf(
             )
     else:
         profile = _find_line(normalized_lines, _PROFILE_RE)
-        material = _find_line(normalized_lines, _MATERIAL_RE)
         if profile:
             match, line = profile
             detected["profile"] = match.group(0)
             evidence["profile"] = CanonicalEvidence(
                 value=match.group(0), page=line.page, bbox=line.bbox, method="vector_text_regex", confidence=0.88, source_text=line.text
             )
-        if material:
-            match, line = material
-            detected["material"] = match.group(0).upper()
-            evidence["material"] = CanonicalEvidence(
-                value=match.group(0).upper(), page=line.page, bbox=line.bbox, method="vector_text_regex", confidence=0.90, source_text=line.text
-            )
+
+    material_records = [
+        SourceTextEvidence(
+            text=line.text, source_format="PDF", source_kind="vector_text",
+            source_reference=f"{source.name}:page:{line.page}:line:{index}",
+            confidence=0.90, page=line.page, bbox=tuple(line.bbox),
+        )
+        for index, line in enumerate(normalized_lines)
+    ]
+    material_records.extend(
+        SourceTextEvidence(
+            text=str(value or ""), source_format="PDF", source_kind="document_metadata",
+            source_reference=f"{source.name}:metadata:{name}", confidence=0.80,
+            field_name=str(name),
+        )
+        for name, value in document_metadata.items()
+    )
+    table_material = evidence.get("material")
+    if table_material is not None:
+        material_records.append(SourceTextEvidence(
+            text=str(table_material.value), source_format="PDF", source_kind="table_material_field",
+            source_reference=f"{source.name}:page:{table_material.page}:table_material",
+            confidence=0.94, page=table_material.page, bbox=tuple(table_material.bbox),
+            field_name="material",
+        ))
+    material_evidence = collect_material_candidate_evidence(material_records)
+    detected["material_candidate_evidence"] = material_evidence.to_dict()
+    # All external material values are suggestions until human confirmation.
+    # A conflict must not retain the first table/regex match as a hidden grade.
+    detected.pop("material", None)
+    evidence.pop("material", None)
+    if material_evidence.status == "candidate":
+        selected = max(material_evidence.candidates, key=lambda item: item.confidence)
+        detected["material"] = material_evidence.selected_value
+        evidence["material"] = CanonicalEvidence(
+            value=material_evidence.selected_value, page=selected.page,
+            bbox=selected.bbox, method="external_text_catalog_candidate",
+            confidence=material_evidence.confidence, status="candidate",
+            source_text=selected.source_text,
+        )
+    elif material_evidence.conflict:
+        conflicts.append("material")
+        warnings.append(material_evidence.reason)
 
     scale_match = _find_line(normalized_lines, _SCALE_RE)
     if scale_match:
@@ -2721,6 +2795,7 @@ def analyze_external_pdf(
             "production_export_allowed": False,
         },
         properties={
+            "material_candidate_evidence": material_evidence.to_dict(),
             "drawing_callouts": {
                 "holes": hole_callouts,
                 "hole_count": sum(int(item["count"]) for item in hole_callouts),
@@ -3018,6 +3093,9 @@ def analyze_pdf(
 def _set_review_value(part: CanonicalPart, field_path: str, value: Any) -> None:
     """Apply one explicitly reviewed value through a strict allowlist."""
 
+    if field_path == "material":
+        field_path = "header.material"
+
     header_fields = {
         "order_number",
         "drawing_number",
@@ -3168,6 +3246,15 @@ def validate_reviewed_part(part: CanonicalPart) -> tuple[list[str], list[str]]:
 
     errors: list[str] = []
     warnings: list[str] = []
+    material_proof = part.properties.get("material_candidate_evidence")
+    if isinstance(material_proof, dict):
+        if material_proof.get("review_status") != "confirmed" or not material_proof.get("material_grade_proven"):
+            errors.append("Materiaalkandidaat vereist expliciete menselijke bevestiging of correctie.")
+        elif not part.header.material or any(
+            str(value) != str(material_proof.get("selected_value", ""))
+            for value in (part.header.material, part.product.material_code, part.product.material_grade)
+        ):
+            errors.append("Materiaalvelden wijken af van het expliciet bevestigde materiaalbewijs.")
     missing = _critical_missing(part)
     if missing:
         errors.append("Kritische gegevens ontbreken: " + ", ".join(missing))
@@ -3267,6 +3354,31 @@ def apply_review(
         evidence.confidence = 1.0
         evidence.confirmed_by = reviewer
         evidence.confirmed_at = reviewed_at
+    material_paths = {"material", "header.material", "product.material_code", "product.material_grade"}
+    material_values = [
+        str(value) for path, value in dict(review.get("values") or {}).items()
+        if path in material_paths
+    ]
+    material_confirmed = bool(material_values or confirmed.intersection(material_paths))
+    if material_confirmed and "material_candidate_evidence" in part.properties:
+        selections = [confirm_material_candidate_evidence(
+            dict(part.properties["material_candidate_evidence"]), value,
+            reviewer=reviewer, reviewed_at=reviewed_at,
+        ) for value in (material_values or [part.header.material])]
+        if len({item["selected_value"] for item in selections}) != 1:
+            raise ValueError("Review bevat tegenstrijdige materiaalwaarden.")
+        selected = selections[0]
+        part.properties["material_candidate_evidence"] = selected
+        part.header.material = selected["selected_value"]
+        part.product.material_code = part.header.material
+        part.product.material_grade = part.header.material
+        part.set_evidence("material", CanonicalEvidence(
+            value=part.header.material, method="human_review", confidence=1.0,
+            status="confirmed", confirmed_by=reviewer, confirmed_at=reviewed_at,
+            source_text=selected["human_confirmation"]["raw_value"],
+        ))
+        result.detected_fields["material"] = part.header.material
+        result.detected_fields["material_candidate_evidence"] = copy.deepcopy(selected)
     answers = dict(review.get("answers") or {})
     for question in part.validation.unresolved_questions:
         answer = answers.get(question.question_id)
@@ -3278,7 +3390,7 @@ def apply_review(
             question.status = "answered"
             question.answered_by = reviewer
             question.answered_at = reviewed_at
-        elif question.field_path in confirmed:
+        elif question.field_path in confirmed or (question.field_path == "material" and material_confirmed):
             question.answer = part.field_evidence[question.field_path].value
             question.status = "answered"
             question.answered_by = reviewer
@@ -3551,6 +3663,8 @@ def pdf_to_step(
     analysis = _trusted_or_validated(source, ai_settings=ai_settings)
     step_bytes = analysis.part.attachment_bytes("step")
     if step_bytes is not None:
+        import cadquery as cq
+
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(step_bytes)
         shape = cq.importers.importStep(str(target)).val()
@@ -3572,7 +3686,7 @@ def pdf_to_ifc(
     input_path: str | Path,
     output_path: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
     ai_settings: AISettings | None = None,
 ) -> PDFConversionResult:
     source, target = Path(input_path), Path(output_path)
@@ -3588,6 +3702,7 @@ def pdf_to_ifc(
         from ifc_semantic import SemanticIFCError, write_semantic_plate_ifc
         from ifc_support import load_ifc_geometry
         from canonical_model import extract_part_from_ifc
+        import cadquery as cq
 
         with tempfile.TemporaryDirectory(prefix="pdf_to_ifc_") as folder:
             # Preserve exact source attachments of Trusted PDFs.  Regenerating
@@ -3723,7 +3838,7 @@ def step_to_pdf(
     input_path: str | Path,
     output_path: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
     preferred_profile: str = "",
     tolerance_mm: float = 1.0,
     template: DrawingTemplate | None = None,
@@ -3742,7 +3857,7 @@ def ifc_to_pdf(
     input_path: str | Path,
     output: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
     template: DrawingTemplate | None = None,
 ) -> PDFConversionResult:
     source = Path(input_path)

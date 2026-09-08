@@ -9,7 +9,8 @@ from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 import re
 from functools import lru_cache
-from typing import Any, Iterable
+from types import MappingProxyType
+from typing import Any, Iterable, Mapping
 
 from .model import (
     EntityCategory,
@@ -22,7 +23,7 @@ from .model import (
     utc_now_iso,
 )
 
-CLASSIFICATION_VERSION = "cws-classification-v1"
+CLASSIFICATION_VERSION = "cws-classification-v2"
 PRODUCTION_IDENTITY_VERSION = "cws-production-identity-v1"
 _VALID_CLASSIFICATIONS = {
     EntityCategory.MAKE_PART.value,
@@ -33,17 +34,22 @@ _VALID_CLASSIFICATIONS = {
 }
 
 _MATERIAL_ALIASES = {
-    "S235": "S235JR",
     "S235 JR": "S235JR",
     "STEEL/S235JR": "S235JR",
-    "S355": "S355JR",
     "S355 JR": "S355JR",
     "STEEL/S355JR": "S355JR",
     "CONCRETE/C20/25": "C20/25",
     "CONCRETE/C50/60": "C50/60",
 }
-_NON_STEEL_MATERIALS = {"MULTIPLEX", "VUREN", "C20/25", "C50/60"}
-_FASTENER_GRADES = {"8.8", "4.6", "10.9", "12.9", "A2", "A4"}
+_NON_STEEL_CATEGORIES = {
+    "Hout", "Gelamineerd hout", "Houtplaat", "Beton", "Kunststof", "Technische kunststof",
+}
+_FASTENER_CATEGORIES = {"Bevestigingsstaal", "RVS bevestigingsmiddelen"}
+_FASTENER_GRADES = {
+    "4.6", "5.6", "5.8", "6.8", "8.8", "9.8", "10.9", "12.9",
+    "A2", "A2-50", "A2-70", "A2-80",
+    "A4", "A4-50", "A4-70", "A4-80",
+}
 _FASTENER_WORDS = {
     "BOUT", "BOLT", "MOER", "NUT", "RING", "WASHER", "ANKER",
     "DRAADEIND", "DRAADSTANG", "SCHROEF", "SCREW", "FASTENER",
@@ -68,13 +74,14 @@ def _material_catalog() -> Any:
     return MaterialDatabase()
 
 
-def _catalog_profile(value: Any) -> str:
-    raw = _text(value).upper().replace(",", ".")
-    # Dutch workshop notation: K<side>/<wall> is an SHS and
-    # K<height>x<width>/<wall> is an RHS. Resolve it before querying the
-    # immutable catalogue so the result is an exact, auditable match.
+def _profile_lookup_candidates(value: Any) -> tuple[str, ...]:
+    raw = _text(value).upper().replace(",", ".").replace("×", "X")
+    # Resolve only anchored workshop aliases. Every derived spelling still
+    # has to match exactly one immutable catalogue row; substring/fuzzy
+    # matching is deliberately not used here.
+    candidates = [raw]
     rectangular = re.fullmatch(
-        r"K(?:OKER)?\s*(\d+(?:\.\d+)?)\s*[X*]\s*(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)",
+        r"K(?:OKER)?\s*(\d+(?:\.\d+)?)\s*(?:[X*]|/)\s*(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)",
         raw,
     )
     square = re.fullmatch(
@@ -83,18 +90,91 @@ def _catalog_profile(value: Any) -> str:
     )
     if rectangular:
         height, width, wall = rectangular.groups()
-        raw = f"RHS{height}x{width}x{wall}"
+        candidates.append(f"RHS{height}X{width}X{wall}")
     elif square:
         side, wall = square.groups()
-        raw = f"SHS{side}x{side}x{wall}"
-    key = re.sub(r"[^A-Z0-9]", "", raw)
-    if not key:
+        candidates.append(f"SHS{side}X{side}X{wall}")
+
+    unp = re.fullmatch(r"UNP[- ]?(\d+(?:\.\d+)?)", raw)
+    if unp:
+        candidates.append(f"UPN{unp.group(1)}")
+
+    flat = re.fullmatch(
+        r"(?:STRIP|PL|PLAAT|FLAT)\s*(\d+(?:\.\d+)?)\s*[X*]\s*(\d+(?:\.\d+)?)",
+        raw,
+    )
+    if flat:
+        thickness, width = flat.groups()
+        candidates.append(f"FLAT{width}X{thickness}")
+
+    equal_angle = re.fullmatch(
+        r"L\s*(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)",
+        raw,
+    )
+    if equal_angle:
+        leg, thickness = equal_angle.groups()
+        candidates.append(f"L{leg}X{leg}X{thickness}")
+
+    round_bar = re.fullmatch(
+        r"(?:ROND|ROUND|ROD|DIA|DIA\.|[Ø⌀])\s*[Ø⌀]?\s*(\d+(?:\.\d+)?)",
+        raw,
+    )
+    if round_bar:
+        candidates.append(f"ROUND{round_bar.group(1)}")
+
+    return tuple(candidates)
+
+
+def _profile_exact_key(value: str) -> str:
+    """Normalize display spelling without merging different dimensions.
+
+    Decimal points and slashes carry dimensions. Removing all punctuation
+    previously let SHS20x20x15 resolve to SHS20x20x1.5, for example.
+    Only explicit dimensional/display equivalents are interchangeable here.
+    """
+    key = re.sub(r"\s+", "", str(value or "").upper())
+    key = key.replace(",", ".").replace("×", "X").replace("*", "X")
+    return re.sub(r"^(HEA|HEB|HEM|IPE|IPN|UPN|UPE)-(?=\d)", r"\1", key)
+
+
+@lru_cache(maxsize=2)
+def _catalog_profile_index(
+    snapshot: tuple[tuple[str, tuple[str, ...]], ...],
+) -> Mapping[str, frozenset[str]]:
+    """Immutable exact index, invalidated by row/alias content changes.
+
+    A fresh cheap tuple snapshot at lookup time detects list replacement,
+    appended rows and direct alias edits without a mutable stale index. Store
+    every designation for a key: first-match selection would hide conflicts.
+    """
+    mutable: dict[str, set[str]] = {}
+    for designation, aliases in snapshot:
+        for value in (designation, *aliases):
+            key = _profile_exact_key(value)
+            if key:
+                mutable.setdefault(key, set()).add(designation)
+    return MappingProxyType({key: frozenset(values) for key, values in mutable.items()})
+
+
+def _catalog_profile(value: Any) -> str:
+
+    keys = {
+        _profile_exact_key(candidate)
+        for candidate in _profile_lookup_candidates(value)
+        if candidate
+    }
+    if not keys:
         return ""
     try:
-        matches = [profile.designation for profile in _profile_catalog().profiles if key in profile.search_names]
+        snapshot = tuple(
+            (profile.designation, tuple(profile.aliases))
+            for profile in _profile_catalog().profiles
+        )
+        index = _catalog_profile_index(snapshot)
+        matches = set().union(*(index.get(key, ()) for key in keys))
     except Exception:
-        matches = []
-    return matches[0] if len(set(matches)) == 1 else ""
+        matches = set()
+    return next(iter(matches)) if len(matches) == 1 else ""
 
 
 def _catalog_material(value: Any) -> str:
@@ -126,6 +206,39 @@ def normalize_profile(value: Any) -> str:
     # Preserve recognisable catalog spellings while removing harmless separators.
     text = text.replace("HEA-", "HEA").replace("HEB-", "HEB").replace("IPE-", "IPE")
     return _catalog_profile(text) or text
+
+
+def fastener_grade_candidates(*values: Any) -> tuple[str, ...]:
+    """Return exact, canonical grades carried by fastener-specific fields.
+
+    Standards such as ``EN ISO 4014-8.8`` and material labels such as
+    ``STEEL/8.8`` are supported, while partial numbers (``18.8``) and unknown
+    grade-like text remain unresolved. Multiple different grades are kept so
+    the importer can fail closed instead of choosing one silently.
+    """
+
+    found: set[str] = set()
+    numeric = r"4\.6|5\.6|5\.8|6\.8|8\.8|9\.8|10\.9|12\.9"
+    for value in values:
+        text = _text(value).upper().replace("–", "-").replace("—", "-")
+        if not text:
+            continue
+        for match in re.finditer(rf"(?<![0-9.])({numeric})(?![0-9.])", text):
+            found.add(match.group(1))
+        for match in re.finditer(
+            r"(?<![A-Z0-9])(A[24])(?:\s*[-/]\s*(50|70|80))?(?![A-Z0-9])",
+            text,
+        ):
+            family, strength = match.groups()
+            found.add(f"{family}-{strength}" if strength else family)
+    return tuple(sorted(found))
+
+
+def normalize_fastener_grade(*values: Any) -> str:
+    """Return a grade only when all supplied evidence is unambiguous."""
+
+    candidates = fastener_grade_candidates(*values)
+    return candidates[0] if len(candidates) == 1 else ""
 
 
 @dataclass(frozen=True)
@@ -225,6 +338,8 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
     raw_material = _raw_material(part)
     raw_profile = part.profile
     exact_material = _catalog_material(raw_material)
+    material_definition = _material_catalog().find(exact_material) if exact_material else None
+    material_category = material_definition.category if material_definition else ""
     exact_profile = _catalog_profile(raw_profile)
     material = exact_material or normalize_material(raw_material)
     profile = exact_profile or normalize_profile(raw_profile)
@@ -242,19 +357,19 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
     confidence = 0.45
     blocking: list[str] = []
 
-    if material in _FASTENER_GRADES or words.intersection(_FASTENER_WORDS):
+    if material_category in _FASTENER_CATEGORIES or material in _FASTENER_GRADES or words.intersection(_FASTENER_WORDS):
         category = EntityCategory.PURCHASED_ITEM.value
         status = "automatic"
         rule_id = "CWS-CLASS-PURCHASED-FASTENER-COMPONENT"
         reason = "Standaard bevestigingscomponent op basis van kwaliteit/naam."
         confidence = 0.99
-    elif material in _NON_STEEL_MATERIALS or source_class in {"IFCFOOTING", "IFCSLAB"}:
+    elif material_category in _NON_STEEL_CATEGORIES:
         category = EntityCategory.NON_STEEL.value
         status = "automatic"
         rule_id = "CWS-CLASS-NON-STEEL-MATERIAL"
-        reason = "Niet-staalmateriaal of expliciete beton-/vloerklasse."
+        reason = "Expliciet niet-metallisch catalogusmateriaal."
         confidence = 0.99
-    elif source_format == "STEP" and "VOETPLAAT" in combined:
+    elif source_format == "STEP" and "VOETPLAAT" in combined and not exact_material:
         category = EntityCategory.MAKE_PART.value
         status = "review_required"
         rule_id = "CWS-CLASS-STEP-FOOTPLATE"
@@ -268,28 +383,32 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
         reason = "STEP-solid zonder betrouwbare materiaal- of productclassificatie."
         confidence = 0.45
         blocking.append("Handmatige keuze maakdeel of inkoopdeel vereist")
-    elif material.startswith(("S235", "S355", "S275", "S420", "S460")) or source_class in {
+    elif (material_definition is not None) or source_class in {
         "IFCPLATE", "IFCBEAM", "IFCCOLUMN", "IFCMEMBER"
     }:
         category = EntityCategory.MAKE_PART.value
         status = "automatic"
         rule_id = "CWS-CLASS-STEEL-MAKE-PART"
-        reason = "Stalen productklasse met productieprofiel/-geometrie."
+        reason = "Metallisch catalogusmateriaal of expliciete maakdeelklasse; productiegates blijven apart."
         confidence = 0.99
     else:
         blocking.append("Objectcategorie moet handmatig worden bevestigd")
 
+    material_conflict = bool(
+        part.material and part.material_grade
+        and normalize_material(part.material) != normalize_material(part.material_grade)
+    )
+    if material_conflict:
+        blocking.append("Bronmateriaal en materiaalkwaliteit conflicteren")
+    if not exact_material:
+        blocking.append("Materiaal ontbreekt of is niet exact als cataloguscode/alias herkend")
     if category == EntityCategory.MAKE_PART.value:
-        if not material:
-            blocking.append("Materiaal ontbreekt")
-        if not profile and not part.geometry_hash:
-            blocking.append("Profiel en gevalideerde geometrie ontbreken")
+        if not profile:
+            blocking.append("Productieprofiel ontbreekt; geometriehash is geen profielbewijs")
         elif profile and not exact_profile:
             blocking.append("Profiel niet exact in de vaste profielendatabase; handmatig bevestigen")
-        if material and not exact_material:
-            blocking.append("Materiaal niet exact in de materialendatabase; handmatig bevestigen")
-        if blocking:
-            status = "review_required"
+    if blocking:
+        status = "review_required"
     if not part.part_position:
         blocking.append("Part position ontbreekt")
         if status == "automatic":
@@ -304,9 +423,9 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
         reason=reason,
         confidence=confidence,
         normalized_profile=profile,
-        normalized_material=material,
+        normalized_material="" if material_conflict else exact_material,
         profile_confidence=1.0 if exact_profile else (0.65 if profile else 0.0),
-        material_confidence=1.0 if exact_material else (0.65 if material else 0.0),
+        material_confidence=1.0 if exact_material and not material_conflict else 0.0,
         blocking_reasons=tuple(dict.fromkeys(blocking)),
         source_entity_id=part.source_identity.source_entity_id,
     )
@@ -537,6 +656,19 @@ def set_manual_part_classification(
         raise ProjectValidationError(f"Onbekend onderdeel {part_id}")
     if not _text(reason):
         raise ProjectValidationError("Handmatige classificatie vereist een reden")
+    if not _text(user):
+        raise ProjectValidationError("Handmatige classificatie vereist een reviewer")
+    material = (
+        _catalog_material(normalized_material)
+        if normalized_material is not None
+        else part.normalized_material or _catalog_material(_raw_material(part))
+    )
+    if normalized_material is not None and not material:
+        raise ProjectValidationError("Materiaalbevestiging vereist een exacte cataloguscode of alias")
+    if category == EntityCategory.MAKE_PART.value and normalized_material is None:
+        if part.material and part.material_grade and normalize_material(part.material) != normalize_material(part.material_grade):
+            raise ProjectValidationError("Conflicterend materiaal en kwaliteit moeten eerst worden opgelost")
+    profile = normalize_profile(part.profile if normalized_profile is None else normalized_profile)
     decision = ClassificationDecision(
         part_id=part.internal_id,
         category=category,
@@ -545,19 +677,29 @@ def set_manual_part_classification(
         rule_id="CWS-CLASS-MANUAL-CONFIRMATION",
         reason=_text(reason),
         confidence=1.0,
-        normalized_profile=normalize_profile(
-            part.profile if normalized_profile is None else normalized_profile
-        ),
-        normalized_material=normalize_material(
-            _raw_material(part) if normalized_material is None else normalized_material
-        ),
-        profile_confidence=1.0,
-        material_confidence=1.0,
+        normalized_profile=profile,
+        normalized_material=material,
+        # Confirming a category does not silently confirm unrelated fields.
+        profile_confidence=(1.0 if normalized_profile is not None else part.profile_confidence) if profile else 0.0,
+        material_confidence=(1.0 if normalized_material is not None else part.material_confidence) if material else 0.0,
         blocking_reasons=(),
         source_entity_id=part.source_identity.source_entity_id,
     )
     before = stable_sha256(part.base_to_dict())
     _apply_decision(part, decision, user=user)
+    for field_name, supplied, value in (
+        ("normalized_profile", normalized_profile, profile),
+        ("normalized_material", normalized_material, material),
+    ):
+        if supplied is not None and value:
+            part.field_provenance[field_name] = FieldProvenance(
+                source_file_id=part.source_identity.source_file_id,
+                source_entity_id=part.source_identity.source_entity_id,
+                source_path=f"classification.{field_name}",
+                method="manual_review", confidence=1.0, status="confirmed",
+                confirmed_by=user, confirmed_at=utc_now_iso(),
+                notes=[reason, f"Bevestigd als {value}"],
+            )
     project.audit(
         "part.classification_confirmed",
         user=user,
@@ -577,6 +719,8 @@ __all__ = [
     "ClassificationReport",
     "normalize_material",
     "normalize_profile",
+    "fastener_grade_candidates",
+    "normalize_fastener_grade",
     "decide_part_classification",
     "compute_production_identity",
     "detect_identity_conflicts",

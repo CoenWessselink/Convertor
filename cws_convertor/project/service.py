@@ -4,7 +4,8 @@ The service keeps GUI and CLI behaviour identical.  Source intake remains a
 two-step operation:
 
 1. deterministic baseline inspection and registration;
-2. explicit semantic IFC/STEP materialisation into Project Model 2.x.
+2. explicit semantic IFC/STEP materialisation into Project Model 2.x, followed
+   by deterministic classification of every imported part.
 
 Both steps are transactional.  Semantic import never grants production export
 by itself; exact feature recognition and roundtrip validation remain a separate
@@ -32,7 +33,7 @@ from .baseline import (
     sha256_file,
     write_baseline_report,
 )
-from .model import ImportStrategy, ProjectModel, SourceFileRecord, utc_now_iso
+from .model import ImportStrategy, ProjectModel, SourceFileRecord, stable_sha256, utc_now_iso
 from .storage import ProjectPackage, ProjectPackageError, ProjectStore
 from .semantic_import import semantic_import_source
 from .classification import (
@@ -459,7 +460,13 @@ class ProjectSession:
         progress_callback: Callable[[float, int, str], None] | None = None,
         cancel_check: SemanticCancelCheck | None = None,
     ) -> list[SemanticImportResult]:
-        """Materialise verified IFC/STEP sources as one atomic project update."""
+        """Materialise and classify verified sources as one atomic update.
+
+        Importing a source may never leave newly created parts silently
+        ``unclassified``.  Every imported part is therefore resolved by the
+        deterministic rules or persisted as review-required with explicit
+        blocking reasons before the transaction is committed.
+        """
 
         self._ensure_writable()
         if cancel_check is not None:
@@ -521,6 +528,30 @@ class ProjectSession:
                     progress_callback(index, total, f"Geïmporteerd: {source.file_name}")
             if cancel_check is not None:
                 cancel_check()
+            if progress_callback is not None:
+                progress_callback(
+                    total,
+                    total,
+                    "Materiaal-, profiel- en onderdeelclassificatie uitvoeren",
+                )
+            classification = classify_project_model(
+                working,
+                user=user or "system",
+                source_ids=selected,
+                force=False,
+                include_decisions=False,
+            )
+            classification_summary = classification.to_dict(include_decisions=False)
+            for result in results:
+                result.evidence["automatic_classification"] = classification_summary
+                # Persist the same evidence returned to callers, not the
+                # earlier pre-classification importer snapshot.
+                working.sources[result.source_id].analysis["semantic_import"] = result.to_dict()
+                working.settings.setdefault("semantic_imports", {})[result.source_id] = result.to_dict()
+            for source_id in selected:
+                working.sources[source_id].metadata[
+                    "automatic_classification"
+                ] = classification_summary
             working.validate()
             self.project = working
             self.dirty = True
@@ -558,6 +589,83 @@ class ProjectSession:
             return
         self.project = fallback
         self.dirty = dirty
+
+    def recognize_deferred_step_sources(
+        self,
+        source_ids: Iterable[str] | None = None,
+        *,
+        part_ids: Iterable[str] | None = None,
+        user: str = "system",
+        timeout_seconds: float = 120.0,
+        cancel_check: SemanticCancelCheck | None = None,
+        progress_callback: Callable[[float, int, str], None] | None = None,
+    ) -> list[dict]:
+        """Resolve queued STEP profiles atomically without granting release.
+
+        Native recognition is bounded and process-isolated. Confirmed user
+        work and ambiguous multi-part sources are retained by the importer.
+        A concurrent project edit invalidates this result instead of being
+        overwritten by the worker snapshot.
+        """
+        from cws_convertor.importers.step_project import apply_deferred_step_recognition
+
+        self._ensure_writable()
+        if cancel_check is not None:
+            cancel_check()
+        selected = list(source_ids) if source_ids is not None else [
+            key for key, source in self.project.sources.items()
+            if source.source_format.upper() in {"STEP", "STP"}
+        ]
+        if not selected:
+            return []
+        if len(selected) != len(set(selected)) or any(key not in self.project.sources for key in selected):
+            raise ProjectPackageError("Ongeldige of dubbele STEP-bronselectie", code=ErrorCode.INVALID_INPUT)
+        for key in selected:
+            source = self.project.sources[key]
+            if source.source_format.upper() not in {"STEP", "STP"} or not source.semantic_import_complete:
+                raise ProjectPackageError("STEP-herkenning vereist een semantisch geïmporteerde STEP-bron", code=ErrorCode.INVALID_INPUT)
+        selected_parts = list(part_ids) if part_ids is not None else None
+        if selected_parts is not None and (
+            len(selected_parts) != len(set(selected_parts)) or any(
+                key not in self.project.parts or self.project.parts[key].source_identity.source_file_id not in selected
+                for key in selected_parts
+            )
+        ):
+            raise ProjectPackageError("Onderdeelselectie hoort niet bij de gekozen STEP-bronnen", code=ErrorCode.INVALID_INPUT)
+        paths = {key: self.resolve_source_path(key) for key in selected}
+        original = self.project
+        original_data = original.to_dict()
+        original_fingerprint = stable_sha256(original_data)
+        working = ProjectModel.from_dict(original_data)
+        results = []
+        for index, source_id in enumerate(selected):
+            if cancel_check is not None:
+                cancel_check()
+            if progress_callback is not None:
+                progress_callback(index, len(selected), f"STEP-herkenning: {working.sources[source_id].file_name}")
+            scoped_parts = None if selected_parts is None else [
+                key for key in selected_parts if working.parts[key].source_identity.source_file_id == source_id
+            ]
+            result = apply_deferred_step_recognition(
+                working, working.sources[source_id], paths[source_id],
+                part_ids=scoped_parts, timeout_seconds=timeout_seconds, cancel_check=cancel_check,
+            )
+            working.sources[source_id].metadata["deferred_step_recognition"] = deepcopy(result)
+            results.append(result)
+        if cancel_check is not None:
+            cancel_check()
+        classification = classify_project_model(working, source_ids=selected, user=user, force=False, include_decisions=False)
+        for result in results:
+            result["classification"] = classification.to_dict(include_decisions=False)
+        working.audit("source.deferred_step_recognition", user=user, details={"source_ids": selected, "results": results})
+        working.validate()
+        if self.project is not original or stable_sha256(original.to_dict()) != original_fingerprint:
+            raise ProjectPackageError("Project gewijzigd tijdens STEP-herkenning; resultaat niet toegepast", code=ErrorCode.PROJECT_INVALID)
+        self.project = working
+        self.dirty = True
+        if progress_callback is not None:
+            progress_callback(len(selected), len(selected), "STEP-herkenning afgerond; productiegates blijven actief")
+        return results
 
     def classify_parts(
         self,
@@ -598,7 +706,7 @@ class ProjectSession:
         normalized_material: str | None = None,
     ) -> ClassificationReport:
         self._ensure_writable()
-        fallback = self.project
+        fallback = ProjectModel.from_dict(self.project.to_dict())
         original_dirty = self.dirty
         try:
             report = set_manual_part_classification(
@@ -609,7 +717,10 @@ class ProjectSession:
             self.dirty = True
             return report
         except Exception:
-            self._restore_after_mutation_failure(fallback, original_dirty)
+            # Preserve unsaved edits; a persisted package is not a rollback
+            # snapshot of the user's current in-memory project.
+            self.project = fallback
+            self.dirty = original_dirty
             raise
 
     def start_part_workbench(
@@ -1258,6 +1369,28 @@ class ProjectService:
                 user=user,
                 revision_message=f"{len(results)} bronbestand(en) semantisch geïmporteerd",
             )
+            return results
+
+    def recognize_deferred_step_sources(
+        self,
+        project_path: str | Path,
+        source_ids: Iterable[str] | None = None,
+        *,
+        part_ids: Iterable[str] | None = None,
+        user: str = "system",
+        timeout_seconds: float = 120.0,
+        cancel_check: SemanticCancelCheck | None = None,
+        progress_callback: Callable[[float, int, str], None] | None = None,
+        embed_sources: bool = True,
+    ) -> list[dict]:
+        with ProjectSession.open(project_path, store=self.store) as session:
+            results = session.recognize_deferred_step_sources(
+                source_ids, part_ids=part_ids, user=user,
+                timeout_seconds=timeout_seconds, cancel_check=cancel_check,
+                progress_callback=progress_callback,
+            )
+            session.save(embed_sources=embed_sources, user=user,
+                         revision_message="Uitgestelde STEP-profielherkenning uitgevoerd")
             return results
 
     def classify_project(

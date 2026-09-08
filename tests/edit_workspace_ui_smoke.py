@@ -90,7 +90,10 @@ class EditWorkspaceSmoke(unittest.TestCase):
         labels = [self.panel.tabs.tabText(index) for index in range(self.panel.tabs.count())]
         self.assertEqual(
             labels,
-            ["Algemeen", "Extra info.", "Bewerkingen", "Hoeken", "Gaten", "Coderingen", "Prijzen", "Bewerkingstijden"],
+            [
+                "Algemeen", "Extra info.", "Materiaalreview", "Bewerkingen",
+                "Hoeken", "Gaten", "Coderingen", "Prijzen", "Bewerkingstijden",
+            ],
         )
         self.assertEqual(self.panel.part_id.text(), "B-200-003")
         self.assertEqual(self.panel.features.rowCount(), 1)

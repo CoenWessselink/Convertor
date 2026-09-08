@@ -29,6 +29,8 @@ def _project(tmp: Path) -> tuple[dict, Path]:
         "classification_confirmed": True,
         "normalized_profile": "STRIP10*100",
         "normalized_material": "S355JR",
+        "material_confidence": 1.0,
+        "profile_confidence": 1.0,
         "length_mm": 500.0,
         "mass_kg": 3.925,
         "geometry_hash": "a" * 64,

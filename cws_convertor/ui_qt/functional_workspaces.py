@@ -6,9 +6,32 @@ import csv
 import json
 from pathlib import Path
 import tempfile
+import threading
 from typing import Any
 from uuid import uuid4
 
+from cws_convertor.ui.material_review import (
+    apply_material_confirmation as apply_material_confirmation_model,
+    apply_step_recognition_job,
+    bounded_confidence,
+    build_bulk_preview,
+    bulk_scope_part_ids,
+    catalog_candidates,
+    create_step_recognition_job,
+    material_confirmation_at_cursor,
+    material_evidence,
+    material_review_reasons,
+    material_review_transaction,
+    part_fingerprint,
+    raw_material,
+    redo_material_confirmation as redo_material_confirmation_model,
+    reject_material_confirmation as reject_material_confirmation_model,
+    review_queue_parts,
+    safe_profile_confidence,
+    selection_ids,
+    source_class,
+    undo_material_confirmation as undo_material_confirmation_model,
+)
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
 
@@ -219,9 +242,8 @@ if qt_available():
                 from material_database import normalise_material
                 key = normalise_material(material_value)
                 material_matches = [item for item in self._material_database.materials if key in item.search_names]
-            profile_confidence = 1.0 if profile_match is not None else float(getattr(entity, "profile_confidence", 0.0) or 0.0)
-            material_confidence = 1.0 if material_matches else float(getattr(entity, "material_confidence", 0.0) or 0.0)
-            material_confidence = float(getattr(entity, "material_confidence", 0.0) or 0.0)
+            profile_confidence = bounded_confidence(getattr(entity, "profile_confidence", 0.0))
+            material_confidence = bounded_confidence(getattr(entity, "material_confidence", 0.0))
             profile_text = f"catalogus: {profile_match.designation}" if profile_match else "niet exact in profielendatabase"
             material_text = f"catalogus: {material_matches[0].code}" if len(material_matches) == 1 else "handmatig controleren"
             self.recognition_state.setText(
@@ -315,6 +337,33 @@ if qt_available():
                 "Deze diagnostische editor heeft geen write-path. Gebruik de actieve Part Workbench.",
             )
 
+    class _SelectedStepRecognitionWorker(QtCore.QObject):
+        completed = QtCore.Signal(object)
+        progress = QtCore.Signal(str)
+
+        def __init__(self, job: Any) -> None:
+            super().__init__()
+            self.job = job
+            self.cancelled = threading.Event()
+
+        def check_cancelled(self) -> None:
+            if self.cancelled.is_set():
+                raise RuntimeError("STEP-herkenning geannuleerd")
+
+        @QtCore.Slot()
+        def run(self) -> None:
+            try:
+                results = self.job.detached_session.recognize_deferred_step_sources(
+                    [self.job.source_id], part_ids=[self.job.part_id], user="qt-gui",
+                    timeout_seconds=120.0, cancel_check=self.check_cancelled,
+                    progress_callback=lambda _done, _total, message: self.progress.emit(message),
+                )
+                self.check_cancelled()
+                self.completed.emit({"job": self.job, "results": results, "error": ""})
+            except Exception as exc:
+                self.completed.emit({"job": self.job, "error": f"{type(exc).__name__}: {exc}"})
+
+
     class EditWorkspacePanel(QtWidgets.QWidget):
         """Transactional part editor coupled to the shared Project Model and Viewer V15."""
 
@@ -353,6 +402,11 @@ if qt_available():
             self._draft_features: list[dict[str, Any]] = []
             self._dirty = False
             self._loading = False
+            self._bulk_preview_state: dict[str, Any] = {}
+            self._last_material_bulk: dict[str, Any] = {}
+            self._material_queue_signature: tuple[Any, ...] | None = None
+            self._step_worker = self._step_thread = None
+            self._step_workspace = None
             try:
                 from profile_database import ProfileDatabase
                 from material_database import MaterialDatabase
@@ -402,6 +456,7 @@ if qt_available():
             root.addWidget(self.tabs, 1)
             self._build_general_tab()
             self._build_extra_tab()
+            self._build_material_review_tab()
             self._build_operations_tab()
             self.angle_table = self._build_subset_tab("Hoeken", {"cutout", "end_cut", "miter"})
             self.hole_table = self._build_subset_tab("Gaten", {"hole", "countersunk_hole", "slot"})
@@ -509,8 +564,14 @@ if qt_available():
             self.profile_search.setPlaceholderText("Zoek profiel, familie of norm")
             self.profile_search.setClearButtonEnabled(True)
             self.confirm_profile = QtWidgets.QPushButton("Profiel bevestigen")
+            self.recognize_step_button = QtWidgets.QPushButton("STEP-profiel herkennen")
+            self.recognize_step_button.setToolTip("Exacte geometrieherkenning voor uitsluitend het geselecteerde STEP-onderdeel; materiaal wordt niet uit vorm geraden.")
+            self.cancel_step_button = QtWidgets.QPushButton("Herkenning annuleren")
+            self.cancel_step_button.setEnabled(False)
             tools.addWidget(self.profile_search, 1)
             tools.addWidget(self.confirm_profile)
+            tools.addWidget(self.recognize_step_button)
+            tools.addWidget(self.cancel_step_button)
             layout.addLayout(tools)
             self.profile_matches = QtWidgets.QTableWidget(0, 6)
             self.profile_matches.setHorizontalHeaderLabels(("Profiel", "Type", "Familie", "h", "b", "kg/m"))
@@ -526,8 +587,248 @@ if qt_available():
             self.tabs.addTab(extra, "Extra info.")
             self.profile_search.textChanged.connect(self._refresh_profile_suggestions)
             self.confirm_profile.clicked.connect(self._confirm_profile_selection)
+            self.recognize_step_button.clicked.connect(self.start_selected_step_recognition)
+            self.cancel_step_button.clicked.connect(self.cancel_selected_step_recognition)
             self.profile_matches.itemDoubleClicked.connect(lambda _item: self._confirm_profile_selection())
             self._refresh_profile_suggestions()
+
+        def start_selected_step_recognition(self, _checked: bool = False) -> bool:
+            if self._dirty or self._step_worker is not None:
+                self.status.setText("Sla wijzigingen eerst op of wacht tot de actieve herkenning klaar is.")
+                return False
+            session, part = self._selected_project_part()
+            try:
+                if session is None or part is None:
+                    raise ValueError("Selecteer één geïmporteerd STEP-onderdeel")
+                job = create_step_recognition_job(session, self._entity_id)
+            except Exception as exc:
+                self.status.setText(f"STEP-herkenning niet gestart: {exc}")
+                return False
+            self._step_workspace = self._workspace
+            worker = _SelectedStepRecognitionWorker(job)
+            thread = QtCore.QThread(QtWidgets.QApplication.instance())
+            self._step_worker, self._step_thread = worker, thread
+            worker.moveToThread(thread)
+            thread.started.connect(worker.run)
+            worker.progress.connect(self.status.setText)
+            worker.completed.connect(self._finish_selected_step_recognition)
+            worker.completed.connect(thread.quit)
+            worker.completed.connect(worker.deleteLater)
+            thread.finished.connect(thread.deleteLater)
+            self.destroyed.connect(lambda *_args: worker.cancelled.set())
+            self.recognize_step_button.setEnabled(False)
+            self.cancel_step_button.setEnabled(True)
+            self.status.setText("STEP-profielherkenning loopt op de achtergrond voor de selectie…")
+            thread.start()
+            return True
+
+        def cancel_selected_step_recognition(self, _checked: bool = False) -> None:
+            if self._step_worker is not None:
+                self._step_worker.cancelled.set()
+                self.status.setText("Annulering aangevraagd; live project blijft ongewijzigd.")
+
+        def closeEvent(self, event: Any) -> None:
+            self.cancel_selected_step_recognition()
+            super().closeEvent(event)
+
+        @QtCore.Slot(object)
+        def _finish_selected_step_recognition(self, payload: dict[str, Any]) -> None:
+            worker = self._step_worker
+            self._step_worker = self._step_thread = None
+            self.cancel_step_button.setEnabled(False)
+            job = payload["job"]
+            try:
+                if worker is None or worker.cancelled.is_set():
+                    raise ValueError("STEP-herkenning geannuleerd; niets toegepast")
+                if payload.get("error"):
+                    raise ValueError(payload["error"])
+                if self._workspace is not self._step_workspace or self._dirty or getattr(self._workspace, "session", None) is not job.live_session:
+                    raise ValueError("Werkruimte of bewerkingen gewijzigd; resultaat niet toegepast")
+                with material_review_transaction(job.live_session):
+                    apply_step_recognition_job(job)
+                    if job.live_session.path is not None:
+                        job.live_session.save(user="qt-gui", revision_message=f"Geselecteerde STEP-herkenning {job.part_id}")
+                self._entity = job.live_session.project.parts.get(self._entity_id)
+                self._load_entity_state()
+                self.status.setText("STEP-herkenning verwerkt. Controleer profiel, materiaalbewijs en open reviewvragen; vrijgave blijft apart.")
+            except Exception as exc:
+                self.status.setText(f"STEP-herkenning niet toegepast: {exc}")
+            self._step_workspace = None
+            self._refresh_workbench_controls()
+
+        def _build_material_review_tab(self) -> None:
+            page = QtWidgets.QWidget()
+            layout = QtWidgets.QVBoxLayout(page)
+            layout.setContentsMargins(8, 8, 8, 8)
+            layout.setSpacing(6)
+
+            self.material_review_state = QtWidgets.QLabel(
+                "Selecteer een maakdeel om materiaalbewijs en cataloguskandidaten te beoordelen."
+            )
+            self.material_review_state.setObjectName("safetyStatus")
+            self.material_review_state.setWordWrap(True)
+            layout.addWidget(self.material_review_state)
+
+            decision = QtWidgets.QHBoxLayout()
+            self.material_search = QtWidgets.QLineEdit()
+            self.material_search.setObjectName("materialReviewSearch")
+            self.material_search.setPlaceholderText("Zoek code, alias, categorie of norm")
+            self.material_search.setClearButtonEnabled(True)
+            self.material_category = QtWidgets.QComboBox()
+            for label, value in (
+                ("Kies onderdeelcategorie…", "unknown"),
+                ("Maakdeel", "make_part"),
+                ("Inkoopdeel", "purchased_item"),
+                ("Niet-staal", "non_steel"),
+                ("Referentieobject", "reference"),
+            ):
+                self.material_category.addItem(label, value)
+            self.material_reason = QtWidgets.QLineEdit()
+            self.material_reason.setObjectName("materialReviewReason")
+            self.material_reason.setPlaceholderText("Verplichte reviewreden / broncontrole")
+            self.accept_material = QtWidgets.QPushButton("Kandidaat accepteren")
+            self.accept_material.setObjectName("acceptMaterialCandidate")
+            self.reject_material = QtWidgets.QPushButton("Kandidaat weigeren")
+            self.reject_material.setObjectName("rejectMaterialCandidate")
+            decision.addWidget(self.material_search, 2)
+            decision.addWidget(self.material_category, 1)
+            decision.addWidget(self.material_reason, 3)
+            decision.addWidget(self.accept_material)
+            decision.addWidget(self.reject_material)
+            layout.addLayout(decision)
+
+            evidence_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            candidate_group = QtWidgets.QGroupBox("Cataloguskandidaten — handmatige keuze, nooit geometrisch gegokt")
+            candidate_layout = QtWidgets.QVBoxLayout(candidate_group)
+            self.material_candidates = QtWidgets.QTableWidget(0, 7)
+            self.material_candidates.setObjectName("materialCandidateTable")
+            self.material_candidates.setHorizontalHeaderLabels(
+                ("Code", "Naam", "Categorie", "Norm", "Catalogusmatch", "Bronconfidence", "Status")
+            )
+            self.material_candidates.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.material_candidates.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+            self.material_candidates.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.material_candidates.verticalHeader().hide()
+            self.material_candidates.horizontalHeader().setStretchLastSection(True)
+            candidate_layout.addWidget(self.material_candidates)
+            evidence_splitter.addWidget(candidate_group)
+
+            evidence_group = QtWidgets.QGroupBox("Materiaalbewijs en provenance")
+            evidence_layout = QtWidgets.QVBoxLayout(evidence_group)
+            self.material_evidence = QtWidgets.QTableWidget(0, 5)
+            self.material_evidence.setObjectName("materialEvidenceTable")
+            self.material_evidence.setHorizontalHeaderLabels(
+                ("Bron", "Waarde", "Methode/status", "Confidence", "Herkomst / reden")
+            )
+            self.material_evidence.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.material_evidence.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.material_evidence.verticalHeader().hide()
+            self.material_evidence.horizontalHeader().setStretchLastSection(True)
+            evidence_layout.addWidget(self.material_evidence)
+            evidence_splitter.addWidget(evidence_group)
+            evidence_splitter.setStretchFactor(0, 1)
+            evidence_splitter.setStretchFactor(1, 1)
+
+            lower_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            queue_group = QtWidgets.QGroupBox("Projectbrede materiaalreviewqueue")
+            queue_layout = QtWidgets.QVBoxLayout(queue_group)
+            queue_tools = QtWidgets.QHBoxLayout()
+            self.material_queue_summary = QtWidgets.QLabel("0 reviewregels")
+            self.material_queue_summary.setObjectName("mutedText")
+            self.material_queue_filter = QtWidgets.QLineEdit()
+            self.material_queue_filter.setPlaceholderText("Filter part, materiaal, klasse of reden")
+            self.material_queue_filter.setClearButtonEnabled(True)
+            self.refresh_material_queue = QtWidgets.QPushButton("Queue vernieuwen")
+            queue_tools.addWidget(self.material_queue_summary)
+            queue_tools.addWidget(self.material_queue_filter, 1)
+            queue_tools.addWidget(self.refresh_material_queue)
+            queue_layout.addLayout(queue_tools)
+            self.material_review_queue = QtWidgets.QTableWidget(0, 7)
+            self.material_review_queue.setObjectName("materialReviewQueue")
+            self.material_review_queue.setHorizontalHeaderLabels(
+                ("Part", "Ruw materiaal", "Genormaliseerd", "Confidence", "Bronklasse", "Status", "Reviewreden")
+            )
+            self.material_review_queue.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.material_review_queue.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+            self.material_review_queue.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.material_review_queue.verticalHeader().hide()
+            self.material_review_queue.horizontalHeader().setStretchLastSection(True)
+            queue_layout.addWidget(self.material_review_queue)
+            lower_splitter.addWidget(queue_group)
+
+            bulk_group = QtWidgets.QGroupBox("Veilige bulk-mapping")
+            bulk_layout = QtWidgets.QVBoxLayout(bulk_group)
+            bulk_tools = QtWidgets.QHBoxLayout()
+            self.bulk_scope = QtWidgets.QComboBox()
+            for label, value in (
+                ("Viewerselectie", "selection"),
+                ("Geselecteerde reviewregels", "queue_selection"),
+                ("Zelfde ruwe materiaalwaarde", "raw_material"),
+                ("Zelfde bronklasse", "source_class"),
+                ("Zelfde geometriehash", "geometry"),
+            ):
+                self.bulk_scope.addItem(label, value)
+            self.bulk_category = QtWidgets.QComboBox()
+            for label, value in (
+                ("Behoud onderdeelcategorie", ""),
+                ("Allemaal maakdeel", "make_part"),
+                ("Allemaal inkoopdeel", "purchased_item"),
+                ("Allemaal niet-staal", "non_steel"),
+                ("Allemaal referentie", "reference"),
+            ):
+                self.bulk_category.addItem(label, value)
+            self.bulk_preview_button = QtWidgets.QPushButton("Preview")
+            self.bulk_preview_button.setObjectName("previewBulkMaterial")
+            self.bulk_apply_button = QtWidgets.QPushButton("Preview toepassen")
+            self.bulk_apply_button.setObjectName("applyBulkMaterial")
+            self.bulk_undo_button = QtWidgets.QPushButton("Laatste bulkactie ongedaan")
+            self.bulk_undo_button.setObjectName("undoBulkMaterial")
+            self.bulk_apply_button.setEnabled(False)
+            self.bulk_undo_button.setEnabled(False)
+            bulk_tools.addWidget(self.bulk_scope, 1)
+            bulk_tools.addWidget(self.bulk_category, 1)
+            bulk_tools.addWidget(self.bulk_preview_button)
+            bulk_tools.addWidget(self.bulk_apply_button)
+            bulk_tools.addWidget(self.bulk_undo_button)
+            bulk_layout.addLayout(bulk_tools)
+            self.bulk_preview_table = QtWidgets.QTableWidget(0, 6)
+            self.bulk_preview_table.setObjectName("bulkMaterialPreview")
+            self.bulk_preview_table.setHorizontalHeaderLabels(
+                ("Toepassen", "Part", "Ruw materiaal", "Bronklasse", "Status", "Effect / blokkade")
+            )
+            self.bulk_preview_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+            self.bulk_preview_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.bulk_preview_table.verticalHeader().hide()
+            self.bulk_preview_table.horizontalHeader().setStretchLastSection(True)
+            bulk_layout.addWidget(self.bulk_preview_table)
+            lower_splitter.addWidget(bulk_group)
+            lower_splitter.setStretchFactor(0, 1)
+            lower_splitter.setStretchFactor(1, 1)
+
+            splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+            splitter.addWidget(evidence_splitter)
+            splitter.addWidget(lower_splitter)
+            splitter.setStretchFactor(0, 1)
+            splitter.setStretchFactor(1, 1)
+            layout.addWidget(splitter, 1)
+            self.tabs.addTab(page, "Materiaalreview")
+
+            self.material_search.textChanged.connect(self._refresh_material_candidates)
+            self.material_candidates.itemSelectionChanged.connect(self._material_candidate_changed)
+            self.accept_material.clicked.connect(self.accept_material_candidate)
+            self.reject_material.clicked.connect(self.reject_material_candidate)
+            self.material_queue_filter.textChanged.connect(
+                lambda _text: self._refresh_material_review_queue(force=True)
+            )
+            self.refresh_material_queue.clicked.connect(
+                lambda _checked=False: self._refresh_material_review_queue(force=True)
+            )
+            self.material_review_queue.itemDoubleClicked.connect(self._activate_material_queue_row)
+            self.bulk_scope.currentIndexChanged.connect(self._invalidate_bulk_preview)
+            self.bulk_category.currentIndexChanged.connect(self._invalidate_bulk_preview)
+            self.bulk_preview_button.clicked.connect(self.preview_bulk_material)
+            self.bulk_apply_button.clicked.connect(self.apply_bulk_material)
+            self.bulk_undo_button.clicked.connect(self.undo_bulk_material)
 
         def _build_operations_tab(self) -> None:
             operations = QtWidgets.QWidget()
@@ -741,6 +1042,7 @@ if qt_available():
                 source_id = getattr(source, "source_entity_id", "-") if source is not None else "-"
                 self.source_info.setText(f"Bron: {source_format} | bronobject: {source_id}")
                 self._update_recognition_state(entity)
+                self._refresh_material_review(reset_query=True)
                 self._set_enabled(entity is not None)
                 self._refresh_workbench_controls()
                 self.set_dirty(False)
@@ -756,9 +1058,12 @@ if qt_available():
                 self.add_operation, self.delete_operation, self.duplicate_operation,
                 self.move_up, self.move_down, self.import_button, self.actions_button,
                 self.refresh_button, self.validate, self.calculate, self.save,
+                self.accept_material, self.reject_material, self.bulk_preview_button,
             ):
                 button.setEnabled(enabled)
             self.cancel.setEnabled(enabled and self._dirty)
+            self.bulk_apply_button.setEnabled(enabled and bool(self._bulk_preview_state))
+            self.bulk_undo_button.setEnabled(enabled and bool(self._last_material_bulk))
 
         def _selected_project_part(self) -> tuple[Any | None, Any | None]:
             session = getattr(self._workspace, "session", None)
@@ -767,8 +1072,561 @@ if qt_available():
             part = parts.get(self._entity_id) if hasattr(parts, "get") else None
             return session, part
 
+        @staticmethod
+        def _set_table_values(table: Any, row: int, values: tuple[Any, ...]) -> None:
+            for column, value in enumerate(values):
+                table.setItem(row, column, QtWidgets.QTableWidgetItem(str(value)))
+
+        def _refresh_material_review(self, *, reset_query: bool = False) -> None:
+            entity = self._entity
+            if reset_query:
+                blocker = QtCore.QSignalBlocker(self.material_search)
+                self.material_search.setText(raw_material(entity) if entity is not None else "")
+                del blocker
+            if entity is not None:
+                category = str(getattr(entity, "category", "unknown") or "unknown")
+                category_index = self.material_category.findData(category)
+                self.material_category.setCurrentIndex(max(0, category_index))
+                reasons = material_review_reasons(entity, self._material_database)
+                evidence_confidence = bounded_confidence(getattr(entity, "material_confidence", 0.0))
+                self.material_review_state.setText(
+                    f"{_value(entity, 'part_position', default=self._entity_id)} | "
+                    f"ruw: {raw_material(entity) or '-'} | bronconfidence: {evidence_confidence:.0%} | "
+                    f"classificatie: {getattr(entity, 'classification_status', 'unclassified')} | "
+                    f"{'review: ' + '; '.join(reasons) if reasons else 'materiaalreview afgerond'}"
+                )
+            else:
+                self.material_review_state.setText(
+                    "Selecteer een maakdeel om materiaalbewijs en cataloguskandidaten te beoordelen."
+                )
+            self._refresh_material_candidates()
+            self._refresh_material_evidence()
+            self._refresh_material_review_queue()
+            self._invalidate_bulk_preview()
+
+        def _refresh_material_candidates(self, *_: Any) -> None:
+            entity = self._entity
+            rows = catalog_candidates(
+                self._material_database,
+                self.material_search.text(),
+                source_confidence=getattr(entity, "material_confidence", 0.0) if entity is not None else 0.0,
+            )
+            previous = self._selected_material_candidate()
+            self.material_candidates.setUpdatesEnabled(False)
+            try:
+                self.material_candidates.setRowCount(len(rows))
+                for row, candidate in enumerate(rows):
+                    values = (
+                        candidate.code,
+                        candidate.name,
+                        candidate.category,
+                        candidate.standard,
+                        f"{candidate.catalog_match:.0%}",
+                        f"{candidate.source_confidence:.0%}",
+                        candidate.match_status,
+                    )
+                    self._set_table_values(self.material_candidates, row, values)
+                    for column in range(self.material_candidates.columnCount()):
+                        item = self.material_candidates.item(row, column)
+                        item.setData(QtCore.Qt.ItemDataRole.UserRole, candidate.code)
+                        item.setToolTip(candidate.reason)
+                if rows:
+                    selected_row = next(
+                        (index for index, candidate in enumerate(rows) if candidate.code == previous),
+                        -1,
+                    )
+                    if selected_row < 0 and rows[0].match_status in {"exact", "alias"}:
+                        selected_row = 0
+                    if selected_row >= 0:
+                        self.material_candidates.selectRow(selected_row)
+                    else:
+                        self.material_candidates.clearSelection()
+                        self.material_candidates.setCurrentCell(-1, -1)
+            finally:
+                self.material_candidates.setUpdatesEnabled(True)
+
+        def _refresh_material_evidence(self) -> None:
+            rows = material_evidence(self._entity)
+            self.material_evidence.setUpdatesEnabled(False)
+            try:
+                self.material_evidence.setRowCount(len(rows))
+                for row, evidence in enumerate(rows):
+                    self._set_table_values(
+                        self.material_evidence,
+                        row,
+                        (
+                            evidence.source,
+                            evidence.value,
+                            evidence.method,
+                            f"{evidence.confidence:.0%}",
+                            evidence.provenance,
+                        ),
+                    )
+            finally:
+                self.material_evidence.setUpdatesEnabled(True)
+
+        def _refresh_material_review_queue(self, *_: Any, force: bool = False) -> None:
+            project = getattr(self._workspace, "project", None)
+            query = self.material_queue_filter.text().strip().upper()
+            parts = getattr(project, "parts", {}) or {} if project is not None else {}
+            signature = (
+                id(project),
+                query,
+                tuple(
+                    (
+                        str(part_id),
+                        str(getattr(part, "material", "") or ""),
+                        str(getattr(part, "material_grade", "") or ""),
+                        str(getattr(part, "normalized_material", "") or ""),
+                        bounded_confidence(getattr(part, "material_confidence", 0.0)),
+                        str(getattr(part, "classification_status", "") or ""),
+                    )
+                    for part_id, part in getattr(parts, "items", lambda: ())()
+                ),
+            )
+            if not force and signature == self._material_queue_signature:
+                return
+            self._material_queue_signature = signature
+            rows = review_queue_parts(project, self._material_database) if project is not None else ()
+            if query:
+                rows = tuple(
+                    part for part in rows
+                    if query in " | ".join(
+                        (
+                            _value(part, "part_position", default=getattr(part, "internal_id", "")),
+                            raw_material(part),
+                            _value(part, "normalized_material"),
+                            source_class(part),
+                            "; ".join(material_review_reasons(part, self._material_database)),
+                        )
+                    ).upper()
+                )
+            self.material_review_queue.setUpdatesEnabled(False)
+            try:
+                self.material_review_queue.setRowCount(len(rows))
+                for row, part in enumerate(rows):
+                    part_id = str(getattr(part, "internal_id", ""))
+                    reasons = material_review_reasons(part, self._material_database)
+                    self._set_table_values(
+                        self.material_review_queue,
+                        row,
+                        (
+                            _value(part, "part_position", default=part_id),
+                            raw_material(part) or "-",
+                            _value(part, "normalized_material", default="-"),
+                            f"{bounded_confidence(getattr(part, 'material_confidence', 0.0)):.0%}",
+                            source_class(part) or "-",
+                            _value(part, "classification_status", default="unclassified"),
+                            "; ".join(reasons),
+                        ),
+                    )
+                    for column in range(self.material_review_queue.columnCount()):
+                        self.material_review_queue.item(row, column).setData(
+                            QtCore.Qt.ItemDataRole.UserRole, part_id
+                        )
+            finally:
+                self.material_review_queue.setUpdatesEnabled(True)
+            total_parts = len(getattr(project, "parts", {}) or {}) if project is not None else 0
+            self.material_queue_summary.setText(
+                f"{len(rows)} van {total_parts} onderdelen in materiaalreview"
+            )
+
+        def _selected_material_candidate(self) -> str:
+            row = self.material_candidates.currentRow() if hasattr(self, "material_candidates") else -1
+            item = self.material_candidates.item(row, 0) if row >= 0 else None
+            return str(item.data(QtCore.Qt.ItemDataRole.UserRole) or item.text()).strip() if item else ""
+
+        def _material_candidate_changed(self) -> None:
+            candidate = self._selected_material_candidate()
+            if candidate:
+                self.accept_material.setText(f"{candidate} accepteren")
+                self.reject_material.setText(f"{candidate} weigeren")
+            else:
+                self.accept_material.setText("Kandidaat accepteren")
+                self.reject_material.setText("Kandidaat weigeren")
+            self._invalidate_bulk_preview()
+
+        def _activate_material_queue_row(self, item: Any) -> None:
+            part_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+            interaction = getattr(self._workspace, "interaction", None)
+            if part_id and interaction is not None and hasattr(interaction, "select_entities"):
+                interaction.select_entities((part_id,), origin="material_review")
+
+        def _queue_selected_part_ids(self) -> tuple[str, ...]:
+            result: list[str] = []
+            for index in self.material_review_queue.selectionModel().selectedRows():
+                item = self.material_review_queue.item(index.row(), 0)
+                part_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "") if item else ""
+                if part_id:
+                    result.append(part_id)
+            return tuple(dict.fromkeys(result))
+
+        def _invalidate_bulk_preview(self, *_: Any) -> None:
+            self._bulk_preview_state = {}
+            if hasattr(self, "bulk_preview_table"):
+                self.bulk_preview_table.setRowCount(0)
+            if hasattr(self, "bulk_apply_button"):
+                self.bulk_apply_button.setEnabled(False)
+
+        def _warn_material_review(self, message: str) -> None:
+            self.status.setText(message)
+            QtWidgets.QMessageBox.warning(self, "Materiaalreview", message)
+
+        def _material_decision_input(self, *, category_required: bool) -> tuple[str, str, str] | None:
+            candidate = self._selected_material_candidate()
+            reason = self.material_reason.text().strip()
+            category = str(self.material_category.currentData() or "unknown")
+            if not candidate:
+                self._warn_material_review("Selecteer eerst exact één materiaal uit de catalogus.")
+                return None
+            if not reason:
+                self._warn_material_review("Accepteren en weigeren vereisen een expliciete reviewreden.")
+                return None
+            if category_required and category == "unknown":
+                self._warn_material_review(
+                    "Kies eerst de onderdeelcategorie; een onbekende categorie mag niet als bevestigd worden opgeslagen."
+                )
+                return None
+            return candidate, category, reason
+
+        @staticmethod
+        def _safe_profile_confidence(part: Any, revision: dict[str, Any]) -> float:
+            return safe_profile_confidence(part, revision)
+
+        def _apply_material_confirmation(
+            self,
+            session: Any,
+            part_id: str,
+            *,
+            candidate: str,
+            category: str,
+            reason: str,
+        ) -> dict[str, Any]:
+            return apply_material_confirmation_model(
+                session,
+                part_id,
+                candidate=candidate,
+                category=category,
+                reason=reason,
+                user="qt-gui",
+                database=self._material_database,
+            )
+
+        def _reject_material_confirmation(
+            self,
+            session: Any,
+            part_id: str,
+            *,
+            candidate: str,
+            reason: str,
+        ) -> dict[str, Any]:
+            return reject_material_confirmation_model(
+                session,
+                part_id,
+                candidate=candidate,
+                reason=reason,
+                user="qt-gui",
+            )
+
+        def _undo_material_confirmation(self, session: Any, part_id: str) -> dict[str, Any]:
+            return undo_material_confirmation_model(session, part_id, user="qt-gui")
+
+        @staticmethod
+        def _material_confirmation_at_cursor(part: Any) -> bool:
+            return material_confirmation_at_cursor(part)
+
+        def _redo_material_confirmation(self, session: Any, part_id: str) -> dict[str, Any]:
+            return redo_material_confirmation_model(session, part_id, user="qt-gui")
+
+        def accept_material_candidate(self, _checked: bool = False) -> bool:
+            if self._dirty:
+                self._warn_material_review("Sla algemene onderdeelwijzigingen eerst op of annuleer ze.")
+                return False
+            values = self._material_decision_input(category_required=True)
+            session, part = self._selected_project_part()
+            if values is None or session is None or part is None:
+                if values is not None:
+                    self._warn_material_review("Selecteer eerst een maakdeel uit het centrale Project Model.")
+                return False
+            candidate, category, reason = values
+            try:
+                with material_review_transaction(session):
+                    self._apply_material_confirmation(
+                        session,
+                        self._entity_id,
+                        candidate=candidate,
+                        category=category,
+                        reason=reason,
+                    )
+                    session.save(
+                        user="qt-gui",
+                        revision_message=f"Materiaal {candidate} voor {self._entity_id} bevestigd",
+                    )
+                self._entity = session.project.parts[self._entity_id]
+                self._load_entity_state()
+                self.status.setText(
+                    f"Materiaal en kwaliteit consistent als {candidate} opgeslagen; classificatie bevestigd."
+                )
+                return True
+            except Exception as exc:
+                self.status.setText(f"Materiaal bevestigen mislukt: {type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(self, "Materiaalreview", f"{type(exc).__name__}: {exc}")
+                return False
+
+        def reject_material_candidate(self, _checked: bool = False) -> bool:
+            if self._dirty:
+                self._warn_material_review("Sla algemene onderdeelwijzigingen eerst op of annuleer ze.")
+                return False
+            values = self._material_decision_input(category_required=False)
+            session, part = self._selected_project_part()
+            if values is None or session is None or part is None:
+                if values is not None:
+                    self._warn_material_review("Selecteer eerst een maakdeel uit het centrale Project Model.")
+                return False
+            candidate, _category, reason = values
+            try:
+                with material_review_transaction(session):
+                    self._reject_material_confirmation(
+                        session, self._entity_id, candidate=candidate, reason=reason
+                    )
+                    session.save(
+                        user="qt-gui",
+                        revision_message=f"Materiaalvoorstel {candidate} voor {self._entity_id} afgewezen",
+                    )
+                self._entity = session.project.parts[self._entity_id]
+                self._load_entity_state()
+                self.status.setText(
+                    f"{candidate} afgewezen en met reden als blokkerende materiaalreview opgeslagen."
+                )
+                return True
+            except Exception as exc:
+                self.status.setText(f"Materiaal weigeren mislukt: {type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(self, "Materiaalreview", f"{type(exc).__name__}: {exc}")
+                return False
+
+        def preview_bulk_material(self, _checked: bool = False) -> int:
+            if self._dirty:
+                self._warn_material_review("Sla algemene onderdeelwijzigingen eerst op of annuleer ze.")
+                return 0
+            project = getattr(self._workspace, "project", None)
+            candidate = self._selected_material_candidate()
+            if project is None or not candidate:
+                self._warn_material_review("Selecteer een materiaal-kandidaat en een projectonderdeel.")
+                return 0
+            scope = str(self.bulk_scope.currentData() or "selection")
+            ids = bulk_scope_part_ids(
+                project,
+                scope,
+                primary_part_id=self._entity_id,
+                selected_part_ids=selection_ids(self._selection),
+                queue_part_ids=self._queue_selected_part_ids(),
+            )
+            rows = build_bulk_preview(project, ids, self._material_database)
+            forced_category = str(self.bulk_category.currentData() or "")
+            self.bulk_preview_table.setUpdatesEnabled(False)
+            preview_fingerprints: dict[str, tuple[Any, ...]] = {}
+            try:
+                self.bulk_preview_table.setRowCount(len(rows))
+                for row, preview in enumerate(rows):
+                    part = project.parts[preview.part_id]
+                    category = forced_category or str(getattr(part, "category", "unknown") or "unknown")
+                    eligible = preview.eligible and category != "unknown"
+                    note = preview.note
+                    if preview.eligible and category == "unknown":
+                        note = f"{note}; kies expliciet een bulk-onderdeelcategorie"
+                    check = QtWidgets.QTableWidgetItem("Ja" if eligible else "Nee")
+                    flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+                    if eligible:
+                        flags |= QtCore.Qt.ItemFlag.ItemIsUserCheckable
+                        check.setCheckState(QtCore.Qt.CheckState.Checked)
+                        preview_fingerprints[preview.part_id] = part_fingerprint(part)
+                    else:
+                        check.setCheckState(QtCore.Qt.CheckState.Unchecked)
+                    check.setFlags(flags)
+                    check.setData(QtCore.Qt.ItemDataRole.UserRole, preview.part_id)
+                    self._set_table_values(
+                        self.bulk_preview_table,
+                        row,
+                        (
+                            "" ,
+                            preview.part_position,
+                            preview.raw_material or "-",
+                            preview.source_class or "-",
+                            preview.classification_status,
+                            note,
+                        ),
+                    )
+                    # Transfer Qt ownership only once, after filling text.
+                    # Replacing an already inserted item deletes its C++ peer.
+                    self.bulk_preview_table.setItem(row, 0, check)
+                    for column in range(1, self.bulk_preview_table.columnCount()):
+                        self.bulk_preview_table.item(row, column).setData(
+                            QtCore.Qt.ItemDataRole.UserRole, preview.part_id
+                        )
+            finally:
+                self.bulk_preview_table.setUpdatesEnabled(True)
+            self._bulk_preview_state = {
+                "candidate": candidate,
+                "scope": scope,
+                "forced_category": forced_category,
+                "fingerprints": preview_fingerprints,
+            }
+            self.bulk_apply_button.setEnabled(bool(preview_fingerprints))
+            blocked = len(rows) - len(preview_fingerprints)
+            self.status.setText(
+                f"Bulkpreview: {len(preview_fingerprints)} veilig toepasbaar, {blocked} overgeslagen; nog niets gewijzigd."
+            )
+            return len(preview_fingerprints)
+
+        def _checked_bulk_part_ids(self) -> tuple[str, ...]:
+            result: list[str] = []
+            for row in range(self.bulk_preview_table.rowCount()):
+                item = self.bulk_preview_table.item(row, 0)
+                if item is not None and item.checkState() == QtCore.Qt.CheckState.Checked:
+                    part_id = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+                    if part_id:
+                        result.append(part_id)
+            return tuple(dict.fromkeys(result))
+
+        def apply_bulk_material(self, _checked: bool = False) -> int:
+            if self._dirty:
+                self._warn_material_review("Sla algemene onderdeelwijzigingen eerst op of annuleer ze.")
+                return 0
+            if not self._bulk_preview_state:
+                self._warn_material_review("Maak eerst een actuele bulkpreview.")
+                return 0
+            reason = self.material_reason.text().strip()
+            if not reason:
+                self._warn_material_review("Een bulk-mapping vereist een expliciete reviewreden.")
+                return 0
+            candidate = self._selected_material_candidate()
+            if candidate != self._bulk_preview_state.get("candidate"):
+                self._warn_material_review("De materiaalkeuze veranderde na de preview; maak een nieuwe preview.")
+                return 0
+            if (
+                str(self.bulk_scope.currentData() or "selection") != self._bulk_preview_state.get("scope")
+                or str(self.bulk_category.currentData() or "") != self._bulk_preview_state.get("forced_category")
+            ):
+                self._warn_material_review("De bulkselectie of categorie veranderde; maak een nieuwe preview.")
+                return 0
+            session = getattr(self._workspace, "session", None)
+            project = getattr(self._workspace, "project", None)
+            if session is None or project is None:
+                self._warn_material_review("Geen beschrijfbare projectsessie beschikbaar.")
+                return 0
+            part_ids = self._checked_bulk_part_ids()
+            if not part_ids:
+                self._warn_material_review("Vink minimaal één veilig previewonderdeel aan.")
+                return 0
+            expected = self._bulk_preview_state.get("fingerprints") or {}
+            stale = [
+                part_id for part_id in part_ids
+                if part_id not in project.parts or part_fingerprint(project.parts[part_id]) != expected.get(part_id)
+            ]
+            if stale:
+                self._warn_material_review(
+                    "De projectstatus veranderde na de preview; maak opnieuw een preview voordat u toepast."
+                )
+                return 0
+            forced_category = str(self._bulk_preview_state.get("forced_category") or "")
+            applied: list[dict[str, Any]] = []
+            try:
+                with material_review_transaction(session):
+                    for part_id in part_ids:
+                        part = session.project.parts[part_id]
+                        category = forced_category or str(part.category or "unknown")
+                        if category == "unknown":
+                            raise ValueError(f"Onderdeel {part_id} heeft geen bevestigbare categorie")
+                        applied.append(
+                            self._apply_material_confirmation(
+                                session,
+                                part_id,
+                                candidate=candidate,
+                                category=category,
+                                reason=f"Bulkreview ({self.bulk_scope.currentText()}): {reason}",
+                            )
+                        )
+                    session.save(
+                        user="qt-gui",
+                        revision_message=f"Bulk-materiaalmapping {candidate} voor {len(applied)} onderdelen",
+                    )
+            except Exception as exc:
+                self.status.setText(f"Bulkmapping mislukt en volledig teruggedraaid: {type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Materiaalreview",
+                    f"{type(exc).__name__}: {exc}",
+                )
+                self._refresh_material_review_queue()
+                return 0
+            # Later classifications in the same bulk can refresh cross-part
+            # identity issues. Freeze the final, saved state of every target.
+            for record in applied:
+                record["after_fingerprint"] = part_fingerprint(session.project.parts[record["part_id"]])
+            self._last_material_bulk = {
+                "candidate": candidate,
+                "records": applied,
+                "reason": reason,
+            }
+            self._bulk_preview_state = {}
+            self.bulk_preview_table.setRowCount(0)
+            self.bulk_apply_button.setEnabled(False)
+            self.bulk_undo_button.setEnabled(True)
+            if self._entity_id in session.project.parts:
+                self._entity = session.project.parts[self._entity_id]
+            self._refresh_material_review(reset_query=True)
+            self.bulk_undo_button.setEnabled(True)
+            self.status.setText(
+                f"{candidate} op {len(applied)} onderdelen bevestigd; materiaal en kwaliteit zijn gelijk opgeslagen."
+            )
+            return len(applied)
+
+        def undo_bulk_material(self, _checked: bool = False) -> int:
+            batch = self._last_material_bulk
+            session = getattr(self._workspace, "session", None)
+            if not batch or session is None:
+                self._warn_material_review("Er is geen materiaal-bulkactie om ongedaan te maken.")
+                return 0
+            records = list(batch.get("records") or ())
+            stale = [
+                record["part_id"]
+                for record in records
+                if record["part_id"] not in session.project.parts
+                or part_fingerprint(session.project.parts[record["part_id"]]) != tuple(record["after_fingerprint"])
+            ]
+            if stale:
+                self._warn_material_review(
+                    "Undo geblokkeerd: minimaal één onderdeel is na de bulkactie opnieuw gewijzigd."
+                )
+                return 0
+            undone = 0
+            try:
+                with material_review_transaction(session):
+                    for record in reversed(records):
+                        self._undo_material_confirmation(session, record["part_id"])
+                        undone += 1
+                    session.save(
+                        user="qt-gui",
+                        revision_message=f"Bulk-materiaalmapping voor {undone} onderdelen ongedaan gemaakt",
+                    )
+            except Exception as exc:
+                self.status.setText(f"Bulk-undo mislukt; volledige bulkactie blijft behouden: {type(exc).__name__}: {exc}")
+                QtWidgets.QMessageBox.critical(self, "Materiaalreview", f"{type(exc).__name__}: {exc}")
+                return 0
+            self._last_material_bulk = {}
+            self.bulk_undo_button.setEnabled(False)
+            if self._entity_id in session.project.parts:
+                self._entity = session.project.parts[self._entity_id]
+            self._load_entity_state()
+            self.status.setText(f"Laatste materiaal-bulkactie voor {undone} onderdelen volledig ongedaan gemaakt.")
+            return undone
+
         def _refresh_workbench_controls(self) -> None:
             _session, part = self._selected_project_part()
+            self.recognize_step_button.setEnabled(
+                part is not None and not self._dirty and self._step_worker is None
+                and str(getattr(getattr(part, "source_identity", None), "source_format", "")).upper() in {"STEP", "STP"}
+            )
             state = getattr(part, "workbench", {}) if part is not None else {}
             state = state if isinstance(state, dict) else {}
             revision = state.get("current_revision") if isinstance(state.get("current_revision"), dict) else {}
@@ -1163,11 +2021,27 @@ if qt_available():
                     production_properties.update({
                         "profile": profile_value,
                         "material": material_value,
+                        "material_grade": material_value,
                         "part_position": self.part_id.text().strip(),
                     })
                     dimensions = copy.deepcopy(revision.get("dimensions") or {})
                     dimensions["length_mm"] = self.length.value()
+                    recognition = copy.deepcopy(revision.get("recognition") or {})
+                    recognition["confidence"] = self._safe_profile_confidence(part, revision)
+                    material_review = recognition.get("material_review")
+                    if (
+                        isinstance(material_review, dict)
+                        and material_review.get("status") == "confirmed"
+                        and str(material_review.get("candidate") or "") != material_value
+                    ):
+                        recognition["material_review"] = {
+                            **material_review,
+                            "status": "invalidated",
+                            "confidence": 0.0,
+                            "reason": "Materiaal is daarna in de algemene editor gewijzigd; nieuwe review vereist.",
+                        }
                     changes = {
+                        "recognition": recognition,
                         "production_properties": production_properties,
                         "dimensions": dimensions,
                         "features": self._canonical_workbench_features(),
@@ -1291,13 +2165,17 @@ if qt_available():
 
         def undo_part_workbench(self, _checked: bool = False) -> None:
             self._run_clean_workbench_action(
-                lambda session, _part: session.undo_part_workbench(self._entity_id, user="qt-gui"),
+                lambda session, part: (
+                    self._undo_material_confirmation(session, self._entity_id)
+                    if self._material_confirmation_at_cursor(part)
+                    else session.undo_part_workbench(self._entity_id, user="qt-gui")
+                ),
                 "Laatste workbench-commando ongedaan gemaakt",
             )
 
         def redo_part_workbench(self, _checked: bool = False) -> None:
             self._run_clean_workbench_action(
-                lambda session, _part: session.redo_part_workbench(self._entity_id, user="qt-gui"),
+                lambda session, _part: self._redo_material_confirmation(session, self._entity_id),
                 "Workbench-commando opnieuw uitgevoerd",
             )
 
@@ -1365,8 +2243,8 @@ if qt_available():
                 from material_database import normalise_material
                 key = normalise_material(material_value)
                 material_matches = [item for item in self._material_database.materials if key in item.search_names]
-            profile_confidence = 1.0 if profile_match is not None else float(getattr(entity, "profile_confidence", 0.0) or 0.0)
-            material_confidence = float(getattr(entity, "material_confidence", 0.0) or 0.0)
+            profile_confidence = bounded_confidence(getattr(entity, "profile_confidence", 0.0))
+            material_confidence = bounded_confidence(getattr(entity, "material_confidence", 0.0))
             profile_text = f"catalogus: {profile_match.designation}" if profile_match else "niet exact in profielendatabase"
             material_text = f"catalogus: {material_matches[0].code}" if len(material_matches) == 1 else "handmatig controleren"
             self.recognition_state.setText(

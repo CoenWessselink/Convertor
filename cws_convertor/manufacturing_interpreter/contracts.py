@@ -88,6 +88,21 @@ class InterpretationReadiness(str, Enum):
     BLOCKED = "BLOCKED"
 
 
+class MaterialEvidenceStatus(str, Enum):
+    """Authority of a material value used by a manufacturing interpretation.
+
+    Geometry is deliberately absent from the confirmed states.  A BREP can
+    prove shape, but two physically different materials can have identical
+    geometry.  Only explicit source metadata or an explicit user decision may
+    therefore confirm material for promotion.
+    """
+
+    UNRESOLVED = "UNRESOLVED"
+    SOURCE_CONFIRMED = "SOURCE_CONFIRMED"
+    USER_CONFIRMED = "USER_CONFIRMED"
+    CONFLICT = "CONFLICT"
+
+
 def _plain(value: Any) -> Any:
     if isinstance(value, Enum):
         return value.value
@@ -182,6 +197,8 @@ class CrossSectionSignature:
     inner_wire_count: int
     edge_type_counts: tuple[tuple[str, int], ...]
     inferred_family: str
+    supporting_face_ids: tuple[str, ...] = ()
+    component_count: int = 1
 
 
 @dataclass(frozen=True)
@@ -224,6 +241,37 @@ class ManufacturingInterpretationRequest:
     inspection: Any
     preferred_profile: str = ""
     requested_outputs: tuple[str, ...] = ("STEP", "IFC", "NC1")
+    material_evidence: "MaterialEvidence | None" = None
+    project_part_link: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class MaterialEvidence:
+    """Material evidence carried alongside, never inferred from, geometry."""
+
+    status: MaterialEvidenceStatus = MaterialEvidenceStatus.UNRESOLVED
+    material: str = ""
+    grade: str = ""
+    confidence: float = 0.0
+    source: str = ""
+    source_path: str = ""
+    source_entity_id: str = ""
+    reason: str = "Material is niet door betrouwbare bronmetadata of een gebruiker bevestigd."
+    evidence: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def confirmed(self) -> bool:
+        from .material_evidence import normalise_material_evidence
+        evidence = normalise_material_evidence(self)
+        return bool(
+            evidence.status
+            in {
+                MaterialEvidenceStatus.SOURCE_CONFIRMED,
+                MaterialEvidenceStatus.USER_CONFIRMED,
+            }
+            and (evidence.material.strip() or evidence.grade.strip())
+            and 0.95 <= evidence.confidence <= 1.0
+        )
 
 
 @dataclass(frozen=True)
@@ -243,6 +291,7 @@ class ManufacturingInterpretationReport:
     equivalence: EquivalenceProof
     representability: tuple[tuple[str, str], ...]
     readiness: InterpretationReadiness
+    material_evidence: MaterialEvidence = field(default_factory=MaterialEvidence)
     blockers: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     evidence: tuple[tuple[str, str], ...] = ()

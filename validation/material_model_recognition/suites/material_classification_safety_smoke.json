@@ -1,0 +1,56 @@
+{
+  "suite": "material_classification_safety_smoke",
+  "path": "tests/material_classification_safety_smoke.py",
+  "area": "classification",
+  "status": "PASS",
+  "tests_run": 5,
+  "tests_passed": 5,
+  "log": "logs/material_classification_safety_smoke.log",
+  "result": "suites/material_classification_safety_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/material_classification_safety_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_classification_safety_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_category_review_never_confirms_unreviewed_fields",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_every_catalog_family_has_a_deterministic_category",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_generic_steel_family_does_not_invent_toughness_grade",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_geometry_or_source_class_never_proves_unknown_material",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_material_grade_conflict_is_not_normalized_away",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.699
+}

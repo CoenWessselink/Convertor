@@ -1,0 +1,10 @@
+
+--- STDERR ---
+test_normalisation_is_conservative (cws_acceptance_project_classification_smoke.ClassificationTests.test_normalisation_is_conservative) ... ok
+test_rules_production_identity_and_manual_review (cws_acceptance_project_classification_smoke.ClassificationTests.test_rules_production_identity_and_manual_review) ... ok
+test_same_mark_different_geometry_is_blocking (cws_acceptance_project_classification_smoke.ClassificationTests.test_same_mark_different_geometry_is_blocking) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.102s
+
+OK

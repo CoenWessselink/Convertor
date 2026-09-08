@@ -1,0 +1,17 @@
+
+--- STDERR ---
+unittest.case.FunctionTestCase (test_deferred_step_recognition_is_bounded_and_never_invents_material)
+cws_acceptance_manufacturing_interpreter_material_promotion_step_smoke.test_deferred_step_recognition_is_bounded_and_never_invents_material ... ok
+unittest.case.FunctionTestCase (test_fragmented_standard_section_can_match_but_custom_single_contour_cannot)
+cws_acceptance_manufacturing_interpreter_material_promotion_step_smoke.test_fragmented_standard_section_can_match_but_custom_single_contour_cannot ... ok
+unittest.case.FunctionTestCase (test_project_part_link_distinguishes_source_confirmed_from_unresolved_material)
+cws_acceptance_manufacturing_interpreter_material_promotion_step_smoke.test_project_part_link_distinguishes_source_confirmed_from_unresolved_material ... ok
+unittest.case.FunctionTestCase (test_promotion_blocks_unresolved_material_and_stale_source_without_mutation)
+cws_acceptance_manufacturing_interpreter_material_promotion_step_smoke.test_promotion_blocks_unresolved_material_and_stale_source_without_mutation ... ok
+unittest.case.FunctionTestCase (test_promotion_uses_supported_workbench_fields_and_preserves_mgi_pointer)
+cws_acceptance_manufacturing_interpreter_material_promotion_step_smoke.test_promotion_uses_supported_workbench_fields_and_preserves_mgi_pointer ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.243s
+
+OK

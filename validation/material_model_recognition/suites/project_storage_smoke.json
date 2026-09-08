@@ -1,0 +1,86 @@
+{
+  "suite": "project_storage_smoke",
+  "path": "tests/project_storage_smoke.py",
+  "area": "project_regression",
+  "status": "PASS",
+  "tests_run": 10,
+  "tests_passed": 10,
+  "log": "logs/project_storage_smoke.log",
+  "result": "suites/project_storage_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/project_storage_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_storage_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_autosave_is_lightweight_and_recovery_restores_embedded_source",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_corrupted_manifest_entry_is_rejected",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_create_embed_open_extract_and_revision",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_find_autosave_requires_newer_snapshot",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_future_project_schema_in_manifest_is_rejected",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_previews_survive_open_edit_save_cycle",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_read_only_session_blocks_save",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_schema_one_opens_read_only_and_migrates_to_copy",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_session_save_reuses_just_written_verified_snapshot",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_unlisted_or_unsafe_archive_entries_are_rejected",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.699
+}

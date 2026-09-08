@@ -69,7 +69,7 @@ def _iter_inputs(items: list[str], extensions: set[str]):
 
 
 def _common_reverse_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--material", default="S355JR", help="Materiaal voor uitvoer/quantities")
+    parser.add_argument("--material", default="", help="Expliciet materiaal als bronmateriaal ontbreekt; leeg = controle vereist")
     parser.add_argument("--order", default="STEP", help="Ordernummer voor DSTV/NC1-kopgegevens")
     parser.add_argument("--profile", default="", help="Forceer een profiel uit profiles.json; leeg = automatisch")
     parser.add_argument("--tolerance", type=float, default=1.0, help="Profielherkenningstolerantie in mm")
@@ -226,7 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("dstv-to-ifc", help="Converteer .nc/.nc1 naar IFC")
     p.add_argument("inputs", nargs="+", help="Bestanden of mappen")
     p.add_argument("-o", "--output", required=True, help="Uitvoermap")
-    p.add_argument("--material", default="S355JR")
+    p.add_argument("--material", default="")
     _report_arg(p)
 
     p = sub.add_parser("ifc-to-step", help="Converteer IFC naar STEP")
@@ -237,7 +237,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("step-to-ifc", help="Converteer STEP naar IFC")
     p.add_argument("inputs", nargs="+", help="STEP-bestanden of mappen")
     p.add_argument("-o", "--output", required=True, help="Uitvoermap")
-    p.add_argument("--material", default="S355JR")
+    p.add_argument("--material", default="")
     _report_arg(p)
 
     p = sub.add_parser("nc1-to-pdf", help="Maak een vectoriële Trusted Converter PDF uit NC1/DSTV")
@@ -249,7 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("step-to-pdf", help="Maak een vectoriële Trusted Converter PDF uit STEP")
     p.add_argument("inputs", nargs="+", help="STEP-bestanden of mappen")
     p.add_argument("-o", "--output", required=True, help="Uitvoermap")
-    p.add_argument("--material", default="S355JR")
+    p.add_argument("--material", default="")
     p.add_argument("--profile", default="")
     p.add_argument("--tolerance", type=float, default=1.0)
     _template_args(p)
@@ -258,7 +258,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("ifc-to-pdf", help="Maak één of meer technische PDF's uit IFC")
     p.add_argument("inputs", nargs="+", help="IFC-bestanden of mappen")
     p.add_argument("-o", "--output", required=True, help="Uitvoermap")
-    p.add_argument("--material", default="S355JR")
+    p.add_argument("--material", default="")
     _template_args(p)
     _report_arg(p)
 
@@ -284,19 +284,19 @@ def build_parser() -> argparse.ArgumentParser:
         p = sub.add_parser(command, help=help_text)
         p.add_argument("inputs", nargs="+", help="PDF-bestanden of mappen")
         p.add_argument("-o", "--output", required=True, help="Uitvoermap")
-        p.add_argument("--material", default="S355JR")
+        p.add_argument("--material", default="")
         _ai_args(p)
         _report_arg(p)
 
     p = sub.add_parser("excel", help="Bepaal hoeveelheden uit IFC/STEP en schrijf Excel")
     p.add_argument("inputs", nargs="+", help="IFC/STEP-bestanden of mappen")
     p.add_argument("-o", "--output", required=True, help="Excelbestand (.xlsx)")
-    p.add_argument("--material", default="S355JR", help="Fallback materiaal")
+    p.add_argument("--material", default="", help="Expliciet STEP-materiaal; leeg = massa niet berekenen")
     _report_arg(p)
 
     p = sub.add_parser("quantities", help="Toon hoeveelheden uit IFC/STEP als tekst")
     p.add_argument("inputs", nargs="+", help="IFC/STEP-bestanden of mappen")
-    p.add_argument("--material", default="S355JR", help="Fallback materiaal")
+    p.add_argument("--material", default="", help="Expliciet STEP-materiaal; leeg = massa niet berekenen")
     _report_arg(p)
 
     p = sub.add_parser("inspect-model", help="Maak een deterministische IFC/STEP-importnulmeting")
@@ -1768,9 +1768,11 @@ def main(argv: list[str] | None = None) -> int:
                 materials = MaterialDatabase()
                 profiles = ProfileDatabase()
                 analysis = analyze_files(files, fallback_material=args.material, material_database=materials, profile_database=profiles)
-                print(f"Regels: {len(analysis.items)} | totaal aantal: {analysis.total_quantity} | massa: {analysis.total_mass_kg:.3f} kg")
+                mass_label = "massa" if analysis.mass_complete else "bekende massa (onvolledig)"
+                print(f"Regels: {len(analysis.items)} | totaal aantal: {analysis.total_quantity} | {mass_label}: {analysis.total_mass_kg:.3f} kg")
                 for item in analysis.items:
-                    print(f"{item.source_file}\t{item.name}\t{item.object_type}\t{item.profile}\t{item.material_code}\t{item.volume_mm3:.1f} mm3\t{item.mass_kg:.3f} kg")
+                    mass_text = f"{item.mass_kg:.3f} kg" if item.mass_status == "calculated" else "CONTROLE VEREIST"
+                    print(f"{item.source_file}\t{item.name}\t{item.object_type}\t{item.profile}\t{item.material_code}\t{item.volume_mm3:.1f} mm3\t{mass_text}")
                 for warning in analysis.warnings:
                     print(f"WAARSCHUWING: {warning}")
                 outputs: list[Path] = []
@@ -1778,7 +1780,9 @@ def main(argv: list[str] | None = None) -> int:
                     target = export_excel(args.output, analysis, material_database=materials, profile_database=profiles)
                     outputs = [target]
                     print(f"EXCEL {target}")
-                entries.append({"status": "passed", "outputs": [str(item) for item in outputs], "details": {"items": len(analysis.items), "total_quantity": analysis.total_quantity, "total_mass_kg": analysis.total_mass_kg}, "warnings": analysis.warnings})
+                if not analysis.mass_complete:
+                    review_required += 1
+                entries.append({"status": "passed" if analysis.mass_complete else "review_required", "outputs": [str(item) for item in outputs], "details": {"items": len(analysis.items), "total_quantity": analysis.total_quantity, "total_mass_kg": analysis.total_mass_kg, "mass_complete": analysis.mass_complete, "blocked_mass_count": analysis.blocked_mass_count}, "warnings": analysis.warnings})
             except Exception as exc:
                 failures += 1
                 print(f"FOUT hoeveelheden: {exc}", file=sys.stderr)

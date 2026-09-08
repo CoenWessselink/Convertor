@@ -287,8 +287,8 @@ class ExternalPDFAndAITests(unittest.TestCase):
             analysis,
             {
                 "reviewed_by": "unittest",
-                "confirm": ["holes[0]"],
-                "comment": "Synthetic vector geometry visually checked",
+                "confirm": ["holes[0]", "material"],
+                "comment": "Synthetic vector geometry and source material explicitly checked",
             },
         )
         self.assertTrue(reviewed.production_export_allowed)
@@ -297,8 +297,8 @@ class ExternalPDFAndAITests(unittest.TestCase):
             json.dumps(
                 {
                     "reviewed_by": "unittest",
-                    "confirm": ["holes[0]"],
-                    "comment": "Synthetic vector geometry visually checked",
+                    "confirm": ["holes[0]", "material"],
+                    "comment": "Synthetic vector geometry and source material explicitly checked",
                 }
             ),
             encoding="utf-8",

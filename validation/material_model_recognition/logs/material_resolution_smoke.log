@@ -1,0 +1,16 @@
+
+--- STDERR ---
+test_catalog_has_required_material_families (cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_catalog_has_required_material_families) ... ok
+test_exact_alias_and_unresolved_are_explicit_and_auditable (cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_exact_alias_and_unresolved_are_explicit_and_auditable) ... ok
+test_fastener_stainless_aluminium_and_plastic_aliases (cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_fastener_stainless_aluminium_and_plastic_aliases) ... ok
+test_find_has_no_implicit_fallback (cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_find_has_no_implicit_fallback) ... ok
+test_semantic_punctuation_is_not_erased (cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_semantic_punctuation_is_not_erased) ... ok
+test_explicit_ifc_fallback_only_applies_when_source_is_empty (cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_explicit_ifc_fallback_only_applies_when_source_is_empty) ... ok
+test_step_geometry_without_material_evidence_has_no_mass (cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_step_geometry_without_material_evidence_has_no_mass) ... ok
+test_unknown_ifc_material_never_uses_fallback_or_wrong_density (cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_unknown_ifc_material_never_uses_fallback_or_wrong_density) ... ok
+test_variable_density_material_blocks_mass_even_when_identity_is_exact (cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_variable_density_material_blocks_mass_even_when_identity_is_exact) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.016s
+
+OK

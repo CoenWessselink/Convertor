@@ -1,0 +1,50 @@
+{
+  "suite": "project_semantic_service_smoke",
+  "path": "tests/project_semantic_service_smoke.py",
+  "area": "classification",
+  "status": "PASS",
+  "tests_run": 4,
+  "tests_passed": 4,
+  "log": "logs/project_semantic_service_smoke.log",
+  "result": "suites/project_semantic_service_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/project_semantic_service_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_semantic_service_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_batch_hash_failure_rolls_back_without_partial_entities",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_cooperative_cancel_rolls_back_complete_batch",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_progress_reports_internal_import_stages",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_semantic_project_saves_reopens_and_reimports_stably",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.565
+}

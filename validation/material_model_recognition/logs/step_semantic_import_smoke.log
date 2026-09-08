@@ -1,0 +1,11 @@
+
+--- STDERR ---
+test_ap242_occurrence_materialises_assembly_and_part_relation (cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_ap242_occurrence_materialises_assembly_and_part_relation) ... ok
+test_missing_solid_uses_strategy_c_without_inventing_geometry (cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_missing_solid_uses_strategy_c_without_inventing_geometry) ... ok
+test_reimport_is_idempotent_and_keeps_stable_hashes (cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_reimport_is_idempotent_and_keeps_stable_hashes) ... ok
+test_single_product_single_solid_is_not_split_by_quantity_in_name (cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_single_product_single_solid_is_not_split_by_quantity_in_name) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.049s
+
+OK

@@ -119,7 +119,11 @@ def _source_reference(part: Part, source_geometry_hash: str | None) -> dict[str,
 
 def _new_revision(part: Part, *, user: str, source_geometry_hash: str) -> dict[str, Any]:
     timestamp = utc_now_iso()
-    confidence = max(float(part.profile_confidence or 0.0), float(part.confidence or 0.0))
+    # Entity/source confidence is not profile-recognition confidence.  Using
+    # the former here made an exactly imported but completely unknown profile
+    # appear as a 100% recognition.  Only dedicated profile evidence may seed
+    # this value; a reviewer can still explicitly confirm a candidate.
+    confidence = float(part.profile_confidence or 0.0)
     return {
         "revision_id": str(uuid4()),
         "revision_number": 1,
@@ -673,8 +677,53 @@ def evaluate_workbench_revision(revision: Mapping[str, Any]) -> list[dict[str, A
     _normalise_frame(revision.get("production_frame"))
     if "dimensions" in revision:
         _normalise_dimensions(revision.get("dimensions"))
-    if "production_properties" in revision:
-        _normalise_production_properties(revision.get("production_properties"))
+    properties = _normalise_production_properties(
+        revision.get("production_properties") or {}
+    )
+    if not properties.get("profile"):
+        issues.append(
+            _issue(
+                "MISSING-PROFILE",
+                "Een profiel- of plaataanduiding moet expliciet zijn bevestigd.",
+                "production_properties.profile",
+            )
+        )
+    if not properties.get("material"):
+        issues.append(
+            _issue(
+                "MISSING-MATERIAL",
+                "Materiaal ontbreekt; geometrie mag geen materiaalgrade invullen.",
+                "production_properties.material",
+            )
+        )
+    if not properties.get("material_grade"):
+        issues.append(
+            _issue(
+                "MISSING-MATERIAL-GRADE",
+                "Materiaalkwaliteit ontbreekt en moet uit bewijs of review komen.",
+                "production_properties.material_grade",
+            )
+        )
+
+    from .classification import _catalog_material, normalize_material
+
+    material = properties.get("material", "")
+    grade = properties.get("material_grade", "")
+    if material and not _catalog_material(material):
+        issues.append(_issue(
+            "UNKNOWN-MATERIAL", "Materiaal staat niet als exacte code of alias in de catalogus.",
+            "production_properties.material",
+        ))
+    if grade and not _catalog_material(grade):
+        issues.append(_issue(
+            "UNKNOWN-MATERIAL-GRADE", "Materiaalkwaliteit is niet via de catalogus opgelost.",
+            "production_properties.material_grade",
+        ))
+    if material and grade and normalize_material(material) != normalize_material(grade):
+        issues.append(_issue(
+            "MATERIAL-CONFLICT", "Materiaal en materiaalkwaliteit conflicteren.",
+            "production_properties.material_grade",
+        ))
 
     side_ids: set[str] = set()
     confirmed_sides: set[str] = set()
@@ -1069,6 +1118,24 @@ def _sync_part_state(part: Part) -> None:
         part.material_grade,
     )
     identity_inputs_changed = identity_inputs_after != identity_inputs_before
+    from .classification import normalize_material, normalize_profile
+
+    if tuple(map(normalize_profile, identity_inputs_after[:2])) != tuple(map(normalize_profile, identity_inputs_before[:2])):
+        part.profile_confidence = 0.0
+        invalidated_fields = ["profile", "normalized_profile"]
+    else:
+        invalidated_fields = []
+    if tuple(map(normalize_material, identity_inputs_after[2:])) != tuple(map(normalize_material, identity_inputs_before[2:])):
+        part.material_confidence = 0.0
+        invalidated_fields.extend(["material", "material_grade", "normalized_material"])
+    for field_name in invalidated_fields:
+        provenance = part.field_provenance.get(field_name)
+        if provenance is not None:
+            provenance.confidence = 0.0
+            provenance.status = "review_required"
+            provenance.confirmed_by = ""
+            provenance.confirmed_at = ""
+            provenance.notes = [*provenance.notes, "Waarde gewijzigd; eerdere bevestiging is vervallen"]
     part.production_features = deepcopy(list(revision.get("features") or []))
     part.reference_sides = [
         str(item.get("side_id"))
@@ -1419,6 +1486,42 @@ def review_part_workbench(
     history = part.workbench["revision_history"]
     history[-1] = _revision_record(revision, user=user)
     _sync_part_state(part)
+    # A named human review of a complete Workbench revision is also the
+    # authoritative confirmation of the production identity.  This closes the
+    # previous gap where a released part could remain ``review_required``.
+    from .classification import compute_production_identity
+
+    part.classification_status = "confirmed"
+    part.classification_method = "human_workbench_review"
+    part.classification_rule_id = "CWS-WB-HUMAN-CONFIRM-001"
+    part.classification_reason = (
+        "Productie-identiteit door Workbench-reviewer bevestigd"
+    )
+    part.classification_confidence = 1.0
+    part.profile_confidence = 1.0
+    part.material_confidence = 1.0
+    part.validation_issues = [
+        issue for issue in part.validation_issues
+        if not issue.code.startswith("CWS-CLASSIFICATION-BLOCK-")
+    ]
+    part.production_identity_hash = compute_production_identity(part)
+    part.bom_group_key = part.production_identity_hash
+    for field_name, value in (
+        ("profile", part.normalized_profile or part.profile),
+        ("material", part.normalized_material or part.material),
+        ("material_grade", part.material_grade),
+    ):
+        part.field_provenance[field_name] = FieldProvenance(
+            source_file_id=part.source_identity.source_file_id,
+            source_entity_id=part.source_identity.source_entity_id,
+            source_path=f"workbench.production_properties.{field_name}",
+            method="human_workbench_review",
+            confidence=1.0,
+            status="confirmed",
+            confirmed_by=user,
+            confirmed_at=utc_now_iso(),
+            notes=[f"Bevestigd als {value}"],
+        )
     validate_workbench_state(part, part.workbench)
     project.audit(
         "part_workbench.released" if release else "part_workbench.validated",

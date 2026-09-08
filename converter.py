@@ -1093,11 +1093,15 @@ def step_plate_to_nc1(
     input_path: str | Path,
     output_path: str | Path,
     *,
-    material: str = "S235JR",
+    material: str = "",
     order_number: str = "STEP",
 ) -> StepPlate:
+    from cws_convertor.conversion_service import conversion_material_density, resolve_conversion_material
+
+    material = resolve_conversion_material(material, required=True)
+    density_kg_m3 = conversion_material_density(material)
     plate = analyze_step_plate(input_path)
-    material = _ascii_safe(material, "S235JR")
+    material = _ascii_safe(material, "")
     order_number = _ascii_safe(order_number, "STEP")
     part_number = _ascii_safe(plate.part_number, "PART")
     source_name = _ascii_safe(Path(input_path).name, "source.step")
@@ -1105,7 +1109,8 @@ def step_plate_to_nc1(
     length = round(plate.length, 2)
     width = round(plate.width, 2)
     gross_area = max(plate.gross_area, 1e-9)
-    weight = t * 7.85
+    # DSTV plate header weight is kg/m²: millimetres / 1000 × kg/m³.
+    weight = t * density_kg_m3 / 1000.0
     paint = 2.0 + plate.outer_perimeter * t / gross_area
     profile = f"PL{_fmt_number(t)}*{_fmt_number(width)}"
 
@@ -1166,7 +1171,7 @@ def convert_file(
     output_directory: str | Path,
     direction: str,
     *,
-    material: str = "S235JR",
+    material: str = "",
 ) -> tuple[Path, list[str]]:
     """Converteer één bestand en retourneer uitvoerpad plus waarschuwingen."""
     source = Path(input_path)

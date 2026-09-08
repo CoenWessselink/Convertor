@@ -5,12 +5,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-import cadquery as cq
-
 from cws_convertor.project.source_geometry import SourceGeometryInspection
 
 from .contracts import InterpretationReadiness, ManufacturingInterpretationRequest
-from .pipeline import ManufacturingGeometryInterpreter
 
 
 def _sha256(path: Path) -> str:
@@ -22,9 +19,15 @@ def _sha256(path: Path) -> str:
 
 
 def _step_inspection(path: Path) -> SourceGeometryInspection:
+    import cadquery as cq
+
     source_sha = _sha256(path)
     imported = cq.importers.importStep(str(path))
+    if len(imported.vals()) != 1:
+        raise ValueError("STEP bevat meerdere top-level shapes; exacte onderdeelisolatie vereist")
     shape = imported.val()
+    if len(shape.Solids()) != 1:
+        raise ValueError("STEP bevat niet exact één solid; exacte onderdeelisolatie vereist")
     return SourceGeometryInspection(
         part_id=f"step:{source_sha[:20]}",
         source_file_id=path.name,
@@ -41,6 +44,8 @@ def _step_inspection(path: Path) -> SourceGeometryInspection:
 
 
 def run_cli(args: Any) -> int:
+    from .pipeline import ManufacturingGeometryInterpreter
+
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     interpreter = ManufacturingGeometryInterpreter()

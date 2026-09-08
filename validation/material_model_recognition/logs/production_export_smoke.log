@@ -1,0 +1,9 @@
+
+--- STDERR ---
+unittest.case.FunctionTestCase (legacy_entrypoint)
+cws_acceptance_production_export_smoke.run ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.180s
+
+OK

@@ -14,6 +14,7 @@ from PySide6 import QtCore
 from conversion import convert_file
 from cws_convertor.project import ProjectService
 from cws_convertor.thumbnails import create_ifc_thumbnail
+from cws_convertor.importers.source_material_evidence import analyze_source_material_document
 
 
 ProgressCallback = Callable[[int, str], None]
@@ -154,7 +155,7 @@ def build_project_from_models(
     created = service.create_project(
         str(target),
         project_name=_safe_name(project_name),
-        description=f"Materiaalbasis: {material or 'S355JR'}",
+        description=(f"Voorgestelde materiaalbasis (niet automatisch toegewezen): {material}" if material else ""),
         order_number=str(project_number or ""),
         created_by=user,
     )
@@ -227,12 +228,25 @@ def build_project_from_models(
                     "kind": source.suffix.lower().lstrip(".").upper(),
                     "sha256": digest,
                     "size": source.stat().st_size,
+                    "material_candidate_evidence": analyze_source_material_document(destination),
                 }
             )
         (documents_root / "source_manifest.json").write_text(
             json.dumps(auxiliary_records, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        # Evidence is also stored inside the project, so candidate provenance
+        # survives a project save/reopen. It is document-scoped; a PDF grade is
+        # never propagated silently to every imported IFC/STEP component.
+        with service.open(target) as session:
+            session.project.settings["auxiliary_document_evidence"] = auxiliary_records
+            session.project.audit(
+                "project.auxiliary_material_evidence_registered",
+                user=user,
+                details={"document_count": len(auxiliary_records), "part_assignment_required": True},
+            )
+            session.dirty = True
+            session.save(user=user, revision_message="PDF/DXF materiaalbewijs vastgelegd; onderdeeltoewijzing vereist")
 
     thumbnail = ""
     thumbnail_source = next((path for path in inputs if path.suffix.lower() == ".ifc"), None)

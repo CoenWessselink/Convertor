@@ -1,0 +1,56 @@
+{
+  "suite": "manufacturing_interpreter_material_promotion_step_smoke",
+  "path": "tests/manufacturing_interpreter_material_promotion_step_smoke.py",
+  "area": "model_recognition",
+  "status": "PASS",
+  "tests_run": 5,
+  "tests_passed": 5,
+  "log": "logs/manufacturing_interpreter_material_promotion_step_smoke.log",
+  "result": "suites/manufacturing_interpreter_material_promotion_step_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/manufacturing_interpreter_material_promotion_step_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/manufacturing_interpreter_material_promotion_step_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "test_deferred_step_recognition_is_bounded_and_never_invents_material",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "test_fragmented_standard_section_can_match_but_custom_single_contour_cannot",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "test_project_part_link_distinguishes_source_confirmed_from_unresolved_material",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "test_promotion_blocks_unresolved_material_and_stale_source_without_mutation",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "test_promotion_uses_supported_workbench_fields_and_preserves_mgi_pointer",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.844
+}

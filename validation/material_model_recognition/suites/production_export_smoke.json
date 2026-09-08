@@ -1,0 +1,34 @@
+{
+  "suite": "production_export_smoke",
+  "path": "tests/production_export_smoke.py",
+  "area": "workbench_release",
+  "status": "PASS",
+  "tests_run": 1,
+  "tests_passed": 1,
+  "log": "logs/production_export_smoke.log",
+  "result": "suites/production_export_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/production_export_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/production_export_smoke.json",
+    "--entrypoint",
+    "run"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "legacy_entrypoint",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.496
+}

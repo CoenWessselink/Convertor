@@ -1,15 +1,13 @@
 """Automatische hoeveelheden uit STEP/IFC en professionele Excel-export."""
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from cws_convertor.material_resolution import MaterialResolution
 from cws_convertor.product import APP_NAME
 import json
-import tempfile
 from typing import Any, Iterable
-
-import cadquery as cq
 
 from material_database import MaterialDatabase, MaterialDefinition
 from profile_database import ProfileDatabase
@@ -33,6 +31,10 @@ class QuantityItem:
     volume_mm3: float
     density_kg_m3: float
     mass_kg: float
+    material_resolution_status: str = "unresolved"
+    material_confidence: float = 0.0
+    material_provenance: dict[str, Any] = field(default_factory=dict)
+    mass_status: str = "blocked_unresolved_material"
     guid: str = ""
     tag: str = ""
     properties: dict[str, Any] = field(default_factory=dict)
@@ -57,8 +59,20 @@ class QuantityAnalysis:
     def total_mass_kg(self) -> float:
         return sum(item.mass_kg * max(item.quantity, 1) for item in self.items)
 
+    @property
+    def unresolved_material_count(self) -> int:
+        return sum(item.material_resolution_status == "unresolved" for item in self.items)
 
-def _sorted_bbox(shape: cq.Shape) -> tuple[float, float, float]:
+    @property
+    def blocked_mass_count(self) -> int:
+        return sum(item.mass_status != "calculated" for item in self.items)
+
+    @property
+    def mass_complete(self) -> bool:
+        return self.blocked_mass_count == 0
+
+
+def _sorted_bbox(shape: Any) -> tuple[float, float, float]:
     box = shape.BoundingBox()
     return tuple(sorted((float(box.xlen), float(box.ylen), float(box.zlen)), reverse=True))
 
@@ -81,23 +95,92 @@ def _profile_for_single_step(source: Path, profile_database: ProfileDatabase) ->
         return "", "Solid", warnings
 
 
+def _resolve_quantity_material(
+    materials: MaterialDatabase,
+    raw_value: Any,
+    *,
+    source_kind: str,
+    source_reference: str,
+    explicit_fallback: str | None = None,
+) -> tuple[MaterialResolution, MaterialDefinition | None, str, list[str]]:
+    """Resolve material evidence and decide whether mass may be calculated.
+
+    A fallback is considered only when the source value is empty.  It never
+    replaces a non-empty but unknown source value.
+    """
+
+    raw = str(raw_value or "").strip()
+    fallback = str(explicit_fallback or "").strip()
+    provenance: dict[str, Any] = {
+        "source_kind": source_kind,
+        "source_reference": source_reference,
+        "source_value": raw,
+        "fallback_applied": False,
+    }
+    value = raw
+    warnings: list[str] = []
+    if not value and fallback:
+        value = fallback
+        provenance.update(
+            {
+                "source_kind": "explicit_fallback",
+                "fallback_applied": True,
+                "fallback_value": fallback,
+            }
+        )
+        warnings.append(
+            f"Materiaal ontbreekt in de bron; expliciet gekozen fallback {fallback!r} wordt gebruikt."
+        )
+    elif value and source_kind == "explicit_step_material_argument":
+        warnings.append(
+            f"STEP-geometrie bevat geen betrouwbaar materiaalbewijs; {value!r} is als expliciete "
+            "gebruikers-/opdrachtwaarde toegepast en moet tegen bronmetadata of certificaat worden bevestigd."
+        )
+
+    resolution = materials.resolve(value, provenance=provenance)
+    material = resolution.definition if resolution.resolved else None
+    if material is None:
+        label = raw or "<leeg>"
+        warnings.append(
+            f"BLOKKEREND: materiaal {label!r} is niet als exacte code of expliciete alias herkend; "
+            "dichtheid en massa zijn niet berekend."
+        )
+        return resolution, None, "blocked_unresolved_material", warnings
+
+    if not material.mass_calculation_allowed or material.density_kg_m3 <= 0:
+        warnings.append(
+            f"BLOKKEREND: materiaal {material.code} is herkend, maar de catalogus bevat geen "
+            "voldoende betrouwbare dichtheid voor automatische massaberekening."
+        )
+        return resolution, material, "blocked_density_not_authoritative", warnings
+
+    return resolution, material, "calculated", warnings
+
+
 def extract_step_quantities(
     path: str | Path,
     *,
-    material_code: str = "S355JR",
+    material_code: str | None = None,
     material_database: MaterialDatabase | None = None,
     profile_database: ProfileDatabase | None = None,
 ) -> QuantityAnalysis:
+    import cadquery as cq
+
     source = Path(path)
     materials = material_database or MaterialDatabase()
     profiles = profile_database or ProfileDatabase()
-    material = materials.find(material_code)
+    resolution, material, mass_status, material_warnings = _resolve_quantity_material(
+        materials,
+        material_code,
+        source_kind="explicit_step_material_argument" if material_code else "step_geometry",
+        source_reference=str(source),
+    )
     shape = cq.importers.importStep(str(source)).val()
     solids = list(shape.Solids())
     if not solids:
         solids = [shape]
     items: list[QuantityItem] = []
-    warnings: list[str] = []
+    warnings: list[str] = list(material_warnings)
     shared_profile, shared_type, profile_warnings = ("", "Solid", [])
     if len(solids) == 1:
         shared_profile, shared_type, profile_warnings = _profile_for_single_step(source, profiles)
@@ -107,8 +190,11 @@ def extract_step_quantities(
         length, width, height = _sorted_bbox(solid)
         volume = float(solid.Volume())
         area = float(solid.Area())
-        mass = volume / 1e9 * material.density_kg_m3
+        density = float(material.density_kg_m3) if material is not None and mass_status == "calculated" else 0.0
+        mass = volume / 1e9 * density if mass_status == "calculated" else 0.0
         name = source.stem if len(solids) == 1 else f"{source.stem}_{index:03d}"
+        item_warnings = list(profile_warnings) if len(solids) == 1 else []
+        item_warnings.extend(material_warnings)
         items.append(
             QuantityItem(
                 source_file=source.name,
@@ -117,24 +203,29 @@ def extract_step_quantities(
                 name=name,
                 object_type=shared_type if len(solids) == 1 else "Solid",
                 profile=shared_profile if len(solids) == 1 else "",
-                material_code=material.code,
-                material_name=material.name,
+                material_code=material.code if material is not None else str(material_code or ""),
+                material_name=material.name if material is not None else "Onopgelost materiaal",
                 quantity=1,
                 length_mm=length,
                 width_mm=width,
                 height_mm=height,
                 surface_area_mm2=area,
                 volume_mm3=volume,
-                density_kg_m3=material.density_kg_m3,
+                density_kg_m3=density,
                 mass_kg=mass,
+                material_resolution_status=resolution.status,
+                material_confidence=resolution.confidence,
+                material_provenance=dict(resolution.provenance),
+                mass_status=mass_status,
                 properties={
                     "STEP": {
                         "SolidIndex": index,
                         "SolidCount": len(solids),
                         "BoundingBoxSorted_mm": [length, width, height],
-                    }
+                    },
+                    "MaterialResolution": resolution.to_dict(),
                 },
-                warnings=list(profile_warnings) if len(solids) == 1 else [],
+                warnings=item_warnings,
             )
         )
     return QuantityAnalysis([source], items, warnings)
@@ -143,7 +234,7 @@ def extract_step_quantities(
 def extract_ifc_quantities(
     path: str | Path,
     *,
-    fallback_material: str = "S355JR",
+    fallback_material: str | None = None,
     material_database: MaterialDatabase | None = None,
 ) -> QuantityAnalysis:
     from ifc_support import load_ifc_geometry
@@ -154,16 +245,26 @@ def extract_ifc_quantities(
     items: list[QuantityItem] = []
     warnings = list(model.warnings)
     for index, element in enumerate(model.items, start=1):
-        material = materials.find(element.material_name or fallback_material, default=fallback_material)
+        resolution, material, mass_status, material_warnings = _resolve_quantity_material(
+            materials,
+            element.material_name,
+            source_kind="ifc_material_association",
+            source_reference=f"{source}#{element.guid or index}",
+            explicit_fallback=fallback_material,
+        )
         length, width, height = element.bbox_mm
         volume = element.volume_mm3
         area = element.area_mm2
-        mass = volume / 1e9 * material.density_kg_m3
+        density = float(material.density_kg_m3) if material is not None and mass_status == "calculated" else 0.0
+        mass = volume / 1e9 * density if mass_status == "calculated" else 0.0
         profile = _find_profile_text(element.properties) or _find_profile_text(element.quantities)
         props = {
             "IFC property sets": element.properties,
             "IFC quantities": element.quantities,
+            "MaterialResolution": resolution.to_dict(),
         }
+        item_warnings = [*element.warnings, *material_warnings]
+        warnings.extend(f"{element.name}: {warning}" for warning in material_warnings)
         items.append(
             QuantityItem(
                 source_file=source.name,
@@ -172,20 +273,24 @@ def extract_ifc_quantities(
                 name=element.name,
                 object_type=element.ifc_class,
                 profile=profile,
-                material_code=material.code,
-                material_name=element.material_name or material.name,
+                material_code=material.code if material is not None else str(element.material_name or ""),
+                material_name=(element.material_name or material.name) if material is not None else "Onopgelost materiaal",
                 quantity=1,
                 length_mm=length,
                 width_mm=width,
                 height_mm=height,
                 surface_area_mm2=area,
                 volume_mm3=volume,
-                density_kg_m3=material.density_kg_m3,
+                density_kg_m3=density,
                 mass_kg=mass,
+                material_resolution_status=resolution.status,
+                material_confidence=resolution.confidence,
+                material_provenance=dict(resolution.provenance),
+                mass_status=mass_status,
                 guid=element.guid,
                 tag=element.tag,
                 properties=props,
-                warnings=list(element.warnings),
+                warnings=item_warnings,
             )
         )
     return QuantityAnalysis([source], items, warnings)
@@ -211,7 +316,7 @@ def _find_profile_text(value: Any) -> str:
 def analyze_files(
     paths: Iterable[str | Path],
     *,
-    fallback_material: str = "S355JR",
+    fallback_material: str | None = None,
     material_database: MaterialDatabase | None = None,
     profile_database: ProfileDatabase | None = None,
 ) -> QuantityAnalysis:
@@ -305,6 +410,7 @@ def export_excel(
         "Bronbestand", "Bronsoort", "Item", "Naam", "IFC-klasse / type", "GUID", "Tag", "Profiel",
         "Materiaalcode", "Materiaalomschrijving", "Aantal", "Lengte mm", "Breedte mm", "Hoogte/dikte mm",
         "Oppervlak mm²", "Volume mm³", "Dichtheid kg/m³", "Massa per stuk kg", "Totale massa kg", "Waarschuwingen",
+        "Materiaalresolutie", "Materiaalzekerheid", "Massastatus", "Materiaalprovenance",
     ]
     for col, text in enumerate(headers):
         sheet.write(0, col, text, fmt_header)
@@ -321,18 +427,26 @@ def export_excel(
                 sheet.write_number(row, col, float(value), fmt_num)
             else:
                 sheet.write(row, col, value, fmt_text)
-        # Formula uses quantity * volume (mm³) / 1e9 * density.
-        formula = f"=K{row+1}*P{row+1}/1000000000*Q{row+1}"
-        sheet.write_formula(row, 18, formula, fmt_num, item.mass_kg * item.quantity)
+        # Only resolved materials with an authoritative catalog density receive
+        # a mass formula.  Blocked rows stay blank rather than suggesting zero kg.
+        if item.mass_status == "calculated":
+            formula = f"=K{row+1}*P{row+1}/1000000000*Q{row+1}"
+            sheet.write_formula(row, 18, formula, fmt_num, item.mass_kg * item.quantity)
+        else:
+            sheet.write_blank(row, 18, None, fmt_warn)
         warning_text = " | ".join(item.warnings)
         sheet.write(row, 19, warning_text, fmt_warn if warning_text else fmt_text)
+        sheet.write(row, 20, item.material_resolution_status, fmt_warn if item.material_resolution_status == "unresolved" else fmt_text)
+        sheet.write_number(row, 21, float(item.material_confidence), fmt_num)
+        sheet.write(row, 22, item.mass_status, fmt_warn if item.mass_status != "calculated" else fmt_text)
+        sheet.write(row, 23, json.dumps(item.material_provenance, ensure_ascii=False, sort_keys=True), fmt_text)
     total_row = len(analysis.items) + 2
     sheet.write(total_row, 17, "Totaal:", fmt_total)
     if analysis.items:
         sheet.write_formula(total_row, 18, f"=SUM(S2:S{len(analysis.items)+1})", fmt_total, analysis.total_mass_kg)
     sheet.freeze_panes(1, 0)
     sheet.autofilter(0, 0, max(len(analysis.items), 1), len(headers) - 1)
-    widths = [28,10,8,28,20,24,14,18,15,30,8,13,13,15,16,16,16,17,17,55]
+    widths = [28, 10, 8, 28, 20, 24, 14, 18, 15, 30, 8, 13, 13, 15, 16, 16, 16, 17, 17, 55, 18, 18, 34, 60]
     for index, width in enumerate(widths):
         sheet.set_column(index, index, width)
 
@@ -348,6 +462,9 @@ def export_excel(
         ("Totaal volume m³", analysis.total_volume_mm3 / 1e9),
         ("Totale massa kg", analysis.total_mass_kg),
         ("Totale massa ton", analysis.total_mass_kg / 1000.0),
+        ("Massa compleet", "ja" if analysis.mass_complete else "nee"),
+        ("Regels met onopgelost materiaal", analysis.unresolved_material_count),
+        ("Regels met geblokkeerde massa", analysis.blocked_mass_count),
         ("Aantal waarschuwingen", len(analysis.warnings) + sum(bool(item.warnings) for item in analysis.items)),
     ]
     for row, (label, value) in enumerate(summary_rows, start=1):
@@ -371,7 +488,7 @@ def export_excel(
     material_headers = [
         "Code", "Naam", "Categorie", "Dichtheid kg/m³", "E-modulus GPa", "Poisson", "Vloeigrens MPa",
         "Treksterkte MPa", "Uitzetting 10⁻⁶/K", "Warmtegeleiding W/mK", "Soortelijke warmte J/kgK",
-        "Norm", "Aliassen", "Opmerkingen",
+        "Norm", "Aliassen", "Opmerkingen", "Dichtheidsstatus", "Massa automatisch toegestaan",
     ]
     for col, text in enumerate(material_headers):
         material_sheet.write(0, col, text, fmt_header)
@@ -380,6 +497,7 @@ def export_excel(
             item.code, item.name, item.category, item.density_kg_m3, item.elastic_modulus_gpa, item.poisson_ratio,
             item.yield_strength_mpa, item.tensile_strength_mpa, item.thermal_expansion_1e6_k,
             item.thermal_conductivity_w_mk, item.specific_heat_j_kg_k, item.standard, ", ".join(item.aliases), item.notes,
+            item.density_status, "ja" if item.mass_calculation_allowed else "nee",
         ]
         for col, value in enumerate(values):
             material_sheet.write(row, col, value, fmt_num if isinstance(value, (int, float)) else fmt_text)

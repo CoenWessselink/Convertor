@@ -1,0 +1,74 @@
+{
+  "suite": "profile_catalog_lookup_smoke",
+  "path": "tests/profile_catalog_lookup_smoke.py",
+  "area": "model_recognition",
+  "status": "PASS",
+  "tests_run": 8,
+  "tests_passed": 8,
+  "log": "logs/profile_catalog_lookup_smoke.log",
+  "result": "suites/profile_catalog_lookup_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/profile_catalog_lookup_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/profile_catalog_lookup_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_all_literal_catalogue_names_and_aliases_keep_legacy_results",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_decimal_and_integer_dimensions_can_be_distinct_catalogue_rows",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_decimal_points_are_not_erased_into_a_different_wall_thickness",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_every_candidate_and_alias_conflict_remains_unresolved",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_index_and_entries_are_immutable",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_slashes_and_unknown_text_cannot_be_discarded_for_a_match",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_snapshot_detects_direct_mutation_append_and_reload",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_supported_display_and_workshop_aliases_remain_exact",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 2.145
+}

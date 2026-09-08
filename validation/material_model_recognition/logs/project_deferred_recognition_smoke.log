@@ -1,0 +1,11 @@
+
+--- STDERR ---
+test_concurrent_user_edit_is_never_overwritten (cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_concurrent_user_edit_is_never_overwritten) ... ok
+test_invalid_selection_and_read_only_block_before_worker (cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_invalid_selection_and_read_only_block_before_worker) ... ok
+test_worker_failure_never_changes_live_project (cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_worker_failure_never_changes_live_project) ... ok
+test_worker_result_is_classified_and_survives_save_reopen (cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_worker_result_is_classified_and_survives_save_reopen) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.229s
+
+OK

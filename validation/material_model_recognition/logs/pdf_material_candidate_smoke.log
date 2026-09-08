@@ -1,0 +1,15 @@
+
+--- STDERR ---
+test_answering_question_does_not_bypass_explicit_grade_confirmation (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_answering_question_does_not_bypass_explicit_grade_confirmation) ... ok
+test_bom_row_no_longer_auto_accepts_material (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_bom_row_no_longer_auto_accepts_material) ... ok
+test_canonical_step_payload_material_is_preserved_without_override (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_canonical_step_payload_material_is_preserved_without_override) ... ok
+test_conflicting_materials_clear_header_and_block (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_conflicting_materials_clear_header_and_block) ... ok
+test_material_correction_resolves_conflict_with_human_audit (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_material_correction_resolves_conflict_with_human_audit) ... ok
+test_multifamily_material_text_is_a_review_candidate (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_multifamily_material_text_is_a_review_candidate) ... ok
+test_pdf_model_routes_have_no_implicit_steel_grade (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_pdf_model_routes_have_no_implicit_steel_grade) ... ok
+test_unknown_grade_is_not_partially_read_as_known_steel (cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_unknown_grade_is_not_partially_read_as_known_steel) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.809s
+
+OK

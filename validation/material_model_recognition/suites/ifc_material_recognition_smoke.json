@@ -1,0 +1,92 @@
+{
+  "suite": "ifc_material_recognition_smoke",
+  "path": "tests/ifc_material_recognition_smoke.py",
+  "area": "ifc_semantics",
+  "status": "PASS",
+  "tests_run": 11,
+  "tests_passed": 11,
+  "log": "logs/ifc_material_recognition_smoke.log",
+  "result": "suites/ifc_material_recognition_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/ifc_material_recognition_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/ifc_material_recognition_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_exact_profile_aliases_and_fastener_tokens_fail_closed",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc2x3_fastener_grade_from_material_and_standard",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc2x3_material_list_has_no_silent_primary",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_constituents_preserve_roles_and_fractions",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_layer_roles_preserve_all_materials_and_primary",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_material_profile_semantics_and_parametric_profile",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_non_catalog_parametric_profile_gets_stable_custom_descriptor",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_tapering_preserves_both_profile_sets_and_conflict",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_type_material_and_pset_inheritance_with_occurrence_override",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_layer_with_offsets_retains_thickness_and_role",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_material_alias_is_not_false_conflict_but_duplicate_grades_are",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.567
+}

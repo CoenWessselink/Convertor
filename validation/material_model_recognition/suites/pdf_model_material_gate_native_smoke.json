@@ -1,0 +1,11 @@
+{
+  "suite": "pdf_model_material_gate_native_smoke",
+  "path": "tests/pdf_model_material_gate_native_smoke.py",
+  "area": "pdf_dxf_evidence",
+  "status": "BLOCKED",
+  "tests_run": 0,
+  "tests_passed": 0,
+  "log": "logs/pdf_model_material_gate_native_smoke.log",
+  "result": "suites/pdf_model_material_gate_native_smoke.json",
+  "reason": "Missing or broken required imports: cadquery, OCP"
+}

@@ -20,7 +20,7 @@ class ClassificationTests(unittest.TestCase):
     def test_normalisation_is_conservative(self) -> None:
         self.assertEqual(normalize_material("STEEL/S235JR"), "S235JR")
         self.assertEqual(normalize_material("s355 jr"), "S355JR")
-        self.assertEqual(normalize_profile("STRIP 5 × 120"), "STRIP5*120")
+        self.assertEqual(normalize_profile("STRIP 5 × 120"), "FLAT120x5")
         self.assertEqual(normalize_profile("HEA-140"), "HEA140")
 
     def test_rules_production_identity_and_manual_review(self) -> None:
@@ -36,7 +36,8 @@ class ClassificationTests(unittest.TestCase):
             project.add_entity(part)
         report = classify_project(project, user="test")
         self.assertEqual(report.category_counts, {"make_part": 1, "non_steel": 1, "purchased_item": 1, "unknown": 1})
-        self.assertEqual(project.parts["steel"].classification_status, "review_required")
+        self.assertEqual(project.parts["steel"].classification_status, "automatic")
+        self.assertFalse(project.parts["steel"].nc1_eligible)
         self.assertEqual(len(project.parts["steel"].production_identity_hash), 64)
         self.assertTrue(project.parts["step"].blocking_issues())
         report2 = set_manual_part_classification(

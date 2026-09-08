@@ -57,6 +57,8 @@ def test_cache_key_invalidates_every_bound_authority() -> None:
         profile_database_hash="profiles-a",
         preferred_profile="",
         requested_outputs=("STEP",),
+        material_evidence={"status": "UNRESOLVED"},
+        project_part_link=(("project_part_id", "part-a"),),
     )
     baseline = RecognitionCacheV3.key(**base)
     for field, value in {
@@ -68,6 +70,11 @@ def test_cache_key_invalidates_every_bound_authority() -> None:
         "profile_database_hash": "profiles-b",
         "preferred_profile": "IPE200",
         "requested_outputs": ("IFC",),
+        "material_evidence": {
+            "status": "SOURCE_CONFIRMED",
+            "material": "S355JR",
+        },
+        "project_part_link": (("project_part_id", "part-b"),),
     }.items():
         changed = dict(base)
         changed[field] = value

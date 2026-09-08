@@ -9,10 +9,19 @@ truth.
 from .contracts import (
     GeometryProofStatus,
     InterpretationReadiness,
+    MaterialEvidence,
+    MaterialEvidenceStatus,
     ManufacturingInterpretationReport,
     ManufacturingInterpretationRequest,
 )
-from .pipeline import ManufacturingGeometryInterpreter
+from .project_link import ProjectPartSourceLinkError, build_project_part_request
+
+
+def __getattr__(name: str):
+    if name == "ManufacturingGeometryInterpreter":
+        from .pipeline import ManufacturingGeometryInterpreter
+        return ManufacturingGeometryInterpreter
+    raise AttributeError(name)
 
 __all__ = [
     "GeometryProofStatus",
@@ -20,4 +29,8 @@ __all__ = [
     "ManufacturingGeometryInterpreter",
     "ManufacturingInterpretationReport",
     "ManufacturingInterpretationRequest",
+    "MaterialEvidence",
+    "MaterialEvidenceStatus",
+    "ProjectPartSourceLinkError",
+    "build_project_part_request",
 ]

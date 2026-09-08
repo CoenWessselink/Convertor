@@ -1,0 +1,8 @@
+
+--- STDERR ---
+test_semantic_import_never_leaves_new_parts_unclassified (cws_acceptance_project_auto_classification_smoke.AutomaticClassificationTests.test_semantic_import_never_leaves_new_parts_unclassified) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.035s
+
+OK

@@ -1,0 +1,86 @@
+{
+  "suite": "manufacturing_topology_safety_smoke",
+  "path": "tests/manufacturing_topology_safety_smoke.py",
+  "area": "model_recognition",
+  "status": "PASS",
+  "tests_run": 10,
+  "tests_passed": 10,
+  "log": "logs/manufacturing_topology_safety_smoke.log",
+  "result": "suites/manufacturing_topology_safety_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/manufacturing_topology_safety_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/manufacturing_topology_safety_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_custom_union_cannot_be_proven_by_bbox_and_area",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_invalid_observation_never_matches",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_known_rectangle_remains_recognized",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_missing_or_nonfinite_catalogue_area_never_matches",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_nonfinite_policy_cannot_allow_any_geometry",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_two_within_policy_candidates_remain_ambiguous_without_score_tie",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_all_low_coplanar_faces_selected_but_not_high_end",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_corner_radius_does_not_replace_section_dimensions",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_ellipse_is_not_round_bar",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_opposite_equal_length_arcs_are_not_shared_seams",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.348
+}

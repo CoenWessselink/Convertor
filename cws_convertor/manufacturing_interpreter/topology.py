@@ -17,7 +17,7 @@ from .contracts import (
 def _policy_value(policy: Any, names: tuple[str, ...], default: float) -> float:
     for name in names:
         value = getattr(policy, name, None)
-        if isinstance(value, (int, float)) and value > 0:
+        if isinstance(value, (int, float)) and math.isfinite(value) and value > 0:
             return float(value)
     return default
 
@@ -245,7 +245,15 @@ def detect_axes(
     return tuple(candidates)
 
 
-def find_end_face(shape: Any, axis: AxisCandidate) -> Any:
+def find_end_faces(shape: Any, axis: AxisCandidate) -> tuple[Any, ...]:
+    """Return every coplanar face forming the low end of an extrusion.
+
+    STEP exporters commonly fragment an I/U/L section into multiple coplanar
+    faces.  Selecting one face turns a whole profile into a flange or web and
+    caused false FLAT/L classifications.  Selection remains conservative: only
+    planar faces normal to the proven axis and on the same end plane qualify.
+    """
+
     direction = axis.direction
     possible: list[tuple[float, Any]] = []
     for face in shape.Faces():
@@ -256,22 +264,75 @@ def find_end_face(shape: Any, axis: AxisCandidate) -> Any:
             possible.append((_dot(_p3(face.Center()), direction), face))
     if not possible:
         raise ValueError("Geen planair eindvlak loodrecht op de kandidaat-as gevonden")
-    return min(possible, key=lambda item: item[0])[1]
+    low = min(item[0] for item in possible)
+    plane_tolerance = max(1e-7, min(0.05, abs(float(axis.length_mm)) * 1e-8))
+    faces = [face for projection, face in possible if abs(projection - low) <= plane_tolerance]
+    faces.sort(
+        key=lambda face: (
+            -round(float(face.Area()), 9),
+            _quantized(_p3(face.Center()), plane_tolerance),
+        )
+    )
+    return tuple(faces)
+
+
+def find_end_face(shape: Any, axis: AxisCandidate) -> Any:
+    """Backward-compatible primary end face; aggregate users use find_end_faces."""
+
+    return find_end_faces(shape, axis)[0]
+
+
+def _edge_identity(edge: Any, step: float) -> tuple[Any, ...]:
+    start = _quantized(_p3(edge.startPoint()), step)
+    end = _quantized(_p3(edge.endPoint()), step)
+    if end < start:
+        start, end = end, start
+    # Opposed circular arcs may share endpoints and length, but are not seams.
+    # Their geometric centres distinguish them while remaining independent of
+    # the edge's orientation along the wire.
+    centre = _quantized(_p3(edge.Center()), step)
+    return (
+        str(edge.geomType()).upper(),
+        start,
+        end,
+        centre,
+        round(float(edge.Length()), 7),
+    )
 
 
 def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEvidence) -> CrossSectionSignature:
-    outer_edges = list(face.outerWire().Edges())
-    edge_types = Counter(str(edge.geomType()).upper() for edge in outer_edges)
-    for wire in face.innerWires():
-        edge_types.update(str(edge.geomType()).upper() for edge in wire.Edges())
+    faces = tuple(face) if isinstance(face, (list, tuple)) else (face,)
+    if not faces:
+        raise ValueError("Doorsnede bevat geen eindvlakken")
+    step = max(1e-7, min(0.01, abs(float(axis.length_mm)) * 1e-9))
+    outer_occurrences: dict[tuple[Any, ...], list[Any]] = defaultdict(list)
+    inner_edges: list[Any] = []
+    inner_count = 0
+    for item in faces:
+        for edge in item.outerWire().Edges():
+            outer_occurrences[_edge_identity(edge, step)].append(edge)
+        wires = list(item.innerWires())
+        inner_count += len(wires)
+        for wire in wires:
+            inner_edges.extend(wire.Edges())
+
+    # Shared seams occur twice and are not part of the material boundary.
+    outer_edges = [
+        values[0]
+        for _, values in sorted(outer_occurrences.items(), key=lambda item: repr(item[0]))
+        if len(values) % 2 == 1
+    ]
+    if not outer_edges:
+        outer_edges = [values[0] for values in outer_occurrences.values()]
+    edge_types = Counter(str(edge.geomType()).upper() for edge in (*outer_edges, *inner_edges))
 
     linear_vectors: list[tuple[float, tuple[float, float, float]]] = []
     points: list[tuple[float, float, float]] = []
-    for edge in outer_edges:
+    for edge in (*outer_edges, *inner_edges):
         start, end = _p3(edge.startPoint()), _p3(edge.endPoint())
         points.extend((start, end))
         vector = _sub(end, start)
-        if _norm(vector) > 1e-9:
+        if str(edge.geomType()).upper() == "LINE" and _norm(vector) > 1e-9:
             linear_vectors.append((_norm(vector), _unit(vector)))
 
     normal = axis.direction
@@ -287,7 +348,7 @@ def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEv
         for edge in outer_edges
         if str(edge.geomType()).upper() == "CIRCLE" and hasattr(edge, "radius")
     ]
-    if circle_radii:
+    if len(outer_edges) == 1 and circle_radii:
         width = height = 2.0 * max(circle_radii)
     elif points:
         pu = [_dot(point, u) for point in points]
@@ -295,43 +356,70 @@ def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEv
         width = max(pu) - min(pu)
         height = max(pv) - min(pv)
     else:
-        box = face.BoundingBox()
-        dimensions = sorted((float(box.xlen), float(box.ylen), float(box.zlen)), reverse=True)
-        width, height = dimensions[:2]
+        projected: list[tuple[float, float]] = []
+        for item in faces:
+            box = item.BoundingBox()
+            for x in (float(box.xmin), float(box.xmax)):
+                for y in (float(box.ymin), float(box.ymax)):
+                    for z in (float(box.zmin), float(box.zmax)):
+                        point = (x, y, z)
+                        projected.append((_dot(point, u), _dot(point, v)))
+        width = max(value[0] for value in projected) - min(value[0] for value in projected)
+        height = max(value[1] for value in projected) - min(value[1] for value in projected)
 
-    circular = edge_types.get("CIRCLE", 0) + edge_types.get("ELLIPSE", 0)
-    inner_count = len(face.innerWires())
-    if circular and inner_count:
+    outer_types = Counter(str(edge.geomType()).upper() for edge in outer_edges)
+    outer_is_circle = bool(
+        len(outer_edges) == 1
+        and outer_types.get("CIRCLE", 0) == 1
+    )
+    line_directions = []
+    for edge in outer_edges:
+        if str(edge.geomType()).upper() != "LINE":
+            continue
+        direction = _unit(_sub(_p3(edge.endPoint()), _p3(edge.startPoint())))
+        line_directions.append((abs(_dot(direction, u)), abs(_dot(direction, v))))
+    orthogonal = bool(line_directions) and all(max(first, second) >= 0.99999 for first, second in line_directions)
+    if outer_is_circle and inner_count:
         family = "RO"
-    elif circular:
+    elif outer_is_circle:
         family = "RU"
     elif inner_count:
         family = "M"
-    elif len(outer_edges) <= 4:
+    elif len(outer_edges) == 4 and orthogonal:
         family = "B"
-    elif len(outer_edges) == 6:
+    elif len(outer_edges) == 6 and orthogonal:
         family = "L"
-    elif len(outer_edges) <= 9:
+    elif len(outer_edges) == 8 and orthogonal:
         family = "U"
-    elif len(outer_edges) >= 10:
+    elif len(outer_edges) == 12 and orthogonal:
         family = "I"
     else:
         family = "CUSTOM"
 
-    face_center = _p3(face.Center())
-    matching = min(
-        topology.faces,
-        key=lambda item: _distance(item.centroid_mm, face_center),
+    matching_ids = tuple(
+        sorted(
+            {
+                min(
+                    topology.faces,
+                    key=lambda evidence: _distance(
+                        evidence.centroid_mm, _p3(item.Center())
+                    ),
+                ).face_id
+                for item in faces
+            }
+        )
     )
     payload = {
-        "face_id": matching.face_id,
-        "area_mm2": round(float(face.Area()), 9),
-        "perimeter_mm": round(sum(float(edge.Length()) for edge in outer_edges), 9),
+        "face_id": matching_ids[0] if len(matching_ids) == 1 else stable_id("section-face", matching_ids),
+        "area_mm2": round(sum(float(item.Area()) for item in faces), 9),
+        "perimeter_mm": round(sum(float(edge.Length()) for edge in (*outer_edges, *inner_edges)), 9),
         "width_mm": round(max(width, height), 9),
         "height_mm": round(min(width, height), 9),
         "outer_edge_count": len(outer_edges),
         "inner_wire_count": inner_count,
         "edge_type_counts": tuple(sorted(edge_types.items())),
         "inferred_family": family,
+        "supporting_face_ids": matching_ids,
+        "component_count": len(faces),
     }
     return CrossSectionSignature(section_id=stable_id("section", payload), **payload)

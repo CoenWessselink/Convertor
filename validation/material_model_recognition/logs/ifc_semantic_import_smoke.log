@@ -1,0 +1,8 @@
+
+--- STDERR ---
+test_ifc_hierarchy_properties_fastener_and_weld_are_materialised (cws_acceptance_ifc_semantic_import_smoke.IFCSemanticImportTests.test_ifc_hierarchy_properties_fastener_and_weld_are_materialised) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.138s
+
+OK

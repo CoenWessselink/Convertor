@@ -1,0 +1,104 @@
+name: Material and model recognition acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'cws_convertor/**'
+      - 'material_database.py'
+      - 'materials.json'
+      - 'quantities.py'
+      - 'pdf_support.py'
+      - 'project_intake.py'
+      - 'cli.py'
+      - 'app.py'
+      - 'conversion.py'
+      - 'converter.py'
+      - 'profile_database.py'
+      - 'profiles.json'
+      - 'canonical_model.py'
+      - 'ifc_support.py'
+      - 'ifc_native.py'
+      - 'cws_viewer/**'
+      - 'tests/**'
+      - 'tools/run_material_model_recognition_acceptance.py'
+      - 'requirements-runtime.lock.txt'
+      - '.github/workflows/material-model-recognition.yml'
+  push:
+    branches: [agent/cws-product-ui-reintegration-v1]
+    paths:
+      - 'cws_convertor/**'
+      - 'material_database.py'
+      - 'materials.json'
+      - 'quantities.py'
+      - 'pdf_support.py'
+      - 'project_intake.py'
+      - 'cli.py'
+      - 'app.py'
+      - 'conversion.py'
+      - 'converter.py'
+      - 'profile_database.py'
+      - 'profiles.json'
+      - 'canonical_model.py'
+      - 'ifc_support.py'
+      - 'ifc_native.py'
+      - 'cws_viewer/**'
+      - 'tests/**'
+      - 'tools/run_material_model_recognition_acceptance.py'
+      - 'requirements-runtime.lock.txt'
+      - '.github/workflows/material-model-recognition.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: material-model-recognition-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  recognition-windows:
+    runs-on: windows-2022
+    timeout-minutes: 75
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_HEADLESS_GUI_SMOKE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-runtime.lock.txt
+      - name: Create diagnostic evidence directory
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force build/material_model_recognition | Out-Null
+      - name: Install locked native runtime
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-runtime.lock.txt *> build/material_model_recognition/dependency-install.log
+          $installExit = $LASTEXITCODE
+          Get-Content build/material_model_recognition/dependency-install.log
+          if ($installExit -ne 0) { exit $installExit }
+          python -m pip check *> build/material_model_recognition/pip-check.log
+          $checkExit = $LASTEXITCODE
+          Get-Content build/material_model_recognition/pip-check.log
+          if ($checkExit -ne 0) { exit $checkExit }
+      - name: Run exact-source strict acceptance
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload acceptance, dependency diagnostics and real UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Material_Model_Recognition_${{ github.sha }}_Windows_x64
+          path: build/material_model_recognition/**
+          if-no-files-found: error
+          retention-days: 30

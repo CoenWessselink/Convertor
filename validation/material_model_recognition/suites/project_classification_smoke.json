@@ -1,0 +1,44 @@
+{
+  "suite": "project_classification_smoke",
+  "path": "tests/project_classification_smoke.py",
+  "area": "classification",
+  "status": "PASS",
+  "tests_run": 3,
+  "tests_passed": 3,
+  "log": "logs/project_classification_smoke.log",
+  "result": "suites/project_classification_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/project_classification_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_classification_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_project_classification_smoke.ClassificationTests.test_normalisation_is_conservative",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_classification_smoke.ClassificationTests.test_rules_production_identity_and_manual_review",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_classification_smoke.ClassificationTests.test_same_mark_different_geometry_is_blocking",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.544
+}

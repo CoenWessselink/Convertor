@@ -1,0 +1,11 @@
+{
+  "suite": "material_review_ui_smoke",
+  "path": "tests/material_review_ui_smoke.py",
+  "area": "material_review",
+  "status": "BLOCKED",
+  "tests_run": 0,
+  "tests_passed": 0,
+  "log": "logs/material_review_ui_smoke.log",
+  "result": "suites/material_review_ui_smoke.json",
+  "reason": "Missing or broken required imports: PySide6.QtWidgets"
+}

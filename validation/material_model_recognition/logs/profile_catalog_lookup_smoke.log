@@ -1,0 +1,15 @@
+
+--- STDERR ---
+test_all_literal_catalogue_names_and_aliases_keep_legacy_results (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_all_literal_catalogue_names_and_aliases_keep_legacy_results) ... ok
+test_decimal_and_integer_dimensions_can_be_distinct_catalogue_rows (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_decimal_and_integer_dimensions_can_be_distinct_catalogue_rows) ... ok
+test_decimal_points_are_not_erased_into_a_different_wall_thickness (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_decimal_points_are_not_erased_into_a_different_wall_thickness) ... ok
+test_every_candidate_and_alias_conflict_remains_unresolved (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_every_candidate_and_alias_conflict_remains_unresolved) ... ok
+test_index_and_entries_are_immutable (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_index_and_entries_are_immutable) ... ok
+test_slashes_and_unknown_text_cannot_be_discarded_for_a_match (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_slashes_and_unknown_text_cannot_be_discarded_for_a_match) ... ok
+test_snapshot_detects_direct_mutation_append_and_reload (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_snapshot_detects_direct_mutation_append_and_reload) ... ok
+test_supported_display_and_workshop_aliases_remain_exact (cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_supported_display_and_workshop_aliases_remain_exact) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 1.673s
+
+OK

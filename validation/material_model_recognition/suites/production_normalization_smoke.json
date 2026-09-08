@@ -1,0 +1,60 @@
+{
+  "suite": "production_normalization_smoke",
+  "path": "tests/production_normalization_smoke.py",
+  "area": "workbench_release",
+  "status": "INCOMPLETE",
+  "tests_run": 5,
+  "tests_passed": 3,
+  "log": "logs/production_normalization_smoke.log",
+  "result": "suites/production_normalization_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/production_normalization_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/production_normalization_smoke.json"
+  ],
+  "returncode": 1,
+  "records": [
+    {
+      "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_boolean_geometry_stays_review_required",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_exact_straight_profile_gets_editable_workbench_but_not_false_release",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_native_conflicting_source_metrics_cannot_be_validated",
+      "status": "SKIPPED",
+      "started": true,
+      "details": [
+        "Native CAD runtime (cadquery) is not installed"
+      ]
+    },
+    {
+      "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_native_matching_source_metrics_remain_pending_human_review",
+      "status": "SKIPPED",
+      "started": true,
+      "details": [
+        "Native CAD runtime (cadquery) is not installed"
+      ]
+    },
+    {
+      "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_profile_family_mapping",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 2,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.55
+}

@@ -18,7 +18,8 @@ from .contracts import (
 )
 from .profiles import recognize_profile
 from .reconstruction import prove_equivalence, reconstruct_prismatic
-from .topology import analyze_topology, find_end_face, section_signature
+from .topology import analyze_topology, find_end_faces, section_signature
+from .material_evidence import material_evidence_from_request
 
 
 class ManufacturingGeometryInterpreter:
@@ -40,13 +41,18 @@ class ManufacturingGeometryInterpreter:
         self, request: ManufacturingInterpretationRequest
     ) -> ManufacturingInterpretationReport:
         inspection = request.inspection
+        material_evidence = material_evidence_from_request(request)
         key_payload = {
             "engine": ENGINE_VERSION,
             "source_geometry_hash": str(getattr(inspection, "source_geometry_hash", "")),
             "source_sha256": str(getattr(inspection, "source_sha256", "")),
+            "source_file_id": str(getattr(inspection, "source_file_id", "")),
+            "source_sha256": str(getattr(inspection, "source_sha256", "")),
             "part_id": str(getattr(inspection, "part_id", "")),
             "preferred_profile": request.preferred_profile,
             "requested_outputs": request.requested_outputs,
+            "material_evidence": material_evidence,
+            "project_part_link": tuple(request.project_part_link),
         }
         cache_key = stable_id("mgi-cache", key_payload)
         if cache_key in self._cache:
@@ -95,8 +101,8 @@ class ManufacturingGeometryInterpreter:
                 return report
 
             selected_axis = axes[0]
-            end_face = find_end_face(shape, selected_axis)
-            section = section_signature(end_face, selected_axis, topology)
+            end_faces = find_end_faces(shape, selected_axis)
+            section = section_signature(end_faces, selected_axis, topology)
             profile = recognize_profile(
                 section,
                 self.profile_database,
@@ -123,6 +129,14 @@ class ManufacturingGeometryInterpreter:
                 blockers.append("INDEPENDENT_BREP_EQUIVALENCE_NOT_PROVEN")
             if not profile_ready:
                 blockers.append("CATALOG_PROFILE_NOT_PROVEN")
+            if not material_evidence.confirmed:
+                blockers.append(
+                    "MATERIAL_EVIDENCE_CONFLICT"
+                    if material_evidence.status.value == "CONFLICT"
+                    else "MATERIAL_EVIDENCE_UNRESOLVED"
+                )
+                if readiness == InterpretationReadiness.READY:
+                    readiness = InterpretationReadiness.REVIEW_REQUIRED
             representability = (
                 ("STEP", "SUPPORTED" if proof_ready else "BLOCKED"),
                 ("IFC", "SUPPORTED" if proof_ready else "BLOCKED"),
@@ -144,13 +158,14 @@ class ManufacturingGeometryInterpreter:
                 equivalence=proof,
                 representability=representability,
                 readiness=readiness,
+                material_evidence=material_evidence,
                 blockers=tuple(blockers),
                 evidence=(
                     ("source_authority", "cws_convertor.project.source_geometry"),
                     ("profile_authority", "profile_database.ProfileDatabase"),
                     ("tolerance_authority", "cws_convertor.steel_model.tolerances"),
                     ("reconstruction", "pure-independent-prismatic-brep"),
-                ),
+                ) + tuple(request.project_part_link),
             )
         except Exception as exc:
             report = self._blocked_report(
@@ -192,10 +207,10 @@ class ManufacturingGeometryInterpreter:
             equivalence=empty_proof(status, reason),
             representability=(("STEP", "BLOCKED"), ("IFC", "BLOCKED"), ("NC1", "BLOCKED")),
             readiness=InterpretationReadiness.BLOCKED,
+            material_evidence=material_evidence_from_request(request),
             blockers=(reason,),
             evidence=(
                 ("source_authority", "cws_convertor.project.source_geometry"),
                 ("fail_closed", "true"),
-            ),
+            ) + tuple(request.project_part_link),
         )
-

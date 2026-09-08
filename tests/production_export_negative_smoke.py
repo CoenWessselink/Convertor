@@ -38,6 +38,30 @@ def run() -> None:
     assert "CWS-EXP-111" in codes
     assert "CWS-EXP-120" in codes
 
+    # Canonical Project Model parts expose ``category`` rather than the older
+    # generic ``classification`` key.  Review/material confidence must still
+    # be enforced for this real application shape.
+    project_part_shape = {
+        "internal_id": "project-part",
+        "category": "make_part",
+        "classification_status": "review_required",
+        "classification_confidence": 0.99,
+        "normalized_profile": "HEA140",
+        "normalized_material": "S355JR",
+        "profile_confidence": 0.60,
+        "material_confidence": 0.65,
+        "geometry_hash": "4" * 64,
+        "manufacturing_hash": "5" * 64,
+        "production_identity_hash": "6" * 64,
+        "feature_validation_status": "validated",
+        "local_axes": {"x": [1, 0, 0]},
+    }
+    project_assessment = gate.assess(project_part_shape, ["nc1"])
+    project_codes = {message.code for message in project_assessment.messages_for("nc1")}
+    assert "CWS-EXP-022" in project_codes
+    assert "CWS-EXP-105" in project_codes
+    assert "CWS-EXP-106" in project_codes
+
     with tempfile.TemporaryDirectory() as directory:
         tmp = Path(directory)
         project = {"project_id": "negative", "project_name": "Negatief", "parts": [unsafe]}

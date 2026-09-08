@@ -91,7 +91,7 @@ class ExactPartWorkbenchService:
         output_directory: str | Path,
         *,
         formats: tuple[str, ...] = ("STEP", "NC1", "IFC", "TRUSTED_PDF"),
-        material: str = "S235JR",
+        material: str = "",
         preferred_profile: str = "",
     ) -> dict[str, Any]:
         if self.canonical is None:

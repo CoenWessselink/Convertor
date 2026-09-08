@@ -1,0 +1,16 @@
+
+--- STDERR ---
+test_automatic_command_history_remains_undoable_without_forged_signature (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_automatic_command_history_remains_undoable_without_forged_signature) ... ok
+test_conflicting_material_fields_never_mask_each_other (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_conflicting_material_fields_never_mask_each_other) ... ok
+test_every_semantic_flag_is_explicit_true (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_every_semantic_flag_is_explicit_true) ... ok
+test_failed_workbench_transaction_leaves_part_and_project_unchanged (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_failed_workbench_transaction_leaves_part_and_project_unchanged) ... ok
+test_machine_success_never_produces_a_human_signature (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_machine_success_never_produces_a_human_signature) ... ok
+test_malformed_primitive_counts_and_nonfinite_lengths_are_rejected (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_malformed_primitive_counts_and_nonfinite_lengths_are_rejected) ... ok
+test_missing_native_dependency_commits_only_a_blocked_editable_proposal (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_missing_native_dependency_commits_only_a_blocked_editable_proposal) ... ok
+test_missing_source_preservation_or_identity_is_not_exact (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_missing_source_preservation_or_identity_is_not_exact) ... ok
+test_rebuild_failure_cannot_mutate_the_proposal_or_source_values (cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_rebuild_failure_cannot_mutate_the_proposal_or_source_values) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.640s
+
+OK

@@ -1,0 +1,38 @@
+{
+  "suite": "project_bom_smoke",
+  "path": "tests/project_bom_smoke.py",
+  "area": "project_regression",
+  "status": "PASS",
+  "tests_run": 2,
+  "tests_passed": 2,
+  "log": "logs/project_bom_smoke.log",
+  "result": "suites/project_bom_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/project_bom_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_bom_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_project_bom_smoke.BOMTests.test_bom_balances_and_traceability",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_bom_smoke.BOMTests.test_export_package_and_formula_injection_guard",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.858
+}

@@ -1,0 +1,80 @@
+{
+  "suite": "material_resolution_smoke",
+  "path": "tests/material_resolution_smoke.py",
+  "area": "material_catalog",
+  "status": "PASS",
+  "tests_run": 9,
+  "tests_passed": 9,
+  "log": "logs/material_resolution_smoke.log",
+  "result": "suites/material_resolution_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/material_resolution_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_resolution_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_catalog_has_required_material_families",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_exact_alias_and_unresolved_are_explicit_and_auditable",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_fastener_stainless_aluminium_and_plastic_aliases",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_find_has_no_implicit_fallback",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_semantic_punctuation_is_not_erased",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_explicit_ifc_fallback_only_applies_when_source_is_empty",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_step_geometry_without_material_evidence_has_no_mass",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_unknown_ifc_material_never_uses_fallback_or_wrong_density",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_variable_density_material_blocks_mass_even_when_identity_is_exact",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.336
+}

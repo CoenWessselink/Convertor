@@ -20,7 +20,7 @@ class ViewerV6RoundtripTests(unittest.TestCase):
 
     def test_step_nc1_ifc_and_trusted_pdf_roundtrips(self):
         with tempfile.TemporaryDirectory(prefix='viewer_v6_roundtrip_') as folder:
-            results=ExactRoundtripValidator(self.runtime).run(folder)
+            results=ExactRoundtripValidator(self.runtime).run(folder,material='S235JR')
             self.assertEqual({'STEP','NC1','IFC','TRUSTED_PDF'},set(results))
             for name,result in results.items():
                 self.assertTrue(result.passed,(name,result.to_dict()))

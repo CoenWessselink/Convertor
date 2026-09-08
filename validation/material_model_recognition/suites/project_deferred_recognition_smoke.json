@@ -1,0 +1,50 @@
+{
+  "suite": "project_deferred_recognition_smoke",
+  "path": "tests/project_deferred_recognition_smoke.py",
+  "area": "classification",
+  "status": "PASS",
+  "tests_run": 4,
+  "tests_passed": 4,
+  "log": "logs/project_deferred_recognition_smoke.log",
+  "result": "suites/project_deferred_recognition_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/project_deferred_recognition_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_deferred_recognition_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_concurrent_user_edit_is_never_overwritten",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_invalid_selection_and_read_only_block_before_worker",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_worker_failure_never_changes_live_project",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_worker_result_is_classified_and_survives_save_reopen",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.691
+}

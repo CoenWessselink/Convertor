@@ -1,0 +1,50 @@
+{
+  "suite": "step_semantic_import_smoke",
+  "path": "tests/step_semantic_import_smoke.py",
+  "area": "step_semantics",
+  "status": "PASS",
+  "tests_run": 4,
+  "tests_passed": 4,
+  "log": "logs/step_semantic_import_smoke.log",
+  "result": "suites/step_semantic_import_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/step_semantic_import_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/step_semantic_import_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_ap242_occurrence_materialises_assembly_and_part_relation",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_missing_solid_uses_strategy_c_without_inventing_geometry",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_reimport_is_idempotent_and_keeps_stable_hashes",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_single_product_single_solid_is_not_split_by_quantity_in_name",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.447
+}

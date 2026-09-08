@@ -6,17 +6,27 @@ from typing import Any
 import cadquery as cq
 
 from .contracts import AxisCandidate, EquivalenceProof, GeometryProofStatus
-from .topology import linear_tolerance, relative_tolerance, find_end_face
+from .topology import linear_tolerance, relative_tolerance, find_end_faces
 
 
 def reconstruct_prismatic(shape: Any, axis: AxisCandidate) -> Any:
-    face = find_end_face(shape, axis)
+    faces = find_end_faces(shape, axis)
     vector = cq.Vector(
         axis.direction[0] * axis.length_mm,
         axis.direction[1] * axis.length_mm,
         axis.direction[2] * axis.length_mm,
     )
-    return cq.Solid.extrudeLinear(face.outerWire(), list(face.innerWires()), vector)
+    solids = [
+        cq.Solid.extrudeLinear(face.outerWire(), list(face.innerWires()), vector)
+        for face in faces
+    ]
+    reconstructed = solids[0]
+    for solid in solids[1:]:
+        reconstructed = reconstructed.fuse(solid)
+    try:
+        return reconstructed.clean()
+    except Exception:
+        return reconstructed
 
 
 def _bbox_delta(left: Any, right: Any) -> float:
@@ -97,4 +107,3 @@ def prove_equivalence(source: Any, reconstructed: Any, policy: Any) -> Equivalen
         centroid_delta_mm=centroid_delta,
         reason=("Tweezijdig BREP-residu binnen policy" if passed else "BREP-residu buiten policy"),
     )
-

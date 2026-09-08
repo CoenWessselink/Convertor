@@ -114,6 +114,10 @@ class PartWorkbenchTests(unittest.TestCase):
                 part_position="P1",
             ),
             profile="PL10",
+            material="S355JR",
+            material_grade="S355JR",
+            normalized_material="S355JR",
+            material_confidence=1.0,
             profile_confidence=0.95,
             confidence=0.95,
             geometry_descriptor={

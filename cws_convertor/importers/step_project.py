@@ -14,7 +14,9 @@ validation phase.
 from __future__ import annotations
 
 from collections import Counter, defaultdict, deque
+from copy import deepcopy
 from dataclasses import dataclass, field
+import hashlib
 import math
 from pathlib import Path
 import time
@@ -30,6 +32,7 @@ from cws_convertor.project.model import (
     SourceFileRecord,
     SourceIdentity,
     Transform3D,
+    stable_sha256,
 )
 from cws_convertor.project.source_geometry import build_step_source_locator
 
@@ -42,6 +45,201 @@ from .semantic import (
 
 STEP_IMPORTER_VERSION = SEMANTIC_IMPORT_VERSION
 StepProgress = Callable[[float, str], None]
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def resolve_deferred_step_recognition(
+    source_path: str | Path,
+    *,
+    timeout_seconds: float = 120.0,
+    cancel_check: SemanticCancelCheck | None = None,
+    part_id: str = "",
+    source_file_id: str = "",
+    source_sha256: str = "",
+    source_geometry_hash: str = "",
+    preferred_profile: str = "",
+    material_evidence: Any = None,
+    project_part_link: tuple[tuple[str, str], ...] = (),
+) -> dict[str, Any]:
+    """Execute deferred STEP recognition synchronously in an isolated worker.
+
+    The caller blocks until a bounded result is available, while the native CAD
+    kernel remains process-isolated and cancellable.  A profile is returned as
+    matched only when both the profile and the independent BREP proof pass.
+    Material is copied only from explicit material evidence; it is never
+    derived from STEP geometry.
+    """
+
+    path = Path(source_path).expanduser().resolve()
+    if not path.is_file() or path.suffix.lower() not in {".step", ".stp"}:
+        raise ValueError(f"Geen leesbare STEP/STP-bron: {path}")
+    actual_sha256 = _sha256_file(path)
+    if source_sha256 and str(source_sha256).lower() != actual_sha256:
+        raise ValueError("STEP-bronhash is gewijzigd sinds de projectkoppeling")
+    from cws_convertor.manufacturing_interpreter.contracts import GeometryProofStatus
+    from cws_convertor.manufacturing_interpreter.isolated import analyze_step_isolated
+
+    report = analyze_step_isolated(
+        path,
+        timeout_seconds=timeout_seconds,
+        cancel_check=cancel_check,
+        part_id=part_id,
+        source_file_id=source_file_id or path.name,
+        source_sha256=actual_sha256,
+        source_geometry_hash=source_geometry_hash,
+        preferred_profile=preferred_profile,
+        requested_outputs=("STEP", "IFC"),
+        material_evidence=material_evidence,
+        project_part_link=project_part_link,
+    )
+    if _sha256_file(path) != actual_sha256:
+        raise ValueError("STEP-bron is gewijzigd tijdens de herkenning")
+    profile_proven = report.profile.status == GeometryProofStatus.PROVEN_WITHIN_POLICY
+    geometry_proven = report.equivalence.status in {
+        GeometryProofStatus.PROVEN_BREP_EQUIVALENT,
+        GeometryProofStatus.PROVEN_WITHIN_POLICY,
+    }
+    from cws_convertor.manufacturing_interpreter.material_evidence import normalise_material_evidence
+    material = normalise_material_evidence(report.material_evidence)
+    matched = bool(profile_proven and geometry_proven and report.profile.designation)
+    return {
+        "status": "matched" if matched else (
+            "blocked" if report.readiness.value == "BLOCKED" else "review_required"
+        ),
+        "method": "mgi_v3_isolated_exact_brep",
+        "confidence": float(report.profile.confidence if matched else 0.0),
+        "profile": str(report.profile.designation if matched else ""),
+        "profile_type": str(report.profile.profile_type if matched else ""),
+        "family": str(report.profile.family if matched else ""),
+        "material": str(material.material or material.grade) if material.confirmed else "",
+        "material_evidence": {
+            "status": material.status.value,
+            "material": material.material,
+            "grade": material.grade,
+            "confidence": material.confidence,
+            "source": material.source,
+            "source_path": material.source_path,
+            "source_entity_id": material.source_entity_id,
+            "reason": material.reason,
+            "evidence": list(material.evidence),
+        },
+        "report_hash": report.semantic_sha256,
+        "source_sha256": actual_sha256,
+        "source_geometry_hash": report.source_geometry_hash,
+        "equivalence": report.equivalence.status.value,
+        "readiness": report.readiness.value,
+        "blockers": list(report.blockers),
+        "reason": report.profile.reason,
+    }
+
+
+def apply_deferred_step_recognition(
+    project: ProjectModel,
+    source: SourceFileRecord,
+    source_path: str | Path,
+    *,
+    part_ids: Iterable[str] | None = None,
+    timeout_seconds: float = 120.0,
+    cancel_check: SemanticCancelCheck | None = None,
+) -> dict[str, Any]:
+    """Resolve one source-bound STEP part, preserving all reviewed user work.
+
+    The whole-source native loader cannot prove per-solid selection in a
+    multi-part STEP. Such sources remain explicitly blocked. Callers should
+    use a ProjectSession working copy and reclassify applied part IDs before
+    committing their transaction. No inferred material is ever assigned here.
+    """
+
+    from cws_convertor.manufacturing_interpreter.material_evidence import material_evidence_from_part
+
+    path = Path(source_path).expanduser().resolve()
+    if str(source.source_format).upper() not in {"STEP", "STP"}:
+        raise ValueError("Uitgestelde herkenning vereist een STEP/STP-bron")
+    registered = project.sources.get(source.source_id)
+    if registered is None or registered.sha256 != source.sha256:
+        raise ValueError("STEP-bron is niet aan dit project gekoppeld")
+    if not source.sha256 or _sha256_file(path) != source.sha256:
+        raise ValueError("STEP-bronhash wijkt af van het project")
+    source_parts = sorted(
+        (part for part in project.parts.values() if part.source_identity.source_file_id == source.source_id),
+        key=lambda part: part.internal_id,
+    )
+    selected_ids = set(str(item) for item in part_ids) if part_ids is not None else {
+        part.internal_id for part in source_parts
+    }
+    if not selected_ids.issubset({part.internal_id for part in source_parts}):
+        raise ValueError("Onderdeelselectie bevat onbekende of bronvreemde onderdelen")
+    rows: list[dict[str, Any]] = []
+    pending: list[tuple[Part, str, dict[str, Any]]] = []
+    for part in source_parts:
+        if part.internal_id not in selected_ids:
+            continue
+        _check_cancelled(cancel_check)
+        row: dict[str, Any] = {"part_id": part.internal_id, "applied": False}
+        if part.classification_status == "confirmed" or part.workbench:
+            rows.append({**row, "status": "SKIPPED", "reason": "CONFIRMED_OR_WORKBENCH_STATE_PRESERVED"})
+            continue
+        if len(source_parts) != 1:
+            rows.append({**row, "status": "BLOCKED", "reason": "PROJECT_PART_SOURCE_ISOLATION_REQUIRED"})
+            continue
+        if part.source_identity.source_sha256 != source.sha256:
+            raise ValueError("Onderdeel verwijst naar een verouderde STEP-bronhash")
+        descriptor = part.geometry_descriptor or {}
+        geometry_hash = str(descriptor.get("source_geometry_hash") or "")
+        if not geometry_hash:
+            rows.append({**row, "status": "BLOCKED", "reason": "PROJECT_PART_SOURCE_GEOMETRY_HASH_MISSING"})
+            continue
+        fingerprint = stable_sha256(part)
+        result = resolve_deferred_step_recognition(
+            path, timeout_seconds=timeout_seconds, cancel_check=cancel_check,
+            part_id=part.internal_id, source_file_id=source.source_id,
+            source_sha256=source.sha256, source_geometry_hash=geometry_hash,
+            preferred_profile=str(part.normalized_profile or part.profile or ""),
+            material_evidence=material_evidence_from_part(part),
+            project_part_link=(
+                ("project_part_id", part.internal_id),
+                ("project_source_file_id", source.source_id),
+                ("project_source_entity_id", part.source_identity.source_entity_id),
+                ("project_source_sha256", source.sha256),
+                ("project_source_geometry_hash", geometry_hash),
+            ),
+        )
+        if result.get("source_sha256") != source.sha256 or result.get("source_geometry_hash") != geometry_hash:
+            raise ValueError("Herkenningsresultaat hoort niet bij de actuele STEP-bron/geometrie")
+        pending.append((part, fingerprint, result))
+        rows.append({**row, **result, "applied": True})
+    _check_cancelled(cancel_check)
+    if _sha256_file(path) != source.sha256 or project.sources[source.source_id].sha256 != source.sha256:
+        raise ValueError("STEP-bron is gewijzigd tijdens de herkenning")
+    for part, fingerprint, _result in pending:
+        if stable_sha256(project.parts.get(part.internal_id)) != fingerprint:
+            raise ValueError("Onderdeel is gewijzigd tijdens de herkenning; resultaat niet toegepast")
+    for part, _fingerprint, result in pending:
+        descriptor = deepcopy(part.geometry_descriptor)
+        descriptor["profile_recognition"] = deepcopy(result)
+        part.geometry_descriptor = descriptor
+        if result.get("status") == "matched":
+            part.profile = str(result["profile"])
+            part.profile_confidence = float(result["confidence"])
+            part.field_provenance["profile"] = FieldProvenance(
+                source_file_id=source.source_id, source_entity_id=part.source_identity.source_entity_id,
+                source_path="STEP exact BREP / MGI report " + str(result.get("report_hash", "")),
+                method="mgi_v3_isolated_exact_brep", confidence=part.profile_confidence, status="derived",
+            )
+        part.recompute_hashes()
+    return {
+        "schema": "cws-deferred-step-recognition-v1", "source_id": source.source_id,
+        "source_sha256": source.sha256, "results": rows,
+        "applied_part_ids": [part.internal_id for part, _fingerprint, _result in pending],
+        "skipped_part_ids": [row["part_id"] for row in rows if row["status"] == "SKIPPED"],
+    }
 
 
 def _progress(callback: StepProgress | None, value: float, message: str) -> None:
@@ -400,6 +598,8 @@ class StepIndex:
 class STEPSemanticProjectImporter:
     importer_version = STEP_IMPORTER_VERSION
 
+    resolve_deferred_profile_suggestion = staticmethod(resolve_deferred_step_recognition)
+
     @staticmethod
     def _provenance(
         source: SourceFileRecord,
@@ -551,13 +751,23 @@ class STEPSemanticProjectImporter:
             )
             profile_type = str(profile_suggestion.get("profile_type") or "")
         material = str((profile_suggestion or {}).get("material") or "")
-        material_status = "source_confirmed" if material else "manual_required"
+        material_method = str((profile_suggestion or {}).get("method") or "")
+        material_source_confirmed = bool(
+            material
+            and material_method == "lossless_converter_payload_and_profile_database"
+            and (profile_suggestion or {}).get("production_evidence") == "embedded_nc1_payload"
+        )
+        material_status = "source_confirmed" if material_source_confirmed else "manual_required"
         descriptor["material_recognition"] = {
             "status": material_status,
-            "confidence": 1.0 if material else 0.0,
+            "material": material,
+            "grade": material,
+            "confidence": 1.0 if material_source_confirmed else 0.0,
+            "source": "embedded_nc1_payload" if material_source_confirmed else "",
+            "source_entity_id": identity.source_entity_id,
             "reason": (
                 "Materiaalgrade bevestigd door canonieke NC1/converterpayload."
-                if material
+                if material_source_confirmed
                 else "Materiaalgrade kan niet betrouwbaar uit uitsluitend STEP-geometrie worden afgeleid; handmatig invullen."
             ),
         }
@@ -622,6 +832,24 @@ class STEPSemanticProjectImporter:
                     solid_ids[0] if solid_ids else source_entity_id,
                     "STEP BREP subgraph",
                     confidence=1.0 if solid_ids else 0.0,
+                ),
+                **(
+                    {
+                        "material": self._provenance(
+                            source,
+                            source_entity_id,
+                            "CWS embedded NC1 payload.material",
+                            method="lossless_converter_payload",
+                        ),
+                        "material_grade": self._provenance(
+                            source,
+                            source_entity_id,
+                            "CWS embedded NC1 payload.material_grade",
+                            method="lossless_converter_payload",
+                        ),
+                    }
+                    if material_source_confirmed
+                    else {}
                 ),
             },
         )
@@ -706,6 +934,15 @@ class STEPSemanticProjectImporter:
                     ),
                     "size_bytes": source_path.stat().st_size,
                     "advanced_faces": advanced_faces,
+                    "execution": {
+                        "callable": (
+                            "cws_convertor.importers.step_project."
+                            "resolve_deferred_step_recognition"
+                        ),
+                        "mode": "explicit_synchronous_isolated",
+                        "timeout_seconds": 120.0,
+                        "cancellable": True,
+                    },
                 }
             else:
                 profile_suggestion = self._profile_suggestion(source_path)
@@ -716,8 +953,7 @@ class STEPSemanticProjectImporter:
             try:
                 from profile_database import ProfileDatabase
 
-                database = ProfileDatabase()
-                database.load()
+                database = ProfileDatabase(writable_copy=False)
                 definition = database.find(source_profile)
                 if definition is not None:
                     canonical_profile = definition.designation
@@ -1026,4 +1262,6 @@ __all__ = [
     "StepOccurrence",
     "StepProduct",
     "STEPSemanticProjectImporter",
+    "resolve_deferred_step_recognition",
+    "apply_deferred_step_recognition",
 ]

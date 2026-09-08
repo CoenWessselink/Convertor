@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+from functools import lru_cache
 import math
 from pathlib import Path
 import time
@@ -116,7 +117,9 @@ class IfcIndexes:
     property_sets: dict[int, tuple[str, dict[str, Any], dict[str, int]]]
     object_property_sets: dict[int, list[int]]
     object_materials: dict[int, list[str]]
+    object_material_semantics: dict[int, list[dict[str, Any]]]
     object_type_names: dict[int, str]
+    object_type_ids: dict[int, int]
     aggregate_children: dict[int, list[int]]
     aggregate_parents: dict[int, list[int]]
     spatial_containment: dict[int, list[int]]
@@ -351,6 +354,33 @@ def _resolve_material_names(
     *,
     active: set[int] | None = None,
 ) -> list[str]:
+    semantics = _resolve_material_semantics(document, entity_id, active=active)
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in semantics:
+        name = item.get("material_name", "")
+        clean = str(name or "").strip()
+        if clean and clean.casefold() not in seen:
+            seen.add(clean.casefold())
+            result.append(clean)
+    return result
+
+
+def _resolve_material_semantics(
+    document: P21Document,
+    entity_id: int | None,
+    *,
+    units: IfcUnits | None = None,
+    active: set[int] | None = None,
+    context: Mapping[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Expand IFC material selects without losing layer/profile roles.
+
+    IFC2X3 material lists/layers and IFC4 profile/constituent sets use
+    different argument positions.  Keeping this traversal explicit prevents
+    a profile name or set name from being mistaken for a steel grade.
+    """
+
     if entity_id is None:
         return []
     active = active or set()
@@ -360,53 +390,237 @@ def _resolve_material_names(
     if entity is None:
         return []
     active.add(entity_id)
-    names: list[str] = []
+    base = dict(context or {})
+    path = list(base.get("material_path_entity_ids") or [])
+    path.append(str(entity_id))
+    base["material_path_entity_ids"] = path
+    records: list[dict[str, Any]] = []
+
+    def descend(ref: int | None, **extra: Any) -> None:
+        child_context = dict(base)
+        child_context.update(extra)
+        records.extend(
+            _resolve_material_semantics(
+                document,
+                ref,
+                units=units,
+                active=active,
+                context=child_context,
+            )
+        )
+
     if entity.type_name == "IFCMATERIAL":
-        names.append(entity.string(0))
+        record = dict(base)
+        record.update(
+            {
+                "semantic_kind": record.get("semantic_kind", "material"),
+                "material_entity_id": str(entity_id),
+                "material_name": entity.string(0).strip(),
+                "material_description": entity.string(1).strip(),
+                "material_category": entity.string(2).strip(),
+            }
+        )
+        records.append(record)
     elif entity.type_name == "IFCMATERIALLIST":
         for ref in entity.refs(0):
-            names.extend(_resolve_material_names(document, ref, active=active))
-    elif entity.type_name in {"IFCMATERIALLAYER", "IFCMATERIALPROFILE"}:
-        names.extend(_resolve_material_names(document, entity.ref(0), active=active))
-    elif entity.type_name in {"IFCMATERIALLAYERSETUSAGE", "IFCMATERIALPROFILESETUSAGE"}:
-        names.extend(_resolve_material_names(document, entity.ref(0), active=active))
-    elif entity.type_name in {"IFCMATERIALLAYERSET", "IFCMATERIALPROFILESET"}:
+            descend(ref, semantic_kind="material_list", material_list_entity_id=str(entity_id))
+    elif entity.type_name in {"IFCMATERIALLAYER", "IFCMATERIALLAYERWITHOFFSETS"}:
+        thickness = entity.number(1)
+        descend(
+            entity.ref(0),
+            semantic_kind="material_layer",
+            material_layer_entity_id=str(entity_id),
+            layer_name=entity.string(3).strip(),
+            layer_description=entity.string(4).strip(),
+            layer_category=entity.string(5).strip(),
+            layer_priority=entity.number(6),
+            layer_offset_direction=entity.string(7).strip() if entity.type_name == "IFCMATERIALLAYERWITHOFFSETS" else "",
+            layer_offset_values_mm=[
+                _float(scalar_value(value)) * (units.length_to_mm if units else 1.0)
+                for value in (entity.value(8) or ())
+            ] if entity.type_name == "IFCMATERIALLAYERWITHOFFSETS" else [],
+            layer_thickness_mm=(
+                float(thickness) * (units.length_to_mm if units else 1.0)
+                if thickness is not None
+                else None
+            ),
+        )
+    elif entity.type_name == "IFCMATERIALLAYERSETUSAGE":
+        offset = entity.number(3)
+        descend(
+            entity.ref(0),
+            material_layer_set_usage_entity_id=str(entity_id),
+            layer_set_direction=entity.string(1).strip(),
+            direction_sense=entity.string(2).strip(),
+            offset_from_reference_line_mm=(
+                float(offset) * (units.length_to_mm if units else 1.0)
+                if offset is not None
+                else None
+            ),
+        )
+    elif entity.type_name == "IFCMATERIALLAYERSET":
         for ref in entity.refs(0):
-            names.extend(_resolve_material_names(document, ref, active=active))
-        if entity.string(1):
-            names.append(entity.string(1))
+            descend(
+                ref,
+                material_set_entity_id=str(entity_id),
+                material_set_name=entity.string(1).strip(),
+                material_set_description=entity.string(2).strip(),
+            )
+    elif entity.type_name == "IFCMATERIALPROFILE":
+        # IFC4: Name, Description, Material, Profile, Priority, Category.
+        profile_id = entity.ref(3)
+        profile = document.get(profile_id)
+        profile_descriptor = (
+            _profile_definition_descriptor(profile, units or IfcUnits())
+            if profile is not None
+            else {}
+        )
+        descend(
+            entity.ref(2),
+            semantic_kind="material_profile",
+            material_profile_entity_id=str(entity_id),
+            material_profile_name=entity.string(0).strip(),
+            material_profile_description=entity.string(1).strip(),
+            material_profile_category=entity.string(5).strip(),
+            material_profile_priority=entity.number(4),
+            profile_definition_entity_id=str(profile_id or ""),
+            profile_definition_type=profile.type_name if profile else "",
+            profile_definition_name=profile.string(1).strip() if profile else "",
+            profile_definition=profile_descriptor,
+        )
+    elif entity.type_name == "IFCMATERIALPROFILESETUSAGE":
+        extent = entity.number(2)
+        descend(
+            entity.ref(0),
+            material_profile_set_usage_entity_id=str(entity_id),
+            cardinal_point=entity.number(1),
+            reference_extent_mm=(
+                float(extent) * (units.length_to_mm if units else 1.0)
+                if extent is not None
+                else None
+            ),
+        )
+    elif entity.type_name == "IFCMATERIALPROFILESETUSAGETAPERING":
+        # IFC4 subtype inherits ForProfileSet, CardinalPoint, ReferenceExtent;
+        # ForProfileEndSet and CardinalEndPoint follow at indices 3 and 4.
+        extent = entity.number(2)
+        for end, ref, cardinal in (
+            ("start", entity.ref(0), entity.number(1)),
+            ("end", entity.ref(3), entity.number(4)),
+        ):
+            descend(
+                ref,
+                material_profile_set_usage_entity_id=str(entity_id),
+                tapering_end=end,
+                cardinal_point=cardinal,
+                reference_extent_mm=(float(extent) * (units.length_to_mm if units else 1.0)) if extent is not None else None,
+            )
+    elif entity.type_name == "IFCMATERIALPROFILESET":
+        for ref in entity.refs(2):
+            descend(
+                ref,
+                material_set_entity_id=str(entity_id),
+                material_set_name=entity.string(0).strip(),
+                material_set_description=entity.string(1).strip(),
+            )
+    elif entity.type_name == "IFCMATERIALCONSTITUENT":
+        # IFC4: Name, Description, Material, Fraction, Category.
+        descend(
+            entity.ref(2),
+            semantic_kind="material_constituent",
+            material_constituent_entity_id=str(entity_id),
+            constituent_name=entity.string(0).strip(),
+            constituent_description=entity.string(1).strip(),
+            constituent_fraction=entity.number(3),
+            constituent_category=entity.string(4).strip(),
+        )
+    elif entity.type_name == "IFCMATERIALCONSTITUENTSET":
+        for ref in entity.refs(2):
+            descend(
+                ref,
+                material_set_entity_id=str(entity_id),
+                material_set_name=entity.string(0).strip(),
+                material_set_description=entity.string(1).strip(),
+            )
     else:
+        # Forward-compatible, material-only traversal.  Never walk arbitrary
+        # product references because that could attach unrelated materials.
         for ref in entity.references:
             target = document.get(ref)
             if target and target.type_name.startswith("IFCMATERIAL"):
-                names.extend(_resolve_material_names(document, ref, active=active))
+                descend(ref)
     active.remove(entity_id)
-    result: list[str] = []
-    seen: set[str] = set()
-    for name in names:
-        clean = str(name or "").strip()
-        if clean and clean.casefold() not in seen:
-            seen.add(clean.casefold())
-            result.append(clean)
-    return result
+    return records
+
+
+def _build_material_indexes(
+    document: P21Document,
+    units: IfcUnits,
+    object_type_ids: Mapping[int, int],
+) -> tuple[dict[int, list[str]], dict[int, list[dict[str, Any]]]]:
+    direct: dict[int, list[dict[str, Any]]] = defaultdict(list)
+    for relation in document.iter_type("IFCRELASSOCIATESMATERIAL"):
+        material_id = relation.ref(5)
+        semantics = _resolve_material_semantics(document, material_id, units=units)
+        if not semantics:
+            continue
+        for object_id in relation.refs(4):
+            for semantic in semantics:
+                record = dict(semantic)
+                record.update(
+                    {
+                        "association_entity_id": str(relation.entity_id),
+                        "material_root_entity_id": str(material_id or ""),
+                        "inherited_from_type": False,
+                        "inherited_from_type_entity_id": "",
+                        "effective": True,
+                    }
+                )
+                direct[object_id].append(record)
+
+    expanded: dict[int, list[dict[str, Any]]] = {
+        object_id: list(records) for object_id, records in direct.items()
+    }
+    for object_id, type_id in object_type_ids.items():
+        if type_id not in direct:
+            continue
+        inherited: list[dict[str, Any]] = []
+        for semantic in direct[type_id]:
+            record = dict(semantic)
+            record["inherited_from_type"] = True
+            record["inherited_from_type_entity_id"] = str(type_id)
+            # Preserve overridden type evidence for audit, but never feed it
+            # into canonical resolution when the occurrence declares its own.
+            record["effective"] = object_id not in direct
+            inherited.append(record)
+        expanded[object_id] = list(expanded.get(object_id, [])) + inherited
+
+    names: dict[int, list[str]] = {}
+    for object_id, records in expanded.items():
+        seen: set[str] = set()
+        object_names: list[str] = []
+        for record in records:
+            if not bool(record.get("effective", True)):
+                continue
+            name = str(record.get("material_name") or "").strip()
+            key = name.casefold()
+            if name and key not in seen:
+                seen.add(key)
+                object_names.append(name)
+        names[object_id] = object_names
+    return names, expanded
 
 
 def _build_material_index(document: P21Document) -> dict[int, list[str]]:
-    result: dict[int, list[str]] = defaultdict(list)
-    for relation in document.iter_type("IFCRELASSOCIATESMATERIAL"):
-        material_id = relation.ref(5)
-        names = _resolve_material_names(document, material_id)
-        if not names:
-            continue
-        for object_id in relation.refs(4):
-            for name in names:
-                if name not in result[object_id]:
-                    result[object_id].append(name)
-    return dict(result)
+    """Compatibility wrapper for callers that only need direct names."""
+
+    names, _semantics = _build_material_indexes(document, IfcUnits(), {})
+    return names
 
 
-def _build_type_index(document: P21Document) -> dict[int, str]:
-    result: dict[int, str] = {}
+def _build_type_indexes(document: P21Document) -> tuple[dict[int, str], dict[int, int]]:
+    names: dict[int, str] = {}
+    ids: dict[int, int] = {}
     for relation in document.iter_type("IFCRELDEFINESBYTYPE"):
         type_id = relation.ref(5)
         type_entity = document.get(type_id)
@@ -414,9 +628,15 @@ def _build_type_index(document: P21Document) -> dict[int, str]:
             continue
         type_name = _first_nonempty(type_entity.string(2), type_entity.string(0))
         for object_id in relation.refs(4):
+            ids[object_id] = type_id
             if type_name:
-                result[object_id] = type_name
-    return result
+                names[object_id] = type_name
+    return names, ids
+
+
+def _build_type_index(document: P21Document) -> dict[int, str]:
+    names, _ids = _build_type_indexes(document)
+    return names
 
 
 def _build_relation_indexes(document: P21Document) -> tuple[
@@ -462,6 +682,26 @@ def _build_indexes(document: P21Document, units: IfcUnits) -> IfcIndexes:
     property_values, property_sets, object_property_sets = _build_property_indexes(
         document, units
     )
+    type_names, type_ids = _build_type_indexes(document)
+    # IFC4 types may own property sets through HasPropertySets while IFC2X3
+    # exporters often attach them through IfcRelDefinesByProperties.  Merge
+    # both forms after direct occurrence sets so occurrence values win.
+    for type_id in set(type_ids.values()):
+        type_entity = document.get(type_id)
+        if type_entity is None:
+            continue
+        target = object_property_sets.setdefault(type_id, [])
+        for property_set_id in type_entity.refs(5):
+            if property_set_id in property_sets and property_set_id not in target:
+                target.append(property_set_id)
+    for object_id, type_id in type_ids.items():
+        target = object_property_sets.setdefault(object_id, [])
+        for property_set_id in object_property_sets.get(type_id, []):
+            if property_set_id not in target:
+                target.append(property_set_id)
+    material_names, material_semantics = _build_material_indexes(
+        document, units, type_ids
+    )
     children, parents, spatial, element_parent, connections = _build_relation_indexes(
         document
     )
@@ -469,8 +709,10 @@ def _build_indexes(document: P21Document, units: IfcUnits) -> IfcIndexes:
         property_values=property_values,
         property_sets=property_sets,
         object_property_sets=object_property_sets,
-        object_materials=_build_material_index(document),
-        object_type_names=_build_type_index(document),
+        object_materials=material_names,
+        object_material_semantics=material_semantics,
+        object_type_names=type_names,
+        object_type_ids=type_ids,
         aggregate_children=children,
         aggregate_parents=parents,
         spatial_containment=spatial,
@@ -492,7 +734,9 @@ def _product_property_sets(
         name, properties, sources = item
         target = nested.setdefault(name, {})
         for property_name, value in properties.items():
-            target[property_name] = value
+            # The occurrence's sets are ordered before inherited type sets.
+            # Do not let the latter overwrite an explicit occurrence value.
+            target.setdefault(property_name, value)
             normalized = _normalise_name(property_name)
             existing = flattened.get(normalized)
             if existing is None or ((existing[0] is None or existing[0] == "") and (value is not None and value != "")):
@@ -687,7 +931,204 @@ def _display_representation_ids(
     return tuple(shape_id for shape_id, identifier in candidates if identifier not in auxiliary)
 
 
-def _representation_summary(document: P21Document, representation_id: int | None) -> dict[str, Any]:
+def _dimension_text(value: float) -> str:
+    return f"{float(value):.12g}"
+
+
+@lru_cache(maxsize=1)
+def _profile_dimension_catalog() -> tuple[Any, ...]:
+    try:
+        from profile_database import ProfileDatabase
+
+        return tuple(ProfileDatabase(writable_copy=False).profiles)
+    except Exception:
+        return ()
+
+
+def _unique_profile_by_dimensions(
+    profile_types: set[str],
+    expected: Mapping[str, float],
+) -> tuple[str, list[str]]:
+    """Match only explicitly supplied dimensions with machine precision."""
+
+    matches: list[str] = []
+    for profile in _profile_dimension_catalog():
+        if str(profile.profile_type).upper() not in profile_types:
+            continue
+        matches_expected = True
+        for field_name, value in expected.items():
+            actual = float(getattr(profile, field_name, 0.0) or 0.0)
+            if abs(actual - float(value)) > 1e-6:
+                matches_expected = False
+                break
+        if matches_expected and profile.designation not in matches:
+            matches.append(profile.designation)
+    matches.sort()
+    return (matches[0] if len(matches) == 1 else ""), matches
+
+
+def _profile_definition_descriptor(
+    profile: P21Entity,
+    units: IfcUnits,
+) -> dict[str, Any]:
+    factor = units.length_to_mm
+    kind = profile.type_name
+    dimensions: dict[str, float] = {}
+    catalogue_types: set[str] = set()
+    catalogue_expected: dict[str, float] = {}
+
+    def dim(index: int) -> float | None:
+        value = profile.number(index)
+        return None if value is None else float(value) * factor
+
+    if kind == "IFCRECTANGLEPROFILEDEF":
+        width, depth = dim(3), dim(4)
+        if width is not None and depth is not None:
+            dimensions = {"width": width, "depth": depth}
+            catalogue_types = {"B"}
+            catalogue_expected = {"dim1": max(width, depth), "dim2": min(width, depth)}
+    elif kind == "IFCRECTANGLEHOLLOWPROFILEDEF":
+        width, depth, wall = dim(3), dim(4), dim(5)
+        if width is not None and depth is not None and wall is not None:
+            dimensions = {"width": width, "depth": depth, "wall_thickness": wall}
+            inner_radius, outer_radius = dim(6), dim(7)
+            if inner_radius is not None:
+                dimensions["inner_fillet_radius"] = inner_radius
+            if outer_radius is not None:
+                dimensions["outer_fillet_radius"] = outer_radius
+            catalogue_types = {"M"}
+            catalogue_expected = {
+                "dim1": max(width, depth),
+                "dim2": min(width, depth),
+                "dim3": wall,
+                "dim4": wall,
+            }
+    elif kind == "IFCCIRCLEPROFILEDEF":
+        radius = dim(3)
+        if radius is not None:
+            dimensions = {"radius": radius, "diameter": 2.0 * radius}
+            catalogue_types = {"RU"}
+            catalogue_expected = {"dim1": 2.0 * radius}
+    elif kind == "IFCCIRCLEHOLLOWPROFILEDEF":
+        radius, wall = dim(3), dim(4)
+        if radius is not None and wall is not None:
+            dimensions = {
+                "radius": radius,
+                "diameter": 2.0 * radius,
+                "wall_thickness": wall,
+            }
+            catalogue_types = {"RO"}
+            catalogue_expected = {"dim1": 2.0 * radius, "dim3": wall}
+    elif kind == "IFCISHAPEPROFILEDEF":
+        width, depth, web, flange = dim(3), dim(4), dim(5), dim(6)
+        if None not in (width, depth, web, flange):
+            dimensions = {
+                "overall_width": width,
+                "overall_depth": depth,
+                "web_thickness": web,
+                "flange_thickness": flange,
+            }
+            fillet = dim(7)
+            if fillet is not None:
+                dimensions["fillet_radius"] = fillet
+            catalogue_types = {"I"}
+            catalogue_expected = {
+                "dim1": depth,
+                "dim2": width,
+                "dim3": flange,
+                "dim4": web,
+            }
+    elif kind == "IFCLSHAPEPROFILEDEF":
+        depth, width, thickness = dim(3), dim(4), dim(5)
+        width = depth if width is None else width
+        if None not in (depth, width, thickness):
+            dimensions = {"depth": depth, "width": width, "thickness": thickness}
+            fillet, edge = dim(6), dim(7)
+            if fillet is not None:
+                dimensions["fillet_radius"] = fillet
+            if edge is not None:
+                dimensions["edge_radius"] = edge
+            catalogue_types = {"L"}
+            catalogue_expected = {
+                "dim1": max(depth, width),
+                "dim2": min(depth, width),
+                "dim3": thickness,
+                "dim4": thickness,
+            }
+    elif kind == "IFCUSHAPEPROFILEDEF":
+        depth, width, web, flange = dim(3), dim(4), dim(5), dim(6)
+        if None not in (depth, width, web, flange):
+            dimensions = {
+                "depth": depth,
+                "flange_width": width,
+                "web_thickness": web,
+                "flange_thickness": flange,
+            }
+            fillet, edge = dim(7), dim(8)
+            if fillet is not None:
+                dimensions["fillet_radius"] = fillet
+            if edge is not None:
+                dimensions["edge_radius"] = edge
+            catalogue_types = {"U", "C"}
+            catalogue_expected = {
+                "dim1": depth,
+                "dim2": width,
+                "dim3": flange,
+                "dim4": web,
+            }
+
+    designation, candidates = _unique_profile_by_dimensions(
+        catalogue_types, catalogue_expected
+    ) if catalogue_types and catalogue_expected else ("", [])
+    custom_parts = [f"CUSTOM:{kind}"]
+    custom_parts.extend(
+        f"{key.upper()}={_dimension_text(value)}"
+        for key, value in sorted(dimensions.items())
+    )
+    return {
+        "source_entity_id": str(profile.entity_id),
+        "entity_type": kind,
+        "ifc_type": kind,
+        "profile_type": profile.string(0).strip(),
+        "profile_name": profile.string(1).strip(),
+        "dimensions_mm": dimensions,
+        "parameters_mm": dimensions,
+        "catalog_designation": designation,
+        "catalog_candidates": candidates,
+        "custom_designation": ":".join(custom_parts),
+        "resolution_status": (
+            "catalog_exact" if designation else "custom_deterministic"
+            if dimensions else "unsupported"
+        ),
+    }
+
+
+def _profile_family_from_definitions(
+    definitions: Iterable[Mapping[str, Any]],
+) -> str:
+    families = {
+        "IFCRECTANGLEPROFILEDEF": "flat",
+        "IFCRECTANGLEHOLLOWPROFILEDEF": "rhs",
+        "IFCCIRCLEPROFILEDEF": "round_bar",
+        "IFCCIRCLEHOLLOWPROFILEDEF": "chs",
+        "IFCISHAPEPROFILEDEF": "i",
+        "IFCLSHAPEPROFILEDEF": "angle",
+        "IFCUSHAPEPROFILEDEF": "u",
+    }
+    resolved = {
+        families[str(item.get("entity_type") or "").upper()]
+        for item in definitions
+        if str(item.get("entity_type") or "").upper() in families
+    }
+    return next(iter(resolved)) if len(resolved) == 1 else ""
+
+
+def _representation_summary(
+    document: P21Document,
+    representation_id: int | None,
+    *,
+    units: IfcUnits | None = None,
+) -> dict[str, Any]:
     if representation_id is None:
         return {
             "source_representation_id": "",
@@ -710,6 +1151,7 @@ def _representation_summary(document: P21Document, representation_id: int | None
     representation_records: list[dict[str, Any]] = []
     primitive_counts: Counter[str] = Counter()
     profile_names: list[str] = []
+    profile_definitions: list[dict[str, Any]] = []
     extrusion_depths: list[float] = []
     for shape_id in representation_ids:
         shape = document.get(shape_id)
@@ -745,6 +1187,11 @@ def _representation_summary(document: P21Document, representation_id: int | None
                     profile_name = profile.string(1)
                     if profile_name and profile_name not in profile_names:
                         profile_names.append(profile_name)
+                    descriptor = _profile_definition_descriptor(
+                        profile, units or IfcUnits()
+                    )
+                    if descriptor not in profile_definitions:
+                        profile_definitions.append(descriptor)
     geometry_hash = (
         document.combined_semantic_hash(
             item_ids,
@@ -761,7 +1208,12 @@ def _representation_summary(document: P21Document, representation_id: int | None
         "representations": representation_records,
         "primitive_counts": dict(sorted(primitive_counts.items())),
         "profile_names": profile_names,
+        "profile_definitions": profile_definitions,
         "extrusion_depths_source_units": extrusion_depths,
+        "extrusion_depths_mm": [
+            value * (units.length_to_mm if units else 1.0)
+            for value in extrusion_depths
+        ],
         "source_geometry_hash": geometry_hash,
         "source_semantics_preserved": True,
         "production_features_resolved": False,
@@ -843,6 +1295,7 @@ def _provenance(
     *,
     method: str = "ifc_semantic_exact",
     confidence: float = 1.0,
+    status: str = "automatic",
 ) -> FieldProvenance:
     return FieldProvenance(
         source_file_id=source.source_id,
@@ -850,7 +1303,7 @@ def _provenance(
         source_path=source_path,
         method=method,
         confidence=confidence,
-        status="automatic",
+        status=status,
     )
 
 
@@ -869,6 +1322,256 @@ def _clean_material(value: str) -> str:
     return text
 
 
+_MATERIAL_PLACEHOLDERS = {
+    "", "$", "*", "-", "N/A", "NA", "NONE", "NULL", "UNDEFINED",
+    "NOTDEFINED", "NOT DEFINED", "UNKNOWN", "ONBEKEND",
+}
+
+
+def _material_key(value: Any) -> str:
+    clean = _clean_material(str(value or "").strip())
+    if clean.upper() in _MATERIAL_PLACEHOLDERS:
+        return ""
+    resolved = _material_alias_catalog().resolve(clean)
+    return str(resolved.material_code or clean).upper()
+
+
+@lru_cache(maxsize=1)
+def _material_alias_catalog():
+    from material_database import MaterialDatabase
+    return MaterialDatabase()
+
+
+def _material_property_evidence(entity_id: int, indexes: IfcIndexes) -> list[dict[str, Any]]:
+    """Preserve conflicting synonyms/duplicates while respecting type override."""
+    inherited_sets = set(indexes.object_property_sets.get(indexes.object_type_ids.get(entity_id), []))
+    candidates: list[dict[str, Any]] = []
+    for pset_id in indexes.object_property_sets.get(entity_id, []):
+        pset = indexes.property_sets.get(pset_id)
+        if not pset:
+            continue
+        name, properties, sources = pset
+        for field_name, value in properties.items():
+            key = _normalise_name(field_name).split(" (")[0]
+            if key not in {"material", "material grade", "grade"} or not _material_key(value):
+                continue
+            candidates.append({
+                "value": value,
+                "source_path": f"{name}.{field_name}",
+                "source_entity_id": int(sources.get(field_name, pset_id)),
+                "inherited": pset_id in inherited_sets,
+            })
+    has_occurrence = any(not item["inherited"] for item in candidates)
+    for item in candidates:
+        item["effective"] = not has_occurrence or not item["inherited"]
+    return candidates
+
+
+def _resolve_part_material(
+    explicit_value: Any,
+    explicit_path: str,
+    explicit_source: int,
+    semantics: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Resolve one production material from explicit IFC evidence.
+
+    All leaf semantics remain available in the returned evidence.  A composite
+    or conflicting association never becomes a made-up single grade.
+    """
+
+    explicit = _clean_material(str(explicit_value or "").strip())
+    explicit_key = _material_key(explicit)
+    association_values: dict[str, str] = {}
+    association_records: list[Mapping[str, Any]] = []
+    records_by_key: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for record in semantics:
+        if not bool(record.get("effective", True)):
+            continue
+        name = _clean_material(str(record.get("material_name") or "").strip())
+        key = _material_key(name)
+        if not key:
+            continue
+        association_values.setdefault(key, name)
+        association_records.append(record)
+        records_by_key[key].append(record)
+
+    candidate_values = list(association_values.values())
+    resolution = {
+        "value": "",
+        "status": "missing",
+        "confidence": 0.0,
+        "method": "ifc_material_unresolved",
+        "source_entity_id": int(explicit_source or 0),
+        "source_path": explicit_path,
+        "explicit_value": explicit if explicit_key else "",
+        "associated_candidates": candidate_values,
+    }
+    if len(association_values) > 1:
+        if explicit_key and explicit_key not in association_values:
+            resolution["status"] = "conflicting_evidence"
+            return resolution
+        if explicit_key:
+            resolution.update(
+                {
+                    "value": explicit,
+                    "status": "resolved_composite_primary",
+                    "confidence": 1.0,
+                    "method": "ifc_property_declared_primary",
+                }
+            )
+            return resolution
+        loadbearing_keys = {
+            key
+            for key, records in records_by_key.items()
+            if any(
+                str(
+                    record.get("layer_category")
+                    or record.get("material_profile_category")
+                    or record.get("constituent_category")
+                    or ""
+                ).strip().upper().replace("_", "") == "LOADBEARING"
+                for record in records
+            )
+        }
+        if len(loadbearing_keys) == 1:
+            selected_key = next(iter(loadbearing_keys))
+            selected_record = records_by_key[selected_key][0]
+            inherited = bool(selected_record.get("inherited_from_type"))
+            resolution.update(
+                {
+                    "value": association_values[selected_key],
+                    "status": "resolved_composite_primary",
+                    "confidence": 0.95 if inherited else 1.0,
+                    "method": "ifc_material_loadbearing_role",
+                    "source_entity_id": _int(
+                        selected_record.get("inherited_from_type_entity_id")
+                        or selected_record.get("material_entity_id")
+                    ),
+                    "source_path": (
+                        "IfcRelDefinesByType/IfcMaterialRole[LoadBearing]"
+                        if inherited else "IfcMaterialRole[LoadBearing]"
+                    ),
+                }
+            )
+            return resolution
+        resolution["status"] = "ambiguous_association"
+        return resolution
+    if explicit_key and association_values and explicit_key not in association_values:
+        resolution["status"] = "conflicting_evidence"
+        return resolution
+    if explicit_key:
+        resolution.update(
+            {
+                "value": explicit,
+                "status": "resolved",
+                "confidence": 1.0,
+                "method": "ifc_property_exact",
+            }
+        )
+        return resolution
+    if len(association_values) == 1:
+        record = association_records[0]
+        inherited = bool(record.get("inherited_from_type"))
+        resolution.update(
+            {
+                "value": candidate_values[0],
+                "status": "resolved_inherited" if inherited else "resolved",
+                "confidence": 0.95 if inherited else 1.0,
+                "method": (
+                    "ifc_type_material_inheritance"
+                    if inherited
+                    else "ifc_material_association_exact"
+                ),
+                "source_entity_id": _int(
+                    record.get("inherited_from_type_entity_id")
+                    or record.get("material_entity_id")
+                ),
+                "source_path": (
+                    "IfcRelDefinesByType/IfcRelAssociatesMaterial"
+                    if inherited
+                    else "IfcRelAssociatesMaterial"
+                ),
+            }
+        )
+    return resolution
+
+
+def _resolve_fastener_grade(
+    explicit_value: Any,
+    explicit_path: str,
+    explicit_source: int,
+    standard_value: Any,
+    standard_path: str,
+    standard_source: int,
+    semantics: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    from cws_convertor.project.classification import fastener_grade_candidates
+
+    material_records = [
+        record for record in semantics if bool(record.get("effective", True))
+    ]
+    material_values = [record.get("material_name", "") for record in material_records]
+    explicit_candidates = fastener_grade_candidates(explicit_value)
+    standard_candidates = fastener_grade_candidates(standard_value)
+    material_candidates = fastener_grade_candidates(*material_values)
+    candidates = tuple(
+        sorted(set(explicit_candidates + standard_candidates + material_candidates))
+    )
+    result: dict[str, Any] = {
+        "value": candidates[0] if len(candidates) == 1 else "",
+        "candidates": list(candidates),
+        "status": "resolved" if len(candidates) == 1 else
+        "conflicting_evidence" if len(candidates) > 1 else "missing",
+        "method": "ifc_fastener_grade_unresolved",
+        "confidence": 0.0,
+        "source_entity_id": 0,
+        "source_path": "",
+    }
+    if len(candidates) != 1:
+        return result
+    grade = candidates[0]
+    if grade in explicit_candidates:
+        result.update(
+            method="ifc_fastener_grade_property_exact",
+            confidence=1.0,
+            source_entity_id=int(explicit_source or 0),
+            source_path=explicit_path,
+        )
+    elif grade in standard_candidates:
+        result.update(
+            method="ifc_fastener_standard_grade_exact",
+            confidence=1.0,
+            source_entity_id=int(standard_source or 0),
+            source_path=standard_path,
+        )
+    else:
+        source_record = next(
+            (
+                record for record in material_records
+                if grade in fastener_grade_candidates(record.get("material_name", ""))
+            ),
+            {},
+        )
+        inherited = bool(source_record.get("inherited_from_type"))
+        result.update(
+            method=(
+                "ifc_type_fastener_material_grade"
+                if inherited else "ifc_fastener_material_grade_exact"
+            ),
+            confidence=0.95 if inherited else 1.0,
+            source_entity_id=_int(
+                source_record.get("inherited_from_type_entity_id")
+                or source_record.get("material_entity_id")
+            ),
+            source_path=(
+                "IfcRelDefinesByType/IfcRelAssociatesMaterial.RelatingMaterial.Name"
+                if inherited
+                else "IfcRelAssociatesMaterial.RelatingMaterial.Name"
+            ),
+        )
+    return result
+
+
 def _classification_for_part(entity_type: str, material: str) -> str:
     if entity_type in {"IFCFOOTING", "IFCSLAB"}:
         return EntityCategory.NON_STEEL.value
@@ -879,13 +1582,129 @@ def _classification_for_part(entity_type: str, material: str) -> str:
     return EntityCategory.MAKE_PART.value
 
 
+def _group_material_associations(
+    entity: P21Entity,
+    semantics: Iterable[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    grouped: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for item in semantics:
+        grouped[str(item.get("association_entity_id") or "")].append(item)
+    associations: list[dict[str, Any]] = []
+    for association_id, records in grouped.items():
+        first = records[0]
+        if first.get("material_profile_set_usage_entity_id"):
+            kind = "profile_set_usage"
+        elif first.get("material_layer_set_usage_entity_id"):
+            kind = "layer_set_usage"
+        elif first.get("material_constituent_entity_id"):
+            kind = "constituent_set"
+        elif first.get("material_profile_entity_id"):
+            kind = "profile_set"
+        elif first.get("material_layer_entity_id"):
+            kind = "layer_set"
+        elif first.get("material_list_entity_id"):
+            kind = "material_list"
+        else:
+            kind = "material"
+        components: list[dict[str, Any]] = []
+        for record in records:
+            component: dict[str, Any] = {
+                "material": {
+                    "source_entity_id": str(record.get("material_entity_id") or ""),
+                    "name": str(record.get("material_name") or ""),
+                    "description": str(record.get("material_description") or ""),
+                    "category": str(record.get("material_category") or ""),
+                },
+                "source_path_entity_ids": list(
+                    record.get("material_path_entity_ids") or []
+                ),
+                "tapering_end": str(record.get("tapering_end") or ""),
+            }
+            if record.get("material_layer_entity_id"):
+                component.update(
+                    {
+                        "source_entity_id": str(record.get("material_layer_entity_id")),
+                        "name": str(record.get("layer_name") or ""),
+                        "description": str(record.get("layer_description") or ""),
+                        "category": str(record.get("layer_category") or ""),
+                        "priority": record.get("layer_priority"),
+                        "thickness_mm": record.get("layer_thickness_mm"),
+                        "offset_direction": record.get("layer_offset_direction", ""),
+                        "offset_values_mm": list(record.get("layer_offset_values_mm") or []),
+                    }
+                )
+            elif record.get("material_profile_entity_id"):
+                component.update(
+                    {
+                        "source_entity_id": str(record.get("material_profile_entity_id")),
+                        "name": str(record.get("material_profile_name") or ""),
+                        "description": str(record.get("material_profile_description") or ""),
+                        "category": str(record.get("material_profile_category") or ""),
+                        "priority": record.get("material_profile_priority"),
+                        "profile": {
+                            "source_entity_id": str(
+                                record.get("profile_definition_entity_id") or ""
+                            ),
+                            "ifc_type": str(record.get("profile_definition_type") or ""),
+                            "name": str(record.get("profile_definition_name") or ""),
+                            "descriptor": dict(
+                                record.get("profile_definition") or {}
+                            ),
+                        },
+                    }
+                )
+            elif record.get("material_constituent_entity_id"):
+                component.update(
+                    {
+                        "source_entity_id": str(
+                            record.get("material_constituent_entity_id")
+                        ),
+                        "name": str(record.get("constituent_name") or ""),
+                        "description": str(
+                            record.get("constituent_description") or ""
+                        ),
+                        "category": str(record.get("constituent_category") or ""),
+                        "fraction": record.get("constituent_fraction"),
+                    }
+                )
+            components.append(component)
+        inherited = bool(first.get("inherited_from_type"))
+        associations.append(
+            {
+                "source_entity_id": association_id,
+                "material_root_entity_id": str(
+                    first.get("material_root_entity_id") or ""
+                ),
+                "kind": kind,
+                "scope": "type" if inherited else "occurrence",
+                "effective": bool(first.get("effective", True)),
+                "declared_on_entity_id": str(
+                    first.get("inherited_from_type_entity_id") or entity.entity_id
+                ),
+                "set_name": str(first.get("material_set_name") or ""),
+                "set_description": str(first.get("material_set_description") or ""),
+                "usage": {
+                    "direction": str(first.get("layer_set_direction") or ""),
+                    "sense": str(first.get("direction_sense") or ""),
+                    "offset_mm": first.get("offset_from_reference_line_mm"),
+                    "cardinal_point": first.get("cardinal_point"),
+                    "reference_extent_mm": first.get("reference_extent_mm"),
+                },
+                "components": components,
+            }
+        )
+    return associations
+
+
 def _entity_property_payload(
     entity: P21Entity,
     nested_properties: dict[str, dict[str, Any]],
     material_names: list[str],
     type_name: str,
+    material_semantics: Iterable[Mapping[str, Any]] | None = None,
+    type_entity_id: int | None = None,
 ) -> dict[str, Any]:
-    return {
+    payload = {
         "ifc_entity_type": entity.type_name,
         "ifc_global_id": entity.string(0),
         "ifc_name": entity.string(2),
@@ -893,9 +1712,17 @@ def _entity_property_payload(
         "ifc_object_type": entity.string(4),
         "ifc_tag": entity.string(7),
         "ifc_type_name": type_name,
+        "ifc_type_entity_id": str(type_entity_id or ""),
         "ifc_materials": material_names,
         "ifc_property_sets": nested_properties,
     }
+    if material_semantics is not None:
+        semantic_records = [dict(item) for item in material_semantics]
+        payload["ifc_material_semantics"] = semantic_records
+        payload["ifc_material_associations"] = _group_material_associations(
+            entity, semantic_records
+        )
+    return payload
 
 
 def import_ifc_project(
@@ -983,6 +1810,8 @@ def import_ifc_project(
                 nested,
                 indexes.object_materials.get(entity.entity_id, []),
                 indexes.object_type_names.get(entity.entity_id, ""),
+                indexes.object_material_semantics.get(entity.entity_id, []),
+                indexes.object_type_ids.get(entity.entity_id),
             ),
             confidence=1.0,
             status=ReviewStatus.REVIEW_REQUIRED.value,
@@ -1045,25 +1874,32 @@ def import_ifc_project(
             global_transform = Transform3D.identity()
             placement_failures.append(f"#{entity.entity_id}: {exc}")
         material_names = indexes.object_materials.get(entity.entity_id, [])
+        material_semantics = indexes.object_material_semantics.get(entity.entity_id, [])
         material_property, material_path, material_source = _flattened_value(
             flattened,
             ("MATERIAL", "Material", "Material grade", "Grade"),
         )
-        associated_material = next(
-            (
-                item
-                for item in material_names
-                if item and item.casefold() not in {"undefined", "notdefined"}
-            ),
-            "",
+        property_evidence = _material_property_evidence(entity.entity_id, indexes)
+        effective_properties = [item for item in property_evidence if item["effective"]]
+        if effective_properties:
+            primary = effective_properties[0]
+            material_property, material_path, material_source = primary["value"], primary["source_path"], primary["source_entity_id"]
+        material_resolution = _resolve_part_material(
+            material_property,
+            material_path,
+            material_source,
+            material_semantics,
         )
-        material = _clean_material(_first_nonempty(material_property, associated_material))
+        material_resolution["property_evidence"] = property_evidence
+        if len({_material_key(item["value"]) for item in effective_properties}) > 1:
+            material_resolution.update(value="", status="conflicting_evidence", confidence=0.0, method="ifc_property_conflict")
+        material = str(material_resolution["value"] or "")
         profile_property, profile_path, profile_source = _flattened_value(
             flattened,
             ("PROFILE", "Profile", "Profile name", "Section", "Cross section"),
         )
         type_name = indexes.object_type_names.get(entity.entity_id, "")
-        representation = _representation_summary(document, entity.ref(6))
+        representation = _representation_summary(document, entity.ref(6), units=units)
         representation["source_locator"] = build_ifc_source_locator(
             source,
             source_entity_id=identity.source_entity_id,
@@ -1071,11 +1907,31 @@ def import_ifc_project(
             representation_id=str(representation.get("source_representation_id") or ""),
             source_geometry_hash=str(representation.get("source_geometry_hash") or ""),
         )
-        profile = _first_nonempty(
+        named_profile = _first_nonempty(
             profile_property,
             entity.string(3),
             type_name,
             *(representation.get("profile_names") or []),
+        )
+        profile_definitions = list(representation.get("profile_definitions") or [])
+        geometry_catalogs = list(
+            dict.fromkeys(
+                str(item.get("catalog_designation") or "")
+                for item in profile_definitions
+                if item.get("catalog_designation")
+            )
+        )
+        geometry_customs = list(
+            dict.fromkeys(
+                str(item.get("custom_designation") or "")
+                for item in profile_definitions
+                if item.get("custom_designation")
+            )
+        )
+        profile = _first_nonempty(
+            named_profile,
+            geometry_catalogs[0] if len(geometry_catalogs) == 1 else "",
+            geometry_customs[0] if len(geometry_customs) == 1 else "",
         )
         length, length_path, length_source = _flattened_value(
             flattened,
@@ -1098,6 +1954,22 @@ def import_ifc_project(
             infer_profile_type,
             prepare_exact_imported_part,
         )
+        from cws_convertor.project.classification import (
+            _catalog_material,
+            _catalog_profile,
+        )
+
+        exact_profile = _catalog_profile(profile)
+        exact_material = _catalog_material(material)
+        named_profile_catalog = _catalog_profile(named_profile)
+        profile_conflict = bool(
+            named_profile_catalog
+            and geometry_catalogs
+            and any(item != named_profile_catalog for item in geometry_catalogs)
+        )
+        if profile_conflict:
+            profile = ""
+            exact_profile = ""
 
         part = Part(
             internal_id=internal_id,
@@ -1109,7 +1981,12 @@ def import_ifc_project(
             local_placement=local,
             global_placement=global_transform,
             properties=_entity_property_payload(
-                entity, nested, material_names, type_name
+                entity,
+                nested,
+                material_names,
+                type_name,
+                material_semantics,
+                indexes.object_type_ids.get(entity.entity_id),
             ),
             confidence=1.0,
             status=ReviewStatus.REVIEW_REQUIRED.value,
@@ -1117,9 +1994,17 @@ def import_ifc_project(
             quantity_total=1,
             part_type=entity.type_name.removeprefix("IFC").lower(),
             profile=profile,
-            profile_type=infer_profile_type(profile, entity.type_name),
+            profile_type=(
+                _profile_family_from_definitions(profile_definitions)
+                or infer_profile_type(profile, entity.type_name)
+            ),
             material=material,
             material_grade=material,
+            profile_confidence=1.0 if exact_profile else (0.65 if profile else 0.0),
+            material_confidence=(
+                1.0 if exact_material else
+                0.65 if material_resolution["status"].startswith("resolved") else 0.0
+            ),
             length_mm=_float(length),
             mass_each_kg=_float(weight),
             surface_area_each_m2=_float(area),
@@ -1128,7 +2013,52 @@ def import_ifc_project(
             nc1_eligible=False,
             export_status="review_required",
         )
-        prepare_exact_imported_part(part)
+        part.properties["ifc_material_resolution"] = dict(material_resolution)
+        if material_resolution["status"] == "ambiguous_association":
+            part.validation_issues.append(
+                ValidationIssue(
+                    code="CWS-IFC-MATERIAL-PRIMARY-AMBIGUOUS",
+                    message=(
+                        "Meerdere IFC-materialen zijn behouden; er is geen "
+                        "eenduidig primair productiemateriaal gedeclareerd."
+                    ),
+                    severity="error",
+                    blocking=True,
+                    entity_id=internal_id,
+                    field_path="material",
+                    source="ifc_semantic_import",
+                )
+            )
+        elif material_resolution["status"] == "conflicting_evidence":
+            part.validation_issues.append(
+                ValidationIssue(
+                    code="CWS-IFC-MATERIAL-CONFLICT",
+                    message=(
+                        "IFC-property en materiaalassociatie spreken elkaar tegen; "
+                        "materiaal is niet automatisch gekozen."
+                    ),
+                    severity="error",
+                    blocking=True,
+                    entity_id=internal_id,
+                    field_path="material",
+                    source="ifc_semantic_import",
+                )
+            )
+        if profile_conflict:
+            part.validation_issues.append(
+                ValidationIssue(
+                    code="CWS-IFC-PROFILE-CONFLICT",
+                    message=(
+                        "Genoemd IFC-profiel en parametrische profieldefinitie "
+                        "verwijzen naar verschillende catalogusprofielen."
+                    ),
+                    severity="error",
+                    blocking=True,
+                    entity_id=internal_id,
+                    field_path="profile",
+                    source="ifc_semantic_import",
+                )
+            )
         part.properties["ifc_spatial_container_source_id"] = str(
             indexes.element_spatial_parent.get(entity.entity_id, "")
         )
@@ -1149,18 +2079,51 @@ def import_ifc_project(
             )
             part_position_counts[part_position] += 1
         if profile:
+            if profile_property:
+                resolved_profile_source = profile_source or entity.entity_id
+                resolved_profile_path = profile_path
+                resolved_profile_method = "ifc_semantic_exact"
+                resolved_profile_confidence = 1.0
+            elif entity.string(3):
+                resolved_profile_source = entity.entity_id
+                resolved_profile_path = "IfcProduct.Description"
+                resolved_profile_method = "ifc_semantic_exact"
+                resolved_profile_confidence = 1.0
+            elif type_name:
+                resolved_profile_source = indexes.object_type_ids.get(
+                    entity.entity_id, entity.entity_id
+                )
+                resolved_profile_path = "IfcRelDefinesByType/IfcTypeObject.Name"
+                resolved_profile_method = "ifc_type_inheritance"
+                resolved_profile_confidence = 0.95
+            else:
+                descriptor = profile_definitions[0] if profile_definitions else {}
+                resolved_profile_source = _int(
+                    descriptor.get("source_entity_id"), entity.entity_id
+                )
+                resolved_profile_path = "IfcExtrudedAreaSolid.SweptArea"
+                resolved_profile_method = "ifc_parametric_profile_definition"
+                resolved_profile_confidence = 1.0 if exact_profile else 0.8
             part.field_provenance["profile"] = _provenance(
                 source,
-                profile_source or entity.entity_id,
-                profile_path or (
-                    "IfcProduct.Description" if entity.string(3) else "IfcType.Name"
-                ),
+                resolved_profile_source,
+                resolved_profile_path,
+                method=resolved_profile_method,
+                confidence=resolved_profile_confidence,
+                status="automatic" if exact_profile else "derived",
             )
         if material:
             part.field_provenance["material"] = _provenance(
                 source,
-                material_source or entity.entity_id,
-                material_path or "IfcRelAssociatesMaterial",
+                _int(material_resolution["source_entity_id"], entity.entity_id),
+                str(material_resolution["source_path"] or "IfcRelAssociatesMaterial"),
+                method=str(material_resolution["method"]),
+                confidence=float(material_resolution["confidence"]),
+                status=(
+                    "derived"
+                    if material_resolution["status"] == "resolved_inherited"
+                    else "automatic"
+                ),
             )
         if length_path:
             part.field_provenance["length_mm"] = _provenance(
@@ -1178,6 +2141,9 @@ def import_ifc_project(
             part.field_provenance["coating"] = _provenance(
                 source, coating_source, coating_path
             )
+        # Exact-source preparation must inspect the populated evidence flags
+        # and field provenance; it may not promote an incomplete import row.
+        prepare_exact_imported_part(part)
         if representation.get("status") != "semantic_source_geometry":
             missing_representation += 1
         part.recompute_hashes()
@@ -1220,11 +2186,11 @@ def import_ifc_project(
             flattened,
             ("Bolt count", "Count", "Quantity"),
         )
-        standard, _standard_path, _standard_source = _flattened_value(
+        standard, standard_path, standard_source = _flattened_value(
             flattened,
             ("Bolt standard", "Standard"),
         )
-        grade, _grade_path, _grade_source = _flattened_value(
+        grade, grade_path, grade_source = _flattened_value(
             flattened,
             ("Bolt grade", "Grade", "Quality"),
         )
@@ -1238,9 +2204,21 @@ def import_ifc_project(
         slot_y, _sy_path, _sy_source = _flattened_value(
             flattened, ("Slotted hole y", "Slot y")
         )
+        fastener_material_semantics = indexes.object_material_semantics.get(
+            entity.entity_id, []
+        )
+        grade_resolution = _resolve_fastener_grade(
+            grade,
+            grade_path,
+            grade_source,
+            standard,
+            standard_path,
+            standard_source,
+            fastener_material_semantics,
+        )
         identity = _source_identity(source, entity)
         internal_id = project.stable_entity_id("fastener", identity)
-        representation = _representation_summary(document, entity.ref(6))
+        representation = _representation_summary(document, entity.ref(6), units=units)
         representation["source_locator"] = build_ifc_source_locator(
             source,
             source_entity_id=identity.source_entity_id,
@@ -1265,12 +2243,14 @@ def import_ifc_project(
                 nested,
                 indexes.object_materials.get(entity.entity_id, []),
                 indexes.object_type_names.get(entity.entity_id, ""),
+                fastener_material_semantics,
+                indexes.object_type_ids.get(entity.entity_id),
             ),
             confidence=1.0,
             status=ReviewStatus.REVIEW_REQUIRED.value,
             fastener_type=_first_nonempty(entity.string(2), "mechanical_fastener"),
             diameter_mm=_float(diameter),
-            grade=str(grade or ""),
+            grade=str(grade_resolution["value"] or ""),
             length_mm=_float(length),
             standard=str(standard or ""),
             quantity=max(1, _int(quantity, 1)),
@@ -1278,12 +2258,41 @@ def import_ifc_project(
             slot={"x_mm": _float(slot_x), "y_mm": _float(slot_y)},
             geometry_descriptor=representation,
         )
+        fastener.properties["ifc_fastener_grade_resolution"] = dict(grade_resolution)
+        if grade_resolution["status"] == "conflicting_evidence":
+            fastener.validation_issues.append(
+                ValidationIssue(
+                    code="CWS-IFC-FASTENER-GRADE-CONFLICT",
+                    message=(
+                        "Tegenstrijdige bevestigingskwaliteiten in IFC-property, "
+                        "norm of materiaalassociatie; kwaliteit is niet gekozen."
+                    ),
+                    severity="error",
+                    blocking=True,
+                    entity_id=internal_id,
+                    field_path="grade",
+                    source="ifc_semantic_import",
+                )
+            )
         fastener.field_provenance["diameter_mm"] = _provenance(
             source, diameter_source, diameter_path
         )
         fastener.field_provenance["length_mm"] = _provenance(
             source, length_source, length_path
         )
+        if fastener.grade:
+            fastener.field_provenance["grade"] = _provenance(
+                source,
+                _int(grade_resolution["source_entity_id"], entity.entity_id),
+                str(grade_resolution["source_path"]),
+                method=str(grade_resolution["method"]),
+                confidence=float(grade_resolution["confidence"]),
+                status=(
+                    "derived"
+                    if str(grade_resolution["method"]).startswith("ifc_type_")
+                    else "automatic"
+                ),
+            )
         fastener_by_source[entity.entity_id] = fastener
         source_to_internal[entity.entity_id] = internal_id
         project.fasteners[internal_id] = fastener
@@ -1301,6 +2310,24 @@ def import_ifc_project(
         if index % 25 == 0:
             _check_cancelled(cancel_check)
         nested, flattened = _product_property_sets(entity.entity_id, indexes)
+        generic_standard, generic_standard_path, generic_standard_source = _flattened_value(
+            flattened, ("Bolt standard", "Standard")
+        )
+        generic_grade, generic_grade_path, generic_grade_source = _flattened_value(
+            flattened, ("Bolt grade", "Grade", "Quality")
+        )
+        generic_material_semantics = indexes.object_material_semantics.get(
+            entity.entity_id, []
+        )
+        generic_grade_resolution = _resolve_fastener_grade(
+            generic_grade,
+            generic_grade_path,
+            generic_grade_source,
+            generic_standard,
+            generic_standard_path,
+            generic_standard_source,
+            generic_material_semantics,
+        )
         combined_text = " ".join(
             [
                 entity.string(2),
@@ -1312,7 +2339,7 @@ def import_ifc_project(
         ).casefold()
         is_weld = any(token in combined_text for token in ("weld", "las", "lassen"))
         identity = _source_identity(source, entity)
-        representation = _representation_summary(document, entity.ref(6))
+        representation = _representation_summary(document, entity.ref(6), units=units)
         representation["source_locator"] = build_ifc_source_locator(
             source,
             source_entity_id=identity.source_entity_id,
@@ -1354,6 +2381,8 @@ def import_ifc_project(
                     nested,
                     indexes.object_materials.get(entity.entity_id, []),
                     indexes.object_type_names.get(entity.entity_id, ""),
+                    generic_material_semantics,
+                    indexes.object_type_ids.get(entity.entity_id),
                 ),
                 confidence=1.0,
                 status=ReviewStatus.REVIEW_REQUIRED.value,
@@ -1383,12 +2412,52 @@ def import_ifc_project(
                     nested,
                     indexes.object_materials.get(entity.entity_id, []),
                     indexes.object_type_names.get(entity.entity_id, ""),
+                    generic_material_semantics,
+                    indexes.object_type_ids.get(entity.entity_id),
                 ),
                 confidence=0.8,
                 status=ReviewStatus.REVIEW_REQUIRED.value,
                 fastener_type="ifc_fastener_unclassified",
+                grade=str(generic_grade_resolution["value"] or ""),
+                standard=str(generic_standard or ""),
                 geometry_descriptor=representation,
             )
+            fastener.properties["ifc_fastener_grade_resolution"] = dict(
+                generic_grade_resolution
+            )
+            if generic_grade_resolution["status"] == "conflicting_evidence":
+                fastener.validation_issues.append(
+                    ValidationIssue(
+                        code="CWS-IFC-FASTENER-GRADE-CONFLICT",
+                        message=(
+                            "Tegenstrijdige bevestigingskwaliteiten; kwaliteit "
+                            "is niet automatisch gekozen."
+                        ),
+                        severity="error",
+                        blocking=True,
+                        entity_id=internal_id,
+                        field_path="grade",
+                        source="ifc_semantic_import",
+                    )
+                )
+            if fastener.grade:
+                fastener.field_provenance["grade"] = _provenance(
+                    source,
+                    _int(
+                        generic_grade_resolution["source_entity_id"],
+                        entity.entity_id,
+                    ),
+                    str(generic_grade_resolution["source_path"]),
+                    method=str(generic_grade_resolution["method"]),
+                    confidence=float(generic_grade_resolution["confidence"]),
+                    status=(
+                        "derived"
+                        if str(generic_grade_resolution["method"]).startswith(
+                            "ifc_type_"
+                        )
+                        else "automatic"
+                    ),
+                )
             fastener.validation_issues.append(
                 ValidationIssue(
                     code="CWS-IFC-FASTENER-REVIEW",

@@ -1,0 +1,14 @@
+
+--- STDERR ---
+test_analytical_arc_profile_and_round_bar_are_supported (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_analytical_arc_profile_and_round_bar_are_supported) ... ok
+test_left_handed_frame_and_source_mutation_are_rejected (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_left_handed_frame_and_source_mutation_are_rejected) ... ok
+test_negative_geometry_and_confidence_cases_remain_blocked (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_negative_geometry_and_confidence_cases_remain_blocked) ... ok
+test_placement_is_identity_neutral_but_mirror_is_distinct (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_placement_is_identity_neutral_but_mirror_is_distinct) ... ok
+test_plate_revision_artifacts_undo_redo_and_save_reopen (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_plate_revision_artifacts_undo_redo_and_save_reopen) ... ok
+test_schema_24_workbench_10_migrates_with_new_recognition_hash (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_schema_24_workbench_10_migrates_with_new_recognition_hash) ... ok
+test_stateless_service_uses_the_same_persisted_contract (cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_stateless_service_uses_the_same_persisted_contract) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.783s
+
+OK

@@ -1,0 +1,11 @@
+
+--- STDERR ---
+test_batch_hash_failure_rolls_back_without_partial_entities (cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_batch_hash_failure_rolls_back_without_partial_entities) ... ok
+test_cooperative_cancel_rolls_back_complete_batch (cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_cooperative_cancel_rolls_back_complete_batch) ... ok
+test_progress_reports_internal_import_stages (cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_progress_reports_internal_import_stages) ... ok
+test_semantic_project_saves_reopens_and_reimports_stably (cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_semantic_project_saves_reopens_and_reimports_stably) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.124s
+
+OK

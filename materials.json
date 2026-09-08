@@ -1,6 +1,53 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "description": "Praktische materiaalbibliotheek. Sterktewaarden zijn indicatief; productnorm, dikte en 3.1-certificaat zijn leidend.",
+  "property_templates": {
+    "structural_steel": {
+      "density_kg_m3": 7850,
+      "elastic_modulus_gpa": 210,
+      "poisson_ratio": 0.30,
+      "thermal_expansion_1e6_k": 12.0,
+      "thermal_conductivity_w_mk": 54.0,
+      "specific_heat_j_kg_k": 470,
+      "density_status": "nominal",
+      "mass_calculation_allowed": true
+    },
+    "stainless_steel": {
+      "density_kg_m3": 7950,
+      "elastic_modulus_gpa": 200,
+      "poisson_ratio": 0.30,
+      "thermal_expansion_1e6_k": 16.0,
+      "thermal_conductivity_w_mk": 15.0,
+      "specific_heat_j_kg_k": 500,
+      "density_status": "nominal",
+      "mass_calculation_allowed": true
+    },
+    "aluminium": {
+      "density_kg_m3": 2700,
+      "elastic_modulus_gpa": 70,
+      "poisson_ratio": 0.33,
+      "thermal_expansion_1e6_k": 23.5,
+      "thermal_conductivity_w_mk": 170.0,
+      "specific_heat_j_kg_k": 900,
+      "density_status": "nominal",
+      "mass_calculation_allowed": true
+    },
+    "fastener_steel": {
+      "density_kg_m3": 7850,
+      "elastic_modulus_gpa": 210,
+      "poisson_ratio": 0.30,
+      "thermal_expansion_1e6_k": 12.0,
+      "thermal_conductivity_w_mk": 50.0,
+      "specific_heat_j_kg_k": 470,
+      "density_status": "nominal",
+      "mass_calculation_allowed": true
+    },
+    "variable_density": {
+      "density_kg_m3": 0,
+      "density_status": "requires_source_density",
+      "mass_calculation_allowed": false
+    }
+  },
   "materials": [
     {
       "code": "S235JR",
@@ -16,7 +63,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10025-2",
       "notes": "Minimum vloeigrens is dikte-afhankelijk.",
-      "aliases": ["S235", "1.0038"]
+      "aliases": ["1.0038", "STEEL/S235JR"]
     },
     {
       "code": "S275JR",
@@ -32,7 +79,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10025-2",
       "notes": "Minimum vloeigrens is dikte-afhankelijk.",
-      "aliases": ["S275", "1.0044"]
+      "aliases": ["1.0044", "STEEL/S275JR"]
     },
     {
       "code": "S355JR",
@@ -48,7 +95,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10025-2",
       "notes": "Minimum vloeigrens is dikte-afhankelijk.",
-      "aliases": ["S355", "1.0045"]
+      "aliases": ["1.0045", "STEEL/S355JR"]
     },
     {
       "code": "S355J2",
@@ -64,7 +111,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10025-2",
       "notes": "Kerfslagklasse J2; minimum vloeigrens is dikte-afhankelijk.",
-      "aliases": ["S355J2+N", "1.0577"]
+      "aliases": ["S355J2+N", "1.0577", "STEEL/S355J2"]
     },
     {
       "code": "S355J2H",
@@ -80,7 +127,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10210 / EN 10219",
       "notes": "Controleer H/NH/MH-toestand en wanddikte op certificaat.",
-      "aliases": ["S355J2H/NH", "S355NH", "S355MH"]
+      "aliases": ["S355J2H+N", "STEEL/S355J2H"]
     },
     {
       "code": "S420MH",
@@ -96,7 +143,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10219",
       "notes": "Product- en dikteafhankelijke waarden controleren.",
-      "aliases": ["S420", "S420M"]
+      "aliases": ["S420MH+N", "STEEL/S420MH"]
     },
     {
       "code": "S460NH",
@@ -112,7 +159,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10025-3 / EN 10210",
       "notes": "Product- en dikteafhankelijke waarden controleren.",
-      "aliases": ["S460", "S460N"]
+      "aliases": ["S460NH+N", "STEEL/S460NH"]
     },
     {
       "code": "S500MC",
@@ -128,7 +175,7 @@
       "specific_heat_j_kg_k": 470,
       "standard": "EN 10149-2",
       "notes": "Indicatieve ondergrens; certificaat en dikte zijn leidend.",
-      "aliases": ["S500"]
+      "aliases": ["STEEL/S500MC"]
     },
     {
       "code": "1.4301",
@@ -192,7 +239,391 @@
       "specific_heat_j_kg_k": 900,
       "standard": "EN 573 / EN 755",
       "notes": "Sterkte is productvorm- en dikteafhankelijk.",
-      "aliases": ["ENAW6082", "AL6082"]
+      "aliases": ["EN AW-6082 T6", "ENAW6082T6"]
+    },
+    {
+      "code": "S235J0", "name": "Constructiestaal S235J0", "category": "Constructiestaal",
+      "property_template": "structural_steel", "yield_strength_mpa": 235, "tensile_strength_mpa": 360,
+      "standard": "EN 10025-2", "notes": "Sterkte is productvorm- en dikteafhankelijk.",
+      "aliases": ["STEEL/S235J0"]
+    },
+    {
+      "code": "S235J2", "name": "Constructiestaal S235J2", "category": "Constructiestaal",
+      "property_template": "structural_steel", "yield_strength_mpa": 235, "tensile_strength_mpa": 360,
+      "standard": "EN 10025-2", "notes": "Sterkte is productvorm- en dikteafhankelijk.",
+      "aliases": ["STEEL/S235J2"]
+    },
+    {
+      "code": "S275J0", "name": "Constructiestaal S275J0", "category": "Constructiestaal",
+      "property_template": "structural_steel", "yield_strength_mpa": 275, "tensile_strength_mpa": 410,
+      "standard": "EN 10025-2", "notes": "Sterkte is productvorm- en dikteafhankelijk.",
+      "aliases": ["STEEL/S275J0"]
+    },
+    {
+      "code": "S275J2", "name": "Constructiestaal S275J2", "category": "Constructiestaal",
+      "property_template": "structural_steel", "yield_strength_mpa": 275, "tensile_strength_mpa": 410,
+      "standard": "EN 10025-2", "notes": "Sterkte is productvorm- en dikteafhankelijk.",
+      "aliases": ["STEEL/S275J2"]
+    },
+    {
+      "code": "S355J0", "name": "Constructiestaal S355J0", "category": "Constructiestaal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 470,
+      "standard": "EN 10025-2", "notes": "Sterkte is productvorm- en dikteafhankelijk.",
+      "aliases": ["STEEL/S355J0"]
+    },
+    {
+      "code": "S355K2", "name": "Constructiestaal S355K2", "category": "Constructiestaal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 470,
+      "standard": "EN 10025-2", "notes": "Sterkte is productvorm- en dikteafhankelijk.",
+      "aliases": ["STEEL/S355K2"]
+    },
+    {
+      "code": "S355N", "name": "Fijnkorrelig constructiestaal S355N", "category": "Fijnkorrelig staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 470,
+      "standard": "EN 10025-3", "notes": "Genormaliseerd/normaliserend gewalst; certificaat is leidend.",
+      "aliases": ["STEEL/S355N"]
+    },
+    {
+      "code": "S355NL", "name": "Fijnkorrelig constructiestaal S355NL", "category": "Fijnkorrelig staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 470,
+      "standard": "EN 10025-3", "notes": "Lage-temperatuurkwaliteit; certificaat is leidend.",
+      "aliases": ["STEEL/S355NL"]
+    },
+    {
+      "code": "S355M", "name": "Thermomechanisch gewalst S355M", "category": "Fijnkorrelig staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 450,
+      "standard": "EN 10025-4", "notes": "Productvorm en dikte beïnvloeden de sterkte.",
+      "aliases": ["STEEL/S355M"]
+    },
+    {
+      "code": "S355ML", "name": "Thermomechanisch gewalst S355ML", "category": "Fijnkorrelig staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 450,
+      "standard": "EN 10025-4", "notes": "Lage-temperatuurkwaliteit; certificaat is leidend.",
+      "aliases": ["STEEL/S355ML"]
+    },
+    {
+      "code": "S355NH", "name": "Holle-profielstaal S355NH", "category": "Constructiestaal holle profielen",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 470,
+      "standard": "EN 10210", "notes": "Warmvervaardigd fijnkorrelig staal; certificaat is leidend.",
+      "aliases": ["STEEL/S355NH"]
+    },
+    {
+      "code": "S355MH", "name": "Holle-profielstaal S355MH", "category": "Constructiestaal holle profielen",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 450,
+      "standard": "EN 10219", "notes": "Koudvervaardigd thermomechanisch staal; certificaat is leidend.",
+      "aliases": ["STEEL/S355MH"]
+    },
+    {
+      "code": "S420N", "name": "Fijnkorrelig constructiestaal S420N", "category": "Hoge-sterkte staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 420, "tensile_strength_mpa": 520,
+      "standard": "EN 10025-3", "notes": "Productvorm en dikte beïnvloeden de sterkte.",
+      "aliases": ["STEEL/S420N"]
+    },
+    {
+      "code": "S420M", "name": "Thermomechanisch gewalst S420M", "category": "Hoge-sterkte staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 420, "tensile_strength_mpa": 500,
+      "standard": "EN 10025-4", "notes": "Productvorm en dikte beïnvloeden de sterkte.",
+      "aliases": ["STEEL/S420M"]
+    },
+    {
+      "code": "S460N", "name": "Fijnkorrelig constructiestaal S460N", "category": "Hoge-sterkte staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 460, "tensile_strength_mpa": 540,
+      "standard": "EN 10025-3", "notes": "Productvorm en dikte beïnvloeden de sterkte.",
+      "aliases": ["STEEL/S460N"]
+    },
+    {
+      "code": "S460M", "name": "Thermomechanisch gewalst S460M", "category": "Hoge-sterkte staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 460, "tensile_strength_mpa": 530,
+      "standard": "EN 10025-4", "notes": "Productvorm en dikte beïnvloeden de sterkte.",
+      "aliases": ["STEEL/S460M"]
+    },
+    {
+      "code": "S690QL", "name": "Gehard en ontlaten constructiestaal S690QL", "category": "Hoge-sterkte staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 690, "tensile_strength_mpa": 770,
+      "standard": "EN 10025-6", "notes": "Sterktewaarden en lasvoorwaarden zijn dikteafhankelijk.",
+      "aliases": ["STEEL/S690QL"]
+    },
+    {
+      "code": "S355J2W", "name": "Weervast constructiestaal S355J2W", "category": "Weervast staal",
+      "property_template": "structural_steel", "yield_strength_mpa": 355, "tensile_strength_mpa": 470,
+      "standard": "EN 10025-5", "notes": "Atmosferische corrosieweerstand hangt af van detaillering en omgeving.",
+      "aliases": ["CORTEN A", "COR-TEN A", "STEEL/S355J2W"]
+    },
+    {
+      "code": "1.4003", "name": "RVS 1.4003", "category": "Roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 7700, "yield_strength_mpa": 280, "tensile_strength_mpa": 450,
+      "standard": "EN 10088", "notes": "Ferritisch roestvast staal; toestand is leidend.",
+      "aliases": ["X2CRNI12", "3CR12"]
+    },
+    {
+      "code": "1.4016", "name": "RVS 430 / 1.4016", "category": "Roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 7700, "yield_strength_mpa": 240, "tensile_strength_mpa": 450,
+      "standard": "EN 10088", "notes": "Ferritisch roestvast staal; toestand is leidend.",
+      "aliases": ["AISI430", "430", "X6CR17"]
+    },
+    {
+      "code": "1.4401", "name": "RVS 316 / 1.4401", "category": "Roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 8000, "yield_strength_mpa": 205, "tensile_strength_mpa": 515,
+      "standard": "EN 10088", "notes": "Austenitisch roestvast staal; toestand is leidend.",
+      "aliases": ["AISI316", "316", "X5CRNIMO17-12-2"]
+    },
+    {
+      "code": "1.4435", "name": "RVS 1.4435", "category": "Roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 8000, "yield_strength_mpa": 200, "tensile_strength_mpa": 500,
+      "standard": "EN 10088", "notes": "Laag-koolstof austenitisch RVS; toestand is leidend.",
+      "aliases": ["X2CRNIMO18-14-3"]
+    },
+    {
+      "code": "1.4462", "name": "Duplex RVS 2205 / 1.4462", "category": "Duplex roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 7800, "yield_strength_mpa": 450, "tensile_strength_mpa": 650,
+      "standard": "EN 10088", "notes": "Duplex toestand en productvorm zijn leidend.",
+      "aliases": ["DUPLEX2205", "2205", "X2CRNIMON22-5-3"]
+    },
+    {
+      "code": "1.4541", "name": "RVS 321 / 1.4541", "category": "Roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 7900, "yield_strength_mpa": 205, "tensile_strength_mpa": 515,
+      "standard": "EN 10088", "notes": "Titanium-gestabiliseerd RVS; toestand is leidend.",
+      "aliases": ["AISI321", "321", "X6CRNITI18-10"]
+    },
+    {
+      "code": "1.4571", "name": "RVS 316Ti / 1.4571", "category": "Roestvast staal",
+      "property_template": "stainless_steel", "density_kg_m3": 8000, "yield_strength_mpa": 205, "tensile_strength_mpa": 515,
+      "standard": "EN 10088", "notes": "Titanium-gestabiliseerd RVS; toestand is leidend.",
+      "aliases": ["AISI316TI", "316TI", "X6CRNIMOTI17-12-2"]
+    },
+    {
+      "code": "1050A-H14", "name": "Aluminium EN AW-1050A H14", "category": "Aluminium",
+      "property_template": "aluminium", "density_kg_m3": 2700, "yield_strength_mpa": 85, "tensile_strength_mpa": 105,
+      "standard": "EN 573 / EN 485", "notes": "Toestand en productvorm zijn leidend.",
+      "aliases": ["EN AW-1050A H14", "ENAW1050AH14"]
+    },
+    {
+      "code": "5083-H111", "name": "Aluminium EN AW-5083 H111", "category": "Aluminium",
+      "property_template": "aluminium", "density_kg_m3": 2660, "yield_strength_mpa": 125, "tensile_strength_mpa": 275,
+      "standard": "EN 573 / EN 485", "notes": "Toestand en productvorm zijn leidend.",
+      "aliases": ["EN AW-5083 H111", "ENAW5083H111"]
+    },
+    {
+      "code": "5754-H22", "name": "Aluminium EN AW-5754 H22", "category": "Aluminium",
+      "property_template": "aluminium", "density_kg_m3": 2670, "yield_strength_mpa": 130, "tensile_strength_mpa": 220,
+      "standard": "EN 573 / EN 485", "notes": "Toestand en productvorm zijn leidend.",
+      "aliases": ["EN AW-5754 H22", "ENAW5754H22"]
+    },
+    {
+      "code": "6060-T66", "name": "Aluminium EN AW-6060 T66", "category": "Aluminium",
+      "property_template": "aluminium", "density_kg_m3": 2700, "yield_strength_mpa": 160, "tensile_strength_mpa": 215,
+      "standard": "EN 573 / EN 755", "notes": "Toestand en productvorm zijn leidend.",
+      "aliases": ["EN AW-6060 T66", "ENAW6060T66"]
+    },
+    {
+      "code": "6061-T6", "name": "Aluminium EN AW-6061 T6", "category": "Aluminium",
+      "property_template": "aluminium", "density_kg_m3": 2700, "yield_strength_mpa": 240, "tensile_strength_mpa": 290,
+      "standard": "EN 573 / EN 755", "notes": "Toestand en productvorm zijn leidend.",
+      "aliases": ["EN AW-6061 T6", "ENAW6061T6"]
+    },
+    {
+      "code": "7075-T6", "name": "Aluminium EN AW-7075 T6", "category": "Aluminium",
+      "property_template": "aluminium", "density_kg_m3": 2810, "yield_strength_mpa": 480, "tensile_strength_mpa": 540,
+      "standard": "EN 573 / EN 755", "notes": "Toestand en productvorm zijn leidend; lasbaarheid controleren.",
+      "aliases": ["EN AW-7075 T6", "ENAW7075T6"]
+    },
+    {
+      "code": "4.6", "name": "Bevestigingsmiddel sterkteklasse 4.6", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 240, "tensile_strength_mpa": 400,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 4.6", "BOUT 4.6", "ISO898-1 4.6"]
+    },
+    {
+      "code": "5.6", "name": "Bevestigingsmiddel sterkteklasse 5.6", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 300, "tensile_strength_mpa": 500,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 5.6", "BOUT 5.6", "ISO898-1 5.6"]
+    },
+    {
+      "code": "5.8", "name": "Bevestigingsmiddel sterkteklasse 5.8", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 400, "tensile_strength_mpa": 500,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 5.8", "BOUT 5.8", "ISO898-1 5.8"]
+    },
+    {
+      "code": "6.8", "name": "Bevestigingsmiddel sterkteklasse 6.8", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 480, "tensile_strength_mpa": 600,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 6.8", "BOUT 6.8", "ISO898-1 6.8"]
+    },
+    {
+      "code": "8.8", "name": "Bevestigingsmiddel sterkteklasse 8.8", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 640, "tensile_strength_mpa": 800,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 8.8", "BOUT 8.8", "ISO898-1 8.8"]
+    },
+    {
+      "code": "10.9", "name": "Bevestigingsmiddel sterkteklasse 10.9", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 900, "tensile_strength_mpa": 1000,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 10.9", "BOUT 10.9", "ISO898-1 10.9"]
+    },
+    {
+      "code": "9.8", "name": "Bevestigingsmiddel sterkteklasse 9.8", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 720, "tensile_strength_mpa": 900,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt slechts voor toepasselijke bevestigingsmiddeldiameters; certificaat is leidend.",
+      "aliases": ["BOLT 9.8", "BOUT 9.8", "ISO898-1 9.8"]
+    },
+    {
+      "code": "12.9", "name": "Bevestigingsmiddel sterkteklasse 12.9", "category": "Bevestigingsstaal",
+      "property_template": "fastener_steel", "yield_strength_mpa": 1080, "tensile_strength_mpa": 1200,
+      "standard": "ISO 898-1", "notes": "Sterkteklasse geldt voor bevestigingsmiddelen, niet voor algemeen constructiestaal.",
+      "aliases": ["BOLT 12.9", "BOUT 12.9", "ISO898-1 12.9"]
+    },
+    {
+      "code": "A2-70", "name": "RVS bevestigingsmiddel A2-70", "category": "RVS bevestigingsmiddelen",
+      "property_template": "stainless_steel", "yield_strength_mpa": 450, "tensile_strength_mpa": 700,
+      "standard": "ISO 3506-1", "notes": "Producttype, diameter en certificaat zijn leidend.",
+      "aliases": ["BOLT A2-70", "BOUT A2-70", "A2 70"]
+    },
+    {
+      "code": "A2-50", "name": "RVS bevestigingsmiddel A2-50", "category": "RVS bevestigingsmiddelen",
+      "property_template": "stainless_steel", "yield_strength_mpa": 210, "tensile_strength_mpa": 500,
+      "standard": "ISO 3506-1", "notes": "Producttype, diameter en certificaat zijn leidend.",
+      "aliases": ["BOLT A2-50", "BOUT A2-50", "A2 50"]
+    },
+    {
+      "code": "A2-80", "name": "RVS bevestigingsmiddel A2-80", "category": "RVS bevestigingsmiddelen",
+      "property_template": "stainless_steel", "yield_strength_mpa": 600, "tensile_strength_mpa": 800,
+      "standard": "ISO 3506-1", "notes": "Producttype, diameter en certificaat zijn leidend.",
+      "aliases": ["BOLT A2-80", "BOUT A2-80", "A2 80"]
+    },
+    {
+      "code": "A4-70", "name": "RVS bevestigingsmiddel A4-70", "category": "RVS bevestigingsmiddelen",
+      "property_template": "stainless_steel", "density_kg_m3": 8000, "yield_strength_mpa": 450, "tensile_strength_mpa": 700,
+      "standard": "ISO 3506-1", "notes": "Producttype, diameter en certificaat zijn leidend.",
+      "aliases": ["BOLT A4-70", "BOUT A4-70", "A4 70"]
+    },
+    {
+      "code": "A4-80", "name": "RVS bevestigingsmiddel A4-80", "category": "RVS bevestigingsmiddelen",
+      "property_template": "stainless_steel", "density_kg_m3": 8000, "yield_strength_mpa": 600, "tensile_strength_mpa": 800,
+      "standard": "ISO 3506-1", "notes": "Producttype, diameter en certificaat zijn leidend.",
+      "aliases": ["BOLT A4-80", "BOUT A4-80", "A4 80"]
+    },
+    {
+      "code": "A4-50", "name": "RVS bevestigingsmiddel A4-50", "category": "RVS bevestigingsmiddelen",
+      "property_template": "stainless_steel", "density_kg_m3": 8000, "yield_strength_mpa": 210, "tensile_strength_mpa": 500,
+      "standard": "ISO 3506-1", "notes": "Producttype, diameter en certificaat zijn leidend.",
+      "aliases": ["BOLT A4-50", "BOUT A4-50", "A4 50"]
+    },
+    {
+      "code": "C18", "name": "Naaldhout sterkteklasse C18", "category": "Hout",
+      "property_template": "variable_density", "standard": "EN 338",
+      "notes": "Sterkteklasse bepaalt geen betrouwbare actuele massadichtheid; vochtgehalte en productspecificatie vereist.",
+      "aliases": ["TIMBER/C18", "HOUT C18"]
+    },
+    {
+      "code": "C24", "name": "Naaldhout sterkteklasse C24", "category": "Hout",
+      "property_template": "variable_density", "standard": "EN 338",
+      "notes": "Sterkteklasse bepaalt geen betrouwbare actuele massadichtheid; vochtgehalte en productspecificatie vereist.",
+      "aliases": ["TIMBER/C24", "HOUT C24", "VUREN C24"]
+    },
+    {
+      "code": "C30", "name": "Naaldhout sterkteklasse C30", "category": "Hout",
+      "property_template": "variable_density", "standard": "EN 338",
+      "notes": "Sterkteklasse bepaalt geen betrouwbare actuele massadichtheid; vochtgehalte en productspecificatie vereist.",
+      "aliases": ["TIMBER/C30", "HOUT C30"]
+    },
+    {
+      "code": "GL24H", "name": "Gelamineerd hout GL24h", "category": "Gelamineerd hout",
+      "property_template": "variable_density", "standard": "EN 14080",
+      "notes": "Productspecificatie en vochtgehalte zijn vereist voor massaberekening.",
+      "aliases": ["GL24H GLULAM", "GLULAM GL24H"]
+    },
+    {
+      "code": "GL28C", "name": "Gelamineerd hout GL28c", "category": "Gelamineerd hout",
+      "property_template": "variable_density", "standard": "EN 14080",
+      "notes": "Productspecificatie en vochtgehalte zijn vereist voor massaberekening.",
+      "aliases": ["GL28C GLULAM", "GLULAM GL28C"]
+    },
+    {
+      "code": "VUREN", "name": "Vurenhout zonder vastgelegde sterkteklasse", "category": "Hout",
+      "property_template": "variable_density", "standard": "EN 14081",
+      "notes": "Houtsoort is bekend, maar sterkteklasse, vochtgehalte en actuele dichtheid moeten worden bevestigd.",
+      "aliases": ["SPRUCE", "TIMBER/VUREN"]
+    },
+    {
+      "code": "MULTIPLEX", "name": "Multiplex zonder vastgelegde productklasse", "category": "Houtplaat",
+      "property_template": "variable_density", "standard": "EN 636",
+      "notes": "Plaattype, houtsoort, lijmklasse en actuele dichtheid moeten uit de productspecificatie komen.",
+      "aliases": ["PLYWOOD", "TIMBER/PLYWOOD"]
+    },
+    {
+      "code": "C20/25", "name": "Betonsterkteklasse C20/25", "category": "Beton",
+      "property_template": "variable_density", "standard": "EN 206",
+      "notes": "Sterkteklasse bepaalt geen dichtheidsklasse; normale, lichte of zware betonsoort moet apart worden bewezen.",
+      "aliases": ["CONCRETE/C20/25", "BETON C20/25"]
+    },
+    {
+      "code": "C25/30", "name": "Betonsterkteklasse C25/30", "category": "Beton",
+      "property_template": "variable_density", "standard": "EN 206",
+      "notes": "Sterkteklasse bepaalt geen dichtheidsklasse; normale, lichte of zware betonsoort moet apart worden bewezen.",
+      "aliases": ["CONCRETE/C25/30", "BETON C25/30"]
+    },
+    {
+      "code": "C30/37", "name": "Betonsterkteklasse C30/37", "category": "Beton",
+      "property_template": "variable_density", "standard": "EN 206",
+      "notes": "Sterkteklasse bepaalt geen dichtheidsklasse; normale, lichte of zware betonsoort moet apart worden bewezen.",
+      "aliases": ["CONCRETE/C30/37", "BETON C30/37"]
+    },
+    {
+      "code": "C35/45", "name": "Betonsterkteklasse C35/45", "category": "Beton",
+      "property_template": "variable_density", "standard": "EN 206",
+      "notes": "Sterkteklasse bepaalt geen dichtheidsklasse; normale, lichte of zware betonsoort moet apart worden bewezen.",
+      "aliases": ["CONCRETE/C35/45", "BETON C35/45"]
+    },
+    {
+      "code": "C40/50", "name": "Betonsterkteklasse C40/50", "category": "Beton",
+      "property_template": "variable_density", "standard": "EN 206",
+      "notes": "Sterkteklasse bepaalt geen dichtheidsklasse; normale, lichte of zware betonsoort moet apart worden bewezen.",
+      "aliases": ["CONCRETE/C40/50", "BETON C40/50"]
+    },
+    {
+      "code": "PA6", "name": "Polyamide 6 (PA6)", "category": "Technische kunststof",
+      "density_kg_m3": 1140, "elastic_modulus_gpa": 2.8, "poisson_ratio": 0.39, "yield_strength_mpa": 70,
+      "standard": "ISO 1874", "notes": "Geldt voor ongevulde PA6; vocht en vulstoffen wijzigen dichtheid en eigenschappen.",
+      "aliases": ["ERTALON 6 PLA", "ERTALON6PLA", "NYLON 6", "PA 6"]
+    },
+    {
+      "code": "POM-C", "name": "Polyacetaal copolymeer (POM-C)", "category": "Technische kunststof",
+      "density_kg_m3": 1410, "elastic_modulus_gpa": 2.8, "poisson_ratio": 0.35, "yield_strength_mpa": 65,
+      "standard": "ISO 9988", "notes": "Geldt voor ongevuld POM-C; productspecificatie is leidend.",
+      "aliases": ["POM C", "ERTACETAL C", "ACETAL COPOLYMER"]
+    },
+    {
+      "code": "PE-HD", "name": "Hogedichtheidpolyethyleen (PE-HD)", "category": "Kunststof",
+      "density_kg_m3": 950, "elastic_modulus_gpa": 1.0, "poisson_ratio": 0.42, "yield_strength_mpa": 25,
+      "standard": "ISO 4427", "notes": "Exacte compound en productspecificatie zijn leidend.",
+      "aliases": ["HDPE", "PEHD", "PE 300"]
+    },
+    {
+      "code": "PVC-U", "name": "Ongeplastificeerd PVC (PVC-U)", "category": "Kunststof",
+      "density_kg_m3": 1400, "elastic_modulus_gpa": 3.0, "poisson_ratio": 0.38, "yield_strength_mpa": 45,
+      "standard": "ISO 1452", "notes": "Exacte compound en productspecificatie zijn leidend.",
+      "aliases": ["UPVC", "PVC U", "HARD PVC"]
+    },
+    {
+      "code": "PTFE", "name": "Polytetrafluorethyleen (PTFE)", "category": "Technische kunststof",
+      "density_kg_m3": 2180, "elastic_modulus_gpa": 0.5, "poisson_ratio": 0.46, "yield_strength_mpa": 15,
+      "standard": "ISO 13000", "notes": "Exacte compound en productspecificatie zijn leidend.",
+      "aliases": ["TEFLON", "POLYTETRAFLUOROETHYLENE"]
+    },
+    {
+      "code": "PET-P", "name": "Polyethyleentereftalaat (PET-P)", "category": "Technische kunststof",
+      "density_kg_m3": 1390, "elastic_modulus_gpa": 3.0, "poisson_ratio": 0.37, "yield_strength_mpa": 80,
+      "standard": "ISO 7792", "notes": "Exacte compound en productspecificatie zijn leidend.",
+      "aliases": ["PETP", "ERTALYTE", "PET P"]
+    },
+    {
+      "code": "PEEK", "name": "Polyetheretherketon (PEEK)", "category": "Technische kunststof",
+      "density_kg_m3": 1300, "elastic_modulus_gpa": 3.6, "poisson_ratio": 0.38, "yield_strength_mpa": 90,
+      "standard": "ISO 23936", "notes": "Geldt voor ongevulde PEEK; vulstoffen wijzigen dichtheid en eigenschappen.",
+      "aliases": ["POLYETHERETHERKETONE", "UNFILLED PEEK"]
     }
   ]
 }

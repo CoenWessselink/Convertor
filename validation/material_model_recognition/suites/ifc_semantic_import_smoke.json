@@ -1,0 +1,32 @@
+{
+  "suite": "ifc_semantic_import_smoke",
+  "path": "tests/ifc_semantic_import_smoke.py",
+  "area": "ifc_semantics",
+  "status": "PASS",
+  "tests_run": 1,
+  "tests_passed": 1,
+  "log": "logs/ifc_semantic_import_smoke.log",
+  "result": "suites/ifc_semantic_import_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/ifc_semantic_import_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/ifc_semantic_import_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_ifc_semantic_import_smoke.IFCSemanticImportTests.test_ifc_hierarchy_properties_fastener_and_weld_are_materialised",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.611
+}

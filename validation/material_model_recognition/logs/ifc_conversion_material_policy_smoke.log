@@ -1,0 +1,19 @@
+
+--- STDERR ---
+test_bare_step_without_material_skips_production_recognition (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_bare_step_without_material_skips_production_recognition) ... ok
+test_conflicting_source_payload_and_attached_nc1_block_before_geometry (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_conflicting_source_payload_and_attached_nc1_block_before_geometry) ... ok
+test_explicit_fallback_only_fills_absent_source (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_explicit_fallback_only_fills_absent_source) ... ok
+test_external_ifc_without_material_blocks_before_geometry (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_external_ifc_without_material_blocks_before_geometry) ... ok
+test_missing_nc1_material_cannot_be_repaired_by_payload_without_rewrite (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_missing_nc1_material_cannot_be_repaired_by_payload_without_rewrite) ... ok
+test_payload_material_has_priority_over_user_fallback (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_payload_material_has_priority_over_user_fallback) ... ok
+test_payload_validation_failure_preserves_existing_output (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_payload_validation_failure_preserves_existing_output) ... ok
+test_public_route_defaults_are_empty (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_public_route_defaults_are_empty) ... ok
+test_source_material_is_preserved_ahead_of_user_fallback (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_source_material_is_preserved_ahead_of_user_fallback) ... ok
+test_step_payload_without_material_cannot_reach_conversion (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_step_payload_without_material_cannot_reach_conversion) ... ok
+test_unknown_and_missing_material_are_geometry_review_only (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_unknown_and_missing_material_are_geometry_review_only) ... ok
+test_valid_material_payload_remains_lossless (cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_valid_material_payload_remains_lossless) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.354s
+
+OK

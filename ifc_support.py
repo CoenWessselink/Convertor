@@ -23,6 +23,7 @@ import tempfile
 from typing import Any, Iterable
 
 from cws_convertor.product import APP_VERSION
+from cws_convertor.conversion_service import resolve_conversion_material
 
 import cadquery as cq
 import numpy as np
@@ -574,24 +575,61 @@ def _minimal_step_canonical(
     return canonical
 
 
+def _record_canonical_material(
+    canonical: CanonicalPart,
+    material: str = "",
+    *,
+    source_kind: str = "",
+) -> tuple[CanonicalPart, list[str]]:
+    """Keep source authority and persist why an IFC material is review-only."""
+    from material_database import MaterialDatabase
+
+    source_material = canonical.material
+    selected = resolve_conversion_material(material, source_material=source_material)
+    canonical = canonical.clone()
+    canonical.header.material = selected
+    resolution = MaterialDatabase().resolve(
+        selected,
+        provenance={
+            "source_kind": source_kind or ("canonical_source" if source_material else "explicit_user" if material else "missing"),
+            "source_file": canonical.source_file,
+            "source_value": source_material,
+            "explicit_value": str(material or ""),
+        },
+    )
+    canonical.recognition["material_resolution"] = resolution.to_dict()
+    warnings: list[str] = []
+    if not resolution.resolved:
+        canonical.recognition["production_nc1_allowed"] = False
+        warning = "MATERIAL_REVIEW_REQUIRED: IFC bevat alleen geometrie voor beoordeling; materiaal is niet bevestigd."
+        warnings.append(warning)
+        canonical.warnings.append(warning)
+    return canonical, warnings
+
+
 def _canonical_for_step(
     source: Path,
     shape: cq.Shape,
     *,
-    material: str,
+    material: str = "",
 ) -> tuple[CanonicalPart, list[str]]:
     """Maak/haal een canoniek object; probeer veilige NC1-herkenning voor extern STEP."""
 
-    existing = extract_part_from_step(source, strict=False)
+    existing = extract_part_from_step(source, strict=True)
     if existing is not None:
         warnings = ["Bestaande geverifieerde STEP-payload overgenomen."]
+        existing, material_warnings = _record_canonical_material(existing, material)
+        warnings.extend(material_warnings)
         if existing.attachment("step") is None:
             existing = existing.clone()
             existing.add_attachment("step", source.name, "model/step", source.read_bytes())
         return existing, warnings
 
     warnings: list[str] = []
+    material = resolve_conversion_material(material)
     try:
+        # Classification may make geometry exact; it cannot establish material.
+        resolve_conversion_material(material, required=True)
         from conversion import step_to_nc1
         from profile_database import ProfileDatabase
 
@@ -620,6 +658,10 @@ def _canonical_for_step(
                 }
             )
             canonical.warnings.extend(result.warnings)
+            canonical, material_warnings = _record_canonical_material(
+                canonical, material, source_kind="explicit_user",
+            )
+            warnings.extend(material_warnings)
             warnings.append(
                 "Extern STEP veilig geclassificeerd en als canonieke productiedata in IFC opgenomen."
             )
@@ -630,7 +672,12 @@ def _canonical_for_step(
             f"IFC bevat wel de exacte STEP-bijlage, maar automatische IFC→NC1 blijft geblokkeerd: {exc}"
         )
         warnings.append(warning)
-        return _minimal_step_canonical(source, shape, material, warning), warnings
+        canonical, material_warnings = _record_canonical_material(
+            _minimal_step_canonical(source, shape, material, warning),
+            source_kind="explicit_user" if material else "missing",
+        )
+        warnings.extend(material_warnings)
+        return canonical, warnings
 
 
 def _validate_ifc_preview_against_shape(
@@ -883,7 +930,7 @@ def step_to_ifc(
     input_path: str | Path,
     output_path: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
 ) -> IFCConversionResult:
     """Schrijf IFC4-previewgeometrie plus exact canoniek productieobject."""
 
@@ -896,7 +943,7 @@ def step_to_ifc(
         shape,
         target,
         name=canonical.part_id or source.stem,
-        material=canonical.material or material,
+        material=canonical.material,
         canonical=canonical,
         tolerance_mm=0.20,
     )
@@ -920,6 +967,8 @@ def step_to_ifc(
             "payload_source_sha256": canonical.source_sha256,
             "recognition_confidence": canonical.recognition.get("confidence"),
             "preview_volume_delta_percent": preview_delta,
+            "material_resolution": canonical.recognition.get("material_resolution", {}),
+            "production_nc1_allowed": canonical.recognition.get("production_nc1_allowed", False),
         },
     )
 
@@ -928,7 +977,7 @@ def dstv_to_ifc(
     input_path: str | Path,
     output_path: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
 ) -> IFCConversionResult:
     from conversion import convert_nc1_to_step
 
@@ -939,7 +988,7 @@ def dstv_to_ifc(
         result = step_to_ifc(
             step_path,
             target,
-            material=material or part.header.material or "S355JR",
+            material=resolve_conversion_material(material, source_material=part.header.material),
         )
         result.source = source
         result.warnings = list(part.warnings) + result.warnings
@@ -962,6 +1011,19 @@ def _validate_payload_nc1(
     import converter as core
 
     part = core.parse_nc1(nc1_path)
+    resolved_material = resolve_conversion_material(
+        source_material=part.header.material, required=True,
+    )
+    # Both are source declarations: unlike an explicit user fallback, an
+    # embedded canonical material must agree with the attached NC1 itself.
+    if payload.material:
+        canonical_material = resolve_conversion_material(
+            source_material=payload.material, required=True,
+        )
+        if canonical_material != resolved_material:
+            raise ValueError("MATERIAL_CONFLICT: canonieke IFC-payload en NC1-bijlage noemen verschillend materiaal")
+    # A restored NC1 must itself carry the agreed material. An IFC property
+    # cannot repair missing metadata in an otherwise byte-identical attachment.
     shape = build_shape(part).val()
     metrics = _shape_metrics(shape)
     warnings = list(part.warnings)
@@ -983,6 +1045,7 @@ def _validate_payload_nc1(
         "profile_type": part.header.profile_type,
         "part_number": part.header.part_number,
         "material": part.header.material,
+        "resolved_material": resolved_material,
         "quantity": part.header.quantity,
         "holes": len(part.holes),
         "contours": len(part.contours),
@@ -1029,7 +1092,7 @@ def ifc_to_dstv(
     input_path: str | Path,
     output_directory: str | Path,
     *,
-    material: str = "S355JR",
+    material: str = "",
     order_number: str = "IFC",
     profile_database: Any = None,
     preferred_profile: str = "",
@@ -1047,18 +1110,24 @@ def ifc_to_dstv(
     warnings: list[str] = []
     manifest_items: list[dict[str, Any]] = []
 
-    payload = extract_part_from_ifc(source, strict=False)
+    payload = extract_part_from_ifc(source, strict=True)
     if payload is not None:
         target = _payload_nc1_target(payload, output, source)
         try:
             nc1_bytes = payload.attachment_bytes("nc1")
             if nc1_bytes is not None:
-                target.write_bytes(nc1_bytes)
-                metrics, item_warnings = _validate_payload_nc1(
-                    payload,
-                    target,
-                    strict_validation=strict_validation,
-                )
+                with tempfile.TemporaryDirectory(prefix="ifc_dstv_nc1_") as folder:
+                    staged_target = Path(folder) / target.name
+                    staged_target.write_bytes(nc1_bytes)
+                    metrics, item_warnings = _validate_payload_nc1(
+                        payload,
+                        staged_target,
+                        strict_validation=strict_validation,
+                    )
+                    selected_material = resolve_conversion_material(
+                        material, source_material=metrics["material"], required=True,
+                    )
+                    target.write_bytes(staged_target.read_bytes())
                 outputs.append(target)
                 warnings.extend(item_warnings)
                 warnings.insert(
@@ -1075,6 +1144,7 @@ def ifc_to_dstv(
                         "payload_source_format": payload.source_format,
                         "payload_source_sha256": payload.source_sha256,
                         "recognition": payload.recognition,
+                        "resolved_material": selected_material,
                         **metrics,
                     }
                 )
@@ -1088,24 +1158,29 @@ def ifc_to_dstv(
                     raise ValueError(
                         "IFC-payload markeert dit onderdeel als niet veilig automatisch naar NC1 te converteren."
                     )
+                selected_material = resolve_conversion_material(
+                    material, source_material=payload.material, required=True,
+                )
                 with tempfile.TemporaryDirectory(prefix="ifc_dstv_payload_") as folder:
                     step_path = Path(folder) / f"{source.stem}.step"
                     step_path.write_bytes(step_bytes)
+                    staged_target = Path(folder) / target.name
                     result = step_to_nc1(
                         step_path,
-                        target,
-                        material=payload.material or material,
+                        staged_target,
+                        material=selected_material,
                         order_number=order_number,
                         profile_database=database,
                         preferred_profile=preferred_profile,
                         tolerance_mm=tolerance_mm,
                         strict_validation=strict_validation,
                     )
-                metrics, item_warnings = _validate_payload_nc1(
-                    payload,
-                    target,
-                    strict_validation=strict_validation,
-                )
+                    metrics, item_warnings = _validate_payload_nc1(
+                        payload,
+                        staged_target,
+                        strict_validation=strict_validation,
+                    )
+                    target.write_bytes(staged_target.read_bytes())
                 outputs.append(target)
                 warnings.extend(result.warnings)
                 warnings.extend(item_warnings)
@@ -1121,7 +1196,6 @@ def ifc_to_dstv(
                     }
                 )
         except Exception as exc:
-            target.unlink(missing_ok=True)
             failures.append(f"{payload.part_id or source.stem}: {exc}")
             manifest_items.append(
                 {
@@ -1160,6 +1234,9 @@ def ifc_to_dstv(
         for index, item in enumerate(model.items, start=1):
             stem = _safe_name(item.tag or item.name or item.guid, f"element_{index:03d}")
             try:
+                selected_material = resolve_conversion_material(
+                    material, source_material=item.material_name, required=True,
+                )
                 recognition = recognize_analytic_shape(
                     item.vertices_mm,
                     item.triangles,
@@ -1176,16 +1253,18 @@ def ifc_to_dstv(
                 step_path = temp / f"{stem}.step"
                 cq.exporters.export(shape, str(step_path), exportType="STEP")
                 target = output / f"{stem}.nc1"
+                staged_target = temp / f"{stem}.nc1"
                 result = step_to_nc1(
                     step_path,
-                    target,
-                    material=item.material_name or material,
+                    staged_target,
+                    material=selected_material,
                     order_number=order_number,
                     profile_database=database,
                     preferred_profile=preferred_profile,
                     tolerance_mm=tolerance_mm,
                     strict_validation=strict_validation,
                 )
+                target.write_bytes(staged_target.read_bytes())
                 outputs.append(target)
                 warnings.extend(f"{stem}: {warning}" for warning in result.warnings)
                 manifest_items.append(
@@ -1193,6 +1272,7 @@ def ifc_to_dstv(
                         "guid": item.guid,
                         "name": item.name,
                         "ifc_class": item.ifc_class,
+                        "material": selected_material,
                         "output": target.name,
                         "profile": result.profile_designation,
                         "confidence": result.confidence,

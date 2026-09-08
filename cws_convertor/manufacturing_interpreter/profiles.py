@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any, Iterable
 
 from .contracts import CrossSectionSignature, GeometryProofStatus, ProfileRecognition
@@ -39,6 +40,15 @@ def recognize_profile(
     definitions = profile_definitions(database)
     preferred = preferred_profile.strip().upper()
     family = section.inferred_family.upper()
+    if not all(
+        math.isfinite(value) and value > 0.0
+        for value in (section.width_mm, section.height_mm, section.area_mm2)
+    ):
+        return ProfileRecognition(
+            status=GeometryProofStatus.RECOGNITION_INCOMPLETE,
+            family=family,
+            reason="Doorsnedematen of oppervlakte zijn niet geldig en positief",
+        )
     compatible = []
     for profile in definitions:
         designation = str(getattr(profile, "designation", ""))
@@ -46,15 +56,31 @@ def recognize_profile(
         profile_family = str(getattr(profile, "family", "")).upper()
         if preferred and designation.upper() != preferred:
             continue
-        if family not in {profile_type, profile_family}:
+        canonical_type = "U" if profile_type == "C" else profile_type
+        profile_hollow = canonical_type in {"M", "RO"} or profile_family in {"RHS", "SHS", "CHS"}
+        section_hollow = section.inner_wire_count > 0
+        if profile_hollow != section_hollow:
+            continue
+        if family in {"RU", "RO"} and canonical_type != family:
+            continue
+        exact_family = family in {canonical_type, profile_family}
+        # Fragmentation provides no extra shape evidence: an arbitrary union
+        # can share a standard section's bbox and area. The aggregate boundary
+        # must establish the family before metrics can validate a candidate.
+        if not exact_family:
             continue
         expected_width, expected_height = _candidate_dimensions(profile)
+        expected_area = abs(float(getattr(profile, "area_mm2", 0.0) or 0.0))
+        if not all(
+            math.isfinite(value) and value > 0.0
+            for value in (expected_width, expected_height, expected_area)
+        ):
+            continue
         dim_delta = max(
             abs(section.width_mm - expected_width),
             abs(section.height_mm - expected_height),
         )
-        expected_area = abs(float(getattr(profile, "area_mm2", 0.0) or 0.0))
-        area_delta = abs(section.area_mm2 - expected_area) if expected_area else 0.0
+        area_delta = abs(section.area_mm2 - expected_area)
         dim_allowed = max(
             linear_tolerance(policy),
             max(expected_width, expected_height) * relative_tolerance(policy),
@@ -62,7 +88,7 @@ def recognize_profile(
         area_allowed = max(
             linear_tolerance(policy) ** 2,
             expected_area * relative_tolerance(policy),
-        ) if expected_area else float("inf")
+        )
         score = max(dim_delta / dim_allowed, area_delta / area_allowed)
         compatible.append((score, designation, profile, dim_delta, area_delta))
 
@@ -80,7 +106,6 @@ def recognize_profile(
         accepted
         and len(compatible) > 1
         and compatible[1][0] <= 1.0
-        and abs(compatible[1][0] - best[0]) <= 1e-12
     )
     if ambiguous:
         return ProfileRecognition(

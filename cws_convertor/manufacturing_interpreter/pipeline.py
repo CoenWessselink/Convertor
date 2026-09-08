@@ -18,6 +18,7 @@ from .reconstruction import reconstruct_prismatic
 from .service import ManufacturingGeometryInterpreter as _FoundationInterpreter
 from .phase2 import enrich_phase2
 from .profile_geometry import match_full_profile_geometry
+from .material_evidence import material_evidence_from_request
 
 
 def _database_hash(database: Any) -> str:
@@ -69,6 +70,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             self._database_hash = _database_hash(self.profile_database)
             self._final_cache.clear()
         database_hash = self._database_hash
+        material_evidence = material_evidence_from_request(request)
         cache_key = RecognitionCacheV3.key(
             source_sha256=str(getattr(inspection, "source_sha256", "")),
             source_geometry_hash=str(getattr(inspection, "source_geometry_hash", "")),
@@ -78,6 +80,10 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             profile_database_hash=database_hash,
             preferred_profile=str(getattr(request, "preferred_profile", "")),
             requested_outputs=tuple(getattr(request, "requested_outputs", ())),
+            material_evidence=material_evidence,
+            project_part_link=tuple(getattr(request, "project_part_link", ())),
+            part_id=str(getattr(inspection, "part_id", "")),
+            source_file_id=str(getattr(inspection, "source_file_id", "")),
         )
         final_cached = self._final_cache.get(cache_key)
         if final_cached is not None:

@@ -1,0 +1,38 @@
+{
+  "suite": "native_ifc_material_binding_smoke",
+  "path": "tests/native_ifc_material_binding_smoke.py",
+  "area": "ifc_semantics",
+  "status": "PASS",
+  "tests_run": 2,
+  "tests_passed": 2,
+  "log": "logs/native_ifc_material_binding_smoke.log",
+  "result": "suites/native_ifc_material_binding_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/native_ifc_material_binding_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/native_ifc_material_binding_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_native_ifc_material_binding_smoke.NativeIFCMaterialBindingTests.test_parser_binds_each_material_and_does_not_use_first_declaration",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_native_ifc_material_binding_smoke.NativeIFCMaterialBindingTests.test_writer_omits_unknown_material_and_does_not_label_aluminium_steel",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 0.533
+}

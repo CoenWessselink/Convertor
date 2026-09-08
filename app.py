@@ -91,7 +91,7 @@ class ConverterApp(tk.Tk):
 
         self.direction = tk.StringVar(value="nc1-to-step")
         self.output_directory = tk.StringVar(value=str(Path.home() / DEFAULT_OUTPUT_DIRECTORY))
-        self.material = tk.StringVar(value="S355JR")
+        self.material = tk.StringVar(value="")
         self.order_number = tk.StringVar(value="STEP")
         self.profile_choice = tk.StringVar(value="Automatisch")
         self.profile_tolerance = tk.DoubleVar(value=1.0)
@@ -100,7 +100,7 @@ class ConverterApp(tk.Tk):
         self.profile_search = tk.StringVar(value="")
         self.profile_family = tk.StringVar(value="Alle")
         self.profile_type = tk.StringVar(value="Alle")
-        self.quantity_material = tk.StringVar(value="S355JR")
+        self.quantity_material = tk.StringVar(value="")
         self.pdf_review_source = tk.StringVar(value="")
         self.pdf_review_file = tk.StringVar(value="")
         self.pdf_ai_provider = tk.StringVar(value="none")
@@ -232,7 +232,7 @@ class ConverterApp(tk.Tk):
         self.advanced_settings.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(10, 0))
         for column in range(6):
             self.advanced_settings.columnconfigure(column, weight=1 if column in {1, 3, 5} else 0)
-        ttk.Label(self.advanced_settings, text="Materiaal:").grid(row=0, column=0, sticky="w")
+        ttk.Label(self.advanced_settings, text="Expliciet materiaal:").grid(row=0, column=0, sticky="w")
         self.material_combo = ttk.Combobox(self.advanced_settings, textvariable=self.material, width=16)
         self.material_combo.grid(row=0, column=1, sticky="w", padx=(6, 18))
         ttk.Label(self.advanced_settings, text="Ordernummer:").grid(row=0, column=2, sticky="w")
@@ -791,7 +791,7 @@ class ConverterApp(tk.Tk):
         ttk.Button(top, text="IFC/STEP-bestanden kiezen", command=self._choose_quantity_files).pack(side="left")
         ttk.Button(top, text="Map kiezen", command=self._choose_quantity_folder).pack(side="left", padx=6)
         ttk.Button(top, text="Lijst leegmaken", command=self._clear_quantity_files).pack(side="left")
-        ttk.Label(top, text="Fallback materiaal:").pack(side="left", padx=(22, 6))
+        ttk.Label(top, text="Expliciet STEP-materiaal:").pack(side="left", padx=(22, 6))
         self.quantity_material_combo = ttk.Combobox(top, textvariable=self.quantity_material, width=16)
         self.quantity_material_combo.pack(side="left")
         ttk.Button(top, text="Hoeveelheden bepalen", command=self._start_quantities).pack(side="left", padx=14)
@@ -1028,7 +1028,7 @@ class ConverterApp(tk.Tk):
         worker = threading.Thread(
             target=self._worker,
             args=(
-                list(self.files), output, self.direction.get(), self.material.get().strip() or "S355JR",
+                list(self.files), output, self.direction.get(), self.material.get().strip(),
                 self.order_number.get().strip() or "STEP", preferred, float(self.profile_tolerance.get()), ai_settings,
             ),
             daemon=True,
@@ -1373,7 +1373,7 @@ class ConverterApp(tk.Tk):
             return
         self.quantity_progress.start(12)
         self.quantity_status.configure(text="Hoeveelheden bepalen…")
-        worker = threading.Thread(target=self._quantity_worker, args=(list(self.quantity_files), self.quantity_material.get().strip() or "S355JR"), daemon=True)
+        worker = threading.Thread(target=self._quantity_worker, args=(list(self.quantity_files), self.quantity_material.get().strip()), daemon=True)
         worker.start()
         self.after(100, self._poll_quantity_events)
 
@@ -1397,7 +1397,9 @@ class ConverterApp(tk.Tk):
             self.quantity_status.configure(
                 text=(
                     f"Gereed: {len(self.quantity_analysis.items)} regels, "
-                    f"totaal {self.quantity_analysis.total_mass_kg:.3f} kg, "
+                    f"{'totaal' if self.quantity_analysis.mass_complete else 'bekende massa (onvolledig)'} "
+                    f"{self.quantity_analysis.total_mass_kg:.3f} kg, "
+                    f"{self.quantity_analysis.blocked_mass_count} massaberekeningen geblokkeerd, "
                     f"waarschuwingen {len(self.quantity_analysis.warnings)}."
                 )
             )
@@ -1426,7 +1428,7 @@ class ConverterApp(tk.Tk):
                     f"{item.width_mm:.2f}",
                     f"{item.height_mm:.2f}",
                     f"{item.volume_mm3:.1f}",
-                    f"{item.mass_kg:.3f}",
+                    f"{item.mass_kg:.3f}" if item.mass_status == "calculated" else "Controle vereist",
                     " | ".join(item.warnings),
                 ),
             )
@@ -1439,7 +1441,7 @@ class ConverterApp(tk.Tk):
             try:
                 self.quantity_analysis = analyze_files(
                     self.quantity_files,
-                    fallback_material=self.quantity_material.get().strip() or "S355JR",
+                    fallback_material=self.quantity_material.get().strip(),
                     material_database=self.material_database,
                     profile_database=self.profile_database,
                 )

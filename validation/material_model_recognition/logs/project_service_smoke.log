@@ -1,0 +1,10 @@
+
+--- STDERR ---
+test_duplicate_source_is_not_duplicated (cws_acceptance_project_service_smoke.ProjectServiceTests.test_duplicate_source_is_not_duplicated) ... ok
+test_failed_batch_keeps_existing_package_byte_identical (cws_acceptance_project_service_smoke.ProjectServiceTests.test_failed_batch_keeps_existing_package_byte_identical) ... ok
+test_failed_batch_rolls_back_live_session (cws_acceptance_project_service_smoke.ProjectServiceTests.test_failed_batch_rolls_back_live_session) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.106s
+
+OK

@@ -1,0 +1,9 @@
+
+--- STDERR ---
+test_parser_binds_each_material_and_does_not_use_first_declaration (cws_acceptance_native_ifc_material_binding_smoke.NativeIFCMaterialBindingTests.test_parser_binds_each_material_and_does_not_use_first_declaration) ... ok
+test_writer_omits_unknown_material_and_does_not_label_aluminium_steel (cws_acceptance_native_ifc_material_binding_smoke.NativeIFCMaterialBindingTests.test_writer_omits_unknown_material_and_does_not_label_aluminium_steel) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.028s
+
+OK

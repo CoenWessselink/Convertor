@@ -1,0 +1,12 @@
+
+--- STDERR ---
+test_category_review_never_confirms_unreviewed_fields (cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_category_review_never_confirms_unreviewed_fields) ... ok
+test_every_catalog_family_has_a_deterministic_category (cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_every_catalog_family_has_a_deterministic_category) ... ok
+test_generic_steel_family_does_not_invent_toughness_grade (cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_generic_steel_family_does_not_invent_toughness_grade) ... ok
+test_geometry_or_source_class_never_proves_unknown_material (cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_geometry_or_source_class_never_proves_unknown_material) ... ok
+test_material_grade_conflict_is_not_normalized_away (cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_material_grade_conflict_is_not_normalized_away) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.298s
+
+OK

@@ -145,7 +145,7 @@ class ExactRoundtripValidator:
         self,
         output_directory: str | Path,
         *,
-        material: str = "S235JR",
+        material: str = "",
         preferred_profile: str = "",
     ) -> ExactRoundtripEvidence:
         output = Path(output_directory)
@@ -180,7 +180,7 @@ class ExactRoundtripValidator:
         except Exception as exc:
             return self._blocked("NC1", "CWS-EXACT-NC1-ROUNDTRIP-BLOCKED", exc)
 
-    def ifc(self, output_directory: str | Path, *, material: str = "S235JR") -> ExactRoundtripEvidence:
+    def ifc(self, output_directory: str | Path, *, material: str = "") -> ExactRoundtripEvidence:
         output = Path(output_directory)
         try:
             from ifc_support import ifc_to_step, step_to_ifc
@@ -206,7 +206,7 @@ class ExactRoundtripValidator:
         self,
         output_directory: str | Path,
         *,
-        material: str = "S235JR",
+        material: str = "",
         preferred_profile: str = "",
     ) -> ExactRoundtripEvidence:
         output = Path(output_directory)
@@ -245,7 +245,7 @@ class ExactRoundtripValidator:
         output_directory: str | Path,
         *,
         formats: tuple[str, ...] = ("STEP", "NC1", "IFC", "TRUSTED_PDF"),
-        material: str = "S235JR",
+        material: str = "",
         preferred_profile: str = "",
     ) -> dict[str, ExactRoundtripEvidence]:
         output = Path(output_directory)

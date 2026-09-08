@@ -14,9 +14,10 @@ import datetime as _dt
 import math
 import re
 import uuid
-from typing import Iterable, Iterator
+from typing import TYPE_CHECKING, Iterable, Iterator
 
-import cadquery as cq
+if TYPE_CHECKING:
+    import cadquery as cq
 import numpy as np
 
 from cws_convertor.product import APP_NAME
@@ -124,6 +125,21 @@ def write_native_ifc(
         raise ValueError("Model bevat geen exporteerbare solid/mesh")
 
     canonical.validate()
+    from material_database import MaterialDatabase, normalise_material
+
+    database = MaterialDatabase()
+    declared_values = [str(value).strip() for value in (
+        material, canonical.material, canonical.product.material_grade,
+    ) if str(value or "").strip()]
+    declared_identities = {
+        database.resolve(value).material_code or normalise_material(value)
+        for value in declared_values
+    }
+    if len(declared_identities) > 1:
+        raise ValueError("IFC-materiaal conflicteert met de canonieke materiaalgegevens")
+    material = str(material or canonical.material or "").strip()
+    definition = database.find(material) if material else None
+    material_category = f"'{_escape_ifc(definition.category)}'" if definition else "$"
     now = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
     timestamp = now.isoformat()
     epoch = int(now.timestamp())
@@ -159,7 +175,6 @@ def write_native_ifc(
         "#13=IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.);",
         "#14=IFCUNITASSIGNMENT((#11,#12,#13));",
         f"#15=IFCPROJECT('{_guid22(name + ':project')}',#5,'{_escape_ifc(name)}',$,$,$,$,(#10),#14);",
-        f"#16=IFCMATERIAL('{_escape_ifc(material)}',$,'Steel');",
         f"#17=IFCSITE('{_guid22(name + ':site')}',#5,'Default Site',$,$,$,$,$,.ELEMENT.,$,$,$,$,$);",
         f"#18=IFCBUILDING('{_guid22(name + ':building')}',#5,'Default Building',$,$,$,$,$,.ELEMENT.,$,$,$);",
         f"#19=IFCBUILDINGSTOREY('{_guid22(name + ':storey')}',#5,'Default Storey',$,$,$,$,$,.ELEMENT.,0.);",
@@ -168,6 +183,8 @@ def write_native_ifc(
         f"#22=IFCRELAGGREGATES('{_guid22(name + ':building-storey')}',#5,$,$,#18,(#19));",
         "#23=IFCLOCALPLACEMENT($,#9);",
     ]
+    if material:
+        lines.append(f"#16=IFCMATERIAL('{_escape_ifc(material)}',$,{material_category});")
 
     next_id = 30
     element_ids: list[int] = []
@@ -215,12 +232,13 @@ def write_native_ifc(
                 f"#{containment_id}=IFCRELCONTAINEDINSPATIALSTRUCTURE("
                 f"'{_guid22(name + ':containment')}',#5,$,$,({element_refs}),#19);"
             ),
-            (
-                f"#{material_relation_id}=IFCRELASSOCIATESMATERIAL("
-                f"'{_guid22(name + ':material')}',#5,$,$,({element_refs}),#16);"
-            ),
         ]
     )
+    if material:
+        lines.append(
+            f"#{material_relation_id}=IFCRELASSOCIATESMATERIAL("
+            f"'{_guid22(name + ':material')}',#5,$,$,({element_refs}),#16);"
+        )
 
     properties: list[tuple[str, str, str]] = [
         ("SchemaVersion", "IFCTEXT", canonical.schema_version),
@@ -440,11 +458,24 @@ def parse_native_ifc_meshes(path: str | Path) -> list[NativeIFCMesh]:
             }
         )
 
-    material = ""
-    for _entity_id, _name, block in _entity_blocks(text, ["IFCMATERIAL"]):
+    materials: dict[int, str] = {}
+    for entity_id, _name, block in _entity_blocks(text, ["IFCMATERIAL"]):
         args = _split_ifc_args(block)
-        material = _parse_string(args[0]) if args else ""
-        break
+        materials[entity_id] = _parse_string(args[0]) if args else ""
+    # A material declaration anywhere in the file is not an assignment to
+    # every object. Only explicit per-element relations may supply a value.
+    assignments: dict[int, set[str]] = {}
+    for _entity_id, _name, block in _entity_blocks(text, ["IFCRELASSOCIATESMATERIAL"]):
+        args = _split_ifc_args(block)
+        if len(args) < 6:
+            continue
+        material_id = _parse_ref(args[5])
+        for element_id in _refs(args[4]):
+            assignments.setdefault(element_id, set()).add(materials.get(material_id, ""))
+
+    def assigned_material(element_id: int) -> str:
+        values = assignments.get(element_id, set())
+        return next(iter(values)) if len(values) == 1 else ""
 
     meshes: list[NativeIFCMesh] = []
     consumed_face_sets: set[int] = set()
@@ -467,7 +498,7 @@ def parse_native_ifc_meshes(path: str | Path) -> list[NativeIFCMesh]:
                     name=str(record.get("name") or f"Element {record['id']}"),
                     guid=str(record.get("guid") or f"native-{record['id']}"),
                     ifc_class=str(record.get("class") or "IfcElement"),
-                    material=material,
+                    material=assigned_material(int(record["id"])),
                     vertices_mm=vertices,
                     triangles=triangles,
                 )
@@ -487,7 +518,7 @@ def parse_native_ifc_meshes(path: str | Path) -> list[NativeIFCMesh]:
                 name=str(record.get("name") or f"Element {index}"),
                 guid=str(record.get("guid") or f"native-{index}"),
                 ifc_class=str(record.get("class") or "IfcElement"),
-                material=material,
+                material="",  # no proven product/shape binding in this fallback
                 vertices_mm=vertices,
                 triangles=triangles,
             )

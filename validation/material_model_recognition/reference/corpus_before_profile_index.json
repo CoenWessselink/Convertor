@@ -1,0 +1,4139 @@
+{
+  "schema": "cws-material-reference-corpus-v1",
+  "generated_at": "2026-09-08T06:21:41.977266+00:00",
+  "runtime": {
+    "python": "3.12.13",
+    "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+    "native_module_available": {
+      "cadquery": false,
+      "OCP": false,
+      "ifcopenshell": false,
+      "PySide6": false
+    }
+  },
+  "code": {
+    "git_head": "66e1f4e11787ac75e0aae97ece14e8dd917849b7",
+    "audited_code_sha256": "23cdab612b96be443c10178da4a3b8f5e3ddf0d05a5690021b9d8e61aa031182",
+    "files": {
+      "cws_convertor/importers/__init__.py": "2e22166d9a67dbe667fc566c8963d47c65e538c821b15f44523051081d334a4f",
+      "cws_convertor/importers/ifc_grid.py": "307549f444c7c629a56bfc0a5dbf376fa7f92c26760de701a7de4275f9c811a6",
+      "cws_convertor/importers/ifc_project.py": "cf7545102e573fe451980b94f945ad26f4c5ee3d8639ee6d1d914514d5a61d58",
+      "cws_convertor/importers/p21.py": "4848e2f75c17ee2c82badac84160b0ca8658d5f3c6248e58e8d51ac795400ac4",
+      "cws_convertor/importers/reference_scan.py": "a6a8239d09e30547ccb5f952eec2edb845d63c9d31da8204d0fa8bb2390e9a9d",
+      "cws_convertor/importers/semantic.py": "dc40523ab1f2f7e6a7e432ec30b14edda6042bf8018b1f515604773ce196c263",
+      "cws_convertor/importers/source_material_evidence.py": "2ad7c3d0c786609111f6590689e9267fa3c4123be1a83ce25c0612fd9771694e",
+      "cws_convertor/importers/step_project.py": "13245a4571ea88ceb3e17251d1eb1eb468ab3d14dfc95275a7340de68a3916ad",
+      "cws_convertor/manufacturing_interpreter/__init__.py": "9973b2d0f47cd291da42ed618edf3e0a32722c1964c49b7556b16fa577025a19",
+      "cws_convertor/manufacturing_interpreter/batch_cli.py": "ffff51ad05231c378a8cbe270e83b0d970fe5f00aa3b38fff62b0c200e401b98",
+      "cws_convertor/manufacturing_interpreter/cli.py": "1be7b2d64eaeb23b0194a0fd3b7811402751aa2deccddc0788c51a01397a69a6",
+      "cws_convertor/manufacturing_interpreter/contracts.py": "a4360c8da4b93efe4d8a1bb12dc28d8dec328963aa38ff6016cc1d99236e2182",
+      "cws_convertor/manufacturing_interpreter/equivalence_v3.py": "2106aa25c1bf24b0d18a88a525db2cce82134dc6ecaa04f9c9b4c73dfbecdc78",
+      "cws_convertor/manufacturing_interpreter/features.py": "3628d73aae4829427fdec71dabcde49bf4d5ab303b40714c0dfad5ec4703abde",
+      "cws_convertor/manufacturing_interpreter/foundation.py": "0489f2778543ca9519c819288ed851a3580798a3247920b9baaf32ede264c12c",
+      "cws_convertor/manufacturing_interpreter/isolated.py": "05e5612568511c1381e6fb7795b7254c140266c4659eb88034917adf90de74c7",
+      "cws_convertor/manufacturing_interpreter/material_evidence.py": "04a792c7617efb81a9e096113a50d0c080b6a90e7e1bcc1e2ef5c8ae2fc9294c",
+      "cws_convertor/manufacturing_interpreter/phase2.py": "84c74f7167e9b3fd7a67c7a6defde4404291e1143271041c8c208888b7dca0eb",
+      "cws_convertor/manufacturing_interpreter/pipeline.py": "6dd87dde75614635f4e6dcee144383e292c0a14c772a0ba1abfc90253cf80fdb",
+      "cws_convertor/manufacturing_interpreter/profile_geometry.py": "22bc0d9511bef02ff182953a1323f1241cf76caac7831a78f0a8720af28615f4",
+      "cws_convertor/manufacturing_interpreter/profiles.py": "c653f79aa1d55fc93e583575fd460f1a94b59664ccb38f749ae93c38aa7dd750",
+      "cws_convertor/manufacturing_interpreter/project_link.py": "520e9d7a9cda010858f5c115e1fed3ba165535d14019f9e1aab9e08af2a3aee8",
+      "cws_convertor/manufacturing_interpreter/promotion.py": "a460f74ca9d34dceae140c3adc834f271336d38b02efdcfd67e783807209eb19",
+      "cws_convertor/manufacturing_interpreter/recognition_cache.py": "dd053eafa76a95d97f333251ac8435b62d8b79c5e10689d514131b33f3364cb6",
+      "cws_convertor/manufacturing_interpreter/reconstruction.py": "fd1113bdefb70fd2d5e2006a41e8e24d2661b26464a9a71ceca38982c3786ec9",
+      "cws_convertor/manufacturing_interpreter/report_store.py": "012736c783f9dc8944459acf81b1376e36e67e0c1190485e341d2bb6fe08bc85",
+      "cws_convertor/manufacturing_interpreter/representability.py": "9d0a4f3d00a8c051abb51b262ee779607be3a8d0091d3cac2a79ba06b052c7b9",
+      "cws_convertor/manufacturing_interpreter/service.py": "91f180449d6966b248077b5c98542a982b03cd107fff9e4ec07baa636046d035",
+      "cws_convertor/manufacturing_interpreter/solver.py": "7d695c076ba8e7452cfd5f6ba74aff6ad4d98161719cf3b55a80cba9318538a7",
+      "cws_convertor/manufacturing_interpreter/topology.py": "6e81520efa63587c2124671560d1e97986be5fab860362153d54a9e49ceb5944",
+      "cws_convertor/material_resolution.py": "1c32a8915bb44d70c573e7e717c7cef93ddacdc9b4dbda4dfc9b13f89b5a34c8",
+      "cws_convertor/production_export/__init__.py": "9db3cf600d20d3dfb2cd711617960927739bb77519e33d7b417213f5c5a78ec4",
+      "cws_convertor/production_export/artifacts.py": "7b14a9b36c2473f693368a3cc8fb8b957efd1200440dade76c43bf3255b00ef6",
+      "cws_convertor/production_export/engine.py": "cb3db495a3f1d3dbf945309412042ee85825f384eacdd26a769a5019bdf69ce3",
+      "cws_convertor/production_export/models.py": "1b43db2656ed7b5ed49c63ebe29019485d71e927bef2ca4c95e0ebba3b2739e5",
+      "cws_convertor/production_export/pdf_report.py": "1331fa91121d9c1c0b8eb89edecac8a3fcfb3fde3f770ee99d08d09cd2f09b10",
+      "cws_convertor/production_export/project_loader.py": "55987e1474a2b27eee38d9b70537e386208d854de4f4b2ae5120b260b2e01491",
+      "cws_convertor/production_export/readiness.py": "71b94460825f2bd9cb05d162b06fcb683ad04ef3096bfd739774ddea818701d1",
+      "cws_convertor/production_export/release.py": "49ff70556ffe664009e5e3884bd0d1399940241db749c7fea015a4dbc37ea0cc",
+      "cws_convertor/production_export/utils.py": "a050e238b0538617845ef2475171d6d2587ae11ab6b9bc1bacd6f6793273922b",
+      "cws_convertor/production_export/verify.py": "2ba9196617c4584fdc4cf14a05b67492e7ed50ea13dd8a02cc5bb864fe228402",
+      "cws_convertor/project/__init__.py": "e7801ccb8a80ff53ce4bd10394876917e769893889be68a67780443d98803f5f",
+      "cws_convertor/project/baseline.py": "eaaa4a5b7d519b464fc2803c762d091f645fe002964dd95c2811916450f882f6",
+      "cws_convertor/project/canonical_rebuild.py": "a7bb7b29776c357f926275409169f02b71675808f1cca7835f0f338873d86b92",
+      "cws_convertor/project/classification.py": "752bdfeb7a9a2aba6a2844be01c28ee648f0145a40905f7fb2f664dc6c52c96c",
+      "cws_convertor/project/jobs.py": "b3af356f8f8ec4edbc5376f3a7bcb518bdd0c2116adf68d506d1674d8af37b31",
+      "cws_convertor/project/manufacturing_contracts.py": "fe014df68e90c85a5ba656a2af36664c86751d627debcd699444522b3c85d22f",
+      "cws_convertor/project/model.py": "4b13db95c8df74328e9dec323272beacad8b02ac29882251c5b8b776a74a3c9d",
+      "cws_convertor/project/production_normalization.py": "8139a21f46ccb311261d4bf1cfaed8c9a34fb5907b908b452dfe00f5b9ee82aa",
+      "cws_convertor/project/roundtrip.py": "fb4f46917f9425e72b7f73d26c1a0d2fdd34e4708b6f470f28a12afb651b2226",
+      "cws_convertor/project/semantic_import.py": "e7cf637f461f987595acf486cebbcc25997f5c29648dd54dd4cd4440db748ec6",
+      "cws_convertor/project/service.py": "3cf4e4a8b62b1654e02c4337f7d0d4d3051dd84a0f08799f8eed30c584cff474",
+      "cws_convertor/project/source_geometry.py": "7b62d9f0a15cb1bea390838c419dcfd4d7936e726b951589d7dbacb9caa95a22",
+      "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+      "cws_convertor/project/unified_schema.py": "1f884df906937b74bc076d6d2134fee6a0120c786a0a07beaa00121a447b7116",
+      "cws_convertor/project/workbench.py": "5a8a6df6989b764045bb88c1ac76033f6c9c5caca492bce93252442aa4a2e6db",
+      "material_database.py": "3322dbdd2c56d3e7ae9b374af331c2e009a7f3990bd9e92c083f26397f22de75",
+      "materials.json": "52d9758722651c08752a2c926c6f924473f18efb220b05bcf81b042aac4af9f6",
+      "profile_database.py": "7d093c3a37f5deed6a29d3cde9c1090bf25ecf3253025edbc28c100b6291abf3",
+      "profiles.json": "c743e5584ac9c0501c3e964b714d6ccbb0ff71f6acd9c8793dd5ec561b7e458e",
+      "tools/check_material_reference_corpus.py": "b147c6bd9dbe4befae0a17532840a8921b75fd2cf5e0e6c6050962d89974678c"
+    }
+  },
+  "audited_code_unchanged_during_run": true,
+  "package_checks": [
+    {
+      "file_name": "HVPC te Hengelo fasen totaal.cwscproj",
+      "sha256": "679cb31c36d3cbda5abbf53ecfe2a10739711237e703546298de0a14bcd67c30",
+      "unchanged": true
+    }
+  ],
+  "summary": {
+    "sources_requested": 27,
+    "sources_measured": 27,
+    "sources_failed_or_missing": 0,
+    "total_parts": 3445,
+    "total_seconds": 311.111,
+    "safety_passed": true
+  },
+  "interpretation": {
+    "percentage_denominator": "All fresh imported parts per source; fasteners reported separately.",
+    "source_material_value": "Effective single Part.material or material_grade after semantic evidence reconciliation; ambiguous associations may carry evidence but no selected material.",
+    "handling_is_not_recognition": true,
+    "blank_percentage": "null means no applicable objects, not 100%.",
+    "recognition_accuracy": "Not measured without independently labeled ground truth.",
+    "visual_evidence": "Not captured; this runner is a headless semantic audit."
+  },
+  "sources": [
+    {
+      "file_name": "HVPC te Hengelo fasen totaal.ifc",
+      "origin": "HVPC te Hengelo fasen totaal.cwscproj::embedded/HVPC te Hengelo fasen totaal.ifc",
+      "corpus_kind": "real_embedded_project_source",
+      "source_sha256": "f12fadcc568273a6919a29047162cae12dce257d15c26278728f987022959e0b",
+      "source_bytes": 9773658,
+      "status": "measured",
+      "strategy": "A_semantic_structure",
+      "profile_recognition_evidence": {},
+      "semantic_blocking_reasons": [
+        "Externe IFC-geometrie en properties zijn semantisch behouden, maar productiefeatures/NC1-zijden zijn nog niet voor ieder onderdeel deterministisch gereconstrueerd en geroundtript."
+      ],
+      "source_class_counts": {
+        "IFCAPPLICATION": 1,
+        "IFCARBITRARYCLOSEDPROFILEDEF": 789,
+        "IFCAXIS2PLACEMENT2D": 120,
+        "IFCAXIS2PLACEMENT3D": 7499,
+        "IFCBEAM": 771,
+        "IFCBEAMTYPE": 42,
+        "IFCBOOLEANCLIPPINGRESULT": 1276,
+        "IFCBOOLEANRESULT": 189,
+        "IFCBUILDING": 1,
+        "IFCBUILDINGSTOREY": 1,
+        "IFCCARTESIANPOINT": 10953,
+        "IFCCARTESIANTRANSFORMATIONOPERATOR3D": 485,
+        "IFCCIRCLE": 119,
+        "IFCCIRCLEHOLLOWPROFILEDEF": 1,
+        "IFCCIRCLEPROFILEDEF": 24,
+        "IFCCLOSEDSHELL": 23,
+        "IFCCOLOURRGB": 23,
+        "IFCCOLUMN": 191,
+        "IFCCOLUMNTYPE": 11,
+        "IFCCOMPOSITECURVE": 75,
+        "IFCCOMPOSITECURVESEGMENT": 310,
+        "IFCCONVERSIONBASEDUNIT": 4,
+        "IFCDIMENSIONALEXPONENTS": 4,
+        "IFCDIRECTION": 580,
+        "IFCELEMENTASSEMBLY": 890,
+        "IFCEXTRUDEDAREASOLID": 2799,
+        "IFCFACE": 647,
+        "IFCFACEOUTERBOUND": 647,
+        "IFCFACETEDBREP": 25,
+        "IFCGEOMETRICCURVESET": 8,
+        "IFCGEOMETRICREPRESENTATIONCONTEXT": 1,
+        "IFCGEOMETRICREPRESENTATIONSUBCONTEXT": 3,
+        "IFCGRID": 8,
+        "IFCGRIDAXIS": 192,
+        "IFCHALFSPACESOLID": 1362,
+        "IFCISHAPEPROFILEDEF": 14,
+        "IFCLOCALPLACEMENT": 6626,
+        "IFCLSHAPEPROFILEDEF": 7,
+        "IFCMAPPEDITEM": 1811,
+        "IFCMATERIAL": 7,
+        "IFCMEASUREWITHUNIT": 4,
+        "IFCMECHANICALFASTENER": 2306,
+        "IFCMECHANICALFASTENERTYPE": 1,
+        "IFCMEMBER": 125,
+        "IFCMEMBERTYPE": 9,
+        "IFCORGANIZATION": 1,
+        "IFCOWNERHISTORY": 68,
+        "IFCPERSON": 1,
+        "IFCPERSONANDORGANIZATION": 1,
+        "IFCPLANE": 1362,
+        "IFCPLATE": 2332,
+        "IFCPLATETYPE": 164,
+        "IFCPOLYLINE": 640,
+        "IFCPOLYLOOP": 647,
+        "IFCPRESENTATIONLAYERASSIGNMENT": 33,
+        "IFCPRESENTATIONSTYLEASSIGNMENT": 40,
+        "IFCPRODUCTDEFINITIONSHAPE": 5733,
+        "IFCPROJECT": 1,
+        "IFCPROPERTYSET": 21946,
+        "IFCPROPERTYSINGLEVALUE": 7660,
+        "IFCRECTANGLEHOLLOWPROFILEDEF": 8,
+        "IFCRECTANGLEPROFILEDEF": 29,
+        "IFCRELAGGREGATES": 893,
+        "IFCRELASSOCIATESMATERIAL": 7,
+        "IFCRELCONTAINEDINSPATIALSTRUCTURE": 2,
+        "IFCRELDEFINESBYPROPERTIES": 21946,
+        "IFCRELDEFINESBYTYPE": 227,
+        "IFCREPRESENTATIONMAP": 525,
+        "IFCSHAPEREPRESENTATION": 6258,
+        "IFCSITE": 1,
+        "IFCSIUNIT": 9,
+        "IFCSTYLEDITEM": 2755,
+        "IFCSURFACESTYLE": 40,
+        "IFCSURFACESTYLERENDERING": 23,
+        "IFCTRIMMEDCURVE": 131,
+        "IFCUNITASSIGNMENT": 1,
+        "IFCUSHAPEPROFILEDEF": 3
+      },
+      "entity_counts": {
+        "assembly": 890,
+        "part": 3419,
+        "purchased_item": 0,
+        "fastener": 2306,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 3419,
+        "material_source_value_present": 3407,
+        "material_source_value_present_percent": 99.65,
+        "material_catalog_resolved": 3407,
+        "material_catalog_resolved_percent": 99.65,
+        "material_catalog_status_counts": {
+          "exact": 3407,
+          "unresolved": 12
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 12
+        },
+        "material_raw_value_counts": {
+          "4.6": 24,
+          "8.8": 82,
+          "<empty>": 12,
+          "S235JR": 2726,
+          "S355JR": 575
+        },
+        "material_normalized_value_counts": {
+          "4.6": 24,
+          "8.8": 82,
+          "<empty>": 12,
+          "S235JR": 2726,
+          "S355JR": 575
+        },
+        "ifc_material_evidence_status_counts": {
+          "conflicting_evidence": 12,
+          "resolved": 3407
+        },
+        "profile_source_value_present": 3398,
+        "profile_catalog_resolved": 2248,
+        "profile_catalog_resolved_percent": 65.75,
+        "profile_unresolved_raw_values": {
+          "<empty>": 21,
+          "ANKER_M16": 24,
+          "L180/16": 5,
+          "L200/15": 7,
+          "MOER_M12": 10,
+          "MOER_M16": 72,
+          "PL10*104.5": 85,
+          "PL10*114": 21,
+          "PL10*114.2": 134,
+          "PL10*123": 134,
+          "PL10*133": 18,
+          "PL10*142.2": 16,
+          "PL10*166": 6,
+          "PL10*166.3": 1,
+          "PL10*170.5": 1,
+          "PL10*170.6": 1,
+          "PL10*173.6": 1,
+          "PL10*174.8": 1,
+          "PL10*175.3": 1,
+          "PL10*176.4": 1,
+          "PL10*176.5": 37,
+          "PL10*177.7": 1,
+          "PL10*180.8": 1,
+          "PL10*181.2": 1,
+          "PL10*181.4": 1,
+          "PL10*182.8": 4,
+          "PL10*183.4": 1,
+          "PL10*185": 6,
+          "PL10*185.3": 1,
+          "PL10*185.6": 1,
+          "PL10*186.2": 37,
+          "PL10*187.3": 1,
+          "PL10*190.9": 1,
+          "PL10*191.4": 1,
+          "PL10*191.8": 1,
+          "PL10*191.9": 1,
+          "PL10*192.3": 1,
+          "PL10*192.8": 1,
+          "PL10*194.4": 4,
+          "PL10*194.9": 1,
+          "PL10*195": 3,
+          "PL10*195.2": 1,
+          "PL10*196.9": 1,
+          "PL10*198.5": 1,
+          "PL10*202.4": 1,
+          "PL10*203": 1,
+          "PL10*203.3": 1,
+          "PL10*204.3": 1,
+          "PL10*204.6": 2,
+          "PL10*205.7": 1,
+          "PL10*206.8": 1,
+          "PL10*208.2": 1,
+          "PL10*208.6": 1,
+          "PL10*213.9": 1,
+          "PL10*215": 1,
+          "PL10*216.4": 2,
+          "PL10*216.7": 2,
+          "PL10*218.5": 1,
+          "PL10*222.5": 2,
+          "PL10*223.5": 2,
+          "PL10*226": 1,
+          "PL10*228.3": 2,
+          "PL10*229.5": 2,
+          "PL10*235": 6,
+          "PL10*239.1": 1,
+          "PL10*242.2": 1,
+          "PL10*242.8": 2,
+          "PL10*245.4": 1,
+          "PL10*246": 1,
+          "PL10*246.2": 1,
+          "PL10*246.7": 2,
+          "PL10*249.2": 1,
+          "PL10*249.3": 1,
+          "PL10*251.8": 1,
+          "PL10*259.3": 2,
+          "PL10*330": 5,
+          "PL10*54": 2,
+          "PL10*62.2": 2,
+          "PL10*74.2": 3,
+          "PL10*82.2": 2,
+          "PL10*84": 2,
+          "PL10*85": 23,
+          "PL10*93": 13,
+          "PL10*94.8": 3,
+          "PL10*98": 7,
+          "PL15*123": 16,
+          "PL15*142.2": 18,
+          "PL15*143.5": 12,
+          "PL15*161": 6,
+          "PL15*85": 4,
+          "PL25*240": 2,
+          "PL25*260": 15,
+          "PL3*405": 9,
+          "PL3*465": 4,
+          "PL30*255": 10,
+          "PL30*260": 4,
+          "PL40*230": 16,
+          "PL8*101.7": 2,
+          "PL8*104.5": 4,
+          "PL8*113": 4,
+          "PL8*114.2": 2,
+          "PL8*56": 8,
+          "PL8*94.5": 2,
+          "R6": 18,
+          "STRIP10*110": 6,
+          "STRIP10*130": 3,
+          "STRIP10*165": 1,
+          "STRIP10*170": 34,
+          "STRIP10*190": 2,
+          "STRIP10*230": 6,
+          "STRIP10*240": 15,
+          "STRIP10*260": 16,
+          "STRIP10*280": 17,
+          "STRIP10*65": 20,
+          "STRIP15*170": 17,
+          "STRIP15*190": 21,
+          "STRIP15*230": 1,
+          "STRIP15*240": 8,
+          "STRIP15*260": 2,
+          "STRIP15*65": 3,
+          "STRIP20*230": 8,
+          "STRIP20*240": 2,
+          "STRIP20*260": 1,
+          "STRIP30*230": 5,
+          "STRIP8*110": 48,
+          "STRIP8*65": 2
+        },
+        "classification_status_counts": {
+          "automatic": 2350,
+          "review_required": 1069
+        },
+        "classification_category_counts": {
+          "make_part": 3313,
+          "purchased_item": 106
+        },
+        "classification_handled": 3419,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 12,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-022": 3313,
+          "CWS-EXP-030": 1069,
+          "CWS-EXP-101": 106,
+          "CWS-EXP-102": 12,
+          "CWS-EXP-103": 21,
+          "CWS-EXP-105": 12,
+          "CWS-EXP-106": 1171,
+          "CWS-EXP-110": 3419,
+          "CWS-EXP-111": 3419,
+          "CWS-EXP-120": 3419
+        }
+      },
+      "fasteners": {
+        "total": 2306,
+        "grade_present": 2282,
+        "grade_catalog_resolved": 2282,
+        "grade_catalog_resolved_percent": 98.96,
+        "grade_raw_value_counts": {
+          "4.6": 13,
+          "8.8": 2269,
+          "<empty>": 24
+        },
+        "grade_catalog_status_counts": {
+          "exact": 2282,
+          "unresolved": 24
+        }
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 2.931,
+        "semantic_import_and_classification": 211.417,
+        "total_with_audit": 286.33
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1793.step",
+      "origin": "validation/v0.2_generated_step/P1793.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "ecd358cc361e24279f9e522f4771e6add3e000cf5fe6280a3dba50b80b439f20",
+      "source_bytes": 22674,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 8,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_3D": 9,
+        "CARTESIAN_POINT": 75,
+        "CLOSED_SHELL": 1,
+        "DEFINITIONAL_REPRESENTATION": 36,
+        "DIRECTION": 72,
+        "EDGE_CURVE": 18,
+        "EDGE_LOOP": 8,
+        "FACE_BOUND": 8,
+        "LINE": 54,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 36,
+        "PCURVE": 36,
+        "PLANE": 8,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 18,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 54,
+        "VERTEX_POINT": 12
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.009,
+        "semantic_import_and_classification": 0.03,
+        "total_with_audit": 0.04
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1796.step",
+      "origin": "validation/v0.2_generated_step/P1796.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "34bd3cdf02816783b8ec7becaa73d495b2729af0505db0b1f6e559143ecb913d",
+      "source_bytes": 22652,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 8,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_3D": 9,
+        "CARTESIAN_POINT": 75,
+        "CLOSED_SHELL": 1,
+        "DEFINITIONAL_REPRESENTATION": 36,
+        "DIRECTION": 72,
+        "EDGE_CURVE": 18,
+        "EDGE_LOOP": 8,
+        "FACE_BOUND": 8,
+        "LINE": 54,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 36,
+        "PCURVE": 36,
+        "PLANE": 8,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 18,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 54,
+        "VERTEX_POINT": 12
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.008,
+        "semantic_import_and_classification": 0.022,
+        "total_with_audit": 0.031
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1803.step",
+      "origin": "validation/v0.2_generated_step/P1803.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "c602218c3f85b10844f024cc6b8963a37991d23953981171e510173029c4a0c4",
+      "source_bytes": 15503,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 6,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_3D": 7,
+        "CARTESIAN_POINT": 51,
+        "CLOSED_SHELL": 1,
+        "DEFINITIONAL_REPRESENTATION": 24,
+        "DIRECTION": 50,
+        "EDGE_CURVE": 12,
+        "EDGE_LOOP": 6,
+        "FACE_BOUND": 6,
+        "LINE": 36,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 24,
+        "PCURVE": 24,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 12,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 36,
+        "VERTEX_POINT": 8
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.006,
+        "semantic_import_and_classification": 0.016,
+        "total_with_audit": 0.022
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1807.step",
+      "origin": "validation/v0.2_generated_step/P1807.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "c1595a1f3160d2ade1c7a19a11a404484e642bbbc85a278130d39b545227930c",
+      "source_bytes": 15551,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 6,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_3D": 7,
+        "CARTESIAN_POINT": 51,
+        "CLOSED_SHELL": 1,
+        "DEFINITIONAL_REPRESENTATION": 24,
+        "DIRECTION": 50,
+        "EDGE_CURVE": 12,
+        "EDGE_LOOP": 6,
+        "FACE_BOUND": 6,
+        "LINE": 36,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 24,
+        "PCURVE": 24,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 12,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 36,
+        "VERTEX_POINT": 8
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.007,
+        "semantic_import_and_classification": 0.017,
+        "total_with_audit": 0.025
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1811.step",
+      "origin": "validation/v0.2_generated_step/P1811.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "90fbc332c3aa915b0baff4ef76a8c97f2a997b445c125619651fe97af636d59d",
+      "source_bytes": 29990,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.009,
+        "semantic_import_and_classification": 0.03,
+        "total_with_audit": 0.04
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1821.step",
+      "origin": "validation/v0.2_generated_step/P1821.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "799de4a4dbb6a3b444ee79d97d554ca46088d410e5f86e9b6b0a2cc89be064a6",
+      "source_bytes": 30044,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.009,
+        "semantic_import_and_classification": 0.029,
+        "total_with_audit": 0.039
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1823.step",
+      "origin": "validation/v0.2_generated_step/P1823.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "ce075bfc1a5c65a73eb7e9ba0c5dd032cc2e25e4c7d6c6316c65e6392b4a5031",
+      "source_bytes": 30022,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.009,
+        "semantic_import_and_classification": 0.032,
+        "total_with_audit": 0.042
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1881.step",
+      "origin": "validation/v0.2_generated_step/P1881.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "3454714dc141d57106d726236903bc015f67a8edb986505947994a108adad365",
+      "source_bytes": 29994,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.009,
+        "semantic_import_and_classification": 0.039,
+        "total_with_audit": 0.049
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P1999.step",
+      "origin": "validation/v0.2_generated_step/P1999.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "91f12c90c0d8096803827285bfddbd6894466991abbaa1e668a08b520f2cae43",
+      "source_bytes": 29992,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.012,
+        "semantic_import_and_classification": 0.039,
+        "total_with_audit": 0.052
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P2162.step",
+      "origin": "validation/v0.2_generated_step/P2162.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "a38d11f38259502b3d594593cdad88520b275be0d3170c46f489af95d315458e",
+      "source_bytes": 30070,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.015,
+        "semantic_import_and_classification": 0.036,
+        "total_with_audit": 0.052
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P2165.step",
+      "origin": "validation/v0.2_generated_step/P2165.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "d63e187b2a5eaaa06cd84ac6b0b8a9cc975b54829be079c704fd731ed71c14d2",
+      "source_bytes": 30024,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.011,
+        "semantic_import_and_classification": 0.032,
+        "total_with_audit": 0.044
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P2172.step",
+      "origin": "validation/v0.2_generated_step/P2172.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "eaefc00a00ae5193e2d424927188778ab24e3659556bba7b679e3508b8718ce1",
+      "source_bytes": 30058,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.011,
+        "semantic_import_and_classification": 0.029,
+        "total_with_audit": 0.041
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "P2174.step",
+      "origin": "validation/v0.2_generated_step/P2174.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "c66328e01c3fe9a77940e132c8ffdada95d9968725436a7132de839ccd88d08c",
+      "source_bytes": 29976,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 10,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 19,
+        "CARTESIAN_POINT": 99,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 48,
+        "DIRECTION": 102,
+        "EDGE_CURVE": 24,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 56,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 48,
+        "PCURVE": 48,
+        "PLANE": 6,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 4,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 20,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 56,
+        "VERTEX_POINT": 16
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.011,
+        "semantic_import_and_classification": 0.038,
+        "total_with_audit": 0.049
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1293.step",
+      "origin": "validation/v0.2_generated_step/Pr1293.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "f0373b4eeb8c29f688afd09e6ab90f30c1b5b14ac03e23b83101123c998d1e23",
+      "source_bytes": 109159,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 30,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 12,
+        "AXIS2_PLACEMENT_3D": 43,
+        "B_SPLINE_CURVE_WITH_KNOTS": 41,
+        "CARTESIAN_POINT": 409,
+        "CIRCLE": 12,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 168,
+        "DIRECTION": 285,
+        "EDGE_CURVE": 84,
+        "EDGE_LOOP": 30,
+        "ELLIPSE": 12,
+        "FACE_BOUND": 30,
+        "LINE": 187,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 168,
+        "PCURVE": 168,
+        "PLANE": 26,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 84,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 187,
+        "VERTEX_POINT": 56
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.026,
+        "semantic_import_and_classification": 0.125,
+        "total_with_audit": 0.152
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1298.step",
+      "origin": "validation/v0.2_generated_step/Pr1298.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "f98f9af1884f4f04f5f41f475984620a90ab6ddb57b5150297646bebc9df2588",
+      "source_bytes": 111651,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 28,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 15,
+        "AXIS2_PLACEMENT_3D": 44,
+        "B_SPLINE_CURVE_WITH_KNOTS": 46,
+        "CARTESIAN_POINT": 429,
+        "CIRCLE": 12,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 168,
+        "DIRECTION": 279,
+        "EDGE_CURVE": 84,
+        "EDGE_LOOP": 28,
+        "ELLIPSE": 18,
+        "FACE_BOUND": 28,
+        "LINE": 176,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 168,
+        "PCURVE": 168,
+        "PLANE": 24,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 84,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 176,
+        "VERTEX_POINT": 56
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.026,
+        "semantic_import_and_classification": 0.104,
+        "total_with_audit": 0.13
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1301.step",
+      "origin": "validation/v0.2_generated_step/Pr1301.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "32e328b8977de4d246f8d55bc17bbf7bcb5186c5037014dd6fe68662053fa4c7",
+      "source_bytes": 115618,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 31,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 15,
+        "AXIS2_PLACEMENT_3D": 47,
+        "B_SPLINE_CURVE_WITH_KNOTS": 44,
+        "CARTESIAN_POINT": 441,
+        "CIRCLE": 12,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 174,
+        "DIRECTION": 296,
+        "EDGE_CURVE": 87,
+        "EDGE_LOOP": 31,
+        "ELLIPSE": 18,
+        "FACE_BOUND": 31,
+        "LINE": 187,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 174,
+        "PCURVE": 174,
+        "PLANE": 27,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 87,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 187,
+        "VERTEX_POINT": 58
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.031,
+        "semantic_import_and_classification": 0.12,
+        "total_with_audit": 0.151
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1343.step",
+      "origin": "validation/v0.2_generated_step/Pr1343.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "5f6215f5743c2bff678570280e2d985808293003417735637f1f99139291e07f",
+      "source_bytes": 57474,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 18,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 27,
+        "B_SPLINE_CURVE_WITH_KNOTS": 2,
+        "CARTESIAN_POINT": 197,
+        "CIRCLE": 16,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 96,
+        "DIRECTION": 188,
+        "EDGE_CURVE": 48,
+        "EDGE_LOOP": 18,
+        "FACE_BOUND": 18,
+        "LINE": 126,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 96,
+        "PCURVE": 96,
+        "PLANE": 14,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 48,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 126,
+        "VERTEX_POINT": 32
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.024,
+        "semantic_import_and_classification": 0.068,
+        "total_with_audit": 0.092
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1527.step",
+      "origin": "validation/v0.2_generated_step/Pr1527.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "d0eacada0c11c485c1cb3cda56d30fe6db1295928276d7b5084df1ce4e176d62",
+      "source_bytes": 5667,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 3,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 2,
+        "AXIS2_PLACEMENT_3D": 6,
+        "CARTESIAN_POINT": 15,
+        "CIRCLE": 4,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 1,
+        "DEFINITIONAL_REPRESENTATION": 6,
+        "DIRECTION": 19,
+        "EDGE_CURVE": 3,
+        "EDGE_LOOP": 3,
+        "FACE_BOUND": 3,
+        "LINE": 5,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 6,
+        "PCURVE": 6,
+        "PLANE": 2,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 2,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 5,
+        "VERTEX_POINT": 2
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.005,
+        "semantic_import_and_classification": 0.011,
+        "total_with_audit": 0.017
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1528.step",
+      "origin": "validation/v0.2_generated_step/Pr1528.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "0f6a5d9458054af09e66f8605b08c4128480aeb27e7b2ea0fa0e8d326c790014",
+      "source_bytes": 61226,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 18,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 12,
+        "AXIS2_PLACEMENT_3D": 35,
+        "B_SPLINE_CURVE_WITH_KNOTS": 16,
+        "CARTESIAN_POINT": 235,
+        "CIRCLE": 28,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 8,
+        "DEFINITIONAL_REPRESENTATION": 96,
+        "DIRECTION": 178,
+        "EDGE_CURVE": 48,
+        "EDGE_LOOP": 20,
+        "FACE_BOUND": 20,
+        "LINE": 96,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 96,
+        "PCURVE": 96,
+        "PLANE": 10,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 48,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 96,
+        "VERTEX_POINT": 32
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.014,
+        "semantic_import_and_classification": 0.05,
+        "total_with_audit": 0.065
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1657.step",
+      "origin": "validation/v0.2_generated_step/Pr1657.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "0225a28d480aaa37e73a2712506f32f378692fd4be42f03ddbbf5f6e59d51149",
+      "source_bytes": 25726,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 9,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 2,
+        "AXIS2_PLACEMENT_3D": 12,
+        "CARTESIAN_POINT": 87,
+        "CIRCLE": 4,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 1,
+        "DEFINITIONAL_REPRESENTATION": 42,
+        "DIRECTION": 85,
+        "EDGE_CURVE": 21,
+        "EDGE_LOOP": 9,
+        "FACE_BOUND": 9,
+        "LINE": 59,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 42,
+        "PCURVE": 42,
+        "PLANE": 8,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 21,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 59,
+        "VERTEX_POINT": 14
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.008,
+        "semantic_import_and_classification": 0.024,
+        "total_with_audit": 0.033
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1658.step",
+      "origin": "validation/v0.2_generated_step/Pr1658.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "ea85fe336891cb16362de0571498892bca838184c02df2dbd193af10fa97a30c",
+      "source_bytes": 25726,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 9,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 2,
+        "AXIS2_PLACEMENT_3D": 12,
+        "CARTESIAN_POINT": 87,
+        "CIRCLE": 4,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 1,
+        "DEFINITIONAL_REPRESENTATION": 42,
+        "DIRECTION": 85,
+        "EDGE_CURVE": 21,
+        "EDGE_LOOP": 9,
+        "FACE_BOUND": 9,
+        "LINE": 59,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 42,
+        "PCURVE": 42,
+        "PLANE": 8,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 21,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 59,
+        "VERTEX_POINT": 14
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.008,
+        "semantic_import_and_classification": 0.027,
+        "total_with_audit": 0.035
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1706.step",
+      "origin": "validation/v0.2_generated_step/Pr1706.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "3cb71a05e419f0476e82c7336c67c585a24184e15a5bc9b9196912d1abf95ed1",
+      "source_bytes": 43961,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 14,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 12,
+        "AXIS2_PLACEMENT_3D": 27,
+        "CARTESIAN_POINT": 147,
+        "CIRCLE": 24,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 6,
+        "DEFINITIONAL_REPRESENTATION": 72,
+        "DIRECTION": 150,
+        "EDGE_CURVE": 36,
+        "EDGE_LOOP": 24,
+        "FACE_BOUND": 24,
+        "LINE": 84,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 72,
+        "PCURVE": 72,
+        "PLANE": 8,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 5,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 31,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 84,
+        "VERTEX_POINT": 24
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.012,
+        "semantic_import_and_classification": 0.039,
+        "total_with_audit": 0.052
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1707.step",
+      "origin": "validation/v0.2_generated_step/Pr1707.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "71b8fd04786a9bedfc217a2e2e771488883bce45712b61785579d60d910b95e9",
+      "source_bytes": 59259,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 18,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 20,
+        "AXIS2_PLACEMENT_3D": 39,
+        "CARTESIAN_POINT": 195,
+        "CIRCLE": 40,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 10,
+        "DEFINITIONAL_REPRESENTATION": 96,
+        "DIRECTION": 202,
+        "EDGE_CURVE": 48,
+        "EDGE_LOOP": 36,
+        "FACE_BOUND": 36,
+        "LINE": 104,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 96,
+        "PCURVE": 96,
+        "PLANE": 8,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 9,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 39,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 104,
+        "VERTEX_POINT": 32
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.021,
+        "semantic_import_and_classification": 0.06,
+        "total_with_audit": 0.082
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "Pr1738.step",
+      "origin": "validation/v0.2_generated_step/Pr1738.step",
+      "corpus_kind": "generated_nc1_to_step_regression",
+      "source_sha256": "332fcd9f47b0318ca11fc1862406f65c49562d9f30533baee933d55a2dbd66ee",
+      "source_bytes": 69817,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 20,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 8,
+        "AXIS2_PLACEMENT_3D": 31,
+        "B_SPLINE_CURVE_WITH_KNOTS": 18,
+        "CARTESIAN_POINT": 273,
+        "CIRCLE": 10,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 4,
+        "DEFINITIONAL_REPRESENTATION": 108,
+        "DIRECTION": 194,
+        "EDGE_CURVE": 54,
+        "EDGE_LOOP": 20,
+        "ELLIPSE": 8,
+        "FACE_BOUND": 20,
+        "LINE": 124,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 108,
+        "PCURVE": 108,
+        "PLANE": 16,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 54,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 124,
+        "VERTEX_POINT": 36
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.018,
+        "semantic_import_and_classification": 0.068,
+        "total_with_audit": 0.087
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "CHS88.9x5.step",
+      "origin": "validation/v0.2_synthetic_profiles/CHS88.9x5.step",
+      "corpus_kind": "synthetic_profile_regression",
+      "source_sha256": "648e6b8ab80a809c78beda5bdee0dccc8fdc760c3d11955559c9765f1ba08183",
+      "source_bytes": 9370,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 4,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 4,
+        "AXIS2_PLACEMENT_3D": 9,
+        "CARTESIAN_POINT": 27,
+        "CIRCLE": 8,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 2,
+        "DEFINITIONAL_REPRESENTATION": 12,
+        "DIRECTION": 32,
+        "EDGE_CURVE": 6,
+        "EDGE_LOOP": 6,
+        "FACE_BOUND": 6,
+        "LINE": 10,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 12,
+        "PCURVE": 12,
+        "PLANE": 2,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SEAM_CURVE": 2,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 4,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 10,
+        "VERTEX_POINT": 4
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.008,
+        "semantic_import_and_classification": 0.014,
+        "total_with_audit": 0.023
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    },
+    {
+      "file_name": "U100x50x8.5x6.step",
+      "origin": "validation/v0.2_synthetic_profiles/U100x50x8.5x6.step",
+      "corpus_kind": "synthetic_profile_regression",
+      "source_sha256": "28776e6bc57193e64f0d6a7fa04a154cf3b86129622313c847d885c7a29e04ba",
+      "source_bytes": 35951,
+      "status": "measured",
+      "strategy": "B_separate_solids",
+      "profile_recognition_evidence": {
+        "status": "not_reliably_recognised",
+        "reason": "No module named 'cadquery'"
+      },
+      "semantic_blocking_reasons": [
+        "STEP-productstructuur en BREP-identiteit zijn geïmporteerd, maar maakdeel/inkoopdeel-classificatie moet worden bevestigd.",
+        "NC1-vrijgave vereist profiel-/featureherkenning en geometrische roundtripvalidatie per onderdeel."
+      ],
+      "source_class_counts": {
+        "ADVANCED_BREP_SHAPE_REPRESENTATION": 1,
+        "ADVANCED_FACE": 12,
+        "APPLICATION_CONTEXT": 1,
+        "APPLICATION_PROTOCOL_DEFINITION": 1,
+        "AXIS2_PLACEMENT_2D": 4,
+        "AXIS2_PLACEMENT_3D": 17,
+        "B_SPLINE_CURVE_WITH_KNOTS": 1,
+        "CARTESIAN_POINT": 124,
+        "CIRCLE": 8,
+        "CLOSED_SHELL": 1,
+        "CYLINDRICAL_SURFACE": 2,
+        "DEFINITIONAL_REPRESENTATION": 60,
+        "DIRECTION": 119,
+        "EDGE_CURVE": 30,
+        "EDGE_LOOP": 12,
+        "FACE_BOUND": 12,
+        "LINE": 81,
+        "MANIFOLD_SOLID_BREP": 1,
+        "ORIENTED_EDGE": 60,
+        "PCURVE": 60,
+        "PLANE": 10,
+        "PRODUCT": 1,
+        "PRODUCT_CONTEXT": 1,
+        "PRODUCT_DEFINITION": 1,
+        "PRODUCT_DEFINITION_CONTEXT": 1,
+        "PRODUCT_DEFINITION_FORMATION": 1,
+        "PRODUCT_DEFINITION_SHAPE": 1,
+        "PRODUCT_RELATED_PRODUCT_CATEGORY": 1,
+        "SHAPE_DEFINITION_REPRESENTATION": 1,
+        "SURFACE_CURVE": 30,
+        "UNCERTAINTY_MEASURE_WITH_UNIT": 1,
+        "VECTOR": 81,
+        "VERTEX_POINT": 20
+      },
+      "entity_counts": {
+        "assembly": 0,
+        "part": 1,
+        "purchased_item": 0,
+        "fastener": 0,
+        "weld": 0,
+        "stock_item": 0,
+        "remnant": 0,
+        "production_operation": 0,
+        "machine_profile": 0,
+        "machine_job": 0
+      },
+      "parts": {
+        "total": 1,
+        "material_source_value_present": 0,
+        "material_source_value_present_percent": 0.0,
+        "material_catalog_resolved": 0,
+        "material_catalog_resolved_percent": 0.0,
+        "material_catalog_status_counts": {
+          "unresolved": 1
+        },
+        "material_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "material_raw_value_counts": {
+          "<empty>": 1
+        },
+        "material_normalized_value_counts": {
+          "<empty>": 1
+        },
+        "ifc_material_evidence_status_counts": {},
+        "profile_source_value_present": 0,
+        "profile_catalog_resolved": 0,
+        "profile_catalog_resolved_percent": 0.0,
+        "profile_unresolved_raw_values": {
+          "<empty>": 1
+        },
+        "classification_status_counts": {
+          "review_required": 1
+        },
+        "classification_category_counts": {
+          "unknown": 1
+        },
+        "classification_handled": 1,
+        "classification_handled_percent": 100.0,
+        "material_unresolved_blocked_for_all_production_formats": 1,
+        "material_unresolved_blocked_percent": 100.0,
+        "production_export_allowed_counts": {
+          "nc1": 0,
+          "step": 0,
+          "ifc": 0,
+          "production_pdf": 0
+        },
+        "nc1_blocker_occurrences": {
+          "CWS-EXP-010": 1,
+          "CWS-EXP-021": 1,
+          "CWS-EXP-030": 1,
+          "CWS-EXP-101": 1,
+          "CWS-EXP-102": 1,
+          "CWS-EXP-103": 1,
+          "CWS-EXP-105": 1,
+          "CWS-EXP-106": 1,
+          "CWS-EXP-110": 1,
+          "CWS-EXP-111": 1,
+          "CWS-EXP-120": 1
+        }
+      },
+      "fasteners": {
+        "total": 0,
+        "grade_present": 0,
+        "grade_catalog_resolved": 0,
+        "grade_catalog_resolved_percent": null,
+        "grade_raw_value_counts": {},
+        "grade_catalog_status_counts": {}
+      },
+      "semantic_import_production_export_allowed": false,
+      "project_production_export_allowed": false,
+      "warnings": [],
+      "seconds": {
+        "registration": 0.014,
+        "semantic_import_and_classification": 0.067,
+        "total_with_audit": 0.083
+      },
+      "limitations": [
+        "Semantic/profile-catalog audit; no exact BREP reconstruction or native geometry fidelity benchmark.",
+        "Material-source evidence is not a certificate or physical material test.",
+        "Catalogue hit percentage is not recognition accuracy: no independently labeled material truth set is supplied.",
+        "Production-export counts require all current readiness rules, not merely material recognition."
+      ],
+      "source_unchanged": true,
+      "safety_passed": true
+    }
+  ]
+}

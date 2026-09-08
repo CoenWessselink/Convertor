@@ -1,0 +1,12 @@
+
+--- STDERR ---
+test_boolean_geometry_stays_review_required (cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_boolean_geometry_stays_review_required) ... ok
+test_exact_straight_profile_gets_editable_workbench_but_not_false_release (cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_exact_straight_profile_gets_editable_workbench_but_not_false_release) ... ok
+test_native_conflicting_source_metrics_cannot_be_validated (cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_native_conflicting_source_metrics_cannot_be_validated) ... skipped 'Native CAD runtime (cadquery) is not installed'
+test_native_matching_source_metrics_remain_pending_human_review (cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_native_matching_source_metrics_remain_pending_human_review) ... skipped 'Native CAD runtime (cadquery) is not installed'
+test_profile_family_mapping (cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_profile_family_mapping) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.154s
+
+OK (skipped=2)

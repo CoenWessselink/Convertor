@@ -43,8 +43,11 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Restore packaged M18 authority
         shell: pwsh
@@ -61,6 +64,9 @@ jobs:
         shell: pwsh
         run: |
           python -m compileall -q cws_convertor cws_viewer CWS_Convertor_App.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/conversion_one_phase_contract_smoke.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/capture_phase1_repository_ci.py
@@ -84,6 +90,16 @@ jobs:
           path: |
             validation/phases/PHASE_*_EVIDENCE.json
             validation/results/phase3/**
+            build/material_model_recognition/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload material and model recognition proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Material_Model_${{ github.sha }}_Release_Proof
+          path: build/material_model_recognition/**
           if-no-files-found: warn
           retention-days: 30
 

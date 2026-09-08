@@ -1,0 +1,122 @@
+{
+  "suite": "source_material_evidence_smoke",
+  "path": "tests/source_material_evidence_smoke.py",
+  "area": "pdf_dxf_evidence",
+  "status": "PASS",
+  "tests_run": 16,
+  "tests_passed": 16,
+  "log": "logs/source_material_evidence_smoke.log",
+  "result": "suites/source_material_evidence_smoke.json",
+  "command": [
+    "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+    "--child",
+    "/workspace/scratch/d438541b3951/Convertor/tests/source_material_evidence_smoke.py",
+    "--child-result",
+    "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/source_material_evidence_smoke.json"
+  ],
+  "returncode": 0,
+  "records": [
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_aliases_merge_and_conflicting_materials_clear_selection",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_catalog_coverage_requires_confirmation_and_preserves_location",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_confirmation_requires_known_material_and_reviewer",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_dimension_like_number_in_profile_row_is_not_fastener_grade",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_explicit_labels_cover_multiple_families",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_geometry_and_colour_are_prohibited_evidence",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_human_confirmation_preserves_conflict_evidence_and_reviewer",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_profile_row_keeps_full_unknown_grade_without_prefix_guess",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_unknown_value_and_missing_evidence_have_no_default",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_auxiliary_evidence_survives_real_project_save_reopen",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_binary_and_malformed_dxf_fail_closed",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_dxf_attdef_prompt_is_not_part_of_default_value",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_geometry_only_dxf_has_no_material",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_real_ascii_dxf_attribute_and_layer_candidates_with_hash",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_real_ascii_dxf_conflict_does_not_choose_first_grade",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    },
+    {
+      "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_real_pdf_text_is_extracted_with_page_bbox_and_conflict",
+      "status": "PASS",
+      "started": true,
+      "details": []
+    }
+  ],
+  "skipped_events": 0,
+  "expected_failure_events": 0,
+  "failure_events": 0,
+  "error_events": 0,
+  "duration_seconds": 1.04
+}

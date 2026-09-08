@@ -1,0 +1,2551 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-09-08T06:27:03.270586+00:00",
+  "status": "INCOMPLETE",
+  "acceptance_passed": false,
+  "installer_release_approved": false,
+  "installer_release_note": "This recognition gate does not prove packaged Windows EXE/installer, full-program regression, or field recognition accuracy.",
+  "require_native": true,
+  "native_available": false,
+  "source_unchanged_during_run": true,
+  "source": {
+    "git_sha": "66e1f4e11787ac75e0aae97ece14e8dd917849b7",
+    "git_branch": "agent/cws-product-ui-reintegration-v1",
+    "dirty": true,
+    "source_file_count": 978,
+    "source_tree_sha256": "22064be48d1b3e88d2e5d3a088723cb50c859c2ca31827c13bf865e682663e69"
+  },
+  "source_after": {
+    "git_sha": "66e1f4e11787ac75e0aae97ece14e8dd917849b7",
+    "git_branch": "agent/cws-product-ui-reintegration-v1",
+    "dirty": true,
+    "source_file_count": 978,
+    "source_tree_sha256": "22064be48d1b3e88d2e5d3a088723cb50c859c2ca31827c13bf865e682663e69"
+  },
+  "runtime": {
+    "python": "3.12.13 (main, Aug  7 2026, 02:25:39) [Clang 22.1.3 ]",
+    "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+    "platform": "linux"
+  },
+  "summary": {
+    "required_suites": 39,
+    "evaluated_suites": 39,
+    "passed_suites": 31,
+    "suite_status_counts": {
+      "PASS": 31,
+      "BLOCKED": 7,
+      "INCOMPLETE": 1
+    },
+    "suite_pass_percentage": 79.49,
+    "tests_run": 245,
+    "tests_passed": 243,
+    "executed_test_pass_percentage": 99.18,
+    "skipped_events": 2,
+    "expected_failure_events": 0,
+    "areas": {
+      "acceptance_integrity": {
+        "required_suites": 1,
+        "evaluated_suites": 1,
+        "passed_suites": 1,
+        "suite_pass_percentage": 100.0
+      },
+      "classification": {
+        "required_suites": 5,
+        "evaluated_suites": 5,
+        "passed_suites": 5,
+        "suite_pass_percentage": 100.0
+      },
+      "conversion_material_policy": {
+        "required_suites": 3,
+        "evaluated_suites": 3,
+        "passed_suites": 2,
+        "suite_pass_percentage": 66.67
+      },
+      "ifc_semantics": {
+        "required_suites": 3,
+        "evaluated_suites": 3,
+        "passed_suites": 3,
+        "suite_pass_percentage": 100.0
+      },
+      "material_catalog": {
+        "required_suites": 1,
+        "evaluated_suites": 1,
+        "passed_suites": 1,
+        "suite_pass_percentage": 100.0
+      },
+      "material_review": {
+        "required_suites": 3,
+        "evaluated_suites": 3,
+        "passed_suites": 1,
+        "suite_pass_percentage": 33.33
+      },
+      "model_recognition": {
+        "required_suites": 5,
+        "evaluated_suites": 5,
+        "passed_suites": 4,
+        "suite_pass_percentage": 80.0
+      },
+      "pdf_dxf_evidence": {
+        "required_suites": 3,
+        "evaluated_suites": 3,
+        "passed_suites": 2,
+        "suite_pass_percentage": 66.67
+      },
+      "project_regression": {
+        "required_suites": 5,
+        "evaluated_suites": 5,
+        "passed_suites": 5,
+        "suite_pass_percentage": 100.0
+      },
+      "step_semantics": {
+        "required_suites": 1,
+        "evaluated_suites": 1,
+        "passed_suites": 1,
+        "suite_pass_percentage": 100.0
+      },
+      "workbench_release": {
+        "required_suites": 9,
+        "evaluated_suites": 9,
+        "passed_suites": 6,
+        "suite_pass_percentage": 66.67
+      }
+    },
+    "percentage_scope": "Suite percentages measure this fixed acceptance manifest, not universal recognition accuracy. Tests not run have no fabricated test count."
+  },
+  "dependencies": {
+    "cadquery": {
+      "available": false,
+      "returncode": 1,
+      "detail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'cadquery'\n"
+    },
+    "OCP": {
+      "available": false,
+      "returncode": 1,
+      "detail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'OCP'\n"
+    },
+    "ifcopenshell": {
+      "available": false,
+      "returncode": 1,
+      "detail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'ifcopenshell'\n"
+    },
+    "PySide6.QtWidgets": {
+      "available": false,
+      "returncode": 1,
+      "detail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1310, in _find_and_load_unlocked\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'PySide6'\n"
+    },
+    "fitz": {
+      "available": true,
+      "returncode": 0,
+      "detail": "IMPORT_OK\n"
+    },
+    "ezdxf": {
+      "available": false,
+      "returncode": 1,
+      "detail": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/importlib/__init__.py\", line 90, in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen importlib._bootstrap>\", line 1387, in _gcd_import\n  File \"<frozen importlib._bootstrap>\", line 1360, in _find_and_load\n  File \"<frozen importlib._bootstrap>\", line 1324, in _find_and_load_unlocked\nModuleNotFoundError: No module named 'ezdxf'\n"
+    },
+    "reportlab": {
+      "available": true,
+      "returncode": 0,
+      "detail": "IMPORT_OK\n"
+    },
+    "pypdf": {
+      "available": true,
+      "returncode": 0,
+      "detail": "IMPORT_OK\n"
+    },
+    "numpy": {
+      "available": true,
+      "returncode": 0,
+      "detail": "IMPORT_OK\n"
+    }
+  },
+  "suites": [
+    {
+      "suite": "material_resolution_smoke",
+      "path": "tests/material_resolution_smoke.py",
+      "area": "material_catalog",
+      "status": "PASS",
+      "tests_run": 9,
+      "tests_passed": 9,
+      "log": "logs/material_resolution_smoke.log",
+      "result": "suites/material_resolution_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/material_resolution_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_resolution_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_catalog_has_required_material_families",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_exact_alias_and_unresolved_are_explicit_and_auditable",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_fastener_stainless_aluminium_and_plastic_aliases",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_find_has_no_implicit_fallback",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.MaterialResolutionSmokeTests.test_semantic_punctuation_is_not_erased",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_explicit_ifc_fallback_only_applies_when_source_is_empty",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_step_geometry_without_material_evidence_has_no_mass",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_unknown_ifc_material_never_uses_fallback_or_wrong_density",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_resolution_smoke.QuantityMaterialSafetySmokeTests.test_variable_density_material_blocks_mass_even_when_identity_is_exact",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.336
+    },
+    {
+      "suite": "profile_catalog_lookup_smoke",
+      "path": "tests/profile_catalog_lookup_smoke.py",
+      "area": "model_recognition",
+      "status": "PASS",
+      "tests_run": 8,
+      "tests_passed": 8,
+      "log": "logs/profile_catalog_lookup_smoke.log",
+      "result": "suites/profile_catalog_lookup_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/profile_catalog_lookup_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/profile_catalog_lookup_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_all_literal_catalogue_names_and_aliases_keep_legacy_results",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_decimal_and_integer_dimensions_can_be_distinct_catalogue_rows",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_decimal_points_are_not_erased_into_a_different_wall_thickness",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_every_candidate_and_alias_conflict_remains_unresolved",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_index_and_entries_are_immutable",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_slashes_and_unknown_text_cannot_be_discarded_for_a_match",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_snapshot_detects_direct_mutation_append_and_reload",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_profile_catalog_lookup_smoke.ProfileCatalogLookupSmoke.test_supported_display_and_workshop_aliases_remain_exact",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 2.145
+    },
+    {
+      "suite": "ifc_material_recognition_smoke",
+      "path": "tests/ifc_material_recognition_smoke.py",
+      "area": "ifc_semantics",
+      "status": "PASS",
+      "tests_run": 11,
+      "tests_passed": 11,
+      "log": "logs/ifc_material_recognition_smoke.log",
+      "result": "suites/ifc_material_recognition_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/ifc_material_recognition_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/ifc_material_recognition_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_exact_profile_aliases_and_fastener_tokens_fail_closed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc2x3_fastener_grade_from_material_and_standard",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc2x3_material_list_has_no_silent_primary",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_constituents_preserve_roles_and_fractions",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_layer_roles_preserve_all_materials_and_primary",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_material_profile_semantics_and_parametric_profile",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_non_catalog_parametric_profile_gets_stable_custom_descriptor",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_tapering_preserves_both_profile_sets_and_conflict",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_ifc4_type_material_and_pset_inheritance_with_occurrence_override",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_layer_with_offsets_retains_thickness_and_role",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_material_recognition_smoke.IFCMaterialRecognitionTests.test_material_alias_is_not_false_conflict_but_duplicate_grades_are",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.567
+    },
+    {
+      "suite": "ifc_semantic_import_smoke",
+      "path": "tests/ifc_semantic_import_smoke.py",
+      "area": "ifc_semantics",
+      "status": "PASS",
+      "tests_run": 1,
+      "tests_passed": 1,
+      "log": "logs/ifc_semantic_import_smoke.log",
+      "result": "suites/ifc_semantic_import_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/ifc_semantic_import_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/ifc_semantic_import_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_ifc_semantic_import_smoke.IFCSemanticImportTests.test_ifc_hierarchy_properties_fastener_and_weld_are_materialised",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.611
+    },
+    {
+      "suite": "native_ifc_material_binding_smoke",
+      "path": "tests/native_ifc_material_binding_smoke.py",
+      "area": "ifc_semantics",
+      "status": "PASS",
+      "tests_run": 2,
+      "tests_passed": 2,
+      "log": "logs/native_ifc_material_binding_smoke.log",
+      "result": "suites/native_ifc_material_binding_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/native_ifc_material_binding_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/native_ifc_material_binding_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_native_ifc_material_binding_smoke.NativeIFCMaterialBindingTests.test_parser_binds_each_material_and_does_not_use_first_declaration",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_native_ifc_material_binding_smoke.NativeIFCMaterialBindingTests.test_writer_omits_unknown_material_and_does_not_label_aluminium_steel",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.533
+    },
+    {
+      "suite": "step_semantic_import_smoke",
+      "path": "tests/step_semantic_import_smoke.py",
+      "area": "step_semantics",
+      "status": "PASS",
+      "tests_run": 4,
+      "tests_passed": 4,
+      "log": "logs/step_semantic_import_smoke.log",
+      "result": "suites/step_semantic_import_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/step_semantic_import_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/step_semantic_import_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_ap242_occurrence_materialises_assembly_and_part_relation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_missing_solid_uses_strategy_c_without_inventing_geometry",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_reimport_is_idempotent_and_keeps_stable_hashes",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_step_semantic_import_smoke.StepSemanticImportTests.test_single_product_single_solid_is_not_split_by_quantity_in_name",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.447
+    },
+    {
+      "suite": "project_auto_classification_smoke",
+      "path": "tests/project_auto_classification_smoke.py",
+      "area": "classification",
+      "status": "PASS",
+      "tests_run": 1,
+      "tests_passed": 1,
+      "log": "logs/project_auto_classification_smoke.log",
+      "result": "suites/project_auto_classification_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_auto_classification_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_auto_classification_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_auto_classification_smoke.AutomaticClassificationTests.test_semantic_import_never_leaves_new_parts_unclassified",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.454
+    },
+    {
+      "suite": "project_classification_smoke",
+      "path": "tests/project_classification_smoke.py",
+      "area": "classification",
+      "status": "PASS",
+      "tests_run": 3,
+      "tests_passed": 3,
+      "log": "logs/project_classification_smoke.log",
+      "result": "suites/project_classification_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_classification_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_classification_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_classification_smoke.ClassificationTests.test_normalisation_is_conservative",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_classification_smoke.ClassificationTests.test_rules_production_identity_and_manual_review",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_classification_smoke.ClassificationTests.test_same_mark_different_geometry_is_blocking",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.544
+    },
+    {
+      "suite": "material_classification_safety_smoke",
+      "path": "tests/material_classification_safety_smoke.py",
+      "area": "classification",
+      "status": "PASS",
+      "tests_run": 5,
+      "tests_passed": 5,
+      "log": "logs/material_classification_safety_smoke.log",
+      "result": "suites/material_classification_safety_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/material_classification_safety_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_classification_safety_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_category_review_never_confirms_unreviewed_fields",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_every_catalog_family_has_a_deterministic_category",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_generic_steel_family_does_not_invent_toughness_grade",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_geometry_or_source_class_never_proves_unknown_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_classification_safety_smoke.MaterialClassificationSafetyTests.test_material_grade_conflict_is_not_normalized_away",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.699
+    },
+    {
+      "suite": "project_semantic_service_smoke",
+      "path": "tests/project_semantic_service_smoke.py",
+      "area": "classification",
+      "status": "PASS",
+      "tests_run": 4,
+      "tests_passed": 4,
+      "log": "logs/project_semantic_service_smoke.log",
+      "result": "suites/project_semantic_service_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_semantic_service_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_semantic_service_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_batch_hash_failure_rolls_back_without_partial_entities",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_cooperative_cancel_rolls_back_complete_batch",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_progress_reports_internal_import_stages",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_semantic_service_smoke.ProjectSemanticServiceTests.test_semantic_project_saves_reopens_and_reimports_stably",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.565
+    },
+    {
+      "suite": "project_deferred_recognition_smoke",
+      "path": "tests/project_deferred_recognition_smoke.py",
+      "area": "classification",
+      "status": "PASS",
+      "tests_run": 4,
+      "tests_passed": 4,
+      "log": "logs/project_deferred_recognition_smoke.log",
+      "result": "suites/project_deferred_recognition_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_deferred_recognition_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_deferred_recognition_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_concurrent_user_edit_is_never_overwritten",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_invalid_selection_and_read_only_block_before_worker",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_worker_failure_never_changes_live_project",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_deferred_recognition_smoke.DeferredRecognitionServiceTests.test_worker_result_is_classified_and_survives_save_reopen",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.691
+    },
+    {
+      "suite": "project_model_smoke",
+      "path": "tests/project_model_smoke.py",
+      "area": "project_regression",
+      "status": "PASS",
+      "tests_run": 13,
+      "tests_passed": 13,
+      "log": "logs/project_model_smoke.log",
+      "result": "suites/project_model_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_model_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_model_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_deep_assembly_cycle_is_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_future_schema_is_rejected_instead_of_assumed_compatible",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_geometry_hash_is_placement_independent",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_invalid_left_handed_transform_is_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_invalid_quantities_and_overreservation_are_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_known_schema_versions_migrate_explicitly_to_225",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_manufacturing_hash_changes_for_material_and_mirror",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_part_assembly_relation_must_be_reciprocal",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_roundtrip_summary_identity_and_gate",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_scaled_or_sheared_transform_is_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_semantic_completion_keeps_failed_validation_blocked",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_stable_entity_id_is_repeatable",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_model_smoke.ProjectModelTests.test_streaming_canonical_json_matches_legacy_hash_contract",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.373
+    },
+    {
+      "suite": "project_storage_smoke",
+      "path": "tests/project_storage_smoke.py",
+      "area": "project_regression",
+      "status": "PASS",
+      "tests_run": 10,
+      "tests_passed": 10,
+      "log": "logs/project_storage_smoke.log",
+      "result": "suites/project_storage_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_storage_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_storage_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_autosave_is_lightweight_and_recovery_restores_embedded_source",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_corrupted_manifest_entry_is_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_create_embed_open_extract_and_revision",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_find_autosave_requires_newer_snapshot",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_future_project_schema_in_manifest_is_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_previews_survive_open_edit_save_cycle",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_read_only_session_blocks_save",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_schema_one_opens_read_only_and_migrates_to_copy",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_session_save_reuses_just_written_verified_snapshot",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_storage_smoke.ProjectStorageTests.test_unlisted_or_unsafe_archive_entries_are_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.699
+    },
+    {
+      "suite": "project_bom_smoke",
+      "path": "tests/project_bom_smoke.py",
+      "area": "project_regression",
+      "status": "PASS",
+      "tests_run": 2,
+      "tests_passed": 2,
+      "log": "logs/project_bom_smoke.log",
+      "result": "suites/project_bom_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_bom_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_bom_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_bom_smoke.BOMTests.test_bom_balances_and_traceability",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_bom_smoke.BOMTests.test_export_package_and_formula_injection_guard",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.858
+    },
+    {
+      "suite": "project_service_smoke",
+      "path": "tests/project_service_smoke.py",
+      "area": "project_regression",
+      "status": "PASS",
+      "tests_run": 3,
+      "tests_passed": 3,
+      "log": "logs/project_service_smoke.log",
+      "result": "suites/project_service_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/project_service_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/project_service_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_project_service_smoke.ProjectServiceTests.test_duplicate_source_is_not_duplicated",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_service_smoke.ProjectServiceTests.test_failed_batch_keeps_existing_package_byte_identical",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_project_service_smoke.ProjectServiceTests.test_failed_batch_rolls_back_live_session",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.464
+    },
+    {
+      "suite": "unified_project_schema_u1_smoke",
+      "path": "tests/unified_project_schema_u1_smoke.py",
+      "area": "project_regression",
+      "status": "PASS",
+      "tests_run": 6,
+      "tests_passed": 6,
+      "log": "logs/unified_project_schema_u1_smoke.log",
+      "result": "suites/unified_project_schema_u1_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/unified_project_schema_u1_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/unified_project_schema_u1_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_frozen_m18_224_authority_data_survives_roundtrip",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_future_226_fails_closed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_github_25_migrates_without_part_hash_drift",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_global_schema_is_225",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_serialized_225_safety_defaults_remain_closed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_unified_project_schema_u1_smoke.UnifiedProjectSchemaU1Tests.test_viewer_declares_224_and_225_compatibility",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.348
+    },
+    {
+      "suite": "material_workbench_gate_smoke",
+      "path": "tests/material_workbench_gate_smoke.py",
+      "area": "workbench_release",
+      "status": "PASS",
+      "tests_run": 5,
+      "tests_passed": 5,
+      "log": "logs/material_workbench_gate_smoke.log",
+      "result": "suites/material_workbench_gate_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/material_workbench_gate_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_workbench_gate_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_conflicting_and_unknown_grades_block_workbench_review",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_entity_confidence_does_not_fake_profile_confidence",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_human_review_confirms_material_identity_and_provenance",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_material_edit_invalidates_old_field_confirmation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_workbench_gate_smoke.MaterialWorkbenchGateTests.test_missing_material_and_grade_block_review",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.7
+    },
+    {
+      "suite": "material_release_gate_smoke",
+      "path": "tests/material_release_gate_smoke.py",
+      "area": "workbench_release",
+      "status": "PASS",
+      "tests_run": 11,
+      "tests_passed": 11,
+      "log": "logs/material_release_gate_smoke.log",
+      "result": "suites/material_release_gate_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/material_release_gate_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_release_gate_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_current_fixture_passes_without_mutation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_explicit_review_status_overrides_legacy_confirmation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_nonfinite_and_out_of_range_confidences_fail_closed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_profile_aliases_do_not_create_false_conflicts",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_real_validation_issues_and_plain_blockers_are_enforced",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_release_module_is_native_lazy",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_stale_geometry_and_manufacturing_hashes",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_stale_identity_after_normalized_material_change",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_stale_workbench_material_is_blocked",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_unknown_catalog_material_cannot_be_approved_by_confidence",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_release_gate_smoke.MaterialReleaseGateSmoke.test_valid_grade_does_not_mask_conflicting_raw_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 2.754
+    },
+    {
+      "suite": "part_workbench_smoke",
+      "path": "tests/part_workbench_smoke.py",
+      "area": "workbench_release",
+      "status": "PASS",
+      "tests_run": 7,
+      "tests_passed": 7,
+      "log": "logs/part_workbench_smoke.log",
+      "result": "suites/part_workbench_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/part_workbench_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/part_workbench_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_analytical_arc_profile_and_round_bar_are_supported",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_left_handed_frame_and_source_mutation_are_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_negative_geometry_and_confidence_cases_remain_blocked",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_placement_is_identity_neutral_but_mirror_is_distinct",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_plate_revision_artifacts_undo_redo_and_save_reopen",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_schema_24_workbench_10_migrates_with_new_recognition_hash",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_part_workbench_smoke.PartWorkbenchTests.test_stateless_service_uses_the_same_persisted_contract",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 1.176
+    },
+    {
+      "suite": "production_export_negative_smoke",
+      "path": "tests/production_export_negative_smoke.py",
+      "area": "workbench_release",
+      "status": "PASS",
+      "tests_run": 1,
+      "tests_passed": 1,
+      "log": "logs/production_export_negative_smoke.log",
+      "result": "suites/production_export_negative_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/production_export_negative_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/production_export_negative_smoke.json",
+        "--entrypoint",
+        "run"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "legacy_entrypoint",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.462
+    },
+    {
+      "suite": "production_export_smoke",
+      "path": "tests/production_export_smoke.py",
+      "area": "workbench_release",
+      "status": "PASS",
+      "tests_run": 1,
+      "tests_passed": 1,
+      "log": "logs/production_export_smoke.log",
+      "result": "suites/production_export_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/production_export_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/production_export_smoke.json",
+        "--entrypoint",
+        "run"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "legacy_entrypoint",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.496
+    },
+    {
+      "suite": "manufacturing_interpreter_material_promotion_step_smoke",
+      "path": "tests/manufacturing_interpreter_material_promotion_step_smoke.py",
+      "area": "model_recognition",
+      "status": "PASS",
+      "tests_run": 5,
+      "tests_passed": 5,
+      "log": "logs/manufacturing_interpreter_material_promotion_step_smoke.log",
+      "result": "suites/manufacturing_interpreter_material_promotion_step_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/manufacturing_interpreter_material_promotion_step_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/manufacturing_interpreter_material_promotion_step_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "test_deferred_step_recognition_is_bounded_and_never_invents_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "test_fragmented_standard_section_can_match_but_custom_single_contour_cannot",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "test_project_part_link_distinguishes_source_confirmed_from_unresolved_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "test_promotion_blocks_unresolved_material_and_stale_source_without_mutation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "test_promotion_uses_supported_workbench_fields_and_preserves_mgi_pointer",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.844
+    },
+    {
+      "suite": "manufacturing_topology_safety_smoke",
+      "path": "tests/manufacturing_topology_safety_smoke.py",
+      "area": "model_recognition",
+      "status": "PASS",
+      "tests_run": 10,
+      "tests_passed": 10,
+      "log": "logs/manufacturing_topology_safety_smoke.log",
+      "result": "suites/manufacturing_topology_safety_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/manufacturing_topology_safety_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/manufacturing_topology_safety_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_custom_union_cannot_be_proven_by_bbox_and_area",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_invalid_observation_never_matches",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_known_rectangle_remains_recognized",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_missing_or_nonfinite_catalogue_area_never_matches",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_nonfinite_policy_cannot_allow_any_geometry",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.ProfileSafetySmoke.test_two_within_policy_candidates_remain_ambiguous_without_score_tie",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_all_low_coplanar_faces_selected_but_not_high_end",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_corner_radius_does_not_replace_section_dimensions",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_ellipse_is_not_round_bar",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_topology_safety_smoke.TopologySafetySmoke.test_opposite_equal_length_arcs_are_not_shared_seams",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.348
+    },
+    {
+      "suite": "manufacturing_material_evidence_safety_smoke",
+      "path": "tests/manufacturing_material_evidence_safety_smoke.py",
+      "area": "model_recognition",
+      "status": "PASS",
+      "tests_run": 20,
+      "tests_passed": 20,
+      "log": "logs/manufacturing_material_evidence_safety_smoke.log",
+      "result": "suites/manufacturing_material_evidence_safety_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/manufacturing_material_evidence_safety_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/manufacturing_material_evidence_safety_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.DeferredStepTransactionTests.test_applies_source_bound_profile_without_changing_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.DeferredStepTransactionTests.test_foreign_result_and_foreign_selection_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.DeferredStepTransactionTests.test_multi_part_source_is_blocked_not_guessed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.DeferredStepTransactionTests.test_part_changed_during_analysis_rejects_result",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.DeferredStepTransactionTests.test_preserves_confirmed_and_workbench_parts",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.DeferredStepTransactionTests.test_source_change_blocks_before_worker",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_cache_is_bound_to_part_and_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_conflicting_grade_blocks_but_catalog_alias_is_equivalent",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_conflicting_part_fields_block",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_descriptor_conflict_cannot_be_hidden_by_source_field",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_geometry_and_unknown_methods_never_confirm",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_ifc_material_and_type_entities_may_differ_from_product",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_low_invalid_and_missing_confidence_do_not_confirm",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_missing_location_or_user_identity_does_not_confirm",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_promotion_automatically_checks_current_geometry",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_promotion_rejects_stale_material_and_preserves_workbench",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_ready_label_cannot_replace_geometry_proof",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_rejected_promotion_never_undoes_an_existing_user_edit",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_request_rejects_foreign_material_source_hash",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_manufacturing_material_evidence_safety_smoke.MaterialAuthorityTests.test_stale_and_foreign_provenance_block",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.944
+    },
+    {
+      "suite": "conversion_material_defaults_smoke",
+      "path": "tests/conversion_material_defaults_smoke.py",
+      "area": "conversion_material_policy",
+      "status": "PASS",
+      "tests_run": 21,
+      "tests_passed": 21,
+      "log": "logs/conversion_material_defaults_smoke.log",
+      "result": "suites/conversion_material_defaults_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/conversion_material_defaults_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/conversion_material_defaults_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_cli_dispatch_does_not_invent_a_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_cli_material_is_empty_unless_explicitly_supplied",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_density_uses_catalog_material_and_correct_units",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_missing_authoritative_density_blocks",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_native_and_ui_sources_contain_no_silent_material_defaults",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_optional_unknown_material_never_becomes_steel",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_production_requires_known_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_service_dispatch_keeps_empty_material_and_reports_serializer_block",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_service_signatures_do_not_supply_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionMaterialDefaultsTests.test_source_metadata_wins_over_explicit_fallback",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionTransactionBoundaryTests.test_commit_failure_preserves_preexisting_output",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionTransactionBoundaryTests.test_failed_new_output_does_not_leave_a_production_file",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionTransactionBoundaryTests.test_failed_serializer_preserves_existing_output_and_cleans_stage",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionTransactionBoundaryTests.test_identical_source_symlink_and_hardlink_are_blocked_before_serializer",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionTransactionBoundaryTests.test_missing_staged_artifact_preserves_preexisting_output",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ConversionTransactionBoundaryTests.test_success_commits_expected_basename_and_returns_final_output",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ProfileDensityBoundaryTests.test_actual_zero_weight_profile_retains_unresolved_mass_after_catalogue_defaults",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ProfileDensityBoundaryTests.test_aluminium_kg_per_metre_uses_its_density_for_section_area",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ProfileDensityBoundaryTests.test_nonfinite_and_negative_weight_are_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ProfileDensityBoundaryTests.test_positive_weight_without_authoritative_density_blocks",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_conversion_material_defaults_smoke.ProfileDensityBoundaryTests.test_zero_weight_does_not_request_density_or_invent_weight_at_factory_boundary",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.949
+    },
+    {
+      "suite": "ifc_conversion_material_policy_smoke",
+      "path": "tests/ifc_conversion_material_policy_smoke.py",
+      "area": "conversion_material_policy",
+      "status": "PASS",
+      "tests_run": 12,
+      "tests_passed": 12,
+      "log": "logs/ifc_conversion_material_policy_smoke.log",
+      "result": "suites/ifc_conversion_material_policy_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/ifc_conversion_material_policy_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/ifc_conversion_material_policy_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_bare_step_without_material_skips_production_recognition",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_conflicting_source_payload_and_attached_nc1_block_before_geometry",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_explicit_fallback_only_fills_absent_source",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_external_ifc_without_material_blocks_before_geometry",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_missing_nc1_material_cannot_be_repaired_by_payload_without_rewrite",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_payload_material_has_priority_over_user_fallback",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_payload_validation_failure_preserves_existing_output",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_public_route_defaults_are_empty",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_source_material_is_preserved_ahead_of_user_fallback",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_step_payload_without_material_cannot_reach_conversion",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_unknown_and_missing_material_are_geometry_review_only",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_ifc_conversion_material_policy_smoke.IFCMaterialPolicySmoke.test_valid_material_payload_remains_lossless",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.676
+    },
+    {
+      "suite": "conversion_material_native_smoke",
+      "path": "tests/conversion_material_native_smoke.py",
+      "area": "conversion_material_policy",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/conversion_material_native_smoke.log",
+      "result": "suites/conversion_material_native_smoke.json",
+      "reason": "Missing or broken required imports: cadquery, OCP"
+    },
+    {
+      "suite": "material_review_logic_smoke",
+      "path": "tests/material_review_logic_smoke.py",
+      "area": "material_review",
+      "status": "PASS",
+      "tests_run": 15,
+      "tests_passed": 15,
+      "log": "logs/material_review_logic_smoke.log",
+      "result": "suites/material_review_logic_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/material_review_logic_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_review_logic_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_bulk_scope_is_exact_and_confirmed_parts_are_fail_closed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_bulk_transaction_rolls_back_all_parts_on_save_failure",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_candidates_separate_catalog_match_from_source_confidence",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_classification_snapshot_restores_undo_metadata",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_confirmation_failure_rolls_back_workbench_and_other_part_changes",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_confirmation_survives_save_reopen_then_undo_redo",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_fingerprint_detects_non_material_evidence_changes",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_generic_entity_confidence_is_never_used_as_material_evidence",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_invalid_material_cannot_partially_start_workbench",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_real_session_confirmation_undo_redo_keeps_material_and_grade_atomic",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_real_session_rejection_persists_reason_without_overwriting_source",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_review_reasons_detect_conflicts_and_missing_confirmation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_selection_ids_supports_snapshot_and_mapping_shapes",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_step_worker_rejects_wrong_format_and_read_only_session",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_review_logic_smoke.MaterialReviewLogicTests.test_step_worker_snapshot_is_scoped_detached_and_preserves_live_references",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 1.237
+    },
+    {
+      "suite": "source_material_evidence_smoke",
+      "path": "tests/source_material_evidence_smoke.py",
+      "area": "pdf_dxf_evidence",
+      "status": "PASS",
+      "tests_run": 16,
+      "tests_passed": 16,
+      "log": "logs/source_material_evidence_smoke.log",
+      "result": "suites/source_material_evidence_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/source_material_evidence_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/source_material_evidence_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_aliases_merge_and_conflicting_materials_clear_selection",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_catalog_coverage_requires_confirmation_and_preserves_location",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_confirmation_requires_known_material_and_reviewer",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_dimension_like_number_in_profile_row_is_not_fastener_grade",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_explicit_labels_cover_multiple_families",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_geometry_and_colour_are_prohibited_evidence",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_human_confirmation_preserves_conflict_evidence_and_reviewer",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_profile_row_keeps_full_unknown_grade_without_prefix_guess",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialCandidateTests.test_unknown_value_and_missing_evidence_have_no_default",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_auxiliary_evidence_survives_real_project_save_reopen",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_binary_and_malformed_dxf_fail_closed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_dxf_attdef_prompt_is_not_part_of_default_value",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_geometry_only_dxf_has_no_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_real_ascii_dxf_attribute_and_layer_candidates_with_hash",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_real_ascii_dxf_conflict_does_not_choose_first_grade",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_source_material_evidence_smoke.SourceMaterialDocumentTests.test_real_pdf_text_is_extracted_with_page_bbox_and_conflict",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 1.04
+    },
+    {
+      "suite": "pdf_material_candidate_smoke",
+      "path": "tests/pdf_material_candidate_smoke.py",
+      "area": "pdf_dxf_evidence",
+      "status": "PASS",
+      "tests_run": 8,
+      "tests_passed": 8,
+      "log": "logs/pdf_material_candidate_smoke.log",
+      "result": "suites/pdf_material_candidate_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/pdf_material_candidate_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/pdf_material_candidate_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_answering_question_does_not_bypass_explicit_grade_confirmation",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_bom_row_no_longer_auto_accepts_material",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_canonical_step_payload_material_is_preserved_without_override",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_conflicting_materials_clear_header_and_block",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_material_correction_resolves_conflict_with_human_audit",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_multifamily_material_text_is_a_review_candidate",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_pdf_model_routes_have_no_implicit_steel_grade",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_pdf_material_candidate_smoke.ExternalPDFMaterialIntegrationTests.test_unknown_grade_is_not_partially_read_as_known_steel",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 1.167
+    },
+    {
+      "suite": "pdf_model_material_gate_native_smoke",
+      "path": "tests/pdf_model_material_gate_native_smoke.py",
+      "area": "pdf_dxf_evidence",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/pdf_model_material_gate_native_smoke.log",
+      "result": "suites/pdf_model_material_gate_native_smoke.json",
+      "reason": "Missing or broken required imports: cadquery, OCP"
+    },
+    {
+      "suite": "material_review_ui_smoke",
+      "path": "tests/material_review_ui_smoke.py",
+      "area": "material_review",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/material_review_ui_smoke.log",
+      "result": "suites/material_review_ui_smoke.json",
+      "reason": "Missing or broken required imports: PySide6.QtWidgets"
+    },
+    {
+      "suite": "viewer_v9_workbench_persistence_smoke",
+      "path": "tests/viewer_v9_workbench_persistence_smoke.py",
+      "area": "material_review",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/viewer_v9_workbench_persistence_smoke.log",
+      "result": "suites/viewer_v9_workbench_persistence_smoke.json",
+      "reason": "Missing or broken required imports: cadquery, OCP"
+    },
+    {
+      "suite": "manufacturing_interpreter_phase1_smoke",
+      "path": "tests/manufacturing_interpreter_phase1_smoke.py",
+      "area": "model_recognition",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/manufacturing_interpreter_phase1_smoke.log",
+      "result": "suites/manufacturing_interpreter_phase1_smoke.json",
+      "reason": "Missing or broken required imports: cadquery, OCP"
+    },
+    {
+      "suite": "part_workbench_roundtrip_smoke",
+      "path": "tests/part_workbench_roundtrip_smoke.py",
+      "area": "workbench_release",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/part_workbench_roundtrip_smoke.log",
+      "result": "suites/part_workbench_roundtrip_smoke.json",
+      "reason": "Missing or broken required imports: cadquery, OCP, ifcopenshell"
+    },
+    {
+      "suite": "production_editor_smoke",
+      "path": "tests/production_editor_smoke.py",
+      "area": "workbench_release",
+      "status": "BLOCKED",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "log": "logs/production_editor_smoke.log",
+      "result": "suites/production_editor_smoke.json",
+      "reason": "Missing or broken required imports: cadquery, OCP"
+    },
+    {
+      "suite": "production_normalization_smoke",
+      "path": "tests/production_normalization_smoke.py",
+      "area": "workbench_release",
+      "status": "INCOMPLETE",
+      "tests_run": 5,
+      "tests_passed": 3,
+      "log": "logs/production_normalization_smoke.log",
+      "result": "suites/production_normalization_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/production_normalization_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/production_normalization_smoke.json"
+      ],
+      "returncode": 1,
+      "records": [
+        {
+          "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_boolean_geometry_stays_review_required",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_exact_straight_profile_gets_editable_workbench_but_not_false_release",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_native_conflicting_source_metrics_cannot_be_validated",
+          "status": "SKIPPED",
+          "started": true,
+          "details": [
+            "Native CAD runtime (cadquery) is not installed"
+          ]
+        },
+        {
+          "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_native_matching_source_metrics_remain_pending_human_review",
+          "status": "SKIPPED",
+          "started": true,
+          "details": [
+            "Native CAD runtime (cadquery) is not installed"
+          ]
+        },
+        {
+          "test": "cws_acceptance_production_normalization_smoke.ProductionNormalizationSmoke.test_profile_family_mapping",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 2,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 0.55
+    },
+    {
+      "suite": "production_normalization_safety_smoke",
+      "path": "tests/production_normalization_safety_smoke.py",
+      "area": "workbench_release",
+      "status": "PASS",
+      "tests_run": 9,
+      "tests_passed": 9,
+      "log": "logs/production_normalization_safety_smoke.log",
+      "result": "suites/production_normalization_safety_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/production_normalization_safety_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/production_normalization_safety_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_automatic_command_history_remains_undoable_without_forged_signature",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_conflicting_material_fields_never_mask_each_other",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_every_semantic_flag_is_explicit_true",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_failed_workbench_transaction_leaves_part_and_project_unchanged",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_machine_success_never_produces_a_human_signature",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_malformed_primitive_counts_and_nonfinite_lengths_are_rejected",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_missing_native_dependency_commits_only_a_blocked_editable_proposal",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_missing_source_preservation_or_identity_is_not_exact",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_production_normalization_safety_smoke.ProductionNormalizationSafetySmoke.test_rebuild_failure_cannot_mutate_the_proposal_or_source_values",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 1.221
+    },
+    {
+      "suite": "material_model_acceptance_runner_smoke",
+      "path": "tests/material_model_acceptance_runner_smoke.py",
+      "area": "acceptance_integrity",
+      "status": "PASS",
+      "tests_run": 13,
+      "tests_passed": 13,
+      "log": "logs/material_model_acceptance_runner_smoke.log",
+      "result": "suites/material_model_acceptance_runner_smoke.json",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "/workspace/scratch/d438541b3951/Convertor/tools/run_material_model_recognition_acceptance.py",
+        "--child",
+        "/workspace/scratch/d438541b3951/Convertor/tests/material_model_acceptance_runner_smoke.py",
+        "--child-result",
+        "/workspace/scratch/d438541b3951/Convertor/validation/material_model_recognition/suites/material_model_acceptance_runner_smoke.json"
+      ],
+      "returncode": 0,
+      "records": [
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_dependency_probe_imports_module_instead_of_only_finding_spec",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_exit_zero_with_skipped_test_is_never_pass",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_expected_failure_is_not_acceptance",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_failed_subtests_do_not_inflate_logical_test_count",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_full_manifest_is_percentage_denominator_in_partial_run",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_legacy_entrypoint_return_code_is_checked",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_manifest_has_unique_suites_and_every_dependency_is_probed",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_missing_native_dependency_is_blocked_with_logs",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_source_fingerprint_includes_untracked_source_and_ignores_evidence",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_stale_pass_file_is_not_reused_when_child_emits_no_report",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_strict_native_rejects_subset_without_starting_tests",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_unittest_and_plain_functions_have_exact_logical_counts",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        },
+        {
+          "test": "cws_acceptance_material_model_acceptance_runner_smoke.MaterialModelAcceptanceRunnerTests.test_zero_tests_and_system_exit_zero_during_import_are_errors",
+          "status": "PASS",
+          "started": true,
+          "details": []
+        }
+      ],
+      "skipped_events": 0,
+      "expected_failure_events": 0,
+      "failure_events": 0,
+      "error_events": 0,
+      "duration_seconds": 2.488
+    }
+  ]
+}

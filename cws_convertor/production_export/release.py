@@ -11,10 +11,9 @@ import tempfile
 import warnings
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 from uuid import uuid4
 
-import cadquery as cq
 import fitz
 from pypdf import PdfReader, PdfWriter
 from reportlab.graphics import renderPDF
@@ -26,15 +25,15 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 from canonical_model import CanonicalPart, embed_part_in_step
-from ifc_native import _escape_ifc, _guid22, write_native_ifc
 
 from cws_convertor.bom.engine import build_bom_snapshot
 from cws_convertor.bom.export import export_bom_package, safe_spreadsheet_value
 from cws_convertor.product import APP_NAME, APP_VERSION
-from cws_convertor.project.canonical_rebuild import rebuild_and_compare
 from cws_convertor.project.model import EntityCategory, Part, ProjectModel, ProjectValidationError
-from cws_convertor.project.roundtrip import canonical_part_from_workbench, validate_roundtrips
 from cws_convertor.project.workbench import roundtrip_is_current
+
+if TYPE_CHECKING:
+    import cadquery as cq
 
 from .artifacts import media_type
 from .engine import ExportRequest, ProductionExportEngine, SUPPORTED_FORMATS
@@ -48,10 +47,12 @@ from .models import (
     GateMessage,
 )
 from .pdf_report import create_review_pdf
+from .readiness import normalization_conflicts, project_fingerprint_conflicts
 from .utils import (
     atomic_directory,
     atomic_write,
     canonical_json_bytes,
+    finite_number,
     safe_filename,
     safe_relative_path,
     sha256_bytes,
@@ -536,6 +537,7 @@ def _enrich_assembly_ifc(path: Path, mark: str, manifest: dict[str, Any]) -> Non
     """Add deterministic IfcElementAssembly semantics to the Part 21 file."""
 
     import re
+    from ifc_native import _escape_ifc, _guid22
 
     source = path.read_text(encoding="utf-8")
     element_ids = [
@@ -633,14 +635,80 @@ class ProjectProductionExportEngine:
     def _release_blockers(part: Part) -> list[GateMessage]:
         result: list[GateMessage] = []
         revision = dict(part.workbench.get("current_revision") or {})
+        if part.category != EntityCategory.MAKE_PART.value:
+            result.append(GateMessage(
+                "CWS-REL-006",
+                "Alleen een bevestigd maakdeel kan worden vrijgegeven",
+                field="category",
+            ))
+        if part.classification_status != "confirmed":
+            result.append(GateMessage(
+                "CWS-REL-007",
+                "Onderdeelclassificatie is niet formeel bevestigd",
+                field="classification_status",
+            ))
+        if not part.normalized_material.strip():
+            result.append(GateMessage(
+                "CWS-REL-008",
+                "Genormaliseerd materiaal ontbreekt",
+                field="normalized_material",
+            ))
+        material_confidence = finite_number(part.material_confidence)
+        if material_confidence is None or not 0.95 <= material_confidence <= 1.0:
+            result.append(GateMessage(
+                "CWS-REL-009",
+                "Materiaalconfidence is lager dan 95%",
+                field="material_confidence",
+                evidence={"confidence": material_confidence},
+            ))
+        if not part.normalized_profile.strip():
+            result.append(GateMessage(
+                "CWS-REL-011",
+                "Genormaliseerd profiel of plaatformaat ontbreekt",
+                field="normalized_profile",
+            ))
+        profile_confidence = finite_number(part.profile_confidence)
+        if profile_confidence is None or not 0.95 <= profile_confidence <= 1.0:
+            result.append(GateMessage(
+                "CWS-REL-012",
+                "Profielconfidence is lager dan 95%",
+                field="profile_confidence",
+                evidence={"confidence": profile_confidence},
+            ))
+        if not part.production_identity_hash:
+            result.append(GateMessage(
+                "CWS-REL-013",
+                "Bevestigde productie-identiteit ontbreekt",
+                field="production_identity_hash",
+            ))
+        for conflict in normalization_conflicts(part):
+            result.append(GateMessage(
+                "CWS-REL-014", "Ruwe en genormaliseerde productiewaarden spreken elkaar tegen",
+                field=conflict["field"], evidence=conflict,
+            ))
+        fingerprints = project_fingerprint_conflicts(part)
+        if fingerprints:
+            result.append(GateMessage(
+                "CWS-REL-015", "Productie-identiteit of geometriehash is niet actueel",
+                field="production_identity_hash", evidence={"conflicts": fingerprints},
+            ))
+        if part.normalized_material:
+            from material_database import MaterialDatabase
+
+            if not MaterialDatabase().resolve(part.normalized_material).resolved:
+                result.append(GateMessage(
+                    "CWS-REL-016", "Materiaal is niet exact herleidbaar tot de materiaalcatalogus",
+                    field="normalized_material",
+                ))
         if not part.workbench:
             result.append(GateMessage("CWS-REL-001", "Part Workbench ontbreekt", field="workbench"))
         if revision.get("review_status") != "released":
             result.append(GateMessage("CWS-REL-002", "Onderdeel is niet vrijgegeven", field="review_status"))
         if not roundtrip_is_current(part, revision):
             result.append(GateMessage("CWS-REL-003", "NC1/STEP/IFC/PDF-roundtripbewijs is niet actueel", field="roundtrip_validation"))
-        for issue in part.blocking_issues():
-            result.append(GateMessage(issue.code, issue.message, field=issue.field_path))
+        for issue in part.validation_issues:
+            if not issue.resolved and (issue.blocking or issue.severity.lower() in {"error", "critical", "blocker"}):
+                result.append(GateMessage(issue.code, issue.message, field=issue.field_path))
         return result
 
     def _blocked_item(
@@ -700,6 +768,9 @@ class ProjectProductionExportEngine:
         blockers = self._release_blockers(part)
         if blockers:
             return self._blocked_item(project, part, root, request, formats, blockers), None, None
+        from cws_convertor.project.canonical_rebuild import rebuild_and_compare
+        from cws_convertor.project.roundtrip import canonical_part_from_workbench, validate_roundtrips
+
         rebuild = rebuild_and_compare(part)
         stored_rebuild = dict(part.workbench.get("canonical_rebuild") or {})
         stored_report = dict(stored_rebuild.get("report") or {})
@@ -920,6 +991,9 @@ class ProjectProductionExportEngine:
                 continue
 
             part_ids = selected_part_ids
+            import cadquery as cq
+            from ifc_native import write_native_ifc
+
             transformed: list[tuple[str, cq.Shape]] = []
             for part in parts:
                 matrix = cq.Matrix(part.global_placement.matrix[:3])
