@@ -38,13 +38,13 @@ jobs:
           retention-days: 14
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-      - name: Prepare offline Linux UI development dependencies
+          python-version: '3.13'
+      - name: Prepare exact native IFC development dependency
         run: |
-          python -m pip download --only-binary=:all: --dest build/continuous-wheels PySide6==6.9.2 ifcopenshell==0.8.5
+          python -m pip download --no-deps --only-binary=:all: --dest build/continuous-wheels ifcopenshell==0.8.5
       - uses: actions/upload-artifact@v4
         with:
-          name: CWS_Continuous_Linux_UI_Wheels
+          name: CWS_Continuous_Linux_Python313_IFC
           path: build/continuous-wheels/*
           if-no-files-found: error
           retention-days: 7
