@@ -1,0 +1,27 @@
+name: Native display test dependency
+on:
+  push:
+    branches: [agent/cws-continuous-integration-20260908]
+    paths: ['.github/workflows/continuous-display-runtime.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download distribution X11 cursor library
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p display-library
+          cd display-library
+          apt-get download libxcb-cursor0
+          for package in *.deb; do dpkg-deb -x "$package" extracted; done
+          find extracted -type f -exec sha256sum {} \; > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Native_X11_Cursor_Library
+          path: display-library/**
+          if-no-files-found: error
+          retention-days: 7
