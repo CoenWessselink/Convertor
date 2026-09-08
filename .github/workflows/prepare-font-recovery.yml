@@ -1,0 +1,59 @@
+name: Prepare verified UI font recovery
+on:
+  push:
+    branches: [agent/cws-font-recovery-preparation-20260908]
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Reproduce reviewed UI source bytes
+        shell: python
+        run: |
+          import base64, hashlib, json, pathlib, subprocess
+          root=pathlib.Path.cwd(); objects=[]
+          def git(*args): return subprocess.check_output(['git',*args])
+          def edit(path,pairs,expected):
+              text=git('show','HEAD:'+path).decode('utf-8')
+              for old,new in pairs:
+                  if text.count(old)!=1: raise RuntimeError('Ambiguous source edit: '+path)
+                  text=text.replace(old,new)
+              data=text.encode('utf-8'); compile(data,path,'exec')
+              sha=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+              if sha!=expected: raise RuntimeError('Reviewed output mismatch: '+path+' '+sha)
+              objects.append({'path':path,'sha':sha,'content':base64.b64encode(data).decode('ascii')})
+          old='    application.setStyleSheet(V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS)'
+          new='    from ..ui_fonts import ensure_readable_ui_font\n\n    family = ensure_readable_ui_font()\n    sheet = V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS\n    sheet = sheet.replace("font-family: \'Bahnschrift\', \'Segoe UI Variable\', \'Segoe UI\';",\n                          "font-family: \'" + family.replace("\'", "\\\\\'") + "\';")\n    application.setStyleSheet(sheet)\n    application.setProperty("cws_font_family", family)'
+          edit('cws_convertor/ui_qt/design_system/stylesheet.py',[(old,new)],'2193016d569cff0da37423c96ae34a0b3dbd42db')
+          edit('CWS_Convertor_App.py',[
+              ('    gui_details: dict[str, Any] = {','    from cws_convertor.ui_qt.ui_fonts import verify_widget_text_fonts\n    readability = verify_widget_text_fonts(window)\n    gui_details: dict[str, Any] = {'),
+              ('        "tab_count": window.tabs.count(),','        "tab_count": window.tabs.count(),\n        "text_readability": readability,')
+          ],'58095c0550c67fccf98e8f64ac9a5d0d9f79f531')
+          edit('tools/run_material_model_recognition_acceptance.py',[
+              ('    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),','    SuiteSpec("tests/ui_font_readability_smoke.py", "ui_readability", ("PySide6.QtWidgets",)),\n    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),')
+          ],'877e88ecb1068a855e806131e04364dbc4144a9a')
+          out=root/'build/font-recovery';out.mkdir(parents=True,exist_ok=True)
+          (out/'objects.json').write_text(json.dumps({'parent':git('rev-parse','HEAD').decode().strip(),'objects':objects}),encoding='utf-8')
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const data=JSON.parse(fs.readFileSync('build/font-recovery/objects.json','utf8'));
+            if(data.parent!==context.sha) throw new Error('Parent mismatch');
+            for(const object of data.objects){
+              const r=await github.rest.git.createBlob({owner:context.repo.owner,repo:context.repo.repo,encoding:'base64',content:object.content});
+              if(r.data.sha!==object.sha) throw new Error('Blob identity mismatch');
+              delete object.content;
+            }
+            core.info(JSON.stringify(data));
+            fs.writeFileSync('build/font-recovery/VERIFIED_FILES.json',JSON.stringify(data,null,2));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_UI_Font_Recovery_${{ github.sha }}
+          path: build/font-recovery/VERIFIED_FILES.json
+          retention-days: 7
