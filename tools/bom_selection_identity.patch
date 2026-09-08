@@ -1,0 +1,190 @@
+--- a/cws_convertor/ui_qt/bom_workspace.py
++++ b/cws_convertor/ui_qt/bom_workspace.py
+@@ -427,7 +427,8 @@
+             self._workspace: Any | None = None
+             self._selection: Any | None = None
+             self._read_model: BOMWorkspaceReadModel | None = None
+-            self._display_rows: dict[int, BOMWorkspaceRow] = {}
++            # IDs belong to the canonical snapshot; table row positions do not.
++            self._rows_by_group_id: dict[str, BOMWorkspaceRow] = {}
+             self._visible_rows: tuple[BOMWorkspaceRow, ...] = ()
+             self._syncing = False
+             self._allow_detach = allow_detach
+@@ -440,7 +441,6 @@
+             self._revision_statuses: dict[str, str] = {}
+             self._revision_deltas: dict[str, Any] = {}
+             self._checked_group_ids: set[str] = set()
+-            self._group_header_rows: dict[int, tuple[BOMWorkspaceRow, ...]] = {}
+             self._main_viewer_registered: Any | None = None
+             self._preflight_partition_mode = "eligible"
+             self._restored_phase = ""
+@@ -945,8 +945,7 @@
+             self._syncing = True
+             self.table.setSortingEnabled(False)
+             self.table.setRowCount(0)
+-            self._display_rows.clear()
+-            self._group_header_rows.clear()
++            self._rows_by_group_id.clear()
+             try:
+                 if self._workspace is None:
+                     self._read_model = None
+@@ -1008,11 +1007,17 @@
+                         self.table.setItem(table_row, 1, header_item)
+                         self.table.setItem(table_row, 6, QtWidgets.QTableWidgetItem(_number(sum(row.quantity for row in group_rows), 0)))
+                         self.table.setItem(table_row, 7, QtWidgets.QTableWidgetItem(_number(sum(row.total_mass_kg for row in group_rows))))
+-                        self._group_header_rows[table_row] = group_rows
++                        anchor = QtWidgets.QTableWidgetItem("")
++                        anchor.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable)
++                        anchor.setData(
++                            QtCore.Qt.ItemDataRole.UserRole + 2,
++                            [row.group_id for row in group_rows],
++                        )
++                        self.table.setItem(table_row, 0, anchor)
+                         table_row += 1
+                     for row in group_rows:
+                         self.table.insertRow(table_row)
+-                        self._display_rows[table_row] = row
++                        self._rows_by_group_id[row.group_id] = row
+                         values = (
+                             "",
+                             row.mark or row.group_id,
+@@ -1154,6 +1159,7 @@
+ 
+         def _select_rows(self, rows: Iterable[BOMWorkspaceRow]) -> None:
+             requested = {row.group_id for row in rows}
++            was_syncing = self._syncing
+             self._syncing = True
+             try:
+                 self.table.clearSelection()
+@@ -1167,7 +1173,7 @@
+                         if item is not None:
+                             self.table.selectionModel().select(self.table.indexFromItem(item), flags)
+             finally:
+-                self._syncing = False
++                self._syncing = was_syncing
+             self._sync_checkboxes(self._selected_rows())
+             self._table_selection_changed()
+ 
+@@ -1396,20 +1402,50 @@
+             self._hub_state.delete_selection(selection_id)
+             self._mark_project_dirty()
+ 
++        def _row_at(self, table_row: int) -> BOMWorkspaceRow | None:
++            """Resolve the current item by ID, never by a cached row number."""
++            anchor = self.table.item(table_row, 0)
++            if anchor is None:
++                return None
++            group_id = anchor.data(QtCore.Qt.ItemDataRole.UserRole)
++            return self._rows_by_group_id.get(group_id) if isinstance(group_id, str) else None
++
++        @property
++        def _display_rows(self) -> dict[int, BOMWorkspaceRow]:
++            """Current table positions for controls/capture clients; not stored."""
++            return {
++                index: row for index in range(self.table.rowCount())
++                if (row := self._row_at(index)) is not None
++            }
++
++        def _rows_at(self, table_row: int) -> tuple[BOMWorkspaceRow, ...]:
++            row = self._row_at(table_row)
++            if row is not None:
++                return (row,)
++            anchor = self.table.item(table_row, 0)
++            if anchor is None or anchor.data(QtCore.Qt.ItemDataRole.UserRole) is not None:
++                return ()
++            group_ids = anchor.data(QtCore.Qt.ItemDataRole.UserRole + 2)
++            if not isinstance(group_ids, (list, tuple)) or not all(
++                isinstance(group_id, str) and group_id in self._rows_by_group_id
++                for group_id in group_ids
++            ):
++                return ()
++            return tuple(self._rows_by_group_id[group_id] for group_id in group_ids)
++
+         def _selected_rows(self) -> tuple[BOMWorkspaceRow, ...]:
+-            rows = []
+-            for index in self.table.selectionModel().selectedRows() if self.table.selectionModel() else ():
+-                row = self._display_rows.get(index.row())
+-                candidates = (row,) if row is not None else self._group_header_rows.get(index.row(), ())
+-                for candidate in candidates:
+-                    if candidate is not None and candidate not in rows:
+-                        rows.append(candidate)
+-            return tuple(rows)
++            rows: dict[str, BOMWorkspaceRow] = {}
++            selection = self.table.selectionModel()
++            indexes = selection.selectedRows() if selection is not None else ()
++            for index in sorted(indexes, key=lambda item: item.row()):
++                for row in self._rows_at(index.row()):
++                    rows.setdefault(row.group_id, row)
++            return tuple(rows.values())
+ 
+         def _checkbox_changed(self, item: Any) -> None:
+             if self._syncing or item.column() != 0:
+                 return
+-            row = self._display_rows.get(item.row())
++            row = self._row_at(item.row())
+             if row is None:
+                 return
+             checked = item.checkState() == QtCore.Qt.CheckState.Checked
+@@ -1427,6 +1463,7 @@
+         def _sync_checkboxes(self, rows: Iterable[BOMWorkspaceRow]) -> None:
+             selected = {row.group_id for row in rows}
+             self._checked_group_ids = selected
++            was_syncing = self._syncing
+             self._syncing = True
+             try:
+                 for table_row, row in self._display_rows.items():
+@@ -1437,15 +1474,16 @@
+                             else QtCore.Qt.CheckState.Unchecked
+                         )
+             finally:
+-                self._syncing = False
++                self._syncing = was_syncing
+ 
+         def _select_context_rows(
+             self, *, preferred_groups: set[str] | None = None
+         ) -> None:
+-            if self._workspace is None or not self._display_rows:
++            if self._workspace is None or not self._rows_by_group_id:
+                 return
+             selected_ids = set(tuple(getattr(self._selection, "entity_ids", ()) or ()))
+             groups = preferred_groups or set()
++            was_syncing = self._syncing
+             self._syncing = True
+             try:
+                 self.table.clearSelection()
+@@ -1461,7 +1499,8 @@
+                                 self.table.indexFromItem(item), flags
+                             )
+             finally:
+-                self._syncing = False
++                self._syncing = was_syncing
++            self._sync_checkboxes(self._selected_rows())
+             self._update_actions()
+ 
+         def _table_selection_changed(self) -> None:
+@@ -1727,6 +1766,7 @@
+             self.detail_labels["history"].setText("\n".join(events) or "Nog geen actiehistorie voor deze scope.")
+ 
+         def _select_visible(self) -> None:
++            was_syncing = self._syncing
+             self._syncing = True
+             try:
+                 self.table.clearSelection()
+@@ -1741,7 +1781,7 @@
+                             self.table.indexFromItem(item), flags
+                         )
+             finally:
+-                self._syncing = False
++                self._syncing = was_syncing
+             self._table_selection_changed()
+ 
+         def _clear_selection(self) -> None:
+@@ -2732,7 +2772,7 @@
+ 
+         def _show_table_menu(self, position: QtCore.QPoint) -> None:
+             item = self.table.itemAt(position)
+-            row = self._display_rows.get(item.row()) if item is not None else None
++            row = self._row_at(item.row()) if item is not None else None
+             if row is None:
+                 return
+             if not self.table.selectionModel().isRowSelected(item.row(), QtCore.QModelIndex()):

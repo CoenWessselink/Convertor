@@ -1,0 +1,130 @@
+name: Verify BOM sorted-selection repair
+
+on:
+  push:
+    branches: [agent/cws-recognition-bom-recovery-20260908]
+    paths:
+      - 'tools/bom_selection_identity.patch'
+      - 'tools/bom_selection_regression.py'
+      - '.github/workflows/prepare-bom-selection-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify-selection:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      QT_QPA_PLATFORM: offscreen
+      CWS_HEADLESS_GUI_SMOKE: '1'
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-runtime.lock.txt
+      - name: Install exact native runtime
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-runtime.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Reproduce failure then test reviewed repair
+        shell: python
+        run: |
+          import base64, hashlib, json, os, pathlib, shutil, subprocess, sys
+          root = pathlib.Path.cwd()
+          out = root / 'build/bom_selection_prepare'
+          out.mkdir(parents=True, exist_ok=True)
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          def blob(data):
+              return hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+          expected = {'cws_convertor/ui_qt/bom_workspace.py': '15846b1b44a47fd32b3557a9b0e175e92ce7bf61',
+                      'tools/run_material_model_recognition_acceptance.py': 'c99bc51e51fb8fff1e24c2d872375c7bdf145f72'}
+          git('config', 'core.autocrlf', 'false')
+          for name, sha in expected.items():
+              data = git('show', 'HEAD:' + name)
+              if blob(data) != sha:
+                  raise RuntimeError('Concurrent source change: ' + name)
+              (root / name).write_bytes(data)
+          patch_data = git('show', 'HEAD:tools/bom_selection_identity.patch')
+          (root / 'tools/bom_selection_identity.patch').write_bytes(patch_data)
+          test_data = git('show', 'HEAD:tools/bom_selection_regression.py')
+          (root / 'tools/bom_selection_regression.py').write_bytes(test_data)
+          runner = 'tools/run_material_model_recognition_acceptance.py'
+          def run_test(label, path):
+              result = out / (label + '.json')
+              env = dict(os.environ, CWS_RECOGNITION_EVIDENCE_DIR=str(out / label))
+              with (out / (label + '.log')).open('w', encoding='utf-8') as stream:
+                  process = subprocess.run([sys.executable, runner, '--child', path,
+                      '--child-result', str(result)], env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=240)
+              report = json.loads(result.read_text(encoding='utf-8'))
+              print(label, json.dumps({key: report.get(key) for key in ('status', 'tests_run', 'tests_passed', 'skipped_events')}))
+              return process.returncode, report
+          code, baseline = run_test('before', 'tools/bom_selection_regression.py')
+          failure_names = {record['test'].split('.')[-1] for record in baseline['records'] if record['status'] == 'FAIL'}
+          if code == 0 or not {'test_visible_position_map_follows_both_sort_directions',
+                              'test_click_after_sort_targets_the_visible_part'} <= failure_names:
+              raise RuntimeError('Expected identity bug was not reproduced')
+          git('apply', '--check', 'tools/bom_selection_identity.patch')
+          git('apply', 'tools/bom_selection_identity.patch')
+          if blob((root / 'cws_convertor/ui_qt/bom_workspace.py').read_bytes()) != '88d96b6e9ce8131aed6785a41d9a58ce1d80d969':
+              raise RuntimeError('Repaired source fingerprint differs')
+          target = root / 'tests/bom_selection_identity_smoke.py'
+          target.write_bytes(test_data)
+          code, after = run_test('after', str(target))
+          if code or after['status'] != 'PASS' or after['tests_run'] != 15 or after['tests_passed'] != 15:
+              raise RuntimeError('Sorted selection regression remains failing or incomplete')
+          manifest = (root / runner).read_text(encoding='utf-8')
+          marker = '    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),'
+          if manifest.count(marker) != 1:
+              raise RuntimeError('Acceptance manifest changed')
+          manifest = manifest.replace(marker, '    SuiteSpec("tests/bom_selection_identity_smoke.py", "bom_selection_identity", ("PySide6.QtWidgets",)),\n' + marker)
+          (root / runner).write_bytes(manifest.encode('utf-8'))
+          paths = [*expected, 'tests/bom_selection_identity_smoke.py']
+          entries, blobs = [], []
+          for name in paths:
+              data = (root / name).read_bytes()
+              compile(data, name, 'exec')
+              sha = blob(data)
+              entries.append({'path': name, 'mode': '100644', 'type': 'blob', 'sha': sha})
+              blobs.append({'sha': sha, 'content': base64.b64encode(data).decode('ascii')})
+          prepared = {'parent': git('rev-parse', 'HEAD').decode().strip(),
+                      'base_tree': git('rev-parse', 'HEAD^{tree}').decode().strip(),
+                      'entries': entries, 'blobs': blobs, 'scope': 'targeted Windows tests; not full-source acceptance'}
+          (out / 'PREPARED.json').write_text(json.dumps(prepared), encoding='utf-8')
+          shutil.copyfile(root / 'tools/bom_selection_identity.patch', out / 'reviewed.patch')
+      - name: Store verified file objects only, without changing branch refs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('build/bom_selection_prepare/PREPARED.json', 'utf8'));
+            if (data.parent !== context.sha) throw new Error('Parent mismatch');
+            for (const blob of data.blobs) {
+              const result = await github.rest.git.createBlob({owner: context.repo.owner, repo: context.repo.repo, content: blob.content, encoding: 'base64'});
+              if (result.data.sha !== blob.sha) throw new Error('Blob identity mismatch');
+            }
+            delete data.blobs;
+            data.run_id = context.runId;
+            fs.writeFileSync('build/bom_selection_prepare/VERIFIED_FILES.json', JSON.stringify(data, null, 2));
+            core.info(JSON.stringify(data));
+      - name: Upload regression evidence even after failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_BOM_Selection_Repair_${{ github.sha }}
+          path: |
+            build/bom_selection_prepare/**
+            !build/bom_selection_prepare/PREPARED.json
+          if-no-files-found: error
+          retention-days: 14
