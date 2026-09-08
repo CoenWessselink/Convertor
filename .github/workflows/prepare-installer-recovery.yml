@@ -1,0 +1,81 @@
+name: Prepare installer recovery sources
+on:
+  push:
+    branches: [agent/cws-installer-recovery-20260908]
+    paths: ['.github/workflows/prepare-installer-recovery.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Archive exact source
+        run: |
+          mkdir -p build/installer-prepare
+          git archive --format=zip --output=build/installer-prepare/source.zip HEAD
+      - name: Prepare reviewed source changes without committing
+        shell: python
+        run: |
+          import base64, hashlib, json, pathlib, subprocess
+          root=pathlib.Path.cwd()
+          def git(*args): return subprocess.check_output(['git', *args])
+          changes=[]
+          def replace(path, pairs, expected=None):
+              data=git('show','HEAD:'+path)
+              before=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+              if expected and before!=expected: raise RuntimeError('Source changed: '+path)
+              text=data.decode('utf-8')
+              for old,new in pairs:
+                  if text.count(old)!=1: raise RuntimeError('Ambiguous patch: '+path+' '+repr(old))
+                  text=text.replace(old,new)
+              data=text.encode('utf-8')
+              if path.endswith('.py'): compile(data,path,'exec')
+              sha=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+              changes.append({'path':path,'before':before,'sha':sha,'content':base64.b64encode(data).decode('ascii')})
+          helper='def _discard_bom_snapshot_cache(settings: Any) -> None:\n    """Invalidate only the five derived fields written by build_bom_snapshot."""\n    if not isinstance(settings, dict) or not isinstance(settings.get("bom"), dict):\n        return\n    for key in ("schema_version", "snapshot_sha256", "generated_at", "summary", "validation"):\n        settings["bom"].pop(key, None)\n    if not settings["bom"]:\n        settings.pop("bom", None)\n\n\n'
+          replace('cws_convertor/bom/production_hub.py',[
+              ('def _transaction_payload(project: Any) -> dict[str, Any]:',helper+'def _transaction_payload(project: Any, *, include_bom_cache: bool = False) -> dict[str, Any]:'),
+              ('    settings = payload.get("settings")\n    if isinstance(settings, dict):','    settings = payload.get("settings")\n    if not include_bom_cache:\n        _discard_bom_snapshot_cache(settings)\n    if isinstance(settings, dict):'),
+              ('"undo_schema": "cws-bom-persistent-undo-2.0",','"undo_schema": "cws-bom-persistent-undo-3.0",'),
+              ('            actual = stable_sha256(_transaction_payload(self.project))','            actual = stable_sha256(_transaction_payload(\n                self.project,\n                include_bom_cache=record.get("undo_schema") != "cws-bom-persistent-undo-3.0",\n            ))'),
+              ('            _apply_inverse_patch(payload, inverse_patch)\n            restored =','            _apply_inverse_patch(payload, inverse_patch)\n            _discard_bom_snapshot_cache(payload.get("settings"))\n            restored =')
+          ],'104030f141516ce041f16506535018117a09ecec')
+          replace('tests/phase1_phase2_completion_smoke.py',[
+              ('            profile="PL10",\n            profile_confidence=1.0,','            profile="PL10",\n            material="S355J2",\n            material_grade="S355J2",\n            profile_confidence=1.0,')])
+          replace('tools/run_material_model_recognition_acceptance.py',[
+              ('    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),','    SuiteSpec("tests/bom_undo_refresh_smoke.py", "bom_undo_refresh"),\n    SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),')
+          ],'e154227538f3689286cdb163fb12d288a5e68233')
+          replace('.github/workflows/build-product-ui-reintegration-exe.yml',[
+              ('      PYTHONUTF8: "1"','      PYTHONUTF8: "1"\n      PYTHONPATH: ${{ github.workspace }}')
+          ],'733dc7510c36a3239db3b191a9a5e57fd03059ef')
+          out={'parent':git('rev-parse','HEAD').decode().strip(),'base_tree':git('rev-parse','HEAD^{tree}').decode().strip(),'changes':changes}
+          (root/'build/installer-prepare/objects.json').write_text(json.dumps(out),encoding='utf-8')
+      - name: Store verified file objects only
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const data=JSON.parse(fs.readFileSync('build/installer-prepare/objects.json','utf8'));
+            if(data.parent!==context.sha) throw new Error('Parent mismatch');
+            for(const change of data.changes){
+              const r=await github.rest.git.createBlob({owner:context.repo.owner,repo:context.repo.repo,encoding:'base64',content:change.content});
+              if(r.data.sha!==change.sha) throw new Error('SHA mismatch');
+              delete change.content;
+            }
+            fs.writeFileSync('build/installer-prepare/VERIFIED_FILES.json',JSON.stringify(data,null,2));
+            core.info(JSON.stringify(data));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_Exact_Source_${{ github.sha }}
+          path: build/installer-prepare/source.zip
+          compression-level: 0
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_Repair_Objects_${{ github.sha }}
+          path: build/installer-prepare/VERIFIED_FILES.json
+          retention-days: 7
