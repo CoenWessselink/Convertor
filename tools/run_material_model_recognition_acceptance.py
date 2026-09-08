@@ -86,6 +86,7 @@ SUITES = (
     SuiteSpec("tests/bom_production_hub_smoke.py", "bom_production_hub"),
     SuiteSpec("tests/viewer_shared_cache_lasso_smoke.py", "bom_viewer_integration", ("numpy",)),
     SuiteSpec("tests/bom_selection_identity_smoke.py", "bom_selection_identity", ("PySide6.QtWidgets",)),
+    SuiteSpec("tests/bom_undo_refresh_smoke.py", "bom_undo_refresh"),
     SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),
 )
 

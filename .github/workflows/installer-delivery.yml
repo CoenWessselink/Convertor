@@ -1,0 +1,155 @@
+name: Build and verify Windows installer delivery
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/cws-installer-recovery-20260908]
+permissions:
+  contents: read
+concurrency:
+  group: installer-delivery-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  PYTHONUTF8: '1'
+  PYTHONPATH: ${{ github.workspace }}
+  QT_QPA_PLATFORM: offscreen
+  CWS_HEADLESS_GUI_SMOKE: '1'
+  GALLIUM_DRIVER: llvmpipe
+  LIBGL_ALWAYS_SOFTWARE: '1'
+jobs:
+  core:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install native runtime
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Strict recognition and BOM acceptance
+        run: python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition
+      - name: Source and GUI integration
+        if: ${{ !cancelled() }}
+        run: python tools/run_phase1_unified_gates.py
+      - name: Manufacturing and nesting integration
+        if: ${{ !cancelled() }}
+        run: python tools/run_phase2_unified_gates.py
+      - name: PDF dimensioning
+        if: ${{ !cancelled() }}
+        run: python tools/run_pdf12_v2_tests.py --output build/pdf12-source.json
+      - name: Capture real BOM controls
+        if: ${{ !cancelled() }}
+        run: python tools/capture_bom_production_hub.py --project "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj" --output build/material_model_recognition/bom-screenshots
+      - name: Upload exact-source proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_Core_${{ github.sha }}
+          path: |
+            build/material_model_recognition/**
+            build/pdf12-source.json
+            validation/phases/PHASE_*_EVIDENCE.json
+          retention-days: 30
+  broad:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install native runtime
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: Run a complete disjoint source-regression shard
+        shell: python
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          import importlib.util, math, os, pathlib, subprocess, sys
+          root=pathlib.Path.cwd()
+          spec=importlib.util.spec_from_file_location('smoke_runner',root/'validation/run_all_smokes_v9.py')
+          runner=importlib.util.module_from_spec(spec); spec.loader.exec_module(runner)
+          scripts=sorted(p for p in (root/'tests').glob('*_smoke.py') if not p.name.startswith('full_acceptance_') and p.name not in runner.SOURCE_SMOKE_EXCLUSIONS)
+          size=math.ceil(len(scripts)/4); index=int(os.environ['SHARD'])
+          result=subprocess.run([sys.executable,'validation/run_all_smokes_v9.py','--headless-windows','--timeout','300','--start',str(index*size+1),'--end',str(min(len(scripts),(index+1)*size)),'--output',f'build/source-shard-{index}'])
+          raise SystemExit(result.returncode)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Installer_Regression_${{ matrix.shard }}_${{ github.sha }}
+          path: |
+            build/source-shard-${{ matrix.shard }}/*.json
+            build/source-shard-${{ matrix.shard }}/logs/*
+          retention-days: 30
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install locked build tools and M18 payload
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          choco install innosetup --no-progress -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: Build installer and test installed runtime and uninstall
+        run: python tools/build_tested_installer.py
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: CWS_Tested_Installer_${{ github.sha }}_Windows_x64
+          path: release/installer/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Installer_Runtime_Proof_${{ github.sha }}
+          path: build/installer-evidence/**
+          if-no-files-found: error
+          retention-days: 30

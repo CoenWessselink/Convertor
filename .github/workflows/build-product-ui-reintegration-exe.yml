@@ -21,6 +21,7 @@ jobs:
     timeout-minutes: 150
     env:
       PYTHONUTF8: "1"
+      PYTHONPATH: ${{ github.workspace }}
       QT_QPA_PLATFORM: offscreen
       CWS_HEADLESS_GUI_SMOKE: "1"
 

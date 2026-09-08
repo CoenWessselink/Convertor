@@ -959,13 +959,25 @@ def _field_level_deltas(
     return tuple(result)
 
 
-def _transaction_payload(project: Any) -> dict[str, Any]:
+def _discard_bom_snapshot_cache(settings: Any) -> None:
+    """Invalidate only the five derived fields written by build_bom_snapshot."""
+    if not isinstance(settings, dict) or not isinstance(settings.get("bom"), dict):
+        return
+    for key in ("schema_version", "snapshot_sha256", "generated_at", "summary", "validation"):
+        settings["bom"].pop(key, None)
+    if not settings["bom"]:
+        settings.pop("bom", None)
+
+
+def _transaction_payload(project: Any, *, include_bom_cache: bool = False) -> dict[str, Any]:
     """Stable business payload used for persistent, non-recursive undo."""
 
     payload = deepcopy(project.to_dict())
     for key in ("audit_log", "modified_at", "revisions"):
         payload.pop(key, None)
     settings = payload.get("settings")
+    if not include_bom_cache:
+        _discard_bom_snapshot_cache(settings)
     if isinstance(settings, dict):
         hub = settings.get(HUB_SETTINGS_KEY)
         if isinstance(hub, dict):
@@ -2029,7 +2041,7 @@ class BOMHubState:
             "entity_ids": list(current_entities), "runtime_project_restore": True,
             "persistent_inverse_patch": list(inverse_patch),
             "after_content_sha256": stable_sha256(after_content),
-            "undo_schema": "cws-bom-persistent-undo-2.0",
+            "undo_schema": "cws-bom-persistent-undo-3.0",
         }
         if inverse_patch:
             self._runtime_project_undo[transaction_id] = before_state
@@ -2138,7 +2150,10 @@ class BOMHubState:
         inverse_patch = tuple(record.get("persistent_inverse_patch") or ())
         if inverse_patch:
             expected = str(record.get("after_content_sha256") or "")
-            actual = stable_sha256(_transaction_payload(self.project))
+            actual = stable_sha256(_transaction_payload(
+                self.project,
+                include_bom_cache=record.get("undo_schema") != "cws-bom-persistent-undo-3.0",
+            ))
             if expected and actual != expected:
                 raise ValueError(
                     "Undo is geblokkeerd omdat de projectinhoud na deze transactie verder is gewijzigd"
@@ -2146,6 +2161,7 @@ class BOMHubState:
             current_hash = stable_sha256(self.project.to_dict())
             payload = self.project.to_dict()
             _apply_inverse_patch(payload, inverse_patch)
+            _discard_bom_snapshot_cache(payload.get("settings"))
             restored = type(self.project).from_dict(payload)
             self.project.__dict__.clear()
             self.project.__dict__.update(restored.__dict__)
