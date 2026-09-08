@@ -1,0 +1,35 @@
+name: Recognition and BOM source evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/cws-recognition-bom-recovery-20260908]
+    paths:
+      - '.github/workflows/recognition-bom-source-evidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  source-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Capture exact tracked source and identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/source-evidence
+          git archive --format=zip --output=build/source-evidence/source.zip HEAD
+          git rev-parse HEAD > build/source-evidence/COMMIT.txt
+          git rev-parse HEAD^{tree} > build/source-evidence/TREE.txt
+          sha256sum build/source-evidence/source.zip > build/source-evidence/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Recognition_BOM_Source_${{ github.sha }}
+          path: build/source-evidence/*
+          if-no-files-found: error
+          retention-days: 7
