@@ -1005,6 +1005,8 @@ class StockItem(ProjectEntity):
     location: str = ""
     available_quantity: float = 0.0
     reserved_quantity: float = 0.0
+    reservation_ids: list[str] = field(default_factory=list)
+    reservation_revision: int = 0
     unit_price: float = 0.0
     status: str = "available"
 
@@ -1022,6 +1024,8 @@ class Remnant(ProjectEntity):
     location: str = ""
     measured_at: str = ""
     status: str = "available"
+    reservation_ids: list[str] = field(default_factory=list)
+    reservation_revision: int = 0
 
 
 @dataclass
@@ -1850,6 +1854,14 @@ class ProjectModel:
                         raise ProjectValidationError(
                             f"Voorraaditem {entity.internal_id} reserveert meer dan beschikbaar is"
                         )
+                    _require_unique_ids(
+                        entity.reservation_ids,
+                        f"Reserveringen van voorraaditem {entity.internal_id}",
+                    )
+                    if int(entity.reservation_revision) < 0:
+                        raise ProjectValidationError(
+                            f"Voorraaditem {entity.internal_id} heeft een negatieve reserveringsrevisie"
+                        )
                     for index, value in enumerate(entity.plate_size_mm):
                         _require_finite_number(
                             value,
@@ -1867,6 +1879,14 @@ class ProjectModel:
                         f"Minimum herbruikbare maat van {entity.internal_id}",
                         minimum=0.0,
                     )
+                    _require_unique_ids(
+                        entity.reservation_ids,
+                        f"Reserveringen van reststuk {entity.internal_id}",
+                    )
+                    if int(entity.reservation_revision) < 0:
+                        raise ProjectValidationError(
+                            f"Reststuk {entity.internal_id} heeft een negatieve reserveringsrevisie"
+                        )
                 elif isinstance(entity, ProductionOperation):
                     _require_finite_number(
                         entity.cycle_time_minutes,

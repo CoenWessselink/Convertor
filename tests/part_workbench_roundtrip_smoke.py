@@ -87,6 +87,7 @@ def make_part(part_id: str, *, metrics: dict | None = None) -> Part:
         ),
         profile="PL10",
         material="S355JR",
+        material_grade="S355JR",
         quantity_total=1,
         confidence=1.0,
         profile_confidence=1.0,

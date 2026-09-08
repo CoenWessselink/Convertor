@@ -54,6 +54,7 @@ def create_synthetic_integration_project(path: str | Path) -> Path:
         category="make_part",
         profile="PL10",
         material="S355JR",
+        material_grade="S355JR",
         length_mm=100.0,
         geometry_descriptor={"kind": "plate", "bbox_mm": [100.0, 50.0, 10.0]},
         classification_status="confirmed",

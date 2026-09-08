@@ -18,9 +18,18 @@ class CancellationToken:
         if self.cancelled:raise GeometryLoadCancelled('Geometrieladen geannuleerd')
 
 class MeshRepository:
-    def __init__(self)->None:self._meshes={};self._lock=threading.RLock()
+    def __init__(self)->None:self._meshes={};self._revisions={};self._lock=threading.RLock()
     def put(self,geometry_id:str,mesh:MeshData)->None:
-        with self._lock:self._meshes[str(geometry_id)]=mesh
+        key=str(geometry_id)
+        with self._lock:
+            previous=self._meshes.get(key)
+            self._meshes[key]=mesh
+            if previous is None or previous.mesh_hash!=mesh.mesh_hash:
+                self._revisions[key]=int(self._revisions.get(key,0))+1
+                if previous is not None:
+                    # Import locally to keep loader/cache module initialization acyclic.
+                    from cws_viewer.cache.render_resource_cache import SharedRenderResourceCache
+                    SharedRenderResourceCache.invalidate(self,{key})
     def get(self,geometry_id:str)->MeshData|None:
         with self._lock:return self._meshes.get(str(geometry_id))
     def require(self,geometry_id:str)->MeshData:
@@ -32,6 +41,8 @@ class MeshRepository:
         with self._lock:return len(self._meshes)
     def ids(self):
         with self._lock:return tuple(sorted(self._meshes))
+    def revision(self,geometry_id:str)->int:
+        with self._lock:return int(self._revisions.get(str(geometry_id),0))
     @property
     def total_bytes(self)->int:
         with self._lock:return sum(m.byte_length for m in self._meshes.values())

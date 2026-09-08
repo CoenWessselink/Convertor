@@ -13,7 +13,13 @@ from cws_viewer.errors import ViewerError, ViewerErrorCode
 
 
 def qt_available() -> bool:
-    return importlib.util.find_spec("PySide6") is not None
+    if importlib.util.find_spec("PySide6") is None:
+        return False
+    try:
+        from PySide6 import QtCore, QtGui, QtWidgets  # noqa: F401
+    except Exception:
+        return False
+    return True
 
 
 def require_qt() -> tuple[Any, Any, Any]:

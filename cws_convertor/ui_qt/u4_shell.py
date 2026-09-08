@@ -1086,6 +1086,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 "report": "production_workflow",
                 "production_workflow": "production_workflow",
                 "export": "export",
+                "print": "print_center",
             }
             if key in {"open_exact", "legacy_profiles"}:
                 super()._route_action(key)
@@ -1224,3 +1225,23 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
         window = CWSMainWindow(paths)
         window.show()
         return int(application.exec())
+
+else:
+    class CWSMainWindow(_U3MainWindow):
+        """Import-safe dependency guard for headless source inspection."""
+
+        def __init__(self, *_: Any, **__: Any) -> None:
+            require_qt()
+
+    CwsConvertorMainWindow = CWSMainWindow
+
+    def run_qt_application(initial_paths: Iterable[str | Path] | str | Path | None = None) -> int:
+        del initial_paths
+        require_qt()
+        return 2
+
+
+__all__ = [
+    "CWSMainWindow", "CwsConvertorMainWindow", "U4_WORKFLOW_PROPERTY",
+    "U4_WORKFLOW_TOKEN", "run_qt_application",
+]

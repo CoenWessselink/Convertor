@@ -97,7 +97,7 @@ class ProductionEditorTests(unittest.TestCase):
                 part_position="P1",
             ),
             profile="PL10",
-            material="S235",
+            material="S235JR",
             material_grade="S235JR",
             geometry_descriptor={"source_geometry_hash": "b" * 64},
             confidence=1.0,
@@ -116,7 +116,7 @@ class ProductionEditorTests(unittest.TestCase):
             "dimensions": {"length_mm": 200.0, "thickness_mm": 10.0},
             "production_properties": {
                 "profile": "PL10",
-                "material": "S355",
+                "material": "S355J2",
                 "material_grade": "S355J2",
                 "part_position": "P100",
                 "assembly_position": "A10",
@@ -152,7 +152,7 @@ class ProductionEditorTests(unittest.TestCase):
             ["material_removal", "material_removal", "marking"],
         )
         self.assertTrue(all(item["contract_version"] == "1.0" for item in revision["features"]))
-        self.assertEqual(part.material, "S355")
+        self.assertEqual(part.material, "S355J2")
         self.assertEqual(part.material_grade, "S355J2")
         self.assertEqual(part.part_position, "P100")
         self.assertEqual(part.classification_status, "review_required")

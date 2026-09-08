@@ -13,6 +13,8 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+from cws_viewer.cache.render_resource_cache import SharedRenderResourceCache
+
 from cws_viewer.backends.vtk_project import _ActorGroup
 from cws_viewer.backends.vtk_project_mesh import _quaternion
 from cws_viewer.backends.vtk_project_mesh_v14 import VtkProjectMeshV14Backend
@@ -88,72 +90,67 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         corners. Exact cell normals keep every structural face crisp without
         the point duplication and first-frame cost of splitting large models.
         """
-        cache = getattr(self, "_cws_polydata_cache", None)
-        if cache is None:
-            cache = {}
-            self._cws_polydata_cache = cache
-        cached = cache.get(geometry_id)
-        if cached is not None:
-            return cached
         vtk = self._vtk
         assert vtk is not None
         mesh = self.repository.require(geometry_id)
-        from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
-        import numpy as np
+        def build():
+            from vtk.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
+            import numpy as np
 
-        points = vtk.vtkPoints()
-        points.SetData(numpy_to_vtk(mesh.vertices, deep=True))
-        cells = mesh.triangles.astype("int64", copy=False)
-        connectivity = numpy_to_vtkIdTypeArray(cells.ravel(), deep=True)
-        offsets = numpy_to_vtkIdTypeArray(
-            np.arange(0, (len(cells) + 1) * 3, 3, dtype=np.int64), deep=True
+            points = vtk.vtkPoints()
+            points.SetData(numpy_to_vtk(mesh.vertices, deep=True))
+            cells = mesh.triangles.astype("int64", copy=False)
+            connectivity = numpy_to_vtkIdTypeArray(cells.ravel(), deep=True)
+            offsets = numpy_to_vtkIdTypeArray(
+                np.arange(0, (len(cells) + 1) * 3, 3, dtype=np.int64), deep=True
+            )
+            cell_array = vtk.vtkCellArray()
+            cell_array.SetData(offsets, connectivity)
+            polydata = vtk.vtkPolyData()
+            polydata.SetPoints(points)
+            polydata.SetPolys(cell_array)
+            normals = vtk.vtkPolyDataNormals()
+            normals.SetInputData(polydata)
+            normals.ConsistencyOff()
+            normals.AutoOrientNormalsOff()
+            normals.SplittingOff()
+            normals.ComputePointNormalsOff()
+            normals.ComputeCellNormalsOn()
+            normals.Update()
+            output = vtk.vtkPolyData()
+            output.ShallowCopy(normals.GetOutput())
+            return output
+
+        output = SharedRenderResourceCache.get_or_create(
+            self.repository, "polydata", f"{geometry_id}|mesh-feel-v1|{mesh.mesh_hash}", build
         )
-        cell_array = vtk.vtkCellArray()
-        cell_array.SetData(offsets, connectivity)
-        polydata = vtk.vtkPolyData()
-        polydata.SetPoints(points)
-        polydata.SetPolys(cell_array)
-
-        # IFC tessellation already has authoritative winding and triangles.
-        # Reorienting and splitting every resource on each viewer open changes
-        # topology and dominates first-frame latency on large steel models.
-        # Exact cell normals preserve hard profile/plate edges, avoid smoothing
-        # across 90-degree corners and keep curved facets faithful to source.
-        normals = vtk.vtkPolyDataNormals()
-        normals.SetInputData(polydata)
-        normals.ConsistencyOff()
-        normals.AutoOrientNormalsOff()
-        normals.SplittingOff()
-        normals.ComputePointNormalsOff()
-        normals.ComputeCellNormalsOn()
-        normals.Update()
-        output = vtk.vtkPolyData()
-        output.ShallowCopy(normals.GetOutput())
-        cache[geometry_id] = output
+        self._cws_polydata_cache = getattr(self, "_cws_polydata_cache", {})
+        self._cws_polydata_cache[str(geometry_id)] = output
         return output
 
     def _feature_edges_polydata(self, source: Any, geometry_hash: str = ""):
         vtk = self._vtk
         assert vtk is not None
-        cache = getattr(self, "_cws_feature_edge_cache", None)
-        if cache is None:
-            cache = {}
-            self._cws_feature_edge_cache = cache
-        if geometry_hash and geometry_hash in cache:
-            return cache[geometry_hash]
-        feature = vtk.vtkFeatureEdges()
-        feature.SetInputData(source)
-        feature.BoundaryEdgesOn()
-        feature.FeatureEdgesOn()
-        feature.ManifoldEdgesOff()
-        feature.NonManifoldEdgesOn()
-        feature.SetFeatureAngle(self.FEATURE_ANGLE_DEG)
-        feature.ColoringOff()
-        feature.Update()
-        output = vtk.vtkPolyData()
-        output.ShallowCopy(feature.GetOutput())
-        if geometry_hash:
-            cache[geometry_hash] = output
+        key = f"{geometry_hash or id(source)}|{self.FEATURE_ANGLE_DEG:g}"
+        def build():
+            feature = vtk.vtkFeatureEdges()
+            feature.SetInputData(source)
+            feature.BoundaryEdgesOn()
+            feature.FeatureEdgesOn()
+            feature.ManifoldEdgesOff()
+            feature.NonManifoldEdgesOn()
+            feature.SetFeatureAngle(self.FEATURE_ANGLE_DEG)
+            feature.ColoringOff()
+            feature.Update()
+            output = vtk.vtkPolyData()
+            output.ShallowCopy(feature.GetOutput())
+            return output
+
+        output = SharedRenderResourceCache.get_or_create(
+            self.repository, "features", key, build
+        )
+        self._cws_feature_edge_cache = getattr(self, "_cws_feature_edge_cache", {})
+        self._cws_feature_edge_cache[key] = output
         return output
 
     @staticmethod
@@ -284,7 +281,10 @@ class VtkProjectMeshFeelBackend(VtkProjectMeshV14Backend):
         instances = vtk.vtkPolyData()
         instances.SetPoints(points)
         instances.GetPointData().AddArray(orientations)
-        source = self._feature_edges_polydata(self._mesh_polydata(geometry_id), geometry_id)
+        mesh = self.repository.require(geometry_id)
+        source = self._feature_edges_polydata(
+            self._mesh_polydata(geometry_id), f"{geometry_id}|{mesh.mesh_hash}"
+        )
         mapper = vtk.vtkGlyph3DMapper()
         mapper.SetInputData(instances)
         mapper.SetSourceData(source)

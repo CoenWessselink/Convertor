@@ -859,7 +859,7 @@ if qt_available():
                 "convert": "converter", "validate": "control", "pdf": "pdf_review",
                 "profiles": "profiles", "drawings": "drawing",
                 "scribing": "scribing", "quantities": "bom", "bom": "bom",
-                "report": "report", "export": "export",
+                "report": "report", "export": "export", "print": "pdf_review",
             }
             if action == "open_exact":
                 self.project_page.open_exact_workbench()
@@ -1052,6 +1052,10 @@ if qt_available():
         return int(application.exec())
 
 else:
+    class WorkspaceRouter:
+        def __init__(self, *_: Any, **__: Any) -> None:
+            require_qt()
+
     class CWSMainWindow:
         def __init__(self, *_: Any, **__: Any) -> None:
             require_qt()
@@ -1069,5 +1073,6 @@ __all__ = [
     "CWSMainWindow",
     "CwsConvertorMainWindow",
     "IntegratedProjectPage",
+    "WorkspaceRouter",
     "run_qt_application",
 ]

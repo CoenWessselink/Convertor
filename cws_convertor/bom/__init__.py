@@ -14,6 +14,31 @@ from .models import (
     PurchaseBOMRow,
     WeldBOMRow,
 )
+from .production_hub import (
+    ACTION_DEFINITIONS,
+    BOMActionDefinition,
+    BOMActionMatrix,
+    BOMBatchPreflight,
+    BOMBatchResult,
+    BOMFieldDelta,
+    BOMHubState,
+    BOMProcurementService,
+    BOMQueryClause,
+    BOMQueryGroup,
+    BOMRevisionDelta,
+    BOMSavedSelection,
+    BOMScopeEngine,
+    BOMSelectionImpact,
+    BOMSmartQuery,
+    BOMStockAllocator,
+    BOMStockAllocation,
+    BOMStockAllocationPlan,
+    BOMStockPiece,
+    BOMStockSourceOption,
+    BOMTransactionExecution,
+    QUERY_FIELDS,
+    QUERY_OPERATORS,
+)
 
 
 def build_bom_snapshot(*args, **kwargs):
@@ -36,4 +61,12 @@ __all__ = [
     "FastenerBOMRow", "MaterialBOMRow", "PartBOMRow", "PurchaseBOMRow",
     "WeldBOMRow", "build_bom_snapshot", "export_bom_package",
     "safe_spreadsheet_value",
+    "ACTION_DEFINITIONS", "BOMActionDefinition", "BOMActionMatrix",
+    "BOMBatchPreflight", "BOMBatchResult", "BOMFieldDelta", "BOMHubState",
+    "BOMProcurementService", "BOMQueryClause", "BOMQueryGroup",
+    "BOMRevisionDelta", "BOMSavedSelection", "BOMScopeEngine",
+    "BOMSelectionImpact", "BOMSmartQuery", "BOMStockAllocator",
+    "BOMStockAllocation", "BOMStockAllocationPlan", "BOMStockPiece",
+    "BOMStockSourceOption", "BOMTransactionExecution",
+    "QUERY_FIELDS", "QUERY_OPERATORS",
 ]

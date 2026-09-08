@@ -25,7 +25,7 @@ on:
       - 'requirements-runtime.lock.txt'
       - '.github/workflows/material-model-recognition.yml'
   push:
-    branches: [agent/cws-product-ui-reintegration-v1]
+    branches: [agent/cws-product-ui-reintegration-v1, agent/cws-recognition-bom-recovery-20260908]
     paths:
       - 'cws_convertor/**'
       - 'material_database.py'
@@ -93,6 +93,12 @@ jobs:
         shell: pwsh
         run: |
           python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Capture actual BOM controls against the stored HVPC project
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          python tools/capture_bom_production_hub.py --project "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj" --output build/material_model_recognition/bom-screenshots
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload acceptance, dependency diagnostics and real UI screenshots
         if: always()
