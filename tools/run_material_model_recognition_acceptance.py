@@ -89,6 +89,7 @@ SUITES = (
     SuiteSpec("tests/bom_undo_refresh_smoke.py", "bom_undo_refresh"),
     SuiteSpec("tests/assembly_material_binding_smoke.py", "assembly_material_binding", ("cadquery",)),
     SuiteSpec("tests/production_release_package_smoke.py", "assembly_release", ("cadquery",)),
+    SuiteSpec("tests/ui_font_readability_smoke.py", "ui_readability", ("PySide6.QtWidgets",)),
     SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),
 )
 

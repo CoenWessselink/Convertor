@@ -85,7 +85,14 @@ V52_DARK_QSS = _stylesheet(DARK_COLORS, dark=True)
 
 def apply_v52_design_system(application: Any, theme: str = "Default Light") -> str:
     selected = "Engineering Dark" if str(theme).casefold() == "engineering dark" else "Default Light"
-    application.setStyleSheet(V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS)
+    from ..ui_fonts import ensure_readable_ui_font
+
+    family = ensure_readable_ui_font()
+    sheet = V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS
+    sheet = sheet.replace("font-family: 'Bahnschrift', 'Segoe UI Variable', 'Segoe UI';",
+                          "font-family: '" + family.replace("'", "\\'") + "';")
+    application.setStyleSheet(sheet)
+    application.setProperty("cws_font_family", family)
     application.setProperty("cws_ui_master", "V5.2")
     application.setProperty("cws_theme", selected)
     return selected

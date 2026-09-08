@@ -162,11 +162,14 @@ def _gui_smoke(project: Path | None, *, screenshot: Path | None = None) -> dict[
             break
     if project is not None and window.workspace is None:
         raise RuntimeError("Projectworkspace kwam niet gereed in GUI-smoke")
+    from cws_convertor.ui_qt.ui_fonts import verify_widget_text_fonts
+    readability = verify_widget_text_fonts(window)
     gui_details: dict[str, Any] = {
         "schema": "cws-convertor-v9-gui-smoke-1.0",
         "status": "passed",
         "window": window.objectName(),
         "tab_count": window.tabs.count(),
+        "text_readability": readability,
         "tab_titles": [window.tabs.tabText(i) for i in range(window.tabs.count())],
         "project_opened": bool(window.workspace),
         "qt_platform": application.platformName(),
