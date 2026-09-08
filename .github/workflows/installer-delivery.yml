@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: installer-delivery-${{ github.ref }}
+  group: installer-delivery-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 env:
   PYTHONUTF8: '1'
