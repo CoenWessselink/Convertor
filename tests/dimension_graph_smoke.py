@@ -90,7 +90,7 @@ class DimensionGraphTests(unittest.TestCase):
             analysis,
             {
                 "reviewed_by": "dimension-unittest",
-                "confirm": ["holes[0]"],
+                "confirm": ["holes[0]", "material"],
                 "comment": "Feature-linked dimensions checked",
             },
         )

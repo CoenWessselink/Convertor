@@ -175,6 +175,8 @@ class ViewerV6IntegrationTests(unittest.TestCase):
                         }
                     ],
                     "features": [],
+                    "production_properties": {"profile": "PL10", "material": "S355JR",
+                                              "material_grade": "S355JR"},
                 },
                 user="test",
                 reason="Owner canonical plate",

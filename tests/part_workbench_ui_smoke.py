@@ -35,7 +35,8 @@ class PartWorkbenchUITests(unittest.TestCase):
                 part_position="P-101",
             ),
             profile="PL10",
-            material="S355",
+            material="S355J2",
+            material_grade="S355J2",
             length_mm=200.0,
             profile_confidence=0.96,
             confidence=0.96,
@@ -188,7 +189,7 @@ class PartWorkbenchUITests(unittest.TestCase):
         self.panel.side_label_var.set("Bovenzijde")
         self.panel.face_ref_var.set("face:top")
         self.panel.side_confirmed_var.set(True)
-        self.panel.material_var.set("S355")
+        self.panel.material_var.set("S355J2")
         self.panel.material_grade_var.set("S355J2")
         self.panel.part_position_var.set("P-200")
         self.panel.use_source_bbox()
@@ -227,7 +228,7 @@ class PartWorkbenchUITests(unittest.TestCase):
         self.assertEqual(revision["validation_issues"], [])
         self.assertEqual([item["kind"] for item in revision["features"]], ["slot", "cutout", "scribe"])
         self.assertTrue(all(item["contract_version"] == "1.0" for item in revision["features"]))
-        self.assertEqual(part.material, "S355")
+        self.assertEqual(part.material, "S355J2")
         self.assertEqual(part.material_grade, "S355J2")
         self.assertEqual(part.part_position, "P-200")
 

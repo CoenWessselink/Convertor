@@ -569,6 +569,16 @@ def _enrich_assembly_ifc(path: Path, mark: str, manifest: dict[str, Any]) -> Non
     )
     if containment_count != 1:
         raise ProjectValidationError("Assembly-IFC mist een eenduidige ruimtelijke containmentrelatie")
+    # The lossless aggregate payload belongs to the assembly, not every child.
+    from ifc_native import _entity_blocks, _split_ifc_args
+    psets = {entity_id for entity_id, _, block in _entity_blocks(source, ("IFCPROPERTYSET",))
+             if "'Pset_NC1StepConverter'" in block}
+    for entity_id, entity_type, block in list(_entity_blocks(source, ("IFCRELDEFINESBYPROPERTIES",))):
+        arguments = _split_ifc_args(block)
+        if len(arguments) == 6 and arguments[-1] in {f"#{pset}" for pset in psets}:
+            arguments[4] = f"(#{assembly_id})"
+            source = source.replace(f"#{entity_id}={entity_type}{block};",
+                                    f"#{entity_id}={entity_type}({','.join(arguments)});", 1)
     values = (
         ("AssemblyMark", mark),
         ("CompositionSHA256", str(manifest["composition_sha256"])),
@@ -578,7 +588,7 @@ def _enrich_assembly_ifc(path: Path, mark: str, manifest: dict[str, Any]) -> Non
     lines = [
         (
             f"#{assembly_id}=IFCELEMENTASSEMBLY('{_guid22(mark + ':assembly')}',#5,"
-            f"'{_escape_ifc(mark)}',$,$,#23,$,'{_escape_ifc(mark)}',.USERDEFINED.,.FACTORY.);"
+            f"'{_escape_ifc(mark)}',$,'CWS fabrication assembly',#23,$,'{_escape_ifc(mark)}',.FACTORY.,.USERDEFINED.);"
         ),
         (
             f"#{aggregate_id}=IFCRELAGGREGATES('{_guid22(mark + ':parts')}',#5,"
@@ -1063,14 +1073,16 @@ class ProjectProductionExportEngine:
             synthetic.header.position_number = mark
             synthetic.header.profile = "ASSEMBLY"
             synthetic.header.profile_type = "ASSEMBLY"
-            synthetic.header.material = "MULTI"
+            # An assembly has component grades, never a fictitious aggregate grade.
+            synthetic.header.material = ""
             synthetic.header.quantity = assembly_manifest["quantity"]
             synthetic.header.length = max(bounds.xlen, bounds.ylen, bounds.zlen)
             synthetic.header.saw_length = synthetic.header.length
             synthetic.product.name = mark
             synthetic.product.mark = mark
             synthetic.product.profile_designation = "ASSEMBLY"
-            synthetic.product.material_code = "MULTI"
+            synthetic.product.material_code = ""
+            synthetic.product.material_grade = ""
             synthetic.product.main_dimensions_mm = [bounds.xlen, bounds.ylen, bounds.zlen]
             synthetic.contours = []
             synthetic.holes = []
@@ -1085,7 +1097,12 @@ class ProjectProductionExportEngine:
             artifacts.append(_artifact(root, assembly_step, "assembly_step", assembly_id=mark, source="canonical-assembly-compound"))
 
             assembly_ifc = assembly_dir / f"{safe_filename(mark)}_ASSEMBLY.ifc"
-            write_native_ifc(compound, assembly_ifc, name=mark, material="MULTI", canonical=synthetic)
+            write_native_ifc(compound, assembly_ifc, name=mark, material="", canonical=synthetic)
+            from .assembly_ifc import bind_component_materials
+            bind_component_materials(assembly_ifc, compound, [
+                (part_name, placed_shape, canonicals[part.internal_id])
+                for part, (part_name, placed_shape) in zip(parts, transformed)
+            ])
             _enrich_assembly_ifc(assembly_ifc, mark, assembly_manifest)
             artifacts.append(_artifact(root, assembly_ifc, "assembly_ifc", assembly_id=mark, source="canonical-assembly-compound"))
 

@@ -118,6 +118,8 @@ class CanonicalRebuildTests(unittest.TestCase):
                 part_position="P1",
             ),
             profile="PL10",
+            material="S355JR",
+            material_grade="S355JR",
             length_mm=200.0,
             confidence=0.99,
             profile_confidence=0.99,
@@ -186,6 +188,9 @@ class CanonicalRebuildTests(unittest.TestCase):
         session = ProjectSession.new("Canonical inner contour", created_by="tester")
         part = Part(
             internal_id="inner",
+            profile="PL10",
+            material="S355JR",
+            material_grade="S355JR",
             name="Plaat met uitsparing",
             source_identity=SourceIdentity(
                 source_format="STEP",
@@ -295,6 +300,9 @@ class CanonicalRebuildTests(unittest.TestCase):
         session = ProjectSession.new("Canonical forms", created_by="tester")
         round_part = Part(
             internal_id="round",
+            profile="RU20",
+            material="S355JR",
+            material_grade="S355JR",
             name="Rond 20",
             source_identity=SourceIdentity(source_format="STEP", source_sha256="c" * 64, source_entity_id="#7"),
             geometry_descriptor={"source_geometry_hash": "d" * 64},
@@ -322,6 +330,9 @@ class CanonicalRebuildTests(unittest.TestCase):
 
         profile = Part(
             internal_id="profile",
+            profile="HEA240",
+            material="S355JR",
+            material_grade="S355JR",
             name="HEA240",
             source_identity=SourceIdentity(source_format="STEP", source_sha256="e" * 64, source_entity_id="#8"),
             geometry_descriptor={"source_geometry_hash": "f" * 64},

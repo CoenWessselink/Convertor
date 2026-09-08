@@ -419,6 +419,7 @@ def _project_roundtrip_check() -> dict[str, Any]:
             ),
             profile="PL10",
             material="S355JR",
+            material_grade="S355JR",
             confidence=1.0,
             profile_confidence=1.0,
             geometry_descriptor={

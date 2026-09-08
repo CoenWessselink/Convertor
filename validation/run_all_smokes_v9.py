@@ -52,6 +52,22 @@ def _emit_github_failure(script: Path, status: str, returncode: int, excerpt: st
     )
 
 
+def classify_smoke_result(returncode: int, output: str, *, timed_out: bool = False) -> str:
+    """A successful process exit does not make an entirely skipped suite pass."""
+    if timed_out:
+        return "timeout"
+    ran = re.search(r"Ran\s+(\d+)\s+tests?", output)
+    skipped = re.search(r"skipped=(\d+)", output)
+    entirely_skipped = bool(
+        ran and skipped and int(ran.group(1)) > 0
+        and int(skipped.group(1)) >= int(ran.group(1))
+    )
+    explicit_empty = returncode == 5 and "NO TESTS RAN" in output and "skipped=" in output
+    if explicit_empty or (returncode == 0 and entirely_skipped):
+        return "skipped"
+    return "passed" if returncode == 0 else "failed"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=ROOT / "validation" / "viewer_v9" / "full_smokes")
@@ -142,26 +158,7 @@ def main() -> int:
                 stderr = stderr.decode("utf-8", errors="replace")
         duration = time.perf_counter() - tick
         combined_output = f"{stdout}\n{stderr}"
-        ran_match = re.search(r"Ran\s+(\d+)\s+tests?", combined_output)
-        skipped_match = re.search(r"skipped=(\d+)", combined_output)
-        all_reported_tests_skipped = bool(
-            ran_match
-            and skipped_match
-            and int(skipped_match.group(1)) >= int(ran_match.group(1))
-        )
-        explicitly_skipped = (
-            (returncode == 5 and "NO TESTS RAN" in combined_output and "skipped=" in combined_output)
-            or (returncode == 0 and all_reported_tests_skipped)
-        )
-        status = (
-            "timeout"
-            if timed_out
-            else "passed"
-            if returncode == 0
-            else "skipped"
-            if explicitly_skipped
-            else "failed"
-        )
+        status = classify_smoke_result(returncode, combined_output, timed_out=timed_out)
         failure_excerpt = ""
         if status in {"failed", "timeout"}:
             failure_excerpt = _failure_excerpt(stdout, stderr, returncode)

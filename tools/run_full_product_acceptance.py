@@ -200,20 +200,27 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
 
     app = QApplication.instance() or QApplication([])
     executed_functions: set[str] = set()
+    source_path_cache: dict[str, str] = {}
 
     def trace_product_calls(frame: Any, event: str, _argument: Any) -> Any:
         if event == "call":
-            try:
-                relative = Path(frame.f_code.co_filename).resolve().relative_to(ROOT).as_posix()
-            except (OSError, ValueError):
-                relative = ""
+            filename = frame.f_code.co_filename
+            relative = source_path_cache.get(filename)
+            if relative is None:
+                try:
+                    relative = Path(filename).resolve().relative_to(ROOT).as_posix()
+                except (OSError, ValueError):
+                    relative = ""
+                source_path_cache[filename] = relative
             if relative.startswith(("cws_convertor/", "cws_viewer/", "src/cws_convertor/", "src/cws_viewer/")):
                 executed_functions.add(
                     f"{relative}:{frame.f_code.co_firstlineno}:{frame.f_code.co_name}"
                 )
         return trace_product_calls
 
-    sys.settrace(trace_product_calls)
+    # Coverage records call events only; line tracing made CAD imports quadratic.
+    previous_profile = sys.getprofile()
+    sys.setprofile(trace_product_calls)
     window = CWSMainWindow()
     window.resize(1600, 900)
     window.show()
@@ -408,8 +415,21 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.show_project_selection": (None,),
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_png": (),
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_pdf": (),
-        "cws_convertor.ui_qt.product_workspaces.BomWorkspacePanel.refresh": (),
-        "cws_convertor.ui_qt.product_workspaces.BomWorkspacePanel.handle_ribbon": ("totals",),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.set_context": (None, None),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.fit_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.area_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.lasso_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.select_same_colour": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.show_removed_revision_objects": ((),),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.shared_cache_summary": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.isolate_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.ghost_selection": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.show_all": (),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.apply_color_mode": ("Origineel", None, {}),
+        "cws_convertor.ui_qt.bom_workspace._BomViewerPane.closeEvent": (close_event,),
+        "cws_convertor.ui_qt.bom_workspace.BomWorkspacePanel.closeEvent": (close_event,),
+        "cws_convertor.ui_qt.bom_workspace.BomWorkspacePanel.refresh": (),
+        "cws_convertor.ui_qt.bom_workspace.BomWorkspacePanel.handle_ribbon": ("totals",),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.choose_project": (),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.open_exact_workbench": (),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.cancel_project_load": (),
@@ -526,7 +546,7 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
                 safe_method_errors.append(f"{owner}.open_project: {type(exc).__name__}: {exc}")
     window.close()
     app.processEvents()
-    sys.settrace(None)
+    sys.setprofile(previous_profile)
     status = "PASS" if inventory and tab_transitions and not safe_method_errors else "FAIL"
     return inventory, {
         "status": status,
