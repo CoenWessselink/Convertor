@@ -58,19 +58,27 @@ jobs:
               (root / name).write_bytes(data)
           patch_data = git('show', 'HEAD:tools/bom_selection_identity.patch')
           (root / 'tools/bom_selection_identity.patch').write_bytes(patch_data)
-          test_data = git('show', 'HEAD:tools/bom_selection_regression.py')
+          test_source = git('show', 'HEAD:tools/bom_selection_regression.py').decode('utf-8')
+          old = '        with patch.object(self.widgets.QMenu, "exec", return_value=None):\n            self.panel._show_table_menu(point)'
+          new = '        class NonBlockingMenu(self.widgets.QMenu):\n            def exec(self, *_args):\n                return None\n        with patch.object(self.widgets, "QMenu", NonBlockingMenu):\n            self.panel._show_table_menu(point)'
+          if test_source.count(old) != 1:
+              raise RuntimeError('Context-menu test source changed')
+          test_source = test_source.replace(old, new)
+          test_data = test_source.encode('utf-8')
           (root / 'tools/bom_selection_regression.py').write_bytes(test_data)
           runner = 'tools/run_material_model_recognition_acceptance.py'
+          probe = out / 'baseline_probe.py'
+          probe.write_text('from tools.bom_selection_regression import BomSelectionIdentityTests\nimport unittest\ndef load_tests(loader, tests, pattern):\n    return unittest.TestSuite(BomSelectionIdentityTests(name) for name in ("test_visible_position_map_follows_both_sort_directions", "test_click_after_sort_targets_the_visible_part"))\n', encoding='utf-8')
           def run_test(label, path):
               result = out / (label + '.json')
               env = dict(os.environ, CWS_RECOGNITION_EVIDENCE_DIR=str(out / label))
               with (out / (label + '.log')).open('w', encoding='utf-8') as stream:
-                  process = subprocess.run([sys.executable, runner, '--child', path,
-                      '--child-result', str(result)], env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=240)
+                  process = subprocess.run([sys.executable, runner, '--child', str(path),
+                      '--child-result', str(result)], env=env, stdout=stream, stderr=subprocess.STDOUT, timeout=180)
               report = json.loads(result.read_text(encoding='utf-8'))
-              print(label, json.dumps({key: report.get(key) for key in ('status', 'tests_run', 'tests_passed', 'skipped_events')}))
+              print(label, json.dumps({key: report.get(key) for key in ('status', 'tests_run', 'tests_passed', 'skipped_events')}), flush=True)
               return process.returncode, report
-          code, baseline = run_test('before', 'tools/bom_selection_regression.py')
+          code, baseline = run_test('before', probe)
           failure_names = {record['test'].split('.')[-1] for record in baseline['records'] if record['status'] == 'FAIL'}
           if code == 0 or not {'test_visible_position_map_follows_both_sort_directions',
                               'test_click_after_sort_targets_the_visible_part'} <= failure_names:
@@ -81,7 +89,7 @@ jobs:
               raise RuntimeError('Repaired source fingerprint differs')
           target = root / 'tests/bom_selection_identity_smoke.py'
           target.write_bytes(test_data)
-          code, after = run_test('after', str(target))
+          code, after = run_test('after', target)
           if code or after['status'] != 'PASS' or after['tests_run'] != 15 or after['tests_passed'] != 15:
               raise RuntimeError('Sorted selection regression remains failing or incomplete')
           manifest = (root / runner).read_text(encoding='utf-8')
