@@ -1,0 +1,111 @@
+name: Prepare fingerprint-verified continuous source
+on:
+  push:
+    branches: [agent/cws-continuous-integration-20260908]
+    paths: ['tools/continuous_patch/manifest.json']
+permissions:
+  contents: write
+jobs:
+  prepare-reviewed-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate transport, base identity and every exact changed file
+        shell: python
+        run: |
+          import base64, hashlib, json, lzma, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          out = root / 'build/continuous-preparation'
+          out.mkdir(parents=True, exist_ok=True)
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          def blob(data):
+              return hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
+          manifest = json.loads(pathlib.Path('tools/continuous_patch/manifest.json').read_text())
+          chunks = []
+          for item in manifest['chunks']:
+              path = pathlib.PurePosixPath(item['path'])
+              if not str(path).startswith('tools/continuous_patch/') or '..' in path.parts:
+                  raise RuntimeError('Invalid patch chunk path')
+              data = pathlib.Path(path).read_text(encoding='ascii').strip()
+              if hashlib.sha256(data.encode()).hexdigest() != item['sha256']:
+                  raise RuntimeError('Chunk checksum mismatch: ' + str(path))
+              chunks.append(data)
+          packed = base64.b64decode(''.join(chunks), validate=True)
+          if hashlib.sha256(packed).hexdigest() != '2e15ff4b8c1c01719fdbc1b9ecbc1e4c65f8a506a7bbf6430911a3b951ec9af1':
+              raise RuntimeError('Reviewed compressed source checksum mismatch')
+          raw = lzma.decompress(packed, memlimit=256 * 1024 * 1024)
+          if hashlib.sha256(raw).hexdigest() != manifest['raw_sha256']:
+              raise RuntimeError('Source payload checksum mismatch')
+          payload = json.loads(raw)
+          expected = '0c5fa3b03bcc2487e74acdd17afedb72350e9d31'
+          if payload['expected_parent'] != expected:
+              raise RuntimeError('Unexpected base revision')
+          git('merge-base', '--is-ancestor', expected, 'HEAD')
+          changed = git('diff', '--name-only', expected, 'HEAD').decode().splitlines()
+          if any(not (p.startswith('tools/continuous_patch/') or p == '.github/workflows/prepare-continuous-reviewed-source.yml') for p in changed):
+              raise RuntimeError('Concurrent source changes outside reviewed transport: ' + repr(changed))
+          for item in payload['files']:
+              path = pathlib.PurePosixPath(item['path'])
+              if path.is_absolute() or '..' in path.parts or '.git' in path.parts:
+                  raise RuntimeError('Unsafe source path')
+              current = subprocess.run(['git', 'show', 'HEAD:' + str(path)], capture_output=True)
+              if item['before'] is None:
+                  if current.returncode == 0:
+                      raise RuntimeError('New source path already exists: ' + str(path))
+              elif current.returncode or blob(current.stdout) != item['before']:
+                  raise RuntimeError('Existing source fingerprint differs: ' + str(path))
+          patch = payload['patch'].encode('utf-8')
+          if hashlib.sha256(patch).hexdigest() != manifest['patch_sha256']:
+              raise RuntimeError('Reviewed diff checksum mismatch')
+          patch_path = out / 'reviewed.patch'
+          patch_path.write_bytes(patch)
+          git('apply', '--check', '--index', str(patch_path))
+          git('apply', '--index', str(patch_path))
+          for item in payload['files']:
+              data = pathlib.Path(item['path']).read_bytes()
+              if blob(data) != item['after']:
+                  raise RuntimeError('Applied file checksum mismatch: ' + item['path'])
+              if item['path'].endswith('.py'):
+                  compile(data, item['path'], 'exec')
+          report = {'parent': git('rev-parse', 'HEAD').decode().strip(),
+                    'base_tree': git('rev-parse', 'HEAD^{tree}').decode().strip(),
+                    'files': payload['files'], 'patch_sha256': manifest['patch_sha256'],
+                    'scope': 'Exact byte and compile verification only; native acceptance runs after commit publication.'}
+          (out / 'VERIFIED_FILES.json').write_text(json.dumps(report, indent=2))
+      - name: Store exact Git blobs without changing the branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const path = 'build/continuous-preparation/VERIFIED_FILES.json';
+            const report = JSON.parse(fs.readFileSync(path, 'utf8'));
+            if (report.parent !== context.sha) throw new Error('Parent identity changed');
+            report.entries = [];
+            for (const item of report.files) {
+              const data = fs.readFileSync(item.path);
+              const hash = crypto.createHash('sha1').update(Buffer.from(`blob ${data.length}\0`)).update(data).digest('hex');
+              if (hash !== item.after) throw new Error('Local blob differs: ' + item.path);
+              const result = await github.rest.git.createBlob({owner: context.repo.owner, repo: context.repo.repo, content: data.toString('base64'), encoding: 'base64'});
+              if (result.data.sha !== item.after) throw new Error('Remote blob differs: ' + item.path);
+              report.entries.push({path: item.path, mode: '100644', type: 'blob', sha: item.after});
+            }
+            report.run_id = context.runId;
+            fs.writeFileSync(path, JSON.stringify(report, null, 2));
+            core.info(JSON.stringify(report));
+      - name: Preserve exact source transport verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Reviewed_Source_Transport_${{ github.sha }}
+          path: build/continuous-preparation/**
+          if-no-files-found: error
+          retention-days: 14
