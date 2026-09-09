@@ -51,6 +51,15 @@ jobs:
                   target.write_bytes(git('show','HEAD:'+path))
           patch_path=out/'reviewed.patch';patch_path.write_bytes(patch)
           git('apply','--check',str(patch_path));git('apply',str(patch_path))
+          # The first Windows probe exposed an unregistered dependency, not a
+          # missing installed package. Verify both sides of this reviewed fix.
+          runner='tools/run_material_model_recognition_acceptance.py'
+          data=(root/runner).read_bytes()
+          if blob(data)!='8ff6cb1c59f21a977067290ca5b1bd40eff1b1fb':raise RuntimeError('Unexpected runner before native-probe repair')
+          data=data.replace(b'"pypdf", "numpy")',b'"pypdf", "numpy", "shapely")')
+          if blob(data)!='4036c2f55ef5a803d635f939cc2c8430d979e809':raise RuntimeError('Unexpected runner after native-probe repair')
+          (root/runner).write_bytes(data)
+          next(row for row in manifest['files'] if row['path']==runner)['sha']='4036c2f55ef5a803d635f939cc2c8430d979e809'
           entries=[];blobs=[]
           for row in manifest['files']:
               data=(root/row['path']).read_bytes()
