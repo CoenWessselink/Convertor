@@ -1,0 +1,47 @@
+name: Preserve verified V3 UI integration
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/pdf-v3-adopt-verified-ui.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - name: Reproduce exact three-way integration and retain immutable objects
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile,urllib.request
+          def git(*args):return subprocess.check_output(['git',*args])
+          base='29f75add29d6bd01a57f9ee7b659b160f5049e4a';incoming='dcaa319701dd8edb257345cebb422e5b2fd55b61';ours='8f56b58e218c7cf1c0409c4c3aec76b1e0fadc4d'
+          git('fetch','--depth=1','origin',base,incoming,ours)
+          expected={'cws_convertor/drawings/interactive.py':'67f31c5f990af43126461cfec8905116b653856e','cws_convertor/drawings/engine.py':'ae2ff6c099ac4d2fb76f99385e94b8efcef2ce2a','cws_convertor/ui_qt/functional_workspaces.py':'5386ef13d8e5d3804ab2735e7922f33f2c258db7','cws_convertor/ui_qt/drawing_dimension_canvas.py':'26d4792d646e16c34fe0877bccc02138da96b396','cws_convertor/ui_qt/pdf12_evidence.py':'99afb687b7dcf6facf663d45246f11e08bc6b702','cws_convertor/ui_qt/drawing_responsive.py':'07703747b226b9c324f3fcb73ce2c1bc5202e5f8','cws_convertor/ui_qt/drawing_icons.py':'1667e542cfd20867301f504d9033f907cc3affed','cws_convertor/ui_qt/runtime_typography.py':'abb3d8a80792241eff6788d767c21ef061fd8ae4','tests/drawing_workspace_v3_smoke.py':'534ee20e5d1ed95855bececc34d43e87c7e6979b','tests/drawing_canvas_native_events_smoke.py':'9d493b7d7b59227c9dfff56bffe305c0b23b6d70','tests/interactive_dimension_v3_regression_smoke.py':'a9f6c803ed10645b2b96fb56fda27d7aa24cdfe3','tests/runtime_typography_smoke.py':'48e5b4b4458454c11b46d3f8738bfd8f42901238'}
+          entries=[]
+          for path,sha in expected.items():
+              data=git('show',incoming+':'+path)
+              if git('ls-tree',ours,'--',path).strip() and git('ls-tree',base,'--',path).strip():
+                  with tempfile.TemporaryDirectory() as folder:
+                      names=[pathlib.Path(folder)/label for label in ('ours','base','incoming')]
+                      for name,ref in zip(names,(ours,base,incoming)):name.write_bytes(git('show',ref+':'+path))
+                      data=subprocess.check_output(['git','merge-file','-p',*map(str,names)])
+              if hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()!=sha:raise RuntimeError('Changed merge result: '+path)
+              compile(data,path,'exec')
+              body=json.dumps({'content':base64.b64encode(data).decode(),'encoding':'base64'}).encode()
+              request=urllib.request.Request('https://api.github.com/repos/'+os.environ['GITHUB_REPOSITORY']+'/git/blobs',data=body,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','Content-Type':'application/json'},method='POST')
+              with urllib.request.urlopen(request) as response:stored=json.load(response)
+              if stored['sha']!=sha:raise RuntimeError('Stored object mismatch')
+              entries.append({'path':path,'mode':'100644','type':'blob','sha':sha})
+          out=pathlib.Path('build/pdf-v3-adoption');out.mkdir(parents=True,exist_ok=True)
+          (out/'VERIFIED.json').write_text(json.dumps({'parent':git('rev-parse','HEAD').decode().strip(),'base_tree':git('rev-parse','HEAD^{tree}').decode().strip(),'entries':entries,'scope':'source integration only; local 24 targeted tests passed; no installer or final V3 approval'},indent=2))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_V3_Verified_Adoption_${{ github.sha }}
+          path: build/pdf-v3-adoption/VERIFIED.json
+          if-no-files-found: error
+          retention-days: 14
