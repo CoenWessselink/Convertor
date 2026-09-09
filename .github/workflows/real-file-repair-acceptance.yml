@@ -45,7 +45,7 @@ jobs:
         if: ${{ !cancelled() }}
         shell: pwsh
         run: |
-          python -m unittest tests.test_manufacturing_interpreter_v3_phase2 -v
+          python tools/run_material_model_recognition_acceptance.py --child tests/test_manufacturing_interpreter_v3_phase2.py --child-result build/repair/phase2-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/project_cli_smoke.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

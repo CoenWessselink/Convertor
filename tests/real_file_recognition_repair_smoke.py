@@ -98,6 +98,15 @@ class SourceIntakeRepairTests(unittest.TestCase):
             ins=inspect_part_source_geometry(q,src,reopened.source_paths[src.source_id])
             self.assertTrue(ins.selection_verified);self.assertTrue(ins.production_geometry_exact)
             self.assertAlmostEqual(100*40*5-3.141592653589793*16*5,ins.metrics['volume_mm3'],places=5)
+    def test_private_acceptance_runner_uses_project_canonical_api(self):
+        from tools.verify_private_recognition_set import observe
+        path = self.root / 'private.dxf'
+        dxf_fixture(path)
+        data = observe(path, self.root / 'private-observer', False)
+        self.assertEqual((1, 5, 1), (data['parts'], data['quantity'], data['canonical_holes']))
+        self.assertEqual(('T1', 'S235JR'), (data['source_position'], data['source_material']))
+        self.assertTrue(data['save_reopen_preserved'])
+
     def test_dxf_nonclosing_quantity_fails_without_mutating_project(self):
         p=self.root/'bad.dxf';dxf_fixture(p,total=6);s=ProjectSession.new('x');self.addCleanup(s.close)
         before=s.project.to_dict()

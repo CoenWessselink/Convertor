@@ -37,6 +37,7 @@ def _json(path: Path, value: object) -> None:
 
 def observe(path: Path, output: Path, native_all: bool) -> dict:
     from cws_convertor.project import ProjectSession
+    from cws_convertor.project.model import stable_sha256
     from cws_convertor.project.source_geometry import inspect_part_source_geometry
     from cws_convertor.manufacturing_interpreter.pipeline import ManufacturingGeometryInterpreter
     from cws_convertor.manufacturing_interpreter.project_link import build_project_part_request
@@ -79,6 +80,11 @@ def observe(path: Path, output: Path, native_all: bool) -> dict:
                       empty_names=sum(not p.name.strip() for p in project.parts.values()),
                       categories=dict(Counter(p.category for p in project.parts.values())),
                       names=dict(Counter(p.properties.get('step_product_name') or p.name for p in project.parts.values())))
+        if len(project.parts) == 1:
+            only_part = next(iter(project.parts.values()))
+            result.update(source_profile=only_part.profile,
+                          source_material=only_part.material_grade or only_part.material,
+                          source_position=only_part.part_position)
         if suffix == '.ifc':
             declared = [(p, properties.get('Part mark')) for p in project.parts.values()
                         for properties in p.properties.get('ifc_property_sets', {}).values() if properties.get('Part mark')]
@@ -102,7 +108,7 @@ def observe(path: Path, output: Path, native_all: bool) -> dict:
                     result['source_hole_frame_match'] = json.loads(frame_match)['status']
                 _json(output/'recognition.json', report.to_dict())
             if part.canonical_part:
-                result['canonical_holes'] = len(part.get_canonical().holes)
+                result['canonical_holes'] = len(part.canonical().holes)
         if inspections:
             result['geometry_statuses'] = dict(Counter(row['status'] for row in inspections))
             result['verified_source_selectors'] = sum(row['selection_verified'] for row in inspections)
@@ -114,7 +120,8 @@ def observe(path: Path, output: Path, native_all: bool) -> dict:
         with ProjectSession.open(target) as reopened:
             before = {p.internal_id: (p.name,p.part_position,p.quantity_total,p.category,p.material,p.canonical_part) for p in project.parts.values()}
             after = {p.internal_id: (p.name,p.part_position,p.quantity_total,p.category,p.material,p.canonical_part) for p in reopened.project.parts.values()}
-            result['save_reopen_preserved'] = before == after
+            # Use the existing project serialization precision, including transformed DXF coordinates.
+            result['save_reopen_preserved'] = stable_sha256(before) == stable_sha256(after)
     return result
 
 
