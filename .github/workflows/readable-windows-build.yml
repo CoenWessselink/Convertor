@@ -1,0 +1,239 @@
+name: Readable Windows build - exact source, glyphs and installer
+
+on:
+  push:
+    branches: [agent/cws-continuous-integration-20260908]
+    paths: ['.github/workflows/readable-windows-build.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Verify and apply the reviewed source repair atomically
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, pathlib, subprocess
+          patch = pathlib.Path('tools/continuous_recovery/readable-runtime.patch')
+          if hashlib.sha256(patch.read_bytes()).hexdigest() != 'b57d4504972bb89c28c7729db3eedfe5bb3f623182266257eb3f9e0ff69d07d7':
+              raise SystemExit('STOP: reviewed patch SHA256 mismatch')
+          check = subprocess.run(['git', 'apply', '--check', str(patch)], capture_output=True)
+          if check.returncode == 0:
+              subprocess.run(['git', 'apply', '--index', '--whitespace=error', str(patch)], check=True)
+          elif subprocess.run(['git', 'apply', '--reverse', '--check', str(patch)], capture_output=True).returncode != 0:
+              raise SystemExit('STOP: source differs from both reviewed states; no overwrite')
+          test = pathlib.Path('tests/runtime_typography_smoke.py')
+          text = test.read_text(encoding='utf-8')
+          text = text.replace('ensure_ui_font(cls_app := self.app)', 'ensure_ui_font(self.app)')
+          test.write_text(text, encoding='utf-8')
+          expected = {
+              'cws_convertor/ui_qt/runtime_typography.py': '0edc529b91520472fb16a8a4411b90dc7b42ef6bac6c5a4069feca16b83d4687',
+              'tests/geometry_fixture_material_safety_smoke.py': '88799454137c689dc0e03468b6229656fd903b3036f3412af225e1ffc2e1f283',
+              'tests/runtime_typography_smoke.py': '502da51106f0f4b60bad60b758d209870ddcc9e869a0a0418f42ff22b234d08b',
+          }
+          for name, digest in expected.items():
+              path = pathlib.Path(name)
+              if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                  raise SystemExit(f'STOP: reviewed new source differs: {name}')
+          changed = subprocess.check_output(['git','diff','HEAD','--name-only'], text=True).splitlines()
+          for name in {*expected, *changed}:
+              if name.endswith('.py'):
+                  compile(pathlib.Path(name).read_text(encoding='utf-8'), name, 'exec')
+          subprocess.run(['git','add','--','tests/runtime_typography_smoke.py'],check=True)
+          subprocess.run(['git','diff','--cached','--check'],check=True)
+          PY
+      - name: Publish real production code without force and archive exact source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'CWS verified integration'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: integrate readable native UI and repair explicit-material regression fixtures'
+            git push origin HEAD:agent/cws-continuous-integration-20260908
+          fi
+          test -z "$(git status --porcelain --untracked-files=no)"
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          mkdir -p build/readable-source
+          git rev-parse HEAD > build/readable-source/COMMIT.txt
+          git rev-parse HEAD^{tree} > build/readable-source/TREE.txt
+          git archive --format=zip HEAD -o build/readable-source/source.zip
+          git bundle create build/readable-source/incremental.bundle HEAD ^8237eed9ae0964e4874970c2798090b2b4c2b903
+          sha256sum build/readable-source/* > build/readable-source/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Readable_Source_${{ steps.source.outputs.sha }}
+          path: build/readable-source/*
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-runtime:
+    needs: integrate
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      CWS_BUILD_EXPECTED_SHA: ${{ needs.integrate.outputs.source_sha }}
+      QT_QPA_PLATFORM: offscreen
+      GALLIUM_DRIVER: llvmpipe
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.integrate.outputs.source_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install locked native dependencies
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Pinned software OpenGL, not physical GPU qualification
+        uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: Source regression and readable main-window preflight
+        shell: pwsh
+        run: |
+          $tests = @('build_identity','native_window_binding','assembly_ifc_materials','production_release_package','continuous_smoke_reporting','drawing_workspace_v3','drawing_canvas_native_events','manufacturing_contact_core','phase1_phase2_completion','viewer_v6_integration','geometry_fixture_material_safety','runtime_typography')
+          foreach ($test in $tests) {
+            python "tests/${test}_smoke.py"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          python tools/run_pdf12_v2_tests.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python CWS_Convertor_App.py --gui-smoke --screenshot build/readable-preflight/main.png --report build/readable-preflight/main.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build existing app, install, exercise, save, reopen and uninstall
+        shell: pwsh
+        run: |
+          python tools/build_phase3_windows_release.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: All twelve packaged conversion routes and negative cases
+        shell: pwsh
+        run: |
+          python tests/conversion_one_phase_packaged_smoke.py --runtime-dir dist/CWS_Convertor --output build/readable-conversions --expected-sha $env:CWS_BUILD_EXPECTED_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve scope and checksums without claiming full product acceptance
+        shell: pwsh
+        run: |
+          python -c "import json,pathlib,hashlib; from cws_convertor.build_identity import checkout_identity; r=pathlib.Path.cwd(); d=checkout_identity(r); assert not d['tracked_dirty'],d; d.update(schema='cws-readable-test-distribution-v1',windows_distribution_tests_passed=True,full_product_release_approved=False,physical_machine_release_approved=False,graphics='Mesa software OpenGL; not physical GPU qualification'); (r/'release/phase3/DISTRIBUTION_SCOPE.json').write_text(json.dumps(d,indent=2),encoding='utf-8'); (r/'release/phase3/LEESMIJ.txt').write_text('GETESTE INTEGRATIEBUILD. Geen volledige productie- of machinevrijgave. Zie bron-SHA, testverslagen en resterende regressieblokkades. Geen Python-installatie nodig voor de gebruiker.',encoding='utf-8')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload installer separately below download-tool size cap
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_Readable_${{ needs.integrate.outputs.source_sha }}
+          path: |
+            release/phase3/CWS_Convertor_Setup_*_x64.exe
+            release/phase3/DISTRIBUTION_SCOPE.json
+            release/phase3/LEESMIJ.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Portable_Readable_${{ needs.integrate.outputs.source_sha }}
+          path: |
+            release/phase3/*_Portable.zip
+            release/phase3/DISTRIBUTION_SCOPE.json
+            release/phase3/LEESMIJ.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Standalone_Readable_${{ needs.integrate.outputs.source_sha }}
+          path: |
+            release/phase3/CWS_Convertor.exe
+            release/phase3/DISTRIBUTION_SCOPE.json
+            release/phase3/LEESMIJ.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30
+      - name: Actual runtime screenshots and diagnostics, also on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Readable_Evidence_${{ needs.integrate.outputs.source_sha }}
+          path: |
+            validation/results/windows-runtime-phase3/**
+            validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json
+            build/readable-preflight/**
+            build/readable-conversions/**
+            build/cws-build-identity.json
+            build/CWS_Convertor/warn-CWS_Convertor.txt
+            build/CWS_Convertor_OneFile/warn-CWS_Convertor_OneFile.txt
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-full-regression:
+    needs: integrate
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_RUN_NATIVE_VTK_TESTS: '1'
+      GALLIUM_DRIVER: llvmpipe
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.integrate.outputs.source_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - shell: pwsh
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: All discovered suites - zero-skips gate remains mandatory
+        shell: pwsh
+        run: |
+          python validation/run_all_smokes_v9.py --output build/readable-full-regression --require-zero-skips
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Readable_Full_Regression_${{ needs.integrate.outputs.source_sha }}
+          path: build/readable-full-regression/**
+          if-no-files-found: error
+          retention-days: 30
