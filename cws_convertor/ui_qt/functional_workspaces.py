@@ -178,7 +178,7 @@ if qt_available():
             operation_layout = QtWidgets.QVBoxLayout(operations)
             operation_layout.setContentsMargins(8, 8, 8, 8)
             tools = QtWidgets.QHBoxLayout()
-            self.add_operation = QtWidgets.QPushButton("＋ Toevoegen")
+            self.add_operation = QtWidgets.QPushButton("+ Toevoegen")
             self.delete_operation = QtWidgets.QPushButton("Verwijderen")
             self.duplicate_operation = QtWidgets.QPushButton("Dupliceren")
             self.validate = QtWidgets.QPushButton("Valideren")

@@ -605,7 +605,7 @@ if qt_available():
             root.setContentsMargins(22, 18, 22, 18)
             root.setSpacing(16)
             actions = QtWidgets.QHBoxLayout()
-            new_project = QtWidgets.QPushButton("＋  Nieuw project")
+            new_project = QtWidgets.QPushButton("+  Nieuw project")
             new_project.setObjectName("primaryOutlineButton")
             new_project.clicked.connect(self._choose_files)
             open_project = QtWidgets.QPushButton("Open projectbestand")
