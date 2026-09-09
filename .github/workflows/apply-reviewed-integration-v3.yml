@@ -1,0 +1,84 @@
+name: Apply verified V3 production integration (not release acceptance)
+
+on:
+  push:
+    branches: [agent/cws-continuous-integration-20260908]
+    paths:
+      - '.github/workflows/apply-reviewed-integration-v3.yml'
+      - 'tools/continuous_recovery/reviewed-v3.b64'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-reviewed-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Verify complete payload, original files and resulting production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, lzma, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          encoded = (root / 'tools/continuous_recovery/reviewed-v3.b64').read_text().strip()
+          packed = base64.b64decode(encoded, validate=True)
+          expected = '9209b9a7ec4be5a3d0fae1a9e5278b66d3468a275f4668268430e0a3f15aa027'
+          if hashlib.sha256(packed).hexdigest() != expected:
+              raise SystemExit('STOP: complete patch transport SHA256 mismatch')
+          payload = json.loads(lzma.decompress(packed))
+          if payload['schema'] != 'cws-reviewed-integration-patch-v1' or len(payload['files']) != 7:
+              raise SystemExit('STOP: unexpected patch manifest')
+          allowed_roots = {'cws_convertor', 'tests'}
+          for entry in payload['files']:
+              relative = pathlib.PurePosixPath(entry['path'])
+              if relative.is_absolute() or '..' in relative.parts or relative.parts[0] not in allowed_roots:
+                  raise SystemExit('STOP: unsafe patch path')
+              path = root / relative
+              actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+              if actual != entry['before_sha256']:
+                  raise SystemExit(f'STOP: source changed before patch: {relative}')
+          output = root / 'build/verified-v3-integration'
+          output.mkdir(parents=True, exist_ok=True)
+          patch = output / 'reviewed-source.patch'
+          patch.write_text(payload['patch'], encoding='utf-8')
+          subprocess.run(['git', 'apply', '--check', str(patch)], check=True)
+          subprocess.run(['git', 'apply', '--whitespace=error', str(patch)], check=True)
+          for entry in payload['files']:
+              path = root / entry['path']
+              if hashlib.sha256(path.read_bytes()).hexdigest() != entry['after_sha256']:
+                  raise SystemExit(f'STOP: resulting source mismatch: {path}')
+              if path.suffix == '.py':
+                  compile(path.read_text(encoding='utf-8'), str(path), 'exec')
+          subprocess.run(['git', 'diff', '--check'], check=True)
+          subprocess.run(['git', 'add', '--', *[item['path'] for item in payload['files']]], check=True)
+          (output / 'SOURCE_FILE_HASHES.json').write_text(json.dumps(payload['files'], indent=2), encoding='utf-8')
+          PY
+      - name: Commit and publish actual production code without force
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'CWS integration recovery'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: integrate V3 dimension safeguards, vector PDF edits and responsive workspace'
+          git push origin HEAD:agent/cws-continuous-integration-20260908
+          git rev-parse HEAD > build/verified-v3-integration/COMMIT.txt
+          git rev-parse HEAD^{tree} > build/verified-v3-integration/TREE.txt
+          git cat-file commit HEAD > build/verified-v3-integration/COMMIT_OBJECT.txt
+          git archive --format=zip HEAD -o build/verified-v3-integration/source.zip
+          git bundle create build/verified-v3-integration/source.bundle HEAD
+          sha256sum build/verified-v3-integration/source.zip build/verified-v3-integration/source.bundle > build/verified-v3-integration/SHA256SUMS.txt
+          echo 'Production source integrated. This job is NOT Windows/GUI/release acceptance.' >> "$GITHUB_STEP_SUMMARY"
+          git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Verified_V3_Production_Source_${{ github.run_id }}
+          path: build/verified-v3-integration/*
+          if-no-files-found: error
+          retention-days: 14
