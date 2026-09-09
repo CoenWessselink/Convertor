@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 from typing import Any, Iterable
 
-from cws_convertor.drawings.interactive import SnapCandidate, nearest_snap_candidate
+from cws_convertor.drawings.interactive import SnapCandidate, SnapFilter, nearest_snap_candidate
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 
 
@@ -28,6 +28,7 @@ if qt_available():
             self._pixmap = QtGui.QPixmap()
             self._document = None
             self._candidates: list[SnapCandidate] = []
+            self._snap_filter = SnapFilter.ALL.value
             self._hover_candidates: list[SnapCandidate] = []
             self._hover_index = 0
             self._draft_points: list[tuple[float, float]] = []
@@ -76,7 +77,8 @@ if qt_available():
             if self._pixmap.isNull():
                 self.update()
 
-        def set_candidates(self, candidates: Iterable[SnapCandidate]) -> None:
+        def set_candidates(self, candidates: Iterable[SnapCandidate], *, snap_filter: str = SnapFilter.ALL.value) -> None:
+            self._snap_filter = str(snap_filter)
             self._candidates = list(candidates)
             self._hover_candidates.clear()
             self._hover_index = 0
@@ -244,7 +246,8 @@ if qt_available():
             for _distance, _candidate_id, candidate in sorted(nearby):
                 distinct.setdefault(candidate.candidate_id, candidate)
             self._hover_candidates = list(distinct.values())
-            if not self._hover_candidates and self._document is not None:
+            if (not self._hover_candidates and self._document is not None
+                    and self._snap_filter in {SnapFilter.ALL.value, SnapFilter.EDGES.value}):
                 page_width, _page_height = self._page_size()
                 rect = self._drawing_rect()
                 nearest = nearest_snap_candidate(

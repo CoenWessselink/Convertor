@@ -50,6 +50,7 @@ if qt_available():
         build_snap_candidates,
     )
     from cws_convertor.ui_qt.drawing_dimension_canvas import InteractiveDrawingCanvas
+    from cws_convertor.ui_qt.drawing_responsive import install_responsive_drawing_controls, WrappingToolLayout
 
     def _selection_id(selection: Any | None) -> str:
         if selection is None:
@@ -2303,13 +2304,14 @@ if qt_available():
             self._snap_candidates = []
             self._dimension_clipboard: list[dict[str, Any]] = []
             self._build()
+            install_responsive_drawing_controls(self)
             self.generate_pdf.connect(self.export_pdf)
 
         def _build(self) -> None:
             root = QtWidgets.QVBoxLayout(self)
             root.setContentsMargins(12, 9, 12, 9)
             root.setSpacing(7)
-            top = QtWidgets.QHBoxLayout()
+            top = WrappingToolLayout()
             self.title = QtWidgets.QLabel("Review-PDF / Tekening")
             self.title.setObjectName("workspaceTitle")
             live = QtWidgets.QLabel("●  Voorbeeld (live)")
@@ -2332,13 +2334,18 @@ if qt_available():
             top.addWidget(live)
             top.addStretch(1)
             for label, widget in (("Formaat", self.format), ("Oriëntatie", self.orientation), ("Schaal", self.scale), ("Eenheid", self.unit)):
-                top.addWidget(QtWidgets.QLabel(label))
-                top.addWidget(widget)
+                field = QtWidgets.QWidget(self)
+                field_layout = QtWidgets.QHBoxLayout(field)
+                field_layout.setContentsMargins(0, 0, 0, 0)
+                field_layout.setSpacing(4)
+                field_layout.addWidget(QtWidgets.QLabel(label))
+                field_layout.addWidget(widget)
+                top.addWidget(field)
             top.addWidget(self.preview_button)
             top.addWidget(self.png_button)
             top.addWidget(self.pdf_button)
             root.addLayout(top)
-            views = QtWidgets.QHBoxLayout()
+            views = WrappingToolLayout()
             views.addWidget(QtWidgets.QLabel("Aanzichten"))
             self.view_buttons: dict[str, Any] = {}
             for key, label in (("front", "Voor"), ("top", "Boven"), ("side", "Zij"), ("end", "Eind"), ("3d", "3D"), ("iso", "Iso")):
@@ -2442,7 +2449,7 @@ if qt_available():
         def _build_dimension_toolbar(self, root: Any) -> None:
             toolbar_frame = QtWidgets.QFrame(self)
             toolbar_frame.setObjectName("dimensionEditorToolbar")
-            toolbar = QtWidgets.QHBoxLayout(toolbar_frame)
+            toolbar = WrappingToolLayout(toolbar_frame)
             toolbar.setContentsMargins(4, 3, 4, 3)
             toolbar.setSpacing(3)
             tools = (
@@ -2541,6 +2548,7 @@ if qt_available():
                 ("Cluster naar achteren", lambda: self._change_dimension_order(-1)),
                 ("Leaderknikpunt instellen…", self._set_leader_bend),
                 ("Maatstijlprofiel…", self._edit_dimension_style),
+                ("Nieuwe tekeningsrevisie…", self._begin_dimension_revision),
             ):
                 more_menu.addAction(label, callback)
             more_button.setMenu(more_menu)
@@ -2613,6 +2621,11 @@ if qt_available():
         def _persist_dimension_editor(self, action: str) -> bool:
             if self._workspace is None or self._dimension_document is None:
                 return False
+            session = getattr(self._workspace, "session", None)
+            if session is not None and bool(getattr(session, "read_only", False)):
+                self._load_dimension_editor()
+                self.status.setText("Project is alleen-lezen; wijzigingen zijn niet opgeslagen")
+                return False
             try:
                 self._loaded_lock_version = DimensionDocumentStore.save(
                     self._workspace.project,
@@ -2643,6 +2656,7 @@ if qt_available():
                             self.status.setText(f"Maat opgeslagen; autosave-waarschuwing: {exc}")
                 return True
             except RuntimeError as exc:
+                self._load_dimension_editor()
                 self.status.setText(str(exc))
                 QtWidgets.QMessageBox.warning(self, "Maatvoeringsconflict", str(exc))
                 return False
@@ -2690,17 +2704,26 @@ if qt_available():
                 return False
             if self._dimension_document.status != "released":
                 return True
+            self.status.setText("Vrijgegeven maatvoering is vergrendeld; kies Meer > Nieuwe tekeningsrevisie")
+            return False
+
+        def _begin_dimension_revision(self) -> None:
+            if self._dimension_document is None or self._dimension_model is None or self._workspace is None:
+                return
+            session = getattr(self._workspace, "session", None)
+            if bool(getattr(session, "read_only", False)):
+                self.status.setText("Project is alleen-lezen")
+                return
+            if self._dimension_document.status != "released":
+                self.status.setText("De huidige tekeningsrevisie is al een concept")
+                return
             reason, accepted = QtWidgets.QInputDialog.getText(
-                self,
-                "Nieuwe tekeningsrevisie",
-                "De maatvoering is vrijgegeven. Geef de wijzigingsreden voor een nieuwe conceptrevisie:",
-            )
-            if not accepted or not reason.strip():
-                self.status.setText("Vrijgegeven maatvoering blijft ongewijzigd")
-                return False
-            self._dimension_model.begin_revision(reason=reason.strip(), user=self._current_user())
-            self._persist_dimension_editor("drawing.dimension_revision_forked")
-            return True
+                self, "Nieuwe tekeningsrevisie", "Wijzigingsreden voor een nieuwe conceptrevisie:")
+            if accepted and reason.strip():
+                self._dimension_model.begin_revision(reason=reason.strip(), user=self._current_user())
+                if self._persist_dimension_editor("drawing.dimension_revision_forked"):
+                    self._update_dimension_properties()
+                    self.refresh_preview()
 
         def _activate_dimension_tool(self, kind: str) -> None:
             self._dimension_tool = str(kind)
@@ -2741,6 +2764,9 @@ if qt_available():
 
         def _on_dimension_canvas_click(self, point: object, candidate: object, modifiers: object) -> None:
             if not isinstance(point, tuple) or self._dimension_model is None or self._dimension_document is None:
+                return
+            if self._dimension_tool != "select" and not self._ensure_dimension_editable():
+                self._on_dimension_command("cancel")
                 return
             if self._dimension_tool.startswith("reanchor:"):
                 if candidate is None or not candidate.valid:
@@ -3211,8 +3237,13 @@ if qt_available():
         def _release_dimension_revision(self) -> None:
             if self._dimension_model is None or self._dimension_document is None:
                 return
+            if not self._ensure_dimension_editable():
+                return
             if self._drawing_document is None:
                 self.refresh_preview()
+            if self._drawing_document is None:
+                self.status.setText("Vrijgave geblokkeerd: geen gevalideerde tekening beschikbaar")
+                return
             ignored = {"DRAWING_DIMENSION_EDITOR_NOT_RELEASED"}
             blocking = [
                 item for item in dict(getattr(self._drawing_document, "lint", {}) or {}).get("issues", ())
@@ -3231,7 +3262,8 @@ if qt_available():
                 self.status.setText(str(exc))
                 QtWidgets.QMessageBox.warning(self, "Maatvoering vrijgeven", str(exc))
                 return
-            self._persist_dimension_editor("drawing.dimension_revision_released")
+            if not self._persist_dimension_editor("drawing.dimension_revision_released"):
+                return
             self.status.setText(f"Maatvoering {self._dimension_document.drawing_revision} vrijgegeven")
             self._update_dimension_properties()
             self.refresh_preview()
@@ -3247,15 +3279,23 @@ if qt_available():
                 previous = dict(released[-1])
                 old_ids = {str(item.get("dimension_id") or "") for item in previous.get("dimensions") or ()}
                 current_ids = {item.dimension_id for item in self._dimension_document.dimensions}
+                old_items = {str(item.get("dimension_id") or ""): dict(item) for item in previous.get("dimensions") or ()}
+                volatile = {"modified_at", "modified_by", "drawing_revision"}
+                changed = sum(
+                    {k: v for k, v in item.to_dict().items() if k not in volatile} !=
+                    {k: v for k, v in old_items[item.dimension_id].items() if k not in volatile}
+                    for item in self._dimension_document.dimensions if item.dimension_id in old_items
+                )
                 self.revision_summary.setText(
                     f"Revisievergelijking {previous.get('drawing_revision', '-') } → {self._dimension_document.drawing_revision}: "
-                    f"+{len(current_ids - old_ids)} / −{len(old_ids - current_ids)} / behouden {len(old_ids & current_ids)}"
+                    f"+{len(current_ids - old_ids)} / −{len(old_ids - current_ids)} / gewijzigd {changed}"
                 )
             else:
                 self.revision_summary.setText("Revisievergelijking: geen vrijgegeven basis")
             lint_issues = list(dict(getattr(self._drawing_document, "lint", {}) or {}).get("issues", ()))
             blockers = [str(value.get("code") or "") for value in lint_issues if bool(value.get("blocking", True))]
             self.dimension_issue_summary.setText(
+                "Problemen: nog geen gevalideerde tekening" if self._drawing_document is None else
                 "Problemen: geen blokkerende meldingen"
                 if not blockers
                 else "Problemen / vrijgave geblokkeerd: " + ", ".join(blockers[:4])
@@ -3266,7 +3306,9 @@ if qt_available():
                     item for item in self._dimension_document.dimensions
                     if item.dimension_id in self._dimension_model.selected_ids
                 ]
-            self.edit_properties_button.setEnabled(bool(selected))
+            editable = (self._dimension_document is not None and self._dimension_document.status != "released"
+                        and not bool(getattr(getattr(self._workspace, "session", None), "read_only", False)))
+            self.edit_properties_button.setEnabled(bool(selected) and editable)
             if not selected:
                 total = len(self._dimension_document.dimensions) if self._dimension_document is not None else 0
                 QtWidgets.QTreeWidgetItem(self.dimension_properties, ("Selectie", f"geen · {total} maatobject(en)"))
@@ -3278,7 +3320,7 @@ if qt_available():
             values = (
                 ("Maat-ID", item.dimension_id),
                 ("Type", item.kind),
-                ("Waarde", f"{item.nominal_value_mm:g} mm"),
+                ("Waarde", f"{item.nominal_value_mm:g} " + ("°" if item.kind == DimensionKind.ANGLE.value else "mm")),
                 ("Tekst", item.label or "automatisch"),
                 ("Prefix / suffix", f"{item.prefix or '-'} / {item.suffix or '-'}"),
                 ("Eenheid / decimalen", f"{self._dimension_document.style.unit} / {self._dimension_document.style.decimals}"),
@@ -3291,6 +3333,11 @@ if qt_available():
                 ("REF / inspectie", f"{'ja' if item.reference else 'nee'} / {'ja' if item.inspection else 'nee'}"),
                 ("Zichtbaar", "ja" if item.visible else "nee"),
                 ("Ankers", str(len(item.anchors))),
+                ("Anker-ID’s", "; ".join(f"{a.entity_id}/{a.view_id}/{a.feature_id}" for a in item.anchors)),
+                ("Maatlijnpositie", str(item.line_position)),
+                ("Tekstpositie", str(item.text_position)),
+                ("Documentstatus", self._dimension_document.status),
+                ("Lock-versie", str(self._dimension_document.lock_version)),
                 ("Bronrevisie", item.source_revision),
                 ("Tekeningrevisie", item.drawing_revision),
                 ("Stijl", f"{item.style_id} {item.style_version}"),
@@ -3512,11 +3559,16 @@ if qt_available():
             if workspace is None and type(context).__name__ == "UnifiedUiContextSnapshot":
                 return
             previous_entity_id = self._entity_id
+            previous_workspace = self._workspace
             self._workspace, self._entity_id = workspace, entity_id
             name = _value(entity, "part_position", "mark", "name", default=self._entity_id)
             self.title.setText(f"Review-PDF / Tekening - {name}" if name else "Review-PDF / Tekening")
             self.status.setText("Gereed voor live tekenvoorbeeld" if self._workspace is not None else "Geen project geopend")
-            if self._workspace is not None and self._entity_id and self._entity_id != previous_entity_id:
+            if self._workspace is None or not self._entity_id:
+                self._drawing_document = None
+                self._load_dimension_editor()
+                self.preview.set_drawing(QtGui.QPixmap(), None, ())
+            elif self._entity_id != previous_entity_id or self._workspace is not previous_workspace:
                 self._drawing_document = None
                 self._load_dimension_editor()
                 QtCore.QTimer.singleShot(0, self.refresh_preview)
@@ -3726,7 +3778,7 @@ if qt_available():
                     snap_filter=str(self.snap_filter.currentData() or SnapFilter.ALL.value),
                 )
             if hasattr(self, "preview"):
-                self.preview.set_candidates(self._snap_candidates)
+                self.preview.set_candidates(self._snap_candidates, snap_filter=str(self.snap_filter.currentData() or SnapFilter.ALL.value))
 
         def resizeEvent(self, event: Any) -> None:
             super().resizeEvent(event)

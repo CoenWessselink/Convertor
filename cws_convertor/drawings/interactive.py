@@ -429,6 +429,14 @@ class DimensionEditorDocument:
         return result
 
 
+@dataclass(slots=True)
+class _EditorSnapshot:
+    """Undo is a document edit, not just a list of dimension objects."""
+
+    dimensions: list[InteractiveDimension]
+    style: DimensionStyle
+
+
 class DimensionEditorModel:
     """Transactional editor facade with deterministic undo/redo snapshots."""
 
@@ -436,18 +444,22 @@ class DimensionEditorModel:
         self.document = document
         self.clock = clock
         self.selected_ids: set[str] = set()
-        self._undo: list[tuple[str, list[InteractiveDimension]]] = []
-        self._redo: list[tuple[str, list[InteractiveDimension]]] = []
+        self._undo: list[tuple[str, _EditorSnapshot]] = []
+        self._redo: list[tuple[str, _EditorSnapshot]] = []
 
-    def _snapshot(self) -> list[InteractiveDimension]:
-        return deepcopy(self.document.dimensions)
+    def _snapshot(self) -> _EditorSnapshot:
+        return _EditorSnapshot(deepcopy(self.document.dimensions), deepcopy(self.document.style))
 
-    def _begin(self, action: str) -> tuple[str, list[InteractiveDimension]]:
+    def _restore(self, snapshot: _EditorSnapshot) -> None:
+        self.document.dimensions = deepcopy(snapshot.dimensions)
+        self.document.style = deepcopy(snapshot.style)
+
+    def _begin(self, action: str) -> tuple[str, _EditorSnapshot]:
         if self.document.status == "released":
             raise PermissionError("Vrijgegeven maatvoering is alleen-lezen; start eerst een nieuwe conceptrevisie")
         return action, self._snapshot()
 
-    def _commit(self, before: tuple[str, list[InteractiveDimension]], *, user: str, details: Mapping[str, Any] | None = None) -> None:
+    def _commit(self, before: tuple[str, _EditorSnapshot], *, user: str, details: Mapping[str, Any] | None = None) -> None:
         action, snapshot = before
         self._undo.append((action, snapshot))
         self._redo.clear()
@@ -455,7 +467,7 @@ class DimensionEditorModel:
         self.document.modified_at = timestamp
         self.document.modified_by = user or "system"
         self.document.status = "draft"
-        before_by_id = {item.dimension_id: item for item in snapshot}
+        before_by_id = {item.dimension_id: item for item in snapshot.dimensions}
         after_by_id = {item.dimension_id: item for item in self.document.dimensions}
         changes = []
         for dimension_id in sorted(set(before_by_id) | set(after_by_id)):
@@ -480,6 +492,10 @@ class DimensionEditorModel:
             changes.append({"dimension_id": dimension_id, "old": audit_value(old), "new": audit_value(new)})
         audit_details = dict(details or {})
         audit_details["changes"] = changes
+        if snapshot.style.to_dict() != self.document.style.to_dict():
+            audit_details["style_change"] = {
+                "old": snapshot.style.to_dict(), "new": self.document.style.to_dict()
+            }
         self.document.audit.append(
             {
                 "transaction_id": str(uuid4()),
@@ -534,6 +550,8 @@ class DimensionEditorModel:
         digits = "".join(character for character in current if character.isdigit())
         self.document.drawing_revision = f"draft-{int(digits or 0) + 1}"
         self.document.status = "draft"
+        self._undo.clear()
+        self._redo.clear()
         for item in self.document.dimensions:
             item.drawing_revision = self.document.drawing_revision
         timestamp = self.clock()
@@ -606,6 +624,9 @@ class DimensionEditorModel:
         ):
             raise ValueError("Inconsistente revisie-, stijl- of ankerbinding blokkeert vrijgave")
         self.document.status = "released"
+        # No history entry may cross a released revision boundary.
+        self._undo.clear()
+        self._redo.clear()
         timestamp = self.clock()
         self.document.modified_at = timestamp
         self.document.modified_by = user or "system"
@@ -862,6 +883,16 @@ class DimensionEditorModel:
         targets = [item for item in self.document.dimensions if item.dimension_id in self.selected_ids]
         if not targets or not values:
             return 0
+        if "label" in values and any(
+            item.kind not in {DimensionKind.LEADER.value, DimensionKind.TEXT.value}
+            and str(values["label"]) != item.label for item in targets
+        ):
+            raise ValueError("Gebruik een expliciete tekstoverride met wijzigingsreden")
+        for key in ("tolerance_upper_mm", "tolerance_lower_mm"):
+            if key in values and values[key] is not None:
+                values[key] = float(values[key])
+                if not math.isfinite(values[key]):
+                    raise ValueError("Toleranties moeten eindige getallen zijn")
         before = self._begin("dimension.properties")
         for item in targets:
             for key, value in values.items():
@@ -881,6 +912,7 @@ class DimensionEditorModel:
     ) -> int:
         if not str(reason).strip():
             raise ValueError("Een maatstijlwijziging vereist een reden")
+        style.validate()
         role_value = _enum_value(DrawingRole, role, DrawingRole.READ_ONLY)
         approved = role_value in {DrawingRole.CHECKER.value, DrawingRole.RELEASER.value}
         if style.profile_scope != "standard":
@@ -973,6 +1005,7 @@ class DimensionEditorModel:
             scale_denominator=1.0,
             angle_mode=str(item.metadata.get("angle_mode") or "inside"),
         )
+        item.entity_ids = tuple(dict.fromkeys(value.entity_id for value in item.anchors))
         item.state = DimensionState.RESOLVED.value
         item.geometry_sha256 = anchor.geometry_sha256
         item.manufacturing_sha256 = anchor.manufacturing_sha256
@@ -980,22 +1013,26 @@ class DimensionEditorModel:
         self._commit(before, user=user, details={"anchor_index": anchor_index})
 
     def undo(self, *, user: str = "system") -> bool:
+        if self.document.status == "released":
+            raise PermissionError("Vrijgegeven maatvoering is alleen-lezen")
         if not self._undo:
             return False
         action, snapshot = self._undo.pop()
         self._redo.append((action, self._snapshot()))
-        self.document.dimensions = snapshot
-        self.selected_ids &= {item.dimension_id for item in snapshot}
+        self._restore(snapshot)
+        self.selected_ids &= {item.dimension_id for item in snapshot.dimensions}
         self._record_history_action("dimension.undo", user=user, source_action=action)
         return True
 
     def redo(self, *, user: str = "system") -> bool:
+        if self.document.status == "released":
+            raise PermissionError("Vrijgegeven maatvoering is alleen-lezen")
         if not self._redo:
             return False
         action, snapshot = self._redo.pop()
         self._undo.append((action, self._snapshot()))
-        self.document.dimensions = snapshot
-        self.selected_ids &= {item.dimension_id for item in snapshot}
+        self._restore(snapshot)
+        self.selected_ids &= {item.dimension_id for item in snapshot.dimensions}
         self._record_history_action("dimension.redo", user=user, source_action=action)
         return True
 
@@ -1272,7 +1309,7 @@ def build_snap_candidates(
         and document.hlr_method == "occt_hlr"
         and len(document.geometry_sha256) == 64
     )
-    candidates: dict[tuple[int, int, str, str], SnapCandidate] = {}
+    candidates: dict[tuple[Any, ...], SnapCandidate] = {}
     segments: list[tuple[tuple[float, float], tuple[float, float], dict[str, Any], DrawingPrimitive]] = []
 
     def context_for(page_number: int, point: Sequence[float], primitive: DrawingPrimitive) -> dict[str, Any] | None:
@@ -1345,14 +1382,17 @@ def build_snap_candidates(
             manufacturing_sha256=document.manufacturing_sha256,
             proof="canonical_projection" if canonical else "review_projection",
         )
-        key = (round(point_value[0] * 1000), round(point_value[1] * 1000), view_id, kind)
+        # Coincident components are different selectable anchors.  Conversely,
+        # repeated primitives for the same semantic target must not duplicate it.
+        key = (page_number, view_id, anchor.entity_id, feature_id, kind,
+               round(point_value[0] * 1000), round(point_value[1] * 1000))
         candidates.setdefault(
             key,
             SnapCandidate(
                 candidate_id=f"{page_number}:{view_id}:{anchor.entity_id}:{subshape_id}:{kind}:{index}",
                 point=point_value,
                 snap_type=kind,
-                label=f"{kind} · {feature_id or subshape_id}",
+                label=f"{kind} · {anchor.entity_id} · {feature_id or subshape_id} · {view_id}",
                 anchor=anchor,
                 valid=True,
                 layer=primitive.layer,
