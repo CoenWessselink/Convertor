@@ -39,6 +39,12 @@ def recognize_profile(
 ) -> ProfileRecognition:
     definitions = profile_definitions(database)
     preferred = preferred_profile.strip().upper()
+    if preferred and hasattr(database, "find"):
+        resolved = database.find(preferred_profile)
+        if resolved is not None:
+            preferred = resolved.designation.upper()
+            if all(p.designation != resolved.designation for p in definitions):
+                definitions = (*definitions, resolved)
     family = section.inferred_family.upper()
     if not all(
         math.isfinite(value) and value > 0.0

@@ -2574,6 +2574,24 @@ def analyze_external_pdf(
     finally:
         document.close()
 
+    from cws_convertor.importers.drawing_intake import analyze_assembly_pdf
+    assembly_bom = analyze_assembly_pdf(source)
+    if assembly_bom is not None:
+        # Assembly tables are document evidence, not a single guessed steel part.
+        part = CanonicalPart(source_format="PDF", source_file=source.name,
+                             source_sha256=sha256_file(source), import_method="coordinate_bound_assembly_bom",
+                             part_id=assembly_bom["drawing_number"],
+                             header=CanonicalHeader(drawing_number=assembly_bom["drawing_number"]),
+                             product=CanonicalProductData(name="Assemblagestuklijst"),
+                             properties={"assembly_bom": assembly_bom})
+        part.validation.unresolved_questions.append(CanonicalQuestion(
+            "assembly-geometry-required", "geometry", "Koppel de bronstuklijst aan de bijbehorende modelrevisie.",
+            reason="Een assemblagestuklijst is geen enkelvoudig productiemodel."))
+        return PDFAnalysisResult(source=source,source_sha256=part.source_sha256,mode="external_assembly_bom",
+            part=part,pages=pages,detected_fields={"drawing_number":assembly_bom["drawing_number"],
+                "subject":"Assemblagestuklijst", "assembly_bom":assembly_bom},
+            details={"assembly_bom":assembly_bom,"geometry_inferred":False})
+
     normalized_lines = [_LineRecord(_normalise_text(line.text), line.bbox, line.page) for line in all_lines]
     detected: dict[str, Any] = {}
     evidence: dict[str, CanonicalEvidence] = {}

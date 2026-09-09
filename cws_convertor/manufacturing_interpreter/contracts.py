@@ -7,15 +7,15 @@ import json
 from typing import Any
 
 
-ENGINE_VERSION = "mgi-v3.1"
+ENGINE_VERSION = "mgi-v3.2"
 ALGORITHM_VERSIONS = (
     ("topology", "mgi-topology-v3"),
     ("axis", "mgi-axis-v3"),
     ("section", "mgi-section-v3.1"),
-    ("profile", "mgi-profile-v3"),
+    ("profile", "mgi-profile-v3.2"),
     ("feature", "mgi-feature-v3.1"),
-    ("solver", "mgi-solver-v3.1"),
-    ("proof", "mgi-proof-v3"),
+    ("solver", "mgi-solver-v3.2"),
+    ("proof", "mgi-proof-v3.2"),
 )
 
 

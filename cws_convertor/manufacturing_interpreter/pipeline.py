@@ -203,6 +203,12 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             self.tolerance_policy,
             tuple(getattr(request, "requested_outputs", ())),
         )
+        from .source_operations import apply_source_profile, apply_custom_section
+        enriched = apply_source_profile(enriched, inspection)
+        # Prefer explicit source profile evidence. Generic STEP geometry may
+        # use an honest custom designation, never a guessed standard profile.
+        if not (getattr(inspection, 'evidence', None) or {}).get('original_nc1_operations'):
+            enriched = apply_custom_section(enriched, shape, self.tolerance_policy)
         self.recognition_cache.store_evidence(cache_key, enriched)
         self._final_cache[cache_key] = enriched
         return enriched

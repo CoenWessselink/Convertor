@@ -62,12 +62,14 @@ def prove_equivalence(source: Any, reconstructed: Any, policy: Any) -> Equivalen
     bbox_delta = _bbox_delta(source, reconstructed)
     centroid_delta = _centroid_delta(source, reconstructed)
     try:
-        source_minus = abs(float(source.cut(reconstructed).Volume()))
-        reconstruction_minus = abs(float(reconstructed.cut(source).Volume()))
+        source_residual = source.cut(reconstructed)
+        reconstruction_residual = reconstructed.cut(source)
+        source_minus = abs(float(source_residual.Volume()))
+        reconstruction_minus = abs(float(reconstruction_residual.Volume()))
     except Exception as exc:
         return EquivalenceProof(
             status=GeometryProofStatus.METRIC_ONLY,
-            validator="independent-two-way-brep-residual-v1",
+            validator="independent-local-and-two-way-brep-residual-v2",
             independent_reconstruction=True,
             two_way=False,
             source_volume_mm3=source_volume,
@@ -86,8 +88,18 @@ def prove_equivalence(source: Any, reconstructed: Any, policy: Any) -> Equivalen
     residual_allowed = max(linear ** 3, source_volume * relative)
     volume_allowed = max(linear ** 3, source_volume * relative)
     area_allowed = max(linear ** 2, abs(float(source.Area())) * relative)
+    # A small *relative* volume can still be an entire omitted drilling. Test
+    # each connected residual's characteristic thickness against linear policy.
+    # Thin numerical face slivers can pass; a finite cylindrical plug cannot.
+    local_residuals_ok = all(
+        abs(float(piece.Volume())) <= linear ** 3 or
+        2.0 * abs(float(piece.Volume())) / max(abs(float(piece.Area())), 1e-12) <= linear
+        for residual in (source_residual, reconstruction_residual)
+        for piece in residual.Solids()
+    )
     passed = (
-        source_minus <= residual_allowed
+        local_residuals_ok
+        and source_minus <= residual_allowed
         and reconstruction_minus <= residual_allowed
         and volume_delta <= volume_allowed
         and area_delta <= area_allowed
@@ -101,7 +113,7 @@ def prove_equivalence(source: Any, reconstructed: Any, policy: Any) -> Equivalen
             if passed
             else GeometryProofStatus.FAILED
         ),
-        validator="independent-two-way-brep-residual-v1",
+        validator="independent-local-and-two-way-brep-residual-v2",
         independent_reconstruction=True,
         two_way=True,
         source_volume_mm3=source_volume,
@@ -112,5 +124,5 @@ def prove_equivalence(source: Any, reconstructed: Any, policy: Any) -> Equivalen
         area_delta_mm2=area_delta,
         bbox_delta_mm=bbox_delta,
         centroid_delta_mm=centroid_delta,
-        reason=("Tweezijdig BREP-residu binnen policy" if passed else "BREP-residu buiten policy"),
+        reason=("Tweezijdig en lokaal BREP-residu binnen policy" if passed else "Lokaal of globaal BREP-residu buiten policy"),
     )

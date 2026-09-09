@@ -282,6 +282,11 @@ class ProjectSession:
             already_registered=already_registered,
         )
 
+    def import_drawing_source(self, path: str | Path, *, user: str = "drawing-import") -> dict[str, Any]:
+        """Import explicit PDF tables / DXF plates through the same transaction."""
+        from cws_convertor.importers.drawing_intake import import_drawing_source
+        return import_drawing_source(self, path, user=user)
+
     def register_sources(
         self,
         paths: Iterable[str | Path],

@@ -226,6 +226,8 @@ def validate_source_locator(part: Part, locator: Mapping[str, Any] | None = None
             f"Brongeometriehash van onderdeel {part.internal_id} wijkt af van de selector",
             code=ErrorCode.PROJECT_INVALID,
         )
+    if _source_entity_id(value.get("source_entity_id", "")) != _source_entity_id(part.source_identity.source_entity_id):
+        raise SourceGeometryError("Bronselector wijkt af van de onderdeelidentiteit", code=ErrorCode.PROJECT_INVALID)
     selector = value.get("selector")
     if not isinstance(selector, Mapping):
         raise SourceGeometryError(
@@ -239,15 +241,18 @@ def validate_source_locator(part: Part, locator: Mapping[str, Any] | None = None
                 code=ErrorCode.PROJECT_INVALID,
             )
         entity_ids = list(selector.get("entity_ids") or [])
-        if any(not _source_entity_id(item) for item in entity_ids):
+        normalized_ids = [_source_entity_id(item) for item in entity_ids]
+        descriptor_ids = [_source_entity_id(item) for item in part.geometry_descriptor.get("solid_root_entity_ids", ())]
+        if (any(not item for item in normalized_ids) or len(set(normalized_ids)) != len(normalized_ids)
+                or sorted(normalized_ids) != sorted(descriptor_ids)):
             raise SourceGeometryError(
-                f"Onderdeel {part.internal_id} heeft een lege STEP-root",
+                f"STEP-selector van onderdeel {part.internal_id} wijkt af van zijn brongrafiek",
                 code=ErrorCode.PROJECT_INVALID,
             )
     elif source_format == "IFC":
-        if selector.get("kind") != "ifc_product_entity" or not _source_entity_id(
-            selector.get("entity_id", "")
-        ):
+        if (selector.get("kind") != "ifc_product_entity" or not _source_entity_id(selector.get("entity_id", ""))
+                or _source_entity_id(selector.get("entity_id", "")) != _source_entity_id(part.source_identity.source_entity_id)
+                or str(selector.get("global_id") or "") != part.source_identity.global_id):
             raise SourceGeometryError(
                 f"Onderdeel {part.internal_id} heeft een ongeldige IFC-selector",
                 code=ErrorCode.PROJECT_INVALID,
@@ -305,45 +310,32 @@ def _inspect_step(
     if cancel_check is not None:
         cancel_check()
     try:
-        import cadquery as cq
-
-        imported = cq.importers.importStep(str(path))
-        source_shape = imported.val()
-        solids = list(source_shape.Solids())
+        from .step_native import resolve_step_roots
+        shape, evidence = resolve_step_roots(path, source.sha256, tuple(int(x.lstrip("#")) for x in root_ids))
+        if evidence.get("selected_semantic_sha256") != locator.get("source_geometry_hash"):
+            raise ValueError("STEP-brongrafiek wijkt af van de geregistreerde geometrie; herimport vereist")
     except Exception as exc:
-        return _inspection(
-            part,
-            status="unavailable",
-            scope="unknown",
-            geometry_kind="semantic_reference",
-            selection_verified=False,
-            production_geometry_exact=False,
-            blocking_reasons=[f"STEP-bronshape kon niet worden geladen: {exc}"],
-        )
+        return _inspection(part,status="unavailable",scope="unknown",geometry_kind="semantic_reference",
+                           selection_verified=False,production_geometry_exact=False,
+                           blocking_reasons=[f"STEP-bronselectie kon niet worden bewezen: {exc}"])
     if cancel_check is not None:
         cancel_check()
-
-    evidence = {
-        "selector_kind": "step_brep_roots",
-        "selector_entity_ids": root_ids,
-        "native_source_solid_count": len(solids),
-        "selection_rule": "one semantic BREP root and one native source solid",
-    }
-    if len(root_ids) != 1 or len(solids) != 1:
-        return _inspection(
-            part,
-            status="manual_validation_required",
-            scope="unknown",
-            geometry_kind="semantic_reference",
-            selection_verified=False,
-            production_geometry_exact=False,
-            evidence=evidence,
-            blocking_reasons=[
-                "STEP-solid kan niet bewijsbaar aan dit onderdeel worden gekoppeld zonder selectie op volgorde."
-            ],
-        )
-
-    shape = solids[0]
+    solids = list(shape.Solids())
+    if part.category == "reference" or len(solids) != 1:
+        return _inspection(part,status="resolved_reference",scope="part",geometry_kind="native_surface",
+                           selection_verified=True,production_geometry_exact=False,evidence=evidence,
+                           topology={"solid_count":len(solids),"face_count":len(shape.Faces())},
+                           blocking_reasons=["Referentieoppervlak of samengestelde shape is geen enkel massief maakdeel"],
+                           native_shape=shape)
+    if part.category == "purchased_item" and part.properties.get("simplified_purchase_geometry"):
+        return _inspection(part,status="resolved_purchase_proxy",scope="part",geometry_kind="purchase_proxy",
+                           selection_verified=True,production_geometry_exact=False,evidence=evidence,
+                           blocking_reasons=["Vereenvoudigde inkoopgeometrie is geen fabricagebewijs"],native_shape=shape)
+    from cws_convertor.manufacturing_interpreter.source_operations import inspect_embedded_nc1
+    from cws_convertor.steel_model.tolerances import DEFAULT_TOLERANCE_POLICY
+    original_operations = inspect_embedded_nc1(path, shape, DEFAULT_TOLERANCE_POLICY)
+    if original_operations is not None:
+        evidence['original_nc1_operations'] = original_operations
     box = shape.BoundingBox()
     topology = {
         "solid_count": len(shape.Solids()),
@@ -553,6 +545,19 @@ def _ifc_worker_payload(
         native_settings.set("iterator-output", ifc_wrapper.SERIALIZED)
         native_settings.set("use-world-coords", False)
         native = ifcopenshell.geom.create_shape(native_settings, entity)
+        def solid_item(item, visited=frozenset()):
+            if item.id() in visited:
+                return False
+            if item.is_a("IfcSolidModel") or item.is_a("IfcBooleanResult"):
+                return True
+            if item.is_a("IfcMappedItem"):
+                items = item.MappingSource.MappedRepresentation.Items
+                return bool(items) and all(solid_item(child, visited | {item.id()}) for child in items)
+            return False
+        bodies = [rep for rep in representation.Representations
+                  if str(getattr(rep, "RepresentationIdentifier", "") or "").lower() == "body"]
+        declared_items = [item for rep in bodies for item in rep.Items]
+        solid_declared = bool(declared_items) and all(solid_item(item) for item in declared_items)
         brep_data = str(native.geometry.brep_data or "")
         if brep_data.strip():
             native_evidence = dict(evidence)
@@ -560,6 +565,7 @@ def _ifc_worker_payload(
                 {
                     "coordinate_space": "entity_local",
                     "geometry_engine": "ifcopenshell_opencascade_serialization",
+                    "source_declares_solid": solid_declared,
                     "serialized_brep_sha256": hashlib.sha256(
                         brep_data.encode("utf-8")
                     ).hexdigest(),
@@ -771,6 +777,13 @@ def _inspect_ifc(
                 brep_path = Path(folder_name) / "selected_part.brep"
                 brep_path.write_text(brep_data, encoding="utf-8")
                 native_shape = cq.importers.importBrep(str(brep_path)).val().scale(1000.0)
+            if not native_shape.Solids() and (payload.get("evidence") or {}).get("source_declares_solid"):
+                from .native_topology import closed_faces_to_solid
+                try:
+                    native_shape, assembly_evidence = closed_faces_to_solid(native_shape)
+                    payload.setdefault("evidence", {})["native_topology_assembly"] = assembly_evidence
+                except ValueError as exc:
+                    payload.setdefault("evidence", {})["native_topology_assembly_rejected"] = str(exc)
             box = native_shape.BoundingBox()
             topology = {
                 "solid_count": len(native_shape.Solids()),
@@ -896,6 +909,26 @@ def inspect_part_source_geometry(
     source_format = str(locator.get("source_format") or "").upper()
     if source_format in {"STEP", "STP"}:
         return _inspect_step(part, source, path, locator, cancel_check)
+    if source_format == "DXF":
+        from cws_convertor.importers.drawing_intake import analyze_dxf_plate
+        import cadquery as cq
+        report=analyze_dxf_plate(path)
+        if (report['geometry_sha256'] != locator.get('source_geometry_hash') or
+                report['position'] != locator.get('selector',{}).get('position')):
+            raise SourceGeometryError("DXF-bronselector/geometrie wijkt af",code=ErrorCode.PROJECT_INVALID)
+        shape=cq.Workplane('XY').polyline(report['outer_contour']).close().extrude(report['thickness_mm']).val()
+        for hole in report['holes']:
+            cutter=cq.Solid.makeCylinder(hole['diameter']/2,report['thickness_mm'],cq.Vector(hole['x'],hole['q'],0))
+            shape=shape.cut(cutter)
+        box=shape.BoundingBox()
+        if sha256_file(path)!=source.sha256:raise SourceGeometryError("DXF-bron gewijzigd",code=ErrorCode.PROJECT_INVALID)
+        return _inspection(part,status='resolved_exact',scope='part',geometry_kind='native_brep',
+            selection_verified=True,production_geometry_exact=bool(shape.isValid() and len(shape.Solids())==1),
+            metrics={'solid_count':len(shape.Solids()),'volume_mm3':shape.Volume(),'area_mm2':shape.Area(),
+                'bbox_mm':[box.xlen,box.ylen,box.zlen],'valid':shape.isValid()},
+            topology={'solid_count':len(shape.Solids()),'hole_count':len(report['holes'])},
+            evidence={'method':'source_bound_planar_extrusion','geometry_basis':'DXF Model + explicit table thickness',
+                      'machine_release_approved':False},native_shape=shape)
     if source_format == "IFC":
         return _inspect_ifc(part, source, path, locator, cancel_check)
     raise SourceGeometryError(

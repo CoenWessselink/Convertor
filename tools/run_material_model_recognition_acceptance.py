@@ -95,6 +95,7 @@ SUITES = (
     SuiteSpec("tests/recognition_acceptance_policy_smoke.py", "recognition_usefulness"),
     SuiteSpec("tests/integrated_promotion_smoke.py", "release_promotion"),
     SuiteSpec("tests/recognition_integrated_native_smoke.py", "recognition_geometry_integration", ("cadquery", "OCP")),
+    SuiteSpec("tests/real_file_recognition_repair_smoke.py", "real_file_intake_repairs", ("cadquery", "OCP", "ezdxf", "fitz", "shapely")),
     SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),
 )
 

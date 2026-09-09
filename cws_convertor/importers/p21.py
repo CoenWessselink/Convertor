@@ -35,6 +35,59 @@ _SCHEMA_RE = re.compile(r"FILE_SCHEMA\s*\(\s*\((.*)\)\s*\)", re.I | re.S)
 _STRING_RE = re.compile(r"'((?:''|[^'])*)'")
 
 
+def _complex_record(statement: str) -> tuple[int, str, str] | None:
+    """Keep complex Part-21 records (notably AP214 occurrence transforms).
+
+    Parse balanced component argument lists, including escaped STEP strings.
+    Unhandled complex entities retain *all* typed components and references;
+    none of their geometry/unit subgraphs are silently discarded.
+    """
+    head = re.match(r"^\s*#(\d+)\s*=\s*\(", statement)
+    if head is None:
+        return None
+    content = statement[head.end():].strip()
+    if not content.endswith(")"):
+        raise P21ParseError("Ongeldig complex Part-21-record")
+    content = content[:-1].strip()
+    components: list[tuple[str, str]] = []
+    pos = 0
+    while pos < len(content):
+        match = re.match(r"\s*([A-Z][A-Z0-9_]*)\s*\(", content[pos:], re.I)
+        if match is None:
+            raise P21ParseError(f"Ongeldig complex record #{head.group(1)}")
+        name = match.group(1).upper()
+        start = pos + match.end()
+        cursor, depth, quoted = start, 1, False
+        while cursor < len(content) and depth:
+            char = content[cursor]
+            if char == "'":
+                if quoted and cursor + 1 < len(content) and content[cursor + 1] == "'":
+                    cursor += 2
+                    continue
+                quoted = not quoted
+            elif not quoted:
+                depth += (char == "(") - (char == ")")
+            cursor += 1
+        if depth or quoted:
+            raise P21ParseError(f"Onvolledig complex record #{head.group(1)}")
+        components.append((name, content[start:cursor-1]))
+        pos = cursor
+        while pos < len(content) and content[pos].isspace():
+            pos += 1
+    values = dict(components)
+    if len(values) != len(components):
+        raise P21ParseError(f"Dubbele component in complex record #{head.group(1)}")
+    # Expose the inherited four arguments plus the transformation as the same
+    # logical entity as the simple AP242 spelling. Do not create duplicate IDs.
+    if "REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION" in values:
+        base = values.get("REPRESENTATION_RELATIONSHIP", "")
+        transform = values["REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION"]
+        if len(split_p21_args(base)) != 4 or len(split_p21_args(transform)) != 1:
+            raise P21ParseError("Onvolledige complexe plaatsingsrelatie")
+        return int(head.group(1)), "REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION", base + "," + transform
+    return int(head.group(1)), "COMPLEX", ",".join(f"{name}({args})" for name, args in components)
+
+
 class P21ParseError(ValueError):
     """Raised when a Part 21 source cannot be represented safely."""
 
@@ -239,13 +292,15 @@ class P21Document:
                 header["file_name_statement"] = statement
                 continue
             match = _ENTITY_RE.match(statement)
-            if not match:
+            complex_record = _complex_record(statement) if match is None else None
+            if match is None and complex_record is None:
                 continue
-            entity_id = int(match.group(1))
+            entity_id = int(match.group(1)) if match is not None else complex_record[0]
             if entity_id in entities:
                 raise P21ParseError(f"Dubbele Part 21 entity-ID #{entity_id}")
-            type_name = match.group(2).upper()
-            entity = P21Entity(entity_id, type_name, match.group(3))
+            type_name = match.group(2).upper() if match is not None else complex_record[1]
+            raw_args = match.group(3) if match is not None else complex_record[2]
+            entity = P21Entity(entity_id, type_name, raw_args)
             entities[entity_id] = entity
             type_ids[type_name].append(entity_id)
         if cancel_check is not None:

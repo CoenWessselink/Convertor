@@ -1,0 +1,67 @@
+name: Real-file recognition repair acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches: [agent/cws-real-file-repair-20260909]
+    paths-ignore: ['tools/real_file_transport.*']
+permissions:
+  contents: read
+concurrency:
+  group: real-file-repair-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  windows-native:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_HEADLESS_GUI_SMOKE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install native dependencies without changing product constraints
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exact-source strict acceptance, including adversarial intake repairs
+        run: python tools/run_material_model_recognition_acceptance.py --require-native --output build/real-file-repair/strict
+      - name: Require the existing recognition usefulness corpus
+        if: ${{ !cancelled() }}
+        run: python tools/build_mgi_v3_acceptance_corpus.py --output build/real-file-repair/corpus
+      - name: Additional source, storage, and feature regressions
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          python -m unittest tests.test_manufacturing_interpreter_v3_phase2 -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/project_cli_smoke.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/run_phase1_unified_gates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Assert tracked source remains unchanged
+        shell: bash
+        run: |
+          git diff --exit-code
+          git diff --cached --exit-code
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Real_File_Repair_Acceptance_${{ github.sha }}
+          path: |
+            build/real-file-repair/**
+            validation/phases/PHASE_*_EVIDENCE.json
+          if-no-files-found: error
+          retention-days: 30

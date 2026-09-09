@@ -14,7 +14,14 @@ def _worker(source: str, options: dict[str, Any], output: Any) -> None:
         from .contracts import ManufacturingInterpretationRequest
         from .pipeline import ManufacturingGeometryInterpreter
 
-        inspection = _step_inspection(Path(source))
+        if options.get("source_part") is not None:
+            from cws_convertor.project.model import _entity_from_dict, SourceFileRecord
+            from cws_convertor.project.source_geometry import inspect_part_source_geometry
+            part = _entity_from_dict("part", options["source_part"])
+            record = SourceFileRecord.from_dict(options["source_record"])
+            inspection = inspect_part_source_geometry(part, record, Path(source))
+        else:
+            inspection = _step_inspection(Path(source))
         expected_sha = str(options.get("source_sha256") or "")
         if expected_sha and inspection.source_sha256 != expected_sha:
             raise ValueError("STEP-bronhash wijkt af van de projectkoppeling")
@@ -53,6 +60,8 @@ def analyze_step_isolated(
     requested_outputs: tuple[str, ...] = ("STEP", "IFC", "NC1"),
     material_evidence: Any = None,
     project_part_link: tuple[tuple[str, str], ...] = (),
+    source_part: dict[str, Any] | None = None,
+    source_record: dict[str, Any] | None = None,
 ) -> Any:
     from .cli import _sha256
 
@@ -75,6 +84,8 @@ def analyze_step_isolated(
         "requested_outputs": tuple(requested_outputs),
         "material_evidence": material_evidence,
         "project_part_link": tuple(project_part_link),
+        "source_part": source_part,
+        "source_record": source_record,
     }
     process = context.Process(
         target=_worker,

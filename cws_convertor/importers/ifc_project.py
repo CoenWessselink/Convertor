@@ -1577,7 +1577,7 @@ def _classification_for_part(entity_type: str, material: str) -> str:
         return EntityCategory.NON_STEEL.value
     if entity_type == "IFCBUILDINGELEMENTPROXY":
         return EntityCategory.UNKNOWN.value
-    if material and any(token in material.upper() for token in ("CONCRETE", "BETON", "TIMBER", "WOOD", "HOUT")):
+    if material and any(token in material.upper() for token in ("CONCRETE", "BETON", "TIMBER", "WOOD", "HOUT", "METSELWERK", "MASONRY")):
         return EntityCategory.NON_STEEL.value
     return EntityCategory.MAKE_PART.value
 
@@ -1852,11 +1852,11 @@ def import_ifc_project(
         nested, flattened = _product_property_sets(entity.entity_id, indexes)
         position_value, position_path, position_source = _flattened_value(
             flattened,
-            ("Part position number", "Part Position", "Position", "Mark"),
+            ("Tekla Common.Part mark", "Part mark", "Part position number", "Part Position", "Position", "Mark"),
         )
         assembly_value, _assembly_path, _assembly_source = _flattened_value(
             flattened,
-            ("Assembly/Cast unit position number", "Assembly/Cast unit Mark", "Assembly Mark"),
+            ("Assembly/Cast unit position number", "Assembly/Cast unit Mark", "Assembly mark", "Assembly Mark"),
         )
         part_position = _first_nonempty(position_value, entity.string(7))
         assembly_mark = _first_nonempty(assembly_value)
@@ -1894,6 +1894,18 @@ def import_ifc_project(
         if len({_material_key(item["value"]) for item in effective_properties}) > 1:
             material_resolution.update(value="", status="conflicting_evidence", confidence=0.0, method="ifc_property_conflict")
         material = str(material_resolution["value"] or "")
+        raw_context = str(material_property or "").strip()
+        context_tokens = {"METSELWERK", "MASONRY", "BRICK", "BRICKWORK"}
+        associated_context = [str(v).strip().upper().removeprefix("CONCRETE/")
+                              for v in material_resolution.get("associated_candidates", ())]
+        property_context = [str(v["value"]).strip().upper() for v in effective_properties]
+        if (not material and raw_context.upper() in context_tokens
+                and all(v == raw_context.upper() for v in associated_context + property_context)):
+            material_resolution["original_resolution_status"] = material_resolution["status"]
+            material = raw_context
+            material_resolution.update(value=material, status="resolved_non_steel_context", confidence=1.0,
+                                       method="explicit_non_steel_property", source_path=material_path,
+                                       source_entity_id=material_source)
         profile_property, profile_path, profile_source = _flattened_value(
             flattened,
             ("PROFILE", "Profile", "Profile name", "Section", "Cross section"),

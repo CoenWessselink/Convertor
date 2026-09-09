@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict, deque
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import hashlib
 import math
 from pathlib import Path
@@ -67,6 +67,8 @@ def resolve_deferred_step_recognition(
     preferred_profile: str = "",
     material_evidence: Any = None,
     project_part_link: tuple[tuple[str, str], ...] = (),
+    source_part: dict[str, Any] | None = None,
+    source_record: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Execute deferred STEP recognition synchronously in an isolated worker.
 
@@ -98,6 +100,7 @@ def resolve_deferred_step_recognition(
         requested_outputs=("STEP", "IFC"),
         material_evidence=material_evidence,
         project_part_link=project_part_link,
+        source_part=source_part, source_record=source_record,
     )
     if _sha256_file(path) != actual_sha256:
         raise ValueError("STEP-bron is gewijzigd tijdens de herkenning")
@@ -115,8 +118,11 @@ def resolve_deferred_step_recognition(
         ),
         "method": "mgi_v3_isolated_exact_brep",
         "confidence": float(report.profile.confidence if matched else 0.0),
-        "profile": str(report.profile.designation if matched else ""),
-        "profile_type": str(report.profile.profile_type if matched else ""),
+        "profile": str(report.profile.designation if matched or report.profile.profile_type == "CUSTOM" else ""),
+        "profile_type": str(report.profile.profile_type if matched or report.profile.profile_type == "CUSTOM" else ""),
+        "custom_section": asdict(report.section) if report.profile.profile_type == "CUSTOM" and report.section else None,
+        "length_mm": next((axis.length_mm for axis in getattr(report, "axis_candidates", ()) if axis.axis_id == getattr(report, "selected_axis_id", "")), 0.0),
+        "feature_count": len(getattr(report, "features", ())),
         "family": str(report.profile.family if matched else ""),
         "material": str(material.material or material.grade) if material.confirmed else "",
         "material_evidence": {
@@ -149,12 +155,11 @@ def apply_deferred_step_recognition(
     timeout_seconds: float = 120.0,
     cancel_check: SemanticCancelCheck | None = None,
 ) -> dict[str, Any]:
-    """Resolve one source-bound STEP part, preserving all reviewed user work.
+    """Resolve selected source-bound STEP parts through isolated entity selectors.
 
-    The whole-source native loader cannot prove per-solid selection in a
-    multi-part STEP. Such sources remain explicitly blocked. Callers should
-    use a ProjectSession working copy and reclassify applied part IDs before
-    committing their transaction. No inferred material is ever assigned here.
+    Multi-part sources require a verified per-part BREP locator. Unbound or
+    ambiguous components remain blocked. Preserve reviewed user work and never
+    derive a material grade from geometry.
     """
 
     from cws_convertor.manufacturing_interpreter.material_evidence import material_evidence_from_part
@@ -186,8 +191,14 @@ def apply_deferred_step_recognition(
         if part.classification_status == "confirmed" or part.workbench:
             rows.append({**row, "status": "SKIPPED", "reason": "CONFIRMED_OR_WORKBENCH_STATE_PRESERVED"})
             continue
-        if len(source_parts) != 1:
+        locator = (part.geometry_descriptor or {}).get("source_locator", {})
+        selector = locator.get("selector", {})
+        bound_component = bool(selector.get("kind") == "step_brep_roots" and selector.get("entity_ids"))
+        if len(source_parts) != 1 and not bound_component:
             rows.append({**row, "status": "BLOCKED", "reason": "PROJECT_PART_SOURCE_ISOLATION_REQUIRED"})
+            continue
+        if part.category in {"reference", "non_steel", "purchased_item"}:
+            rows.append({**row, "status": "SKIPPED", "reason": "NON_MANUFACTURING_SOURCE_PRESERVED"})
             continue
         if part.source_identity.source_sha256 != source.sha256:
             raise ValueError("Onderdeel verwijst naar een verouderde STEP-bronhash")
@@ -202,6 +213,8 @@ def apply_deferred_step_recognition(
             part_id=part.internal_id, source_file_id=source.source_id,
             source_sha256=source.sha256, source_geometry_hash=geometry_hash,
             preferred_profile=str(part.normalized_profile or part.profile or ""),
+            source_part=part.to_dict() if bound_component else None,
+            source_record=source.to_dict() if bound_component else None,
             material_evidence=material_evidence_from_part(part),
             project_part_link=(
                 ("project_part_id", part.internal_id),
@@ -225,8 +238,13 @@ def apply_deferred_step_recognition(
         descriptor = deepcopy(part.geometry_descriptor)
         descriptor["profile_recognition"] = deepcopy(result)
         part.geometry_descriptor = descriptor
-        if result.get("status") == "matched":
+        if result.get("custom_section"):
+            descriptor["custom_section"] = deepcopy(result["custom_section"])
+        if result.get("length_mm", 0) > 0 and part.length_mm <= 0:
+            part.length_mm = float(result["length_mm"])
+        if result.get("status") == "matched" or result.get("profile_type") == "CUSTOM":
             part.profile = str(result["profile"])
+            part.profile_type = str(result.get("profile_type") or part.profile_type)
             part.profile_confidence = float(result["confidence"])
             part.field_provenance["profile"] = FieldProvenance(
                 source_file_id=source.source_id, source_entity_id=part.source_identity.source_entity_id,
@@ -429,6 +447,10 @@ class StepIndex:
         ):
             left = document.arg_ref(entity, 2)
             right = document.arg_ref(entity, 3)
+            # A transformed relationship joins assembly and child frames, not
+            # alternative geometry of one part. Traversing it would mix parts.
+            if entity.type_name == "REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION":
+                continue
             if left is not None and right is not None:
                 index.representation_links[left].add(right)
                 index.representation_links[right].add(left)
@@ -557,6 +579,9 @@ class StepIndex:
         for contextual in self.document.iter_type("CONTEXT_DEPENDENT_SHAPE_REPRESENTATION"):
             relation_ref = self.document.arg_ref(contextual, 0)
             product_relation_ref = self.document.arg_ref(contextual, 1)
+            product_relation = self.document.get(product_relation_ref)
+            if product_relation is not None and product_relation.type_name == "PRODUCT_DEFINITION_SHAPE":
+                product_relation_ref = self.document.arg_ref(product_relation, 2)
             relation = self.document.get(relation_ref)
             if relation is None or relation.type_name != "REPRESENTATION_RELATIONSHIP_WITH_TRANSFORMATION":
                 continue
@@ -568,8 +593,9 @@ class StepIndex:
             if transform_entity.type_name == "ITEM_DEFINED_TRANSFORMATION":
                 first = self.axis_placement_transform(self.document.arg_ref(transform_entity, 2)).matrix
                 second = self.axis_placement_transform(self.document.arg_ref(transform_entity, 3)).matrix
-                # Transform from child frame (second) to parent frame (first).
-                matrix = _matmul(first, _transpose_rotation(second))
+                # STEP maps transform_item_1 in the child to transform_item_2
+                # in the parent. Nested occurrences compose parent @ local.
+                matrix = _matmul(second, _transpose_rotation(first))
             elif transform_entity.type_name.startswith("CARTESIAN_TRANSFORMATION_OPERATOR"):
                 origin = self._coordinates(self.document.arg_ref(transform_entity, 4))
                 axis1 = self._direction(self.document.arg_ref(transform_entity, 1), (1.0, 0.0, 0.0))
@@ -582,6 +608,18 @@ class StepIndex:
                     [0.0, 0.0, 0.0, 1.0],
                 ]
             if product_relation_ref is not None:
+                occurrence_entity = self.document.get(product_relation_ref)
+                if occurrence_entity is not None and occurrence_entity.type_name in _ASSEMBLY_USAGE_TYPES:
+                    parent_def = occurrence_entity.ref(3);child_def = occurrence_entity.ref(4)
+                    child_reps = self.representation_closure(self.shape_representations_by_target.get(child_def, ()))
+                    parent_reps = self.representation_closure(self.shape_representations_by_target.get(parent_def, ()))
+                    left,right = relation.ref(2),relation.ref(3)
+                    # AP214 and AP242 exporters may reverse the relation order.
+                    # Determine its direction from the product bindings, not IDs.
+                    if left in parent_reps and right in child_reps:
+                        matrix = _transpose_rotation(matrix)
+                    elif not (left in child_reps and right in parent_reps):
+                        raise P21ParseError("STEP-plaatsingsrelatie is niet eenduidig aan ouder/kind gekoppeld")
                 try:
                     transform = Transform3D(matrix)
                     transform.validate()
@@ -708,6 +746,7 @@ class STEPSemanticProjectImporter:
         name_suffix: str = "",
         metrics: dict[str, Any] | None = None,
         profile_suggestion: dict[str, Any] | None = None,
+        occurrence_path: tuple[int, ...] = (),
     ) -> Part:
         source_entity_id = occurrence.entity_id if occurrence is not None else (
             product.product_entity_id if product is not None else (solid_ids[0] if solid_ids else definition_id)
@@ -718,13 +757,13 @@ class STEPSemanticProjectImporter:
             source_entity_id=source_entity_id,
             product=product,
             occurrence=occurrence,
-            suffix=suffix,
+            suffix=("/".join(map(str, occurrence_path)) + ("|" + suffix if suffix else "")) if occurrence_path else suffix,
         )
         internal_id = project.stable_entity_id("part", identity)
         base_name = (
-            (occurrence.name if occurrence and occurrence.name else "")
-            or (product.name if product and product.name else "")
-            or (product.product_id if product else "")
+            (occurrence.name.strip() if occurrence else "")
+            or (product.name.strip() if product else "")
+            or (product.product_id.strip() if product else "")
             or f"STEP part #{source_entity_id}"
         )
         if name_suffix:
@@ -810,6 +849,7 @@ class STEPSemanticProjectImporter:
                 "step_product_description": product.description if product else "",
                 "step_product_definition_id": definition_id,
                 "step_occurrence_entity_id": occurrence.entity_id if occurrence else None,
+                "step_occurrence_path": list(occurrence_path),
                 "step_occurrence_id": occurrence.occurrence_id if occurrence else "",
                 "step_reference_designator": occurrence.reference_designator if occurrence else "",
                 "classification_status": "review_required",
@@ -878,6 +918,18 @@ class STEPSemanticProjectImporter:
             part.material_confidence = 1.0 if material and material != "manual_required" else 0.0
             part.properties["classification_status"] = "automatic"
             part.properties["manual_profile_material_edit_allowed"] = False
+        root_types = [document.entities[value].type_name for value in solid_ids]
+        surfaces = {"SHELL_BASED_SURFACE_MODEL", "GEOMETRIC_CURVE_SET"}
+        if root_types and all(value in surfaces for value in root_types):
+            part.category = EntityCategory.REFERENCE.value
+            part.part_type = "step_reference_surface"
+            part.properties["classification_hint"] = "reference"
+            part.properties["reference_geometry_only"] = True
+            part.geometry_descriptor["geometry_role"] = "reference_surface"
+            part.nc1_eligible = False
+            part.export_status = "blocked_reference_geometry"
+        else:
+            part.geometry_descriptor["geometry_role"] = "physical_solid" if solid_ids else "unresolved"
         part.recompute_hashes()
         part.validate_base()
         return part
@@ -1001,159 +1053,104 @@ class STEPSemanticProjectImporter:
                 "STEP bevat geen betrouwbare BREP-/solid-root; alleen aantoonbare productrecords zijn als reviewobject gematerialiseerd."
             )
         _check_cancelled(cancel_check)
-        assemblies: dict[int, Assembly] = {}
+        assemblies: dict[str, Assembly] = {}
         parts: list[Part] = []
-        definition_to_assembly: dict[int, str] = {}
-        occurrence_to_part: dict[int, str] = {}
 
-        if index.occurrences:
-            parent_definition_ids = sorted(index.occurrence_by_parent_definition)
-            for assembly_index, definition_id in enumerate(parent_definition_ids):
-                if assembly_index % 25 == 0:
-                    _check_cancelled(cancel_check)
-                product = index.product_for_definition(definition_id)
-                source_entity_id = product.product_entity_id if product else definition_id
-                identity = self._source_identity(
-                    source,
-                    source_entity_id=source_entity_id,
-                    product=product,
-                )
-                internal_id = project.stable_entity_id("assembly", identity)
+        # Materialise occurrence PATHS, not reusable product definitions. A
+        # subassembly used twice has two assembly instances and two sets of leaves.
+        # All independent top-level definitions are visited in the same traversal.
+        definitions = set(index.product_by_definition) | set(index.occurrence_by_parent_definition)
+        definitions |= set(index.occurrence_by_child_definition)
+        for product in index.products.values():
+            if not product.product_definition_ids:
+                definitions.add(product.product_entity_id)
+        roots = sorted(definitions - set(index.occurrence_by_child_definition))
+        consumed_solids: set[int] = set()
+        visited_definitions: set[int] = set()
+        expanded = 0
+        def visit(definition_id, path, parent, global_parent, ancestry, occurrence=None):
+            nonlocal expanded
+            _check_cancelled(cancel_check)
+            if definition_id in ancestry:
+                raise P21ParseError("Cyclische STEP-samenstellingsstructuur")
+            expanded += 1
+            if expanded > 1_000_000 or len(path) > 128:
+                raise P21ParseError("STEP-occurrence-expansie overschrijdt veilige limiet")
+            visited_definitions.add(definition_id)
+            product = index.product_for_definition(definition_id) or index.products.get(definition_id)
+            local = index.occurrence_transform(occurrence) if occurrence is not None else _identity()
+            global_transform = Transform3D(_matmul(global_parent.matrix, local.matrix))
+            children = sorted(index.occurrence_by_parent_definition.get(definition_id, ()), key=lambda value: value.entity_id)
+            owner = parent
+            if children:
+                source_entity = occurrence.entity_id if occurrence is not None else (product.product_entity_id if product else definition_id)
+                identity = self._source_identity(source, source_entity_id=source_entity, product=product,
+                                                occurrence=occurrence, suffix="/".join(map(str,path)))
                 assembly = Assembly(
-                    internal_id=internal_id,
-                    name=(product.name if product else "") or f"STEP assembly #{definition_id}",
-                    source_identity=identity,
+                    internal_id=project.stable_entity_id("assembly", identity),
+                    name=(product.name.strip() if product else "") or (product.product_id.strip() if product else "") or f"STEP assembly #{definition_id}",
+                    source_identity=identity, local_placement=local, global_placement=global_transform,
                     status=ReviewStatus.REVIEW_REQUIRED.value,
-                    assembly_mark=(product.product_id if product else ""),
-                    quantity=1,
+                    assembly_mark=product.product_id.strip() if product else "", quantity=1,
                     production_status=ReviewStatus.REVIEW_REQUIRED.value,
-                    properties={
-                        "step_product_definition_id": definition_id,
-                        "step_product_entity_id": product.product_entity_id if product else None,
-                        "step_product_id": product.product_id if product else "",
-                        "step_product_description": product.description if product else "",
-                        "classification_status": "deterministic_step_assembly_relation",
-                    },
+                    properties={"step_product_definition_id":definition_id,
+                                "step_product_entity_id":product.product_entity_id if product else None,
+                                "step_product_id":product.product_id if product else "",
+                                "step_occurrence_path":list(path),
+                                "classification_status":"deterministic_step_occurrence_path"},
                 )
                 assembly.validate_base()
-                assemblies[definition_id] = assembly
-                definition_to_assembly[definition_id] = internal_id
-
-            # Occurrence-level parts preserve placements and repetition. Nested
-            # assemblies are linked when the child definition is itself a parent.
-            for occurrence_index, occurrence in enumerate(
-                sorted(index.occurrences, key=lambda item: item.entity_id)
-            ):
-                if occurrence_index % 25 == 0:
-                    _check_cancelled(cancel_check)
-                parent_assembly = assemblies.get(occurrence.parent_definition_id)
-                child_assembly = assemblies.get(occurrence.child_definition_id)
-                if parent_assembly is None:
-                    continue
-                if child_assembly is not None:
-                    if child_assembly.internal_id not in parent_assembly.child_assembly_ids:
-                        parent_assembly.child_assembly_ids.append(child_assembly.internal_id)
-                    continue
-                product = index.product_for_definition(occurrence.child_definition_id)
-                solid_ids: list[int] = []
-                for target in index.product_definition_shape_targets(occurrence):
-                    solid_ids = index.solids_for_target(target)
-                    if solid_ids:
-                        break
-                if not solid_ids:
-                    solid_ids = index.solids_for_definition(occurrence.child_definition_id)
-                transform = index.occurrence_transform(occurrence)
+                assemblies[assembly.internal_id] = assembly
+                if parent is not None:
+                    parent.child_assembly_ids.append(assembly.internal_id)
+                owner = assembly
+            ids = index.solids_for_definition(definition_id)
+            if occurrence is not None and occurrence.entity_id in index.shape_representations_by_target:
+                ids = index.solids_for_target(occurrence.entity_id) or ids
+            if not ids and not children and len(index.products) == 1:
+                ids = sorted(index.solid_roots)
+            consumed_solids.update(ids)
+            # A leaf without shape still has an accountable semantic identity.
+            for number, shape_id in enumerate(ids or ([] if children else [None]), 1):
                 part = self._make_part(
-                    project,
-                    source,
-                    document,
-                    product=product,
-                    definition_id=occurrence.child_definition_id,
-                    solid_ids=solid_ids,
-                    occurrence=occurrence,
-                    local_placement=transform,
-                    global_placement=transform,
+                    project,source,document,product=product,definition_id=definition_id,
+                    solid_ids=[shape_id] if shape_id is not None else [],occurrence=occurrence,
+                    local_placement=local,global_placement=global_transform,
+                    name_suffix=f"shape {number}" if len(ids)>1 else "",
+                    occurrence_path=tuple(path),
+                    metrics=metrics if len(index.products)==1 and len(ids)==1 else None,
+                    profile_suggestion=profile_suggestion if len(index.products)==1 and len(ids)==1 else None,
                 )
-                part.assembly_ids = [parent_assembly.internal_id]
-                part.quantity_per_assembly = {parent_assembly.internal_id: 1}
-                part.recompute_hashes()
-                parts.append(part)
-                occurrence_to_part[occurrence.entity_id] = part.internal_id
-                parent_assembly.part_ids.append(part.internal_id)
-                if not parent_assembly.main_part_id:
-                    parent_assembly.main_part_id = part.internal_id
-        else:
-            # Product definitions are the primary semantic roots.  Current
-            # Onshape references each expose one product and one BREP solid.
-            consumed_solids: set[int] = set()
-            for product_index, product in enumerate(
-                sorted(index.products.values(), key=lambda item: item.product_entity_id)
-            ):
-                if product_index % 25 == 0:
-                    _check_cancelled(cancel_check)
-                definitions = list(product.product_definition_ids) or [product.product_entity_id]
-                solid_ids: list[int] = []
-                selected_definition = definitions[0]
-                for definition_id in definitions:
-                    candidate = index.solids_for_definition(definition_id)
-                    if candidate:
-                        selected_definition = definition_id
-                        solid_ids = candidate
-                        break
-                if not solid_ids and len(index.products) == 1:
-                    solid_ids = sorted(index.solid_roots)
-                consumed_solids.update(solid_ids)
-                if len(solid_ids) <= 1:
-                    parts.append(
-                        self._make_part(
-                            project,
-                            source,
-                            document,
-                            product=product,
-                            definition_id=selected_definition,
-                            solid_ids=solid_ids,
-                            occurrence=None,
-                            local_placement=_identity(),
-                            global_placement=_identity(),
-                            metrics=metrics if len(index.products) == 1 and len(solid_ids) == 1 else None,
-                            profile_suggestion=profile_suggestion if len(index.products) == 1 else None,
-                        )
-                    )
-                else:
-                    warnings.append(
-                        f"Product {product.name or product.product_id} bevat {len(solid_ids)} losse BREP-roots; deze zijn als afzonderlijke reviewdelen gematerialiseerd."
-                    )
-                    for number, solid_id in enumerate(solid_ids, start=1):
-                        parts.append(
-                            self._make_part(
-                                project,
-                                source,
-                                document,
-                                product=product,
-                                definition_id=selected_definition,
-                                solid_ids=[solid_id],
-                                occurrence=None,
-                                local_placement=_identity(),
-                                global_placement=_identity(),
-                                name_suffix=f"solid {number}",
-                            )
-                        )
-            for solid_index, solid_id in enumerate(sorted(index.solid_roots - consumed_solids)):
-                if solid_index % 25 == 0:
-                    _check_cancelled(cancel_check)
-                parts.append(
-                    self._make_part(
-                        project,
-                        source,
-                        document,
-                        product=None,
-                        definition_id=solid_id,
-                        solid_ids=[solid_id],
-                        occurrence=None,
-                        local_placement=_identity(),
-                        global_placement=_identity(),
-                    )
-                )
+                if owner is not None:
+                    part.assembly_ids=[owner.internal_id];part.quantity_per_assembly={owner.internal_id:1}
+                    owner.part_ids.append(part.internal_id)
+                    if not owner.main_part_id and part.category != EntityCategory.REFERENCE.value:
+                        owner.main_part_id=part.internal_id
+                part.recompute_hashes();parts.append(part)
+            for child in children:
+                visit(child.child_definition_id,(*path,child.entity_id),owner,global_transform,
+                      (*ancestry,definition_id),child)
+        for definition in roots:
+            visit(definition,(definition,),None,_identity(),())
+        if definitions - visited_definitions:
+            # Disconnected cycles must not disappear just because other roots exist.
+            raise P21ParseError("STEP bevat onbereikbare of cyclische productdefinities")
+        for shape_id in sorted(index.solid_roots-consumed_solids):
+            parts.append(self._make_part(project,source,document,product=None,definition_id=shape_id,
+                         solid_ids=[shape_id],occurrence=None,local_placement=_identity(),global_placement=_identity(),
+                         occurrence_path=(shape_id,)))
+
+        if canonical_payload is not None:
+            if len(parts) != 1:
+                raise P21ParseError("Enkelvoudige canonieke payload hoort niet bij een meerdelig STEP-model")
+            # Preserve the source operations, not only its header. Geometry is
+            # independently checked by the source resolver before recognition.
+            parts[0].set_canonical(canonical_payload)
+            parts[0].properties["source_nc1_operations"] = {
+                "hole_count":len(canonical_payload.holes),
+                "contour_count":len(canonical_payload.contours),
+                "canonical_hash":canonical_payload.semantic_sha256() if callable(getattr(canonical_payload,"semantic_sha256",None)) else stable_sha256(canonical_payload.to_dict())}
+            parts[0].recompute_hashes()
 
         # Filename/product quantity words are only evidence for review.  They
         # never alter the number of semantic products or BREP roots.
@@ -1193,6 +1190,10 @@ class STEPSemanticProjectImporter:
         evidence = {
             "product_count": len(index.products),
             "occurrence_count": len(index.occurrences),
+            "expanded_occurrence_count": expanded,
+            "root_definition_ids": roots,
+            "reference_surface_count": sum(p.category == EntityCategory.REFERENCE.value for p in parts),
+            "placement_relation_count": len(index.transformation_by_occurrence),
             "solid_root_count": len(index.solid_roots),
             "materialised_part_count": len(parts),
             "product_records": product_records,

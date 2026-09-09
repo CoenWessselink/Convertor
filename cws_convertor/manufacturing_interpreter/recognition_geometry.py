@@ -122,6 +122,7 @@ def analytical_end_cuts(shape: Any, base_shape: Any, topology: Any, residual_rep
 
 
 def source_authority_state(inspection: Any) -> tuple[Any, ...]:
+    from .contracts import stable_id
     shape = getattr(inspection, 'native_shape', None)
     valid = False
     count = 0
@@ -133,7 +134,8 @@ def source_authority_state(inspection: Any) -> tuple[Any, ...]:
     return (bool(getattr(inspection, 'production_geometry_exact', False)),
             bool(getattr(inspection, 'selection_verified', False)),
             str(getattr(inspection, 'geometry_kind', '')).lower(),
-            str(getattr(inspection, 'scope', '')), shape is not None, valid, count)
+            str(getattr(inspection, 'scope', '')), shape is not None, valid, count,
+            stable_id("source-operations", (getattr(inspection, "evidence", None) or {}).get("original_nc1_operations")))
 
 
 def base_coordinate_frame(base_shape: Any, axis: Any):

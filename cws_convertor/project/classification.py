@@ -358,7 +358,19 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
     confidence = 0.45
     blocking: list[str] = []
 
-    if material_category in _FASTENER_CATEGORIES or material in _FASTENER_GRADES or words.intersection(_FASTENER_WORDS):
+    if part.geometry_descriptor.get("geometry_role") == "reference_surface":
+        category = EntityCategory.REFERENCE.value
+        status = "automatic"
+        rule_id = "CWS-CLASS-SOURCE-REFERENCE-SURFACE"
+        reason = "Bron bevat een open referentieoppervlak, geen massief maakdeel."
+        confidence = 1.0
+    elif raw_material.upper() in {"METSELWERK", "MASONRY", "BRICK", "BRICKWORK"}:
+        category = EntityCategory.NON_STEEL.value
+        status = "automatic"
+        rule_id = "CWS-CLASS-EXPLICIT-MASONRY"
+        reason = "Expliciet bronmateriaal voor bouwkundige context; uitgesloten van staalproductie."
+        confidence = 1.0
+    elif material_category in _FASTENER_CATEGORIES or material in _FASTENER_GRADES or words.intersection(_FASTENER_WORDS):
         category = EntityCategory.PURCHASED_ITEM.value
         status = "automatic"
         rule_id = "CWS-CLASS-PURCHASED-FASTENER-COMPONENT"
@@ -401,7 +413,7 @@ def decide_part_classification(part: Part) -> ClassificationDecision:
     )
     if material_conflict:
         blocking.append("Bronmateriaal en materiaalkwaliteit conflicteren")
-    if not exact_material:
+    if not exact_material and category not in {EntityCategory.REFERENCE.value, EntityCategory.NON_STEEL.value}:
         blocking.append("Materiaal ontbreekt of is niet exact als cataloguscode/alias herkend")
     if category == EntityCategory.MAKE_PART.value:
         if not profile:
@@ -461,6 +473,16 @@ def _remove_classification_issues(part: Part) -> None:
 def _apply_decision(part: Part, decision: ClassificationDecision, *, user: str) -> None:
     _remove_classification_issues(part)
     part.category = decision.category
+    if decision.category in {EntityCategory.REFERENCE.value, EntityCategory.NON_STEEL.value}:
+        part.nc1_eligible = False
+        part.export_status = "blocked_non_manufacturing_context"
+    if decision.category == EntityCategory.PURCHASED_ITEM.value and (part.source_identity.source_format == "NC1" or
+            part.properties.get("profile_recognition_method") == "lossless_converter_payload_and_profile_database"):
+        part.properties["simplified_purchase_geometry"] = True
+        part.geometry_descriptor["geometry_role"] = "purchase_proxy"
+        part.properties["purchase_geometry_limitations"] = "Bronvorm zonder bewezen draad/binnengat/details; alleen inkoopweergave."
+        part.nc1_eligible = False
+        part.export_status = "blocked_purchase_proxy"
     part.classification_status = decision.status
     part.classification_method = decision.method
     part.classification_rule_id = decision.rule_id

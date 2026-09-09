@@ -120,10 +120,14 @@ def solve_hypotheses(
             runtime_cost_seconds=0.0,
         )
         outcomes.append((hypothesis, base_shape, proof, residual))
-    outcomes.sort(key=lambda item: (item[0].score.total, item[0].proof_status.value, item[0].hypothesis_id), reverse=True)
+    proven_statuses = {GeometryProofStatus.PROVEN_BREP_EQUIVALENT, GeometryProofStatus.PROVEN_WITHIN_POLICY}
+    outcomes.sort(key=lambda item: (item[0].proof_status in proven_statuses, item[0].score.total,
+                                   item[0].hypothesis_id), reverse=True)
     recognition = getattr(policy, "recognition", policy)
     margin = float(getattr(recognition, "ambiguity_margin", 0.02))
-    ambiguous = len(outcomes) > 1 and abs(outcomes[0][0].score.total - outcomes[1][0].score.total) <= margin
+    ambiguous = (len(outcomes) > 1 and outcomes[0][0].proof_status in proven_statuses
+                 and outcomes[1][0].proof_status in proven_statuses
+                 and abs(outcomes[0][0].score.total - outcomes[1][0].score.total) <= margin)
     best = outcomes[0]
     return SolverOutcome(
         hypotheses=tuple(item[0] for item in outcomes),

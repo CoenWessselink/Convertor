@@ -239,6 +239,18 @@ def build_project_from_models(
         # survives a project save/reopen. It is document-scoped; a PDF grade is
         # never propagated silently to every imported IFC/STEP component.
         with service.open(target) as session:
+            drawing_results=[]
+            for record in auxiliary_records:
+                try:
+                    result=session.import_drawing_source(str(record["embedded"]),user=user)
+                except (ValueError, RuntimeError) as exc:
+                    # An unsupported drawing remains a visible document requiring
+                    # review; it must not be presented as a successfully read plate.
+                    result={"status":"review_required", "reason":str(exc)}
+                record["drawing_intake"]=result;drawing_results.append(result)
+            summary["parts"]=len(session.project.parts)
+            summary["assemblies"]=len(session.project.assemblies)
+            summary["drawing_imported_parts"]=sum(len(r.get("part_ids",[])) for r in drawing_results)
             session.project.settings["auxiliary_document_evidence"] = auxiliary_records
             session.project.audit(
                 "project.auxiliary_material_evidence_registered",
