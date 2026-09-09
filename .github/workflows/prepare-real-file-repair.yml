@@ -1,0 +1,80 @@
+name: Verify real-file repair transport
+on:
+  push:
+    branches: [agent/cws-real-file-repair-objects-20260909]
+    paths: ['tools/real_file_repair.*', '.github/workflows/prepare-real-file-repair.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Reproduce the exact reviewed source patch
+        shell: python
+        run: |
+          import base64,hashlib,json,lzma,pathlib,subprocess
+          root=pathlib.Path.cwd();out=root/'build/real-file-repair';out.mkdir(parents=True,exist_ok=True)
+          def git(*args):return subprocess.check_output(['git',*args])
+          def blob(data):return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+          manifest=json.loads((root/'tools/real_file_repair.manifest.json').read_text())
+          git('fetch','--depth=1','origin',manifest['baseline'])
+          if git('rev-parse',manifest['baseline']+'^{tree}').decode().strip()!=manifest['base_tree']:raise RuntimeError('Baseline tree mismatch')
+          encoded=''.join((root/f'tools/real_file_repair.payload.{i}').read_text().strip() for i in range(4))
+          compressed=base64.b64decode(encoded,validate=True)
+          if hashlib.sha256(compressed).hexdigest()!=manifest['compressed_sha256']:raise RuntimeError('Transport integrity mismatch')
+          patch=lzma.decompress(compressed)
+          if hashlib.sha256(patch).hexdigest()!=manifest['patch_sha256']:raise RuntimeError('Patch integrity mismatch')
+          git('config','core.autocrlf','false')
+          seen=set()
+          for row in manifest['files']:
+              path=row['path'];pure=pathlib.PurePosixPath(path);target=root/path
+              if pure.is_absolute() or '..' in pure.parts or '\\' in path or target.is_symlink() or path in seen:raise RuntimeError('Unsafe source path')
+              seen.add(path)
+              current=git('ls-tree','HEAD','--',path).decode().strip()
+              baseline=git('ls-tree',manifest['baseline'],'--',path).decode().strip()
+              if current!=baseline:raise RuntimeError('Concurrent source change: '+path)
+              if row['before'] is None:
+                  if current or target.exists():raise RuntimeError('Unexpected new path: '+path)
+              else:
+                  data=git('show','HEAD:'+path)
+                  if blob(data)!=row['before']:raise RuntimeError('Input fingerprint mismatch: '+path)
+                  target.write_bytes(data)
+          patch_path=out/'reviewed.patch';patch_path.write_bytes(patch)
+          git('apply','--check',str(patch_path));git('apply',str(patch_path))
+          entries=[];blobs=[]
+          for row in manifest['files']:
+              data=(root/row['path']).read_bytes()
+              if blob(data)!=row['sha']:raise RuntimeError('Output fingerprint mismatch: '+row['path'])
+              if row['path'].endswith('.py'):compile(data,row['path'],'exec')
+              entries.append({'path':row['path'],'mode':'100644','type':'blob','sha':row['sha']})
+              blobs.append({'sha':row['sha'],'content':base64.b64encode(data).decode()})
+          result={key:manifest[key] for key in ('baseline','source_parent','base_tree','patch_sha256')}
+          result.update(entries=entries,blobs=blobs,private_inputs_uploaded=False)
+          (out/'PREPARED.json').write_text(json.dumps(result))
+      - name: Store verified file objects only
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const prepared=JSON.parse(fs.readFileSync('build/real-file-repair/PREPARED.json','utf8'));
+            const repo={owner:context.repo.owner,repo:context.repo.repo};
+            for(const blob of prepared.blobs){
+              const result=await github.rest.git.createBlob({...repo,content:blob.content,encoding:'base64'});
+              if(result.data.sha!==blob.sha)throw new Error('Stored object identity mismatch');
+            }
+            delete prepared.blobs;prepared.run_id=context.runId;
+            fs.writeFileSync('build/real-file-repair/VERIFIED_FILES.json',JSON.stringify(prepared,null,2));
+            core.info(JSON.stringify(prepared));
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Real_File_Repair_Objects_${{ github.sha }}
+          path: |
+            build/real-file-repair/VERIFIED_FILES.json
+            build/real-file-repair/reviewed.patch
+          if-no-files-found: error
+          retention-days: 14
