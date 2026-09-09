@@ -1,0 +1,79 @@
+name: Recover verified 8237eed9 test downloads (not full release)
+
+on:
+  push:
+    branches: [agent/cws-continuous-integration-20260908]
+    paths: ['.github/workflows/recover-tested-downloads.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CWS_Tested_Windows_Distribution_8237eed9ae0964e4874970c2798090b2b4c2b903
+          github-token: ${{ github.token }}
+          run-id: 34349646191
+          path: recovered
+      - name: Verify original artifact bytes, preserve source identity and release limitations
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib, shutil
+          root = pathlib.Path('recovered')
+          expected = {
+              'CWS_Convertor_Setup_0.10.18-beta-dev_8237eed_x64.exe': 'e2560246512c85c86f787b5f6837732354615e33a579e8ec643cddafe5bbd99f',
+              'CWS_Convertor_Final_0.10.18-beta-dev_8237eed_Portable.zip': '4dc0d339e5910f932ff46244d3c02ce2758c08a23ffb3d97c1f85bf1bfe41a3e',
+              'CWS_Convertor.exe': 'dabdf518b3ee12a9f231b2834c0912070a0eec7fac206f0688b9cdf75691d30a',
+          }
+          records = []
+          for name, digest in expected.items():
+              matches = list(root.rglob(name))
+              if len(matches) != 1:
+                  raise SystemExit(f'Expected one original artifact: {name}')
+              path = matches[0]
+              with path.open('rb') as stream:
+                  actual = hashlib.file_digest(stream, 'sha256').hexdigest()
+              if actual != digest:
+                  raise SystemExit(f'STOP: original artifact SHA256 mismatch: {name}')
+              records.append(dict(name=name, sha256=actual, bytes=path.stat().st_size))
+          scope = dict(source_sha='8237eed9ae0964e4874970c2798090b2b4c2b903', original_run_id=34349646191, original_distribution_job_id=102459592657, installer_and_runtime_tests_passed=True, full_product_release_approved=False, full_regression=dict(passed_scripts=201, failed_scripts=3, skipped_scripts=24), graphics='Mesa software OpenGL, not physical GPU acceptance', artifacts=records)
+          (root/'DOWNLOAD_SCOPE.json').write_text(json.dumps(scope, indent=2), encoding='utf-8')
+          (root/'LEESMIJ.txt').write_text('GETESTE TUSSENBUILD, GEEN VOLLEDIGE PRODUCTIEVRIJGAVE.\nBron: 8237eed9ae0964e4874970c2798090b2b4c2b903.\nInstaller, start, project/PDF, herstart en verwijderen getest op Windows.\nBrede regressie: 201 scripts geslaagd, 3 gefaald, 24 overgeslagen.\nGeen fysieke GPU- of machinekwalificatie.\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Installer_TESTBUILD_8237eed9
+          path: |
+            recovered/**/CWS_Convertor_Setup_0.10.18-beta-dev_8237eed_x64.exe
+            recovered/DOWNLOAD_SCOPE.json
+            recovered/LEESMIJ.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Portable_TESTBUILD_8237eed9
+          path: |
+            recovered/**/CWS_Convertor_Final_0.10.18-beta-dev_8237eed_Portable.zip
+            recovered/DOWNLOAD_SCOPE.json
+            recovered/LEESMIJ.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Standalone_TESTBUILD_8237eed9
+          path: |
+            recovered/**/CWS_Convertor.exe
+            recovered/DOWNLOAD_SCOPE.json
+            recovered/LEESMIJ.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
