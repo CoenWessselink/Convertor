@@ -1,0 +1,83 @@
+name: Prepare exact recognition follow-up objects
+on:
+  push:
+    branches: [agent/cws-recognition-final-objects-20260909]
+    paths: ['tools/recognition_followup.*', '.github/workflows/prepare-recognition-followup.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Verify immutable input, transport and all reviewed output files
+        shell: python
+        run: |
+          import base64,hashlib,json,lzma,pathlib,subprocess
+          root=pathlib.Path.cwd();out=root/'build/recognition-followup';out.mkdir(parents=True,exist_ok=True)
+          def git(*args):return subprocess.check_output(['git',*args])
+          def blob(data):return hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
+          manifest=json.loads((root/'tools/recognition_followup.manifest.json').read_text())
+          git('fetch','--depth=1','origin',manifest['parent'])
+          if git('rev-parse',manifest['parent']+'^{tree}').decode().strip()!=manifest['base_tree']:raise RuntimeError('Base tree mismatch')
+          encoded=''.join((root/f'tools/recognition_followup.payload.{i}').read_text().strip() for i in range(2))
+          data=base64.b64decode(encoded,validate=True)
+          if hashlib.sha256(data).hexdigest()!=manifest['compressed_sha256']:raise RuntimeError('Transport integrity failure')
+          patch=lzma.decompress(data)
+          if hashlib.sha256(patch).hexdigest()!=manifest['patch_sha256']:raise RuntimeError('Patch integrity failure')
+          git('config','core.autocrlf','false')
+          seen=set()
+          for row in manifest['files']:
+              path=row['path'];pure=pathlib.PurePosixPath(path);target=root/path
+              if pure.is_absolute() or '..' in pure.parts or '\\' in path or target.is_symlink() or path in seen:raise RuntimeError('Unsafe source path')
+              seen.add(path)
+              listing=git('ls-tree','HEAD','--',path).decode().strip()
+              base_listing=git('ls-tree',manifest['parent'],'--',path).decode().strip()
+              if listing!=base_listing:raise RuntimeError('Input differs from immutable parent: '+path)
+              if row['before'] is None:
+                  if listing or target.exists():raise RuntimeError('Unexpected existing source: '+path)
+              else:
+                  current=git('show','HEAD:'+path)
+                  if blob(current)!=row['before']:raise RuntimeError('Input fingerprint changed: '+path)
+                  target.write_bytes(current)
+          path=out/'reviewed.patch';path.write_bytes(patch)
+          git('apply','--check',str(path));git('apply',str(path))
+          entries=[];blobs=[]
+          for row in manifest['files']:
+              data=(root/row['path']).read_bytes()
+              if blob(data)!=row['sha']:raise RuntimeError('Output fingerprint mismatch: '+row['path'])
+              if row['path'].endswith('.py'):compile(data,row['path'],'exec')
+              entries.append({'path':row['path'],'mode':'100644','type':'blob','sha':row['sha']})
+              blobs.append({'sha':row['sha'],'content':base64.b64encode(data).decode()})
+          for test in ('tests/integrated_promotion_smoke.py','tests/recognition_acceptance_policy_smoke.py'):
+              subprocess.run(['python',test],check=True)
+          (out/'PREPARED.json').write_text(json.dumps({'parent':manifest['parent'],'base_tree':manifest['base_tree'],'entries':entries,'blobs':blobs,'patch_sha256':manifest['patch_sha256']}))
+      - name: Create verified blobs and tree only; no branch or release changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const prepared=JSON.parse(fs.readFileSync('build/recognition-followup/PREPARED.json','utf8'));
+            const repo={owner:context.repo.owner,repo:context.repo.repo};
+            for(const blob of prepared.blobs){
+              const result=await github.rest.git.createBlob({...repo,content:blob.content,encoding:'base64'});
+              if(result.data.sha!==blob.sha)throw new Error('Stored object fingerprint mismatch');
+            }
+            const tree=await github.rest.git.createTree({...repo,base_tree:prepared.base_tree,tree:prepared.entries});
+            const result={...prepared,tree_sha:tree.data.sha,run_id:context.runId};delete result.blobs;
+            fs.writeFileSync('build/recognition-followup/VERIFIED_TREE.json',JSON.stringify(result,null,2));
+            core.info(JSON.stringify(result));
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Recognition_Followup_Objects_${{ github.sha }}
+          path: |
+            build/recognition-followup/VERIFIED_TREE.json
+            build/recognition-followup/reviewed.patch
+          retention-days: 14
+          if-no-files-found: error
