@@ -999,6 +999,22 @@ class ProjectProductionExportEngine:
                 matrix = cq.Matrix(part.global_placement.matrix[:3])
                 transformed.append((part.part_position or part.internal_id, shapes[part.internal_id].transformGeometry(matrix)))
             compound = cq.Compound.makeCompound([shape for _name, shape in transformed])
+            solid_materials: list[str] = []
+            material_bindings: list[dict[str, Any]] = []
+            for part, (_part_name, transformed_shape) in zip(parts, transformed, strict=True):
+                canonical_part = canonicals[part.internal_id]
+                value = canonical_part.material
+                solid_count = len(transformed_shape.Solids())
+                if solid_count < 1:
+                    raise ValueError(f"Assemblyonderdeel {part.internal_id} bevat geen solid")
+                material_bindings.append({
+                    "part_id": part.internal_id, "material": value,
+                    "material_grade": canonical_part.product.material_grade,
+                    "first_solid_index": len(solid_materials), "solid_count": solid_count,
+                    "manufacturing_hash": part.manufacturing_hash,
+                })
+                solid_materials.extend([value] * solid_count)
+            common_material = solid_materials[0] if len(set(solid_materials)) == 1 else ""
             assembly_manifest = {
                 "format": "CWS_ASSEMBLY_PACKAGE_V1",
                 "project_id": project.project_id,
@@ -1011,6 +1027,7 @@ class ProjectProductionExportEngine:
                 "weld_ids": sorted({item for assembly in assemblies for item in assembly.weld_ids}),
                 "purchased_item_ids": sorted({item for assembly in assemblies for item in assembly.purchased_item_ids}),
                 "projection_method": "tessellated_vector_wireframe",
+                "material_bindings": material_bindings,
             }
             assembly_manifest["manifest_sha256"] = stable_hash(assembly_manifest)
             artifacts: list[ArtifactResult] = []
@@ -1063,14 +1080,15 @@ class ProjectProductionExportEngine:
             synthetic.header.position_number = mark
             synthetic.header.profile = "ASSEMBLY"
             synthetic.header.profile_type = "ASSEMBLY"
-            synthetic.header.material = "MULTI"
+            synthetic.header.material = common_material
             synthetic.header.quantity = assembly_manifest["quantity"]
             synthetic.header.length = max(bounds.xlen, bounds.ylen, bounds.zlen)
             synthetic.header.saw_length = synthetic.header.length
             synthetic.product.name = mark
             synthetic.product.mark = mark
             synthetic.product.profile_designation = "ASSEMBLY"
-            synthetic.product.material_code = "MULTI"
+            synthetic.product.material_code = common_material
+            synthetic.product.material_grade = common_material
             synthetic.product.main_dimensions_mm = [bounds.xlen, bounds.ylen, bounds.zlen]
             synthetic.contours = []
             synthetic.holes = []
@@ -1085,7 +1103,8 @@ class ProjectProductionExportEngine:
             artifacts.append(_artifact(root, assembly_step, "assembly_step", assembly_id=mark, source="canonical-assembly-compound"))
 
             assembly_ifc = assembly_dir / f"{safe_filename(mark)}_ASSEMBLY.ifc"
-            write_native_ifc(compound, assembly_ifc, name=mark, material="MULTI", canonical=synthetic)
+            write_native_ifc(compound, assembly_ifc, name=mark, material=common_material,
+                             canonical=synthetic, solid_materials=solid_materials)
             _enrich_assembly_ifc(assembly_ifc, mark, assembly_manifest)
             artifacts.append(_artifact(root, assembly_ifc, "assembly_ifc", assembly_id=mark, source="canonical-assembly-compound"))
 

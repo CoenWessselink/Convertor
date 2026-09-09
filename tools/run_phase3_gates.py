@@ -152,7 +152,10 @@ def main() -> int:
     if args.reuse_fresh_evidence and is_fresh(regression_summary_path):
         regression_summary = json.loads(regression_summary_path.read_text(encoding="utf-8"))
         counts = regression_summary.get("counts", {})
-        regression_passed = counts.get("failed", 0) == 0 and counts.get("timeout", 0) == 0
+        regression_passed = (
+            bool(regression_summary.get("release_eligible"))
+            and all(counts.get(key, 0) == 0 for key in ("failed", "timeout", "skipped", "incomplete"))
+        )
         full_regression = reused_result(
             regression_summary_path,
             passed=regression_passed,

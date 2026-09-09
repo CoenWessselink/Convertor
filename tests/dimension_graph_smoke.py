@@ -90,8 +90,8 @@ class DimensionGraphTests(unittest.TestCase):
             analysis,
             {
                 "reviewed_by": "dimension-unittest",
-                "confirm": ["holes[0]"],
-                "comment": "Feature-linked dimensions checked",
+                "confirm": ["holes[0]", "material"],
+                "comment": "Synthetic vector dimensions and the source material explicitly checked",
             },
         )
         self.assertTrue(reviewed.production_export_allowed)

@@ -46,7 +46,7 @@ class EditWorkspaceSmoke(unittest.TestCase):
                 part_position="B-200-003",
             ),
             profile="HEA300",
-            material="S355JR",
+            material="S355JR", material_grade="S355JR",
             length_mm=6000.0,
             profile_confidence=1.0,
             material_confidence=1.0,

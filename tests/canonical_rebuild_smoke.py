@@ -98,6 +98,9 @@ def plate_metrics(*, volume_offset: float = 0.0, include_area: bool = True) -> d
     return result
 
 
+# The synthetic geometry fixtures explicitly carry a grade. Missing or unknown
+# materials are tested separately by material_workbench_gate_smoke; geometry
+# regression must not depend on the historical implicit steel default.
 class CanonicalRebuildTests(unittest.TestCase):
     def make_session(self, metrics: dict | None = None) -> ProjectSession:
         session = ProjectSession.new("Canonical rebuild", created_by="tester")
@@ -110,6 +113,7 @@ class CanonicalRebuildTests(unittest.TestCase):
         part = Part(
             internal_id="part-1",
             name="Testplaat",
+            material="S235JR", material_grade="S235JR",
             part_position="P1",
             source_identity=SourceIdentity(
                 source_format="STEP",
@@ -187,6 +191,8 @@ class CanonicalRebuildTests(unittest.TestCase):
         part = Part(
             internal_id="inner",
             name="Plaat met uitsparing",
+            profile="PL10",
+            material="S235JR", material_grade="S235JR",
             source_identity=SourceIdentity(
                 source_format="STEP",
                 source_sha256="9" * 64,
@@ -296,6 +302,8 @@ class CanonicalRebuildTests(unittest.TestCase):
         round_part = Part(
             internal_id="round",
             name="Rond 20",
+            profile="RU20",
+            material="S235JR", material_grade="S235JR",
             source_identity=SourceIdentity(source_format="STEP", source_sha256="c" * 64, source_entity_id="#7"),
             geometry_descriptor={"source_geometry_hash": "d" * 64},
         )
@@ -323,6 +331,8 @@ class CanonicalRebuildTests(unittest.TestCase):
         profile = Part(
             internal_id="profile",
             name="HEA240",
+            profile="HEA240",
+            material="S235JR", material_grade="S235JR",
             source_identity=SourceIdentity(source_format="STEP", source_sha256="e" * 64, source_entity_id="#8"),
             geometry_descriptor={"source_geometry_hash": "f" * 64},
         )

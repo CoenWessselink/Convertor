@@ -4,6 +4,12 @@ from importlib.util import find_spec
 from PyInstaller.utils.hooks import collect_all, collect_data_files, collect_dynamic_libs, collect_submodules
 
 ROOT = Path(SPECPATH)
+import sys
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from cws_convertor.build_identity import write_build_identity
+BUILD_IDENTITY = write_build_identity(ROOT)
+
 
 native_packages = [
     "cadquery",
@@ -28,6 +34,7 @@ data_packages = [
 ]
 binaries = []
 datas = [
+    (str(BUILD_IDENTITY), "."),
     (str(ROOT / "profiles.json"), "."),
     (str(ROOT / "materials.json"), "."),
     (str(ROOT / "templates"), "templates"),

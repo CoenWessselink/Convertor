@@ -202,6 +202,9 @@ class ProductionReleasePackageTests(unittest.TestCase):
             self.assertIn("NEXT_ASSEMBLY_USAGE_OCCURRENCE", assembly_step.read_text(encoding="latin-1"))
             assembly_ifc = next(root / artifact.relative_path for artifact in assembly.artifacts if artifact.format == "assembly_ifc")
             ifc_text = assembly_ifc.read_text(encoding="utf-8")
+            from ifc_native import parse_native_ifc_meshes
+            self.assertEqual({mesh.material for mesh in parse_native_ifc_meshes(assembly_ifc)}, {"S355JR"})
+            self.assertNotIn("IFCMATERIAL('MULTI'", ifc_text)
             self.assertIn("IFCELEMENTASSEMBLY", ifc_text)
             self.assertIn("Pset_CWSAssemblyPackage", ifc_text)
             assembly_entity = re.search(r"#(\d+)=IFCELEMENTASSEMBLY", ifc_text)

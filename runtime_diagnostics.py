@@ -13,6 +13,7 @@ import traceback
 from typing import Any, Callable
 
 from cws_convertor.product import APP_NAME, APP_VERSION
+from cws_convertor.build_identity import read_build_identity
 
 
 def _version(distribution: str) -> str:
@@ -49,14 +50,25 @@ def _casadi_check() -> dict[str, Any]:
         raise AssertionError(f"CasADi-resultaat is {result}, verwacht 10.0")
     package_dir = Path(casadi.__file__).resolve().parent
     required_dlls = ["libcasadi.dll", "libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll"]
-    missing = [name for name in required_dlls if not (package_dir / name).is_file()]
+    if sys.platform == "win32":
+        required_libraries = required_dlls
+    elif sys.platform == "darwin":
+        required_libraries = ["libcasadi.dylib"]
+    elif sys.platform.startswith("linux"):
+        required_libraries = ["libcasadi.so"]
+    else:
+        raise RuntimeError(f"Niet ondersteund CasADi-runtimeplatform: {sys.platform}")
+    missing = [name for name in required_libraries if not (package_dir / name).is_file()]
     if missing:
-        raise FileNotFoundError(f"Ontbrekende CasADi-runtime-DLL's: {', '.join(missing)}")
+        raise FileNotFoundError(f"Ontbrekende CasADi-runtimebibliotheken: {', '.join(missing)}")
     return {
         "version": getattr(casadi, "__version__", _version("casadi")),
         "package_path": str(package_dir),
         "native_module_path": str(Path(native_casadi.__file__).resolve()),
-        "required_dlls": {name: str((package_dir / name).resolve()) for name in required_dlls},
+        "required_dlls": {name: str((package_dir / name).resolve()) for name in required_dlls}
+        if sys.platform == "win32" else {},
+        "required_libraries": {name: str((package_dir / name).resolve()) for name in required_libraries},
+        "library_platform": sys.platform,
         "expression_result": result,
     }
 
@@ -419,6 +431,7 @@ def _project_roundtrip_check() -> dict[str, Any]:
             ),
             profile="PL10",
             material="S355JR",
+            material_grade="S355JR",  # Declared synthetic probe, not an import default.
             confidence=1.0,
             profile_confidence=1.0,
             geometry_descriptor={
@@ -595,6 +608,7 @@ def _phase2_production_check() -> dict[str, Any]:
 
 def run_native_self_test() -> dict[str, Any]:
     checks = [
+        _run_check("build_identity", read_build_identity),
         _run_check("casadi", _casadi_check),
         _run_check("cadquery_ocp", _cadquery_ocp_check),
         _run_check("ifcopenshell", _ifcopenshell_check),

@@ -14,7 +14,7 @@ import datetime as _dt
 import math
 import re
 import uuid
-from typing import TYPE_CHECKING, Iterable, Iterator
+from typing import TYPE_CHECKING, Iterable, Iterator, Sequence
 
 if TYPE_CHECKING:
     import cadquery as cq
@@ -110,6 +110,7 @@ def write_native_ifc(
     material: str,
     canonical: CanonicalPart,
     tolerance_mm: float = 0.20,
+    solid_materials: Sequence[str] | None = None,
 ) -> Path:
     """Schrijf IFC4-zichtgeometrie én één gehashte lossless propertyset.
 
@@ -129,7 +130,7 @@ def write_native_ifc(
 
     database = MaterialDatabase()
     declared_values = [str(value).strip() for value in (
-        material, canonical.material, canonical.product.material_grade,
+        material, canonical.material, canonical.product.material_code, canonical.product.material_grade,
     ) if str(value or "").strip()]
     declared_identities = {
         database.resolve(value).material_code or normalise_material(value)
@@ -138,8 +139,19 @@ def write_native_ifc(
     if len(declared_identities) > 1:
         raise ValueError("IFC-materiaal conflicteert met de canonieke materiaalgegevens")
     material = str(material or canonical.material or "").strip()
-    definition = database.find(material) if material else None
-    material_category = f"'{_escape_ifc(definition.category)}'" if definition else "$"
+    if solid_materials is None:
+        mesh_materials = [material] * len(meshes)
+    else:
+        if isinstance(solid_materials, (str, bytes)) or len(solid_materials) != len(meshes):
+            raise ValueError("IFC-materiaalbinding moet exact één waarde per geëxporteerde solid bevatten")
+        mesh_materials = [str(value or "").strip() for value in solid_materials]
+        # A common canonical grade must never contradict one component. For a
+        # genuinely mixed assembly the aggregate grade stays empty; actual
+        # component grades are bound individually, never invented as MULTI.
+        for value in mesh_materials:
+            identity = database.resolve(value).material_code or normalise_material(value)
+            if declared_identities and identity not in declared_identities:
+                raise ValueError("IFC-solidmateriaal conflicteert met de canonieke materiaalgegevens")
     now = _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0)
     timestamp = now.isoformat()
     epoch = int(now.timestamp())
@@ -183,9 +195,6 @@ def write_native_ifc(
         f"#22=IFCRELAGGREGATES('{_guid22(name + ':building-storey')}',#5,$,$,#18,(#19));",
         "#23=IFCLOCALPLACEMENT($,#9);",
     ]
-    if material:
-        lines.append(f"#16=IFCMATERIAL('{_escape_ifc(material)}',$,{material_category});")
-
     next_id = 30
     element_ids: list[int] = []
     for index, (solid, vertices_mm, faces_zero) in enumerate(meshes, start=1):
@@ -224,8 +233,7 @@ def write_native_ifc(
 
     element_refs = ",".join(f"#{entity_id}" for entity_id in element_ids)
     containment_id = next_id
-    material_relation_id = next_id + 1
-    next_id += 2
+    next_id += 1
     lines.extend(
         [
             (
@@ -234,10 +242,20 @@ def write_native_ifc(
             ),
         ]
     )
-    if material:
+    material_groups: dict[str, list[int]] = {}
+    for element_id, value in zip(element_ids, mesh_materials, strict=True):
+        if value:
+            material_groups.setdefault(value, []).append(element_id)
+    for value, group in material_groups.items():
+        definition = database.find(value)
+        category = f"'{_escape_ifc(definition.category)}'" if definition else "$"
+        material_id, relation_id = next_id, next_id + 1
+        next_id += 2
+        related = ",".join(f"#{element_id}" for element_id in group)
+        lines.append(f"#{material_id}=IFCMATERIAL('{_escape_ifc(value)}',$,{category});")
         lines.append(
-            f"#{material_relation_id}=IFCRELASSOCIATESMATERIAL("
-            f"'{_guid22(name + ':material')}',#5,$,$,({element_refs}),#16);"
+            f"#{relation_id}=IFCRELASSOCIATESMATERIAL("
+            f"'{_guid22(name + ':material:' + value)}',#5,$,$,({related}),#{material_id});"
         )
 
     properties: list[tuple[str, str, str]] = [

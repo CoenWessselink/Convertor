@@ -281,6 +281,11 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
     window.setCentralWidget(panel)
     window.resize(1800, 1100)
     window.show()
+    if not QtTest.QTest.qWaitForWindowExposed(window, 5000):
+        raise RuntimeError("Qt-bewijsvenster werd niet zichtbaar")
+    # Native window-system input is asynchronous. Drain pending resize/layout
+    # and preview events before locating the real geometry in the canvas.
+    QtTest.QTest.qWait(100)
     application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 200)
 
     evidence: list[dict[str, Any]] = []
@@ -332,12 +337,14 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
         return values
 
     def move(point: tuple[float, float]) -> None:
-        QtTest.QTest.mouseMove(panel.preview, panel.preview.sheet_to_widget(point).toPoint())
+        QtTest.QTest.mouseMove(panel.preview, panel.preview.sheet_to_widget(point).toPoint(), delay=20)
+        QtTest.QTest.qWait(30)
         application.processEvents()
 
     def click(point: tuple[float, float], modifiers: Any = QtCore.Qt.KeyboardModifier.NoModifier) -> None:
         widget_point = panel.preview.sheet_to_widget(point).toPoint()
-        QtTest.QTest.mouseMove(panel.preview, widget_point)
+        QtTest.QTest.mouseMove(panel.preview, widget_point, delay=20)
+        QtTest.QTest.qWait(30)
         application.processEvents()
         QtTest.QTest.mouseClick(panel.preview, QtCore.Qt.MouseButton.LeftButton, modifiers, widget_point)
         application.processEvents()

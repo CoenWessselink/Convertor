@@ -208,6 +208,9 @@ if qt_available():
         def cycle_candidate(self) -> None:
             if self._hover_candidates:
                 self._hover_index = (self._hover_index + 1) % len(self._hover_candidates)
+                # Keep the inspector/instruction in sync with the candidate that
+                # will actually be committed after Tab, not the previous one.
+                self.pointer_moved.emit(self._pointer_sheet, self.current_candidate)
                 self.update()
 
         def event(self, event: Any) -> bool:
@@ -245,7 +248,10 @@ if qt_available():
             distinct: dict[str, SnapCandidate] = {}
             for _distance, _candidate_id, candidate in sorted(nearby):
                 distinct.setdefault(candidate.candidate_id, candidate)
+            previous_ids = [item.candidate_id for item in self._hover_candidates]
             self._hover_candidates = list(distinct.values())
+            if previous_ids != [item.candidate_id for item in self._hover_candidates]:
+                self._hover_index = 0
             if (not self._hover_candidates and self._document is not None
                     and self._snap_filter in {SnapFilter.ALL.value, SnapFilter.EDGES.value}):
                 page_width, _page_height = self._page_size()
@@ -287,6 +293,12 @@ if qt_available():
                 self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
                 return
             if event.button() == QtCore.Qt.MouseButton.LeftButton:
+                # Press events need not have a preceding mouse-move (touch,
+                # remote desktop and coalesced native events). Resolve the
+                # actual click, never an unrelated cached hover. _update_hover
+                # preserves a Tab-selected candidate when the pointer is still
+                # at the same semantic target.
+                self._update_hover(event.position())
                 point = self.widget_to_sheet(event.position())
                 if point is not None:
                     selected_hit = self.dimension_at(point, self._selected_ids)
@@ -306,6 +318,7 @@ if qt_available():
                 self._panning = False
                 self.unsetCursor()
             elif event.button() == QtCore.Qt.MouseButton.LeftButton and self._drag_dimension_id:
+                self._drag_current_sheet = self.widget_to_sheet(event.position())
                 if self._drag_origin_sheet is not None and self._drag_current_sheet is not None:
                     delta = (
                         self._drag_current_sheet[0] - self._drag_origin_sheet[0],
@@ -319,7 +332,7 @@ if qt_available():
                 self.update()
             elif event.button() == QtCore.Qt.MouseButton.LeftButton and self._selection_origin_sheet is not None:
                 start = self._selection_origin_sheet
-                end = self._selection_current_sheet or start
+                end = self.widget_to_sheet(event.position()) or self._selection_current_sheet or start
                 if math.hypot(end[0] - start[0], end[1] - start[1]) > 1.0:
                     self.area_selected.emit(start, end, self._selection_modifiers)
                 self._selection_origin_sheet = None

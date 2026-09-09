@@ -52,6 +52,55 @@ def _emit_github_failure(script: Path, status: str, returncode: int, excerpt: st
     )
 
 
+
+def classify_smoke_outcome(stdout: str, stderr: str, returncode: int,
+                           *, timed_out: bool = False) -> dict:
+    """Do not confuse successful process termination with complete acceptance."""
+    output = f"{stdout}\n{stderr}"
+    ran = [int(value) for value in re.findall(r"Ran\s+(\d+)\s+tests?\s+in", output)]
+    summaries = re.findall(r"^(?:OK|FAILED)(?:\s*\(([^\n]*)\))?\s*$", output, re.MULTILINE)
+    skipped = sum(int(value) for summary in summaries
+                  for value in re.findall(r"skipped=(\d+)", summary))
+    expected = sum(int(value) for summary in summaries
+                   for value in re.findall(r"expected failures=(\d+)", summary))
+    # Legacy whole-script skips may not be emitted by unittest.
+    legacy_skip = bool(re.search(r"^(?:SKIP|SKIPPED)\b[^\n]*", output, re.MULTILINE))
+    no_tests = bool(ran and sum(ran) == 0) or "NO TESTS RAN" in output
+    if timed_out:
+        status = "timeout"
+    elif returncode not in (0, 5):
+        status = "failed"
+    elif skipped or legacy_skip:
+        status = "skipped"
+    elif expected or no_tests:
+        status = "incomplete"
+    elif returncode != 0:
+        status = "failed"
+    else:
+        status = "passed"
+    return {
+        "status": status,
+        "reported_test_count": sum(ran) if ran else None,
+        "skipped_test_count": skipped,
+        "expected_failure_count": expected,
+        "partial_completion": bool(skipped and ran and sum(ran) > skipped),
+        "count_basis": "unittest_summary" if ran else "script_exit_code_only",
+    }
+
+
+def source_checkout() -> dict:
+    def git(*args: str) -> str:
+        result = subprocess.run(["git", *args], cwd=ROOT, text=True,
+                                capture_output=True, check=True)
+        return result.stdout.strip()
+    try:
+        return {"commit": git("rev-parse", "HEAD"),
+                "tree": git("rev-parse", "HEAD^{tree}"),
+                "tracked_dirty": bool(git("status", "--porcelain=v1", "--untracked-files=no"))}
+    except (OSError, subprocess.CalledProcessError):
+        return {"commit": None, "tree": None, "tracked_dirty": None}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, default=ROOT / "validation" / "viewer_v9" / "full_smokes")
@@ -65,7 +114,10 @@ def main() -> int:
         action="store_true",
         help="use the same explicit native-window skips as Windows CI",
     )
+    parser.add_argument("--require-zero-skips", action="store_true",
+                        help="Fail when any suite is skipped, incomplete or reports only expected failures")
     args = parser.parse_args()
+    source_before = source_checkout()
     output = args.output.expanduser().resolve()
     logs = output / "logs"
     runtime_temp = output / "runtime-temp"
@@ -141,27 +193,8 @@ def main() -> int:
             if isinstance(stderr, bytes):
                 stderr = stderr.decode("utf-8", errors="replace")
         duration = time.perf_counter() - tick
-        combined_output = f"{stdout}\n{stderr}"
-        ran_match = re.search(r"Ran\s+(\d+)\s+tests?", combined_output)
-        skipped_match = re.search(r"skipped=(\d+)", combined_output)
-        all_reported_tests_skipped = bool(
-            ran_match
-            and skipped_match
-            and int(skipped_match.group(1)) >= int(ran_match.group(1))
-        )
-        explicitly_skipped = (
-            (returncode == 5 and "NO TESTS RAN" in combined_output and "skipped=" in combined_output)
-            or (returncode == 0 and all_reported_tests_skipped)
-        )
-        status = (
-            "timeout"
-            if timed_out
-            else "passed"
-            if returncode == 0
-            else "skipped"
-            if explicitly_skipped
-            else "failed"
-        )
+        outcome = classify_smoke_outcome(stdout, stderr, returncode, timed_out=timed_out)
+        status = outcome["status"]
         failure_excerpt = ""
         if status in {"failed", "timeout"}:
             failure_excerpt = _failure_excerpt(stdout, stderr, returncode)
@@ -183,14 +216,25 @@ def main() -> int:
                 "duration_seconds": duration,
                 "log": str(log_path.relative_to(output)),
                 "failure_excerpt": failure_excerpt,
+                **outcome,
             }
         )
         print(f"    {status.upper()} {duration:.2f}s", flush=True)
     counts = {
         key: sum(item["status"] == key for item in records)
-        for key in ("passed", "skipped", "failed", "timeout")
+        for key in ("passed", "skipped", "incomplete", "failed", "timeout")
     }
+    source_after = source_checkout()
+    complete_range = first == 1 and last == len(all_scripts)
+    release_eligible = (
+        complete_range and bool(records) and all(item["status"] == "passed" for item in records)
+        and source_before == source_after and source_before["tracked_dirty"] is False
+        and bool(source_before["commit"])
+    )
     payload = {
+        "source_before": source_before, "source_after": source_after,
+        "release_eligible": release_eligible,
+        "strict_zero_skips": args.require_zero_skips,
         "schema": "cws-viewer-v9-full-smoke-summary-1.0",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "python": sys.version,
@@ -209,7 +253,10 @@ def main() -> int:
         if item["status"] in {"failed", "timeout"}
     ]
     print(json.dumps({"summary": str(summary), **counts, "failures": failures}, indent=2), flush=True)
-    return 0 if counts["failed"] == 0 and counts["timeout"] == 0 else 2
+    unsuccessful = counts["failed"] + counts["timeout"] + counts["incomplete"]
+    if args.require_zero_skips:
+        unsuccessful += counts["skipped"]
+    return 2 if unsuccessful else 0
 
 
 if __name__ == "__main__":

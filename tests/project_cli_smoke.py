@@ -146,7 +146,11 @@ class ProjectCLITests(unittest.TestCase):
 
     def test_version_identity(self) -> None:
         self.assertEqual(APP_NAME, "CWS Convertor")
-        self.assertEqual(APP_VERSION, "0.10.21-beta-dev")
+        # The CLI and installer must use the central product version, not a
+        # version literal left behind on an earlier integration branch.
+        self.assertRegex(APP_VERSION, r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$")
+        installer = (ROOT / "installer" / "CWS_Convertor.iss").read_text(encoding="utf-8")
+        self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', installer)
         parser = cli.build_parser()
         self.assertIn(APP_NAME, parser.description or "")
 

@@ -12,17 +12,20 @@ import shutil
 import subprocess
 import sys
 import time
-import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.10.18-beta-dev"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from cws_convertor.product import APP_VERSION
+VERSION = APP_VERSION
 
 
 def source_revision() -> str:
-    value = str(os.environ.get("GITHUB_SHA") or "").strip()
-    if not value:
-        value = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    value = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    expected = os.environ.get("CWS_BUILD_EXPECTED_SHA", "").strip()
+    if expected and expected.lower() != value.lower():
+        raise RuntimeError(f"Windows build checkout {value} differs from expected source {expected}")
     if len(value) != 40 or any(character not in "0123456789abcdefABCDEF" for character in value):
         raise RuntimeError("Finale Windows-release vereist een bekende 40-character Git SHA")
     return value.lower()
@@ -51,10 +54,17 @@ def digest(path: Path) -> str:
 def run(command: list[str], *, timeout: int = 1800,
         environment: dict[str, str] | None = None) -> dict[str, object]:
     started = time.perf_counter()
+    log_directory = RESULTS / "command-logs"
+    log_directory.mkdir(parents=True, exist_ok=True)
+    command_id = f"{time.time_ns()}-{Path(command[0]).stem}"
+    print(f"START {command_id}: {command}", flush=True)
     completed = subprocess.run(
         command, cwd=ROOT, env=environment, capture_output=True, text=True,
         timeout=timeout, check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
+    (log_directory / f"{command_id}.stdout.log").write_text(completed.stdout, encoding="utf-8")
+    (log_directory / f"{command_id}.stderr.log").write_text(completed.stderr, encoding="utf-8")
+    print(f"END {command_id}: rc={completed.returncode}", flush=True)
     result = {
         "command": command, "returncode": completed.returncode,
         "passed": completed.returncode == 0,

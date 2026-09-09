@@ -116,18 +116,28 @@ if qt_available():
             "radius": "Radius", "diameter": "Diameter", "center_distance": "Hartafstand",
             "leader": "Leader", "text": "Tekst",
         }
-        from cws_convertor.ui_qt.ribbon_icons import ribbon_icon
+        from cws_convertor.ui_qt.drawing_icons import dimension_icon
         for key, button in panel.dimension_tool_buttons.items():
             name = names.get(key, key.replace("_", " ").capitalize())
             button.setAccessibleName(name)
             button.setText(name)
             button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-            button.setIcon(ribbon_icon("select" if key == "select" else "maatvoering", name))
+            button.setIcon(dimension_icon(key))
             button.setIconSize(QtCore.QSize(18, 18))
         action_names = ("Toon/verberg", "Heranker", "Dupliceer", "Verwijder", "Undo", "Redo", "Fit", "Zoom", "Reset", "Vrijgeven")
         for name, button in zip(action_names, panel.dimension_action_buttons.values()):
             button.setText(name)
             button.setAccessibleName(button.toolTip())
+        toolbar_frame.setStyleSheet("""
+            QToolButton { padding: 5px 7px; border: 1px solid transparent; border-radius: 3px; }
+            QToolButton:hover { background: #e6f0ff; border-color: #80b6ed; }
+            QToolButton:checked { background: #cfe5ff; border: 1px solid #2474c5; color: #123c64; }
+            QToolButton:disabled { color: #7e8b97; }
+        """)
+        for widget, name in ((panel.format, "Papierformaat"), (panel.orientation, "Papieroriëntatie"),
+                             (panel.scale, "Tekenschaal"), (panel.snap_filter, "Geometrisch selectiefilter")):
+            widget.setAccessibleName(name)
+        panel.preview.setAccessibleName("Interactieve productietekening")
         panel.preview_button.setText("Vernieuwen")
         panel.png_button.setText("PNG")
         panel.pdf_button.setText("PDF exporteren")

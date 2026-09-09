@@ -55,6 +55,20 @@ class DrawingWorkspaceV3Tests(unittest.TestCase):
                     self.assertGreater(control.height(), 15)
                 self.assertGreater(self.panel.preview.width(), 300)
 
+    def test_dimension_tools_have_distinct_native_icons_and_accessible_names(self):
+        import hashlib
+        images = []
+        self.assertEqual(len(self.panel.dimension_tool_buttons), 14)
+        for name, button in self.panel.dimension_tool_buttons.items():
+            image = button.icon().pixmap(32, 32).toImage()
+            self.assertFalse(image.isNull(), name)
+            images.append(hashlib.sha256(bytes(image.constBits())).hexdigest())
+            self.assertTrue(button.toolTip(), name)
+        self.assertEqual(len(set(images)), 14)
+        for control in (self.panel.format, self.panel.orientation, self.panel.scale,
+                        self.panel.preview):
+            self.assertTrue(control.accessibleName())
+
     def test_inspector_toggle_is_a_real_click_and_does_not_change_document(self):
         self.assertTrue(self.panel.inspector_frame.isVisible())
         self.QtTest.QTest.mouseClick(self.panel.inspector_toggle, self.core.Qt.MouseButton.LeftButton)

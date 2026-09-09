@@ -16,7 +16,13 @@ def main() -> int:
     failures = [check for check in result["checks"] if check["status"] != "passed"]
     assert not failures, failures
     checks = {check["name"]: check["details"] for check in result["checks"]}
-    assert Path(checks["casadi"]["native_module_path"]).name == "_casadi.pyd"
+    native_name = Path(checks["casadi"]["native_module_path"]).name
+    if sys.platform == "win32":
+        assert native_name == "_casadi.pyd"
+    else:
+        from importlib.machinery import EXTENSION_SUFFIXES
+        assert any(native_name == "_casadi" + suffix for suffix in EXTENSION_SUFFIXES), native_name
+    assert checks["casadi"]["library_platform"] == sys.platform
     assert checks["casadi"]["expression_result"] == 10.0
     assert checks["cadquery_ocp"]["valid_solid"] is True
     assert checks["cadquery_ocp"]["plate_bbox_mm"] == [100.0, 50.0, 10.0]

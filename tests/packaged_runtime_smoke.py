@@ -118,7 +118,14 @@ def _read_passed_result(path: Path, required_checks: set[str]) -> dict[str, Any]
     assert result["runtime"]["frozen"] is True, result["runtime"]
     assert result["runtime"]["external_python_on_path"] is None, result["runtime"]
     checks = {check["name"]: check for check in result["checks"]}
+    required_checks = required_checks | {"build_identity"}
     assert required_checks <= checks.keys(), checks.keys()
+    identity = checks["build_identity"]["details"]
+    expected_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    expected_tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=ROOT, text=True).strip()
+    assert identity["source_commit"] == expected_commit, identity
+    assert identity["source_tree"] == expected_tree, identity
+    assert identity["frozen"] is True and identity["tracked_dirty"] is False, identity
     assert all(checks[name]["status"] == "passed" for name in required_checks), checks
     return result
 
