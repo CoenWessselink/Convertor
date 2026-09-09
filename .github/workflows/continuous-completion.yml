@@ -1,0 +1,227 @@
+name: Continuous completion - source and Windows distribution proof
+
+on:
+  push:
+    branches: [agent/cws-continuous-integration-20260908]
+    paths:
+      - '.github/workflows/continuous-completion.yml'
+      - 'tools/continuous_recovery/completion-v4-*.b64'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      source_sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+      - name: Verify and integrate the complete reviewed production patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, hashlib, json, lzma, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          encoded = ''.join((root / f'tools/continuous_recovery/completion-v4-{i:02d}.b64').read_text().strip() for i in range(3))
+          packed = base64.b64decode(encoded, validate=True)
+          if hashlib.sha256(packed).hexdigest() != '244d3072387bc59d807c264c3f3db84a981489ea16ff30900d3b50bee1e6f542':
+              raise SystemExit('STOP: complete patch SHA256 mismatch')
+          payload = json.loads(lzma.decompress(packed))
+          if payload['schema'] != 'cws-reviewed-completion-v1' or len(payload['files']) != 30:
+              raise SystemExit('STOP: invalid complete patch manifest')
+          subprocess.run(['git', 'merge-base', '--is-ancestor', payload['base_commit'], 'HEAD'], check=True)
+          states = []
+          for entry in payload['files']:
+              relative = pathlib.PurePosixPath(entry['path'])
+              if relative.is_absolute() or '..' in relative.parts or relative.parts[0] in {'.git', '.github'}:
+                  raise SystemExit('STOP: unsafe patch path')
+              path = root / relative
+              if path.is_symlink() or not path.resolve().is_relative_to(root):
+                  raise SystemExit('STOP: patch escapes checkout')
+              actual = hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+              states.append((actual == entry['before_sha256'], actual == entry['after_sha256']))
+          output = root / 'build/continuous-completion-source'
+          output.mkdir(parents=True, exist_ok=True)
+          if not all(after for before, after in states):
+              if not all(before for before, after in states):
+                  raise SystemExit('STOP: existing source differs; manual reconciliation required')
+              patch = output / 'reviewed-source.patch'
+              patch.write_text(payload['patch'], encoding='utf-8')
+              subprocess.run(['git', 'apply', '--check', '--unidiff-zero', str(patch)], check=True)
+              subprocess.run(['git', 'apply', '--unidiff-zero', '--whitespace=error', str(patch)], check=True)
+          for entry in payload['files']:
+              path = root / entry['path']
+              if hashlib.sha256(path.read_bytes()).hexdigest() != entry['after_sha256']:
+                  raise SystemExit(f'STOP: resulting source mismatch: {path}')
+              if path.suffix == '.py':
+                  compile(path.read_text(encoding='utf-8'), str(path), 'exec')
+          subprocess.run(['git', 'diff', '--check'], check=True)
+          subprocess.run(['git', 'add', '--', *[entry['path'] for entry in payload['files']]], check=True)
+          (output / 'SOURCE_FILE_HASHES.json').write_text(json.dumps(payload['files'], indent=2), encoding='utf-8')
+          PY
+      - name: Publish recoverable production commit, never force-push
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'CWS integration recovery'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: complete native input, per-solid IFC materials and commit-bound Windows proof'
+            git push origin HEAD:agent/cws-continuous-integration-20260908
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git rev-parse HEAD > build/continuous-completion-source/COMMIT.txt
+          git rev-parse HEAD^{tree} > build/continuous-completion-source/TREE.txt
+          git cat-file commit HEAD > build/continuous-completion-source/COMMIT_OBJECT.txt
+          git bundle create build/continuous-completion-source/incremental.bundle HEAD ^ecd79f7a3984de48861209d1631db251319cacd4
+          git archive --format=zip HEAD -o build/continuous-completion-source/source.zip
+          sha256sum build/continuous-completion-source/* > build/continuous-completion-source/SHA256SUMS.txt
+          echo 'Production source published. Transport is not acceptance.' >> "$GITHUB_STEP_SUMMARY"
+          git rev-parse HEAD >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Completion_Source_${{ steps.source.outputs.sha }}
+          path: build/continuous-completion-source/*
+          if-no-files-found: error
+          retention-days: 30
+
+  windows-distribution:
+    needs: integrate
+    runs-on: windows-latest
+    timeout-minutes: 180
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      CWS_BUILD_EXPECTED_SHA: ${{ needs.integrate.outputs.source_sha }}
+      QT_QPA_PLATFORM: offscreen
+      GALLIUM_DRIVER: llvmpipe
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - name: Preserve exact LF source bytes on Windows
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.integrate.outputs.source_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install locked build dependencies and verify dependency consistency
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Pinned software OpenGL (not a physical GPU performance claim)
+        uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: Verify critical regression repairs before packaging
+        shell: pwsh
+        run: |
+          $tests = @('build_identity','native_window_binding','assembly_ifc_materials','production_release_package','continuous_smoke_reporting','drawing_workspace_v3','drawing_canvas_native_events')
+          foreach ($test in $tests) {
+            python "tests/${test}_smoke.py"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          python tools/run_pdf12_v2_tests.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build existing EXE, portable and installer; install, exercise, reopen and uninstall
+        shell: pwsh
+        run: |
+          python tools/build_phase3_windows_release.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test all twelve packaged conversion routes and rejection cases
+        shell: pwsh
+        run: |
+          python tests/conversion_one_phase_packaged_smoke.py --runtime-dir dist/CWS_Convertor --output build/continuous-packaged-conversions --expected-sha $env:CWS_BUILD_EXPECTED_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record distribution proof scope and exact source
+        shell: pwsh
+        run: |
+          python -c "import json,pathlib,subprocess; from cws_convertor.build_identity import checkout_identity; r=pathlib.Path.cwd(); d=checkout_identity(r); assert not d['tracked_dirty'],d; d.update(schema='cws-tested-distribution-v1',windows_distribution_tests_passed=True,full_product_release_approved=False,physical_machine_release_approved=False,graphics='Mesa software OpenGL; not physical GPU performance acceptance'); (r/'release/phase3/CONTINUOUS_DISTRIBUTION_SCOPE.json').write_text(json.dumps(d,indent=2),encoding='utf-8')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload tested distribution (never on a failed package job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Tested_Windows_Distribution_${{ needs.integrate.outputs.source_sha }}
+          path: release/phase3/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload fresh runtime evidence and diagnostics, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Windows_Evidence_${{ needs.integrate.outputs.source_sha }}
+          path: |
+            validation/results/windows-runtime-phase3/**
+            validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json
+            build/continuous-packaged-conversions/**
+            build/cws-build-identity.json
+            build/CWS_Convertor/warn-CWS_Convertor.txt
+            build/CWS_Convertor_OneFile/warn-CWS_Convertor_OneFile.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  windows-source-regression:
+    needs: integrate
+    runs-on: windows-latest
+    timeout-minutes: 120
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_RUN_NATIVE_VTK_TESTS: '1'
+      GALLIUM_DRIVER: llvmpipe
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.integrate.outputs.source_sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - shell: pwsh
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: Full discovered regression; skips never count as passed
+        shell: pwsh
+        run: |
+          python validation/run_all_smokes_v9.py --output build/continuous-full-regression --require-zero-skips
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Full_Regression_${{ needs.integrate.outputs.source_sha }}
+          path: build/continuous-full-regression/**
+          if-no-files-found: error
+          retention-days: 30
