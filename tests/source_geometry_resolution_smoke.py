@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import multiprocessing
+import re
 import sys
 import tempfile
 import unittest
@@ -236,24 +237,97 @@ class SourceGeometryResolutionTests(unittest.TestCase):
             self.assertEqual(part.properties["volume_mm3"], 123.0)
 
     def test_multi_solid_step_never_selects_a_part_by_native_list_order(self) -> None:
+        # Multi-solid input is now supported by exact STEP entity labels. The
+        # previous blanket rejection asserted an obsolete limitation, not the
+        # intended safety contract. Reverse the numeric labels to ensure that
+        # semantic/native list order cannot accidentally make this test pass.
         with tempfile.TemporaryDirectory(prefix="cws_source_multistep_") as folder_name:
             source = Path(folder_name) / "assembly.step"
             export_step(source, multi_solid=True)
-            session = ProjectSession.new("Ambiguous STEP source")
-            registration = session.register_sources([source], include_step_geometry=True)[0]
-            result = session.semantic_import_source(registration.source.source_id)
-            self.assertEqual(result.entity_counts["parts"], 2)
-            part = next(iter(session.project.parts.values()))
-            inspection = session.inspect_part_source_geometry(
-                part.internal_id,
-                persist=False,
-            )
-            self.assertEqual(inspection.status, "manual_validation_required")
-            self.assertEqual(inspection.scope, "unknown")
-            self.assertFalse(inspection.selection_verified)
-            self.assertFalse(inspection.production_geometry_exact)
-            self.assertIsNone(inspection.native_shape)
-            self.assertIn("volgorde", inspection.blocking_reasons[0])
+            text = source.read_text(encoding="utf-8")
+            roots = re.findall(r"#(\d+)\s*=\s*MANIFOLD_SOLID_BREP\s*\(", text)
+            self.assertEqual(len(roots), 2)
+            labels = sorted({int(v) for v in re.findall(r"#(\d+)\s*=", text)})
+            mapping = {value: 90000 + (len(labels) - index) * 13
+                       for index, value in enumerate(labels)}
+            text = re.sub(r"#(\d+)", lambda m: "#" + str(mapping[int(m[1])]), text)
+            source.write_text(text, encoding="utf-8")
+            original = source.read_bytes()
+            # Ground truth comes from the two independently specified boxes,
+            # not from the source-inspection output under test.
+            expected = {
+                "#" + str(mapping[int(roots[0])]): (50000.0, [100.0, 50.0, 10.0], (0.0, 0.0, 0.0)),
+                "#" + str(mapping[int(roots[1])]): (8000.0, [20.0, 20.0, 20.0], (200.0, 0.0, 0.0)),
+            }
+
+            def verify(session):
+                seen = set()
+                # Query in both orders, including cache hits. Selection must
+                # follow the persistent label, never the caller's row order.
+                parts = list(session.project.parts.values())
+                for part in parts + list(reversed(parts)):
+                    selected = part.geometry_descriptor["source_locator"]["selector"]["entity_ids"]
+                    self.assertEqual(len(selected), 1)
+                    label = selected[0]
+                    self.assertIn(label, expected)
+                    seen.add(label)
+                    volume, bbox, center = expected[label]
+                    inspection = session.inspect_part_source_geometry(part.internal_id, persist=False)
+                    self.assertEqual(inspection.status, "resolved_exact")
+                    self.assertEqual(inspection.scope, "part")
+                    self.assertEqual(inspection.geometry_kind, "native_brep")
+                    self.assertTrue(inspection.selection_verified)
+                    self.assertTrue(inspection.production_geometry_exact)
+                    self.assertIsNotNone(inspection.native_shape)
+                    self.assertEqual(inspection.evidence["selector_entity_ids"], selected)
+                    self.assertEqual(inspection.metrics["solid_count"], 1)
+                    self.assertEqual(inspection.evidence["native_source_solid_count"], 2)
+                    self.assertAlmostEqual(inspection.metrics["volume_mm3"], volume, places=5)
+                    for actual, required in zip(inspection.metrics["bbox_mm"], bbox):
+                        self.assertAlmostEqual(actual, required, places=6)
+                    for actual, required in zip(inspection.native_shape.Center().toTuple(), center):
+                        self.assertAlmostEqual(actual, required, places=6)
+                    self.assertEqual(
+                        inspection.evidence["selected_semantic_sha256"],
+                        part.geometry_descriptor["source_locator"]["source_geometry_hash"],
+                    )
+                self.assertEqual(seen, set(expected))
+
+            target = Path(folder_name) / "assembly.cwscproj"
+            with ProjectSession.new("Label-bound STEP source") as session:
+                registration = session.register_sources([source], include_step_geometry=True)[0]
+                result = session.semantic_import_source(registration.source.source_id)
+                self.assertEqual(result.entity_counts["parts"], 2)
+                verify(session)
+                session.save(target, embed_sources=True)
+            with ProjectSession.open(target, read_only=True) as reopened:
+                verify(reopened)
+            self.assertEqual(source.read_bytes(), original)
+
+    def test_multi_solid_step_rejects_rebound_label_even_with_matching_descriptor(self) -> None:
+        import copy
+        with tempfile.TemporaryDirectory(prefix="cws_source_wrong_label_") as folder_name:
+            source = Path(folder_name) / "assembly.step"
+            export_step(source, multi_solid=True)
+            with ProjectSession.new("Reject substituted component") as session:
+                registration = session.register_sources([source], include_step_geometry=False)[0]
+                session.semantic_import_source(registration.source.source_id)
+                first, other = session.project.parts.values()
+                before = copy.deepcopy(first.geometry_descriptor)
+                # A copied valid label alone is not evidence for this part.
+                first.geometry_descriptor["solid_root_entity_ids"] = copy.deepcopy(
+                    other.geometry_descriptor["solid_root_entity_ids"])
+                first.geometry_descriptor["source_locator"]["selector"]["entity_ids"] = copy.deepcopy(
+                    other.geometry_descriptor["source_locator"]["selector"]["entity_ids"])
+                inspection = session.inspect_part_source_geometry(first.internal_id, persist=False)
+                self.assertEqual(inspection.status, "unavailable")
+                self.assertFalse(inspection.selection_verified)
+                self.assertFalse(inspection.production_geometry_exact)
+                self.assertIsNone(inspection.native_shape)
+                self.assertTrue(inspection.blocking_reasons)
+                first.geometry_descriptor = before
+                restored = session.inspect_part_source_geometry(first.internal_id, persist=False)
+                self.assertEqual(restored.status, "resolved_exact")
 
     def test_ifc_product_resolves_to_verified_part_scoped_native_brep(self) -> None:
         with tempfile.TemporaryDirectory(prefix="cws_source_ifc_") as folder_name:
