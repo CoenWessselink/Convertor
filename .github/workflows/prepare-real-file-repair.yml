@@ -45,6 +45,20 @@ jobs:
                   target.write_bytes(data)
           patch_path=out/'reviewed.patch';patch_path.write_bytes(patch)
           git('apply','--check',str(patch_path));git('apply',str(patch_path))
+          for row in manifest['files']:
+              if blob((root/row['path']).read_bytes())!=row['sha']:raise RuntimeError('Original output mismatch: '+row['path'])
+          amendment=root/'tools/real_file_repair.followup.json'
+          if amendment.is_file():
+              for change in json.loads(amendment.read_text())['files']:
+                  row=next(item for item in manifest['files'] if item['path']==change['path'])
+                  target=root/change['path'];data=target.read_bytes()
+                  if blob(data)!=change['before']:raise RuntimeError('Amendment input mismatch')
+                  for edit in change['replacements']:
+                      old=edit['old'].encode();new=edit['new'].encode()
+                      if not old or data.count(old)!=edit['count']:raise RuntimeError('Amendment context mismatch')
+                      data=data.replace(old,new)
+                  if blob(data)!=change['sha']:raise RuntimeError('Amendment result mismatch')
+                  target.write_bytes(data);row['sha']=change['sha']
           entries=[];blobs=[]
           for row in manifest['files']:
               data=(root/row['path']).read_bytes()
