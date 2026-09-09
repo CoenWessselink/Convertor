@@ -60,6 +60,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
 
     def analyze(self, request: Any) -> Any:
         inspection = request.inspection
+        from .recognition_geometry import source_authority_state
         policy_hash_value = getattr(self.tolerance_policy, "semantic_sha256", "")
         policy_hash = str(policy_hash_value() if callable(policy_hash_value) else policy_hash_value)
         if not policy_hash:
@@ -69,6 +70,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             self._database_revision = database_revision
             self._database_hash = _database_hash(self.profile_database)
             self._final_cache.clear()
+            self._cache.clear()
         database_hash = self._database_hash
         material_evidence = material_evidence_from_request(request)
         cache_key = RecognitionCacheV3.key(
@@ -84,6 +86,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             project_part_link=tuple(getattr(request, "project_part_link", ())),
             part_id=str(getattr(inspection, "part_id", "")),
             source_file_id=str(getattr(inspection, "source_file_id", "")),
+            source_authority=source_authority_state(inspection),
         )
         final_cached = self._final_cache.get(cache_key)
         if final_cached is not None:

@@ -28,7 +28,11 @@ value but are `historical_frozen_source` and `superseded_for_current_status`.
 
 ## Repository evidence
 
-The canonical source branch is `agent/cws-product-ui-reintegration-v1`.
+The active integrated source branch is `agent/cws-integrated-gap-repair-20260909`.
+The former product branch is not authority for a newer installer until it has
+been safely fast-forwarded to the same accepted commit. Published software-beta
+identity is recorded in `PROMOTION.json`, `INSTALLER_ACCEPTANCE.json` and the
+commit-tagged release, not inferred from a version string or an older branch.
 The exact HEAD, parent, clean-tree result, packaged runtime checksums and all
 dynamic requirement rows are generated at release time in
 `validation/full_acceptance/RELEASE_BINDING.json` and

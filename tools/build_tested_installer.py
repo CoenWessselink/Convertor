@@ -156,6 +156,21 @@ def main() -> int:
             raise RuntimeError('Installed plate evidence lacks exact source/binary/function proof')
         report['installed_plate_integration'] = {'status': 'PASS', 'checks': len(plate['checks']),
                                                'report': plate_path.name, 'python_on_child_path': False}
+        native_path = OUT / 'installed-recognition-integration.json'
+        run('installed_recognition_integration', [str(STAGING / 'CWS_Convertor.exe'),
+            '--recognition-integration-evidence', '--evidence-dir', str(OUT / 'recognition-integration'),
+            '--report', str(native_path)], 300, env=clean_env)
+        native = json.loads(native_path.read_text(encoding='utf-8'))
+        if (native.get('status') != 'PASS' or native.get('frozen') is not True
+                or native.get('source_commit') != sha
+                or native.get('executable_sha256') != binding['runtime_files']['CWS_Convertor.exe']
+                or len(native.get('checks', [])) < 50
+                or any(c.get('status') != 'PASS' for c in native['checks'])
+                or native.get('machine_transfer_allowed') is not False):
+            raise RuntimeError('Installed recognition proof lacks exact source/binary/safety binding')
+        report['installed_recognition_integration'] = {'status': 'PASS', 'checks': len(native['checks']),
+            'source_commit': sha, 'executable_sha256': native['executable_sha256'],
+            'report': native_path.name, 'python_on_child_path': False}
         report['installed_conversion_routes_passed'] = 12
         report['conversion_matrix_report'] = matrix_path.name
         run('associations', [sys.executable, str(ROOT / 'tests/windows_installer_association_smoke.py'),

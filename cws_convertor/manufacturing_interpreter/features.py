@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from itertools import product
 from dataclasses import replace
 from typing import Any
 
@@ -112,7 +113,9 @@ def recognize_features(
     policy: Any,
     *,
     base_shape: Any = None,
+    axis: Any = None,
 ) -> tuple[RecognizedGeometricFeature, ...]:
+    manufacturing_axis = axis
     recognition = getattr(policy, "recognition", policy)
     merge_mm = float(getattr(recognition, "feature_merge_mm", 0.1))
     cylinders: dict[tuple[int, ...], list[tuple[int, dict[str, float]]]] = {}
@@ -131,7 +134,9 @@ def recognize_features(
         if parameters is not None:
             cylinders.setdefault(_coaxial_key(parameters, merge_mm), []).append((index, parameters))
 
-    features: list[RecognizedGeometricFeature] = []
+    from .recognition_geometry import analytical_end_cuts, source_face_id
+    features: list[RecognizedGeometricFeature] = list(analytical_end_cuts(
+        shape, base_shape, topology, residual_report, axis, merge_mm))
     for group in sorted(cylinders.values(), key=lambda items: stable_sha256(items)):
         radii = sorted({round(item[1]["radius_mm"], 6) for item in group})
         primary = max(group, key=lambda item: (item[1]["depth_mm"], item[1]["radius_mm"]))
@@ -145,9 +150,9 @@ def recognize_features(
             semantic = ManufacturingSemanticType.HOLE
         feature_id = f"feature-{stable_sha256((semantic.value, parameters, radii))[:20]}"
         support = tuple(
-            topology.faces[index].face_id
+            source_face_id(faces[index], topology)
             for index, _ in group
-            if topology is not None and index < len(topology.faces)
+            if topology is not None
         )
         origin = (parameters["origin_x"], parameters["origin_y"], parameters["origin_z"])
         axis = (parameters["axis_x"], parameters["axis_y"], parameters["axis_z"])
@@ -165,11 +170,22 @@ def recognize_features(
                 <= component.bbox_mm[index + 3] + parameters["radius_mm"] + merge_mm
                 for index in range(3)
             )
-            if (
-                -merge_mm <= axial <= parameters["depth_mm"] + merge_mm
-                and (radial <= parameters["radius_mm"] + merge_mm or axis_hits_bbox)
-            ):
+            # A stepped bore can span several fragmented/oppositely oriented
+            # cylindrical faces. Its centroid need not lie inside the longest face.
+            segment_overlap = False
+            for _, segment in group:
+                seg_origin = tuple(segment["origin_" + c] for c in "xyz")
+                seg_axis = tuple(segment["axis_" + c] for c in "xyz")
+                projections = [sum((corner[i] - seg_origin[i]) * seg_axis[i] for i in range(3))
+                    for corner in product(*[(component.bbox_mm[i], component.bbox_mm[i+3]) for i in range(3)])]
+                if max(projections) >= -merge_mm and min(projections) <= segment["depth_mm"] + merge_mm:
+                    segment_overlap = True
+                    break
+            if segment_overlap and (radial <= max(radii) + merge_mm or axis_hits_bbox):
                 matching_residuals.append(component.component_id)
+        # An outer round-bar wall or the inherent bore of a tube is not a drilled feature.
+        if not matching_residuals:
+            continue
         features.append(
             RecognizedGeometricFeature(
                 feature_id=feature_id,
@@ -238,6 +254,10 @@ def recognize_features(
     sliver = float(getattr(recognition, "boolean_sliver_mm3", 0.01))
     decomposed_ids: set[str] = set()
     if base_shape is not None:
+        import cadquery as cq
+        from .recognition_geometry import base_coordinate_frame
+        frame = base_coordinate_frame(base_shape, manufacturing_axis) if manufacturing_axis is not None else None
+        local_base = frame.toLocalCoords(base_shape) if frame else base_shape
         for direction, residual_shape, geometric_type, semantic in (
             (
                 "SOURCE_MINUS_RECONSTRUCTION",
@@ -252,8 +272,10 @@ def recognize_features(
                 ManufacturingSemanticType.POCKET,
             ),
         ):
-            for cell in _axis_aligned_cells(residual_shape, sliver):
-                center = (cell["center_x_mm"], cell["center_y_mm"], cell["center_z_mm"])
+            local_residual = frame.toLocalCoords(residual_shape) if frame else residual_shape
+            for cell in _axis_aligned_cells(local_residual, sliver):
+                local_center = (cell["center_x_mm"], cell["center_y_mm"], cell["center_z_mm"])
+                center = frame.toWorldCoords(local_center).toTuple() if frame else local_center
                 component_id = next(
                     (
                         component.component_id
@@ -272,11 +294,24 @@ def recognize_features(
                     continue
                 if component_id:
                     decomposed_ids.add(component_id)
+                cell_semantic = semantic
+                if direction == "RECONSTRUCTION_MINUS_SOURCE":
+                    box = local_base.BoundingBox()
+                    bounds = (box.xmin, box.ymin, box.zmin, box.xmax, box.ymax, box.zmax)
+                    thin_axis = min(range(3), key=lambda i: bounds[i+3] - bounds[i])
+                    lengths = (cell["bbox_x_mm"], cell["bbox_y_mm"], cell["bbox_z_mm"])
+                    if any(i != thin_axis and (abs(local_center[i] - lengths[i]/2 - bounds[i]) <= merge_mm or abs(local_center[i] + lengths[i]/2 - bounds[i+3]) <= merge_mm) for i in range(3)):
+                        cell_semantic = ManufacturingSemanticType.NOTCH
+                for number, coordinate in enumerate("xyz"):
+                    cell["center_" + coordinate + "_mm"] = center[number]
+                if frame is not None:
+                    cell["frame_x"] = frame.xDir.toTuple()
+                    cell["frame_z"] = frame.zDir.toTuple()
                 features.append(
                     RecognizedGeometricFeature(
                         feature_id=f"feature-{stable_sha256((direction, cell))[:20]}",
                         geometric_type=geometric_type,
-                        semantic_type=semantic,
+                        semantic_type=cell_semantic,
                         parameters=tuple(sorted(cell.items())),
                         source_support=(),
                         residual_component_ids=(component_id,) if component_id else (),
@@ -364,7 +399,10 @@ def apply_features(base_shape: Any, features: tuple[RecognizedGeometricFeature, 
     import cadquery as cq
 
     result = base_shape
-    for feature in features:
+    # Additive bodies must exist before drilling them; source enumeration order
+    # is not a valid manufacturing/Boolean dependency order.
+    ordered = sorted(features, key=lambda f: f.geometric_type != GeometricFeatureType.POSITIVE_PRISM)
+    for feature in ordered:
         parameters = dict(feature.parameters)
         if feature.geometric_type == GeometricFeatureType.CYLINDRICAL_SUBTRACTION:
             segments = parameters.get("segments") or (tuple(parameters.items()),)
@@ -389,6 +427,9 @@ def apply_features(base_shape: Any, features: tuple[RecognizedGeometricFeature, 
                 tool = cylinder if tool is None else tool.fuse(cylinder)
             if tool is not None:
                 result = result.cut(tool)
+        elif feature.geometric_type == GeometricFeatureType.PLANAR_HALFSPACE_CUT:
+            from .recognition_geometry import planar_halfspace
+            result = result.cut(planar_halfspace(parameters))
         elif feature.geometric_type == GeometricFeatureType.OBROUND_SUBTRACTION:
             radius = float(parameters["radius_mm"])
             depth = float(parameters["depth_mm"])
@@ -421,20 +462,17 @@ def apply_features(base_shape: Any, features: tuple[RecognizedGeometricFeature, 
             GeometricFeatureType.PRISMATIC_SUBTRACTION,
             GeometricFeatureType.POSITIVE_PRISM,
         }:
+            center = tuple(float(parameters["center_" + c + "_mm"]) for c in "xyz")
+            frame = cq.Plane(origin=center, xDir=parameters.get("frame_x", (1, 0, 0)),
+                             normal=parameters.get("frame_z", (0, 0, 1)))
             tool = (
-                cq.Workplane("XY")
+                cq.Workplane(frame)
                 .box(
                     float(parameters["bbox_x_mm"]),
                     float(parameters["bbox_y_mm"]),
                     float(parameters["bbox_z_mm"]),
                 )
-                .translate(
-                    (
-                        float(parameters["center_x_mm"]),
-                        float(parameters["center_y_mm"]),
-                        float(parameters["center_z_mm"]),
-                    )
-                )
+
                 .val()
             )
             result = (

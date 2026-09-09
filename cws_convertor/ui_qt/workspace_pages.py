@@ -605,7 +605,7 @@ if qt_available():
             root.setContentsMargins(22, 18, 22, 18)
             root.setSpacing(16)
             actions = QtWidgets.QHBoxLayout()
-            new_project = QtWidgets.QPushButton("＋  Nieuw project")
+            new_project = QtWidgets.QPushButton("+  Nieuw project")
             new_project.setObjectName("primaryOutlineButton")
             new_project.clicked.connect(self._choose_files)
             open_project = QtWidgets.QPushButton("Open projectbestand")
@@ -737,7 +737,15 @@ if qt_available():
             painter.drawLine(210, 119, 210, 142)
             painter.drawLine(183, 142, 237, 142)
             painter.setPen(QtGui.QColor("#52677c"))
-            painter.setFont(QtGui.QFont("Segoe UI", 10, QtGui.QFont.Weight.DemiBold))
+            # Pixmap text does not inherit widget style sheets or a later font
+            # substitution. Select and check the actual font before painting.
+            from .ui_fonts import ensure_readable_ui_font, _has_glyphs
+            preview_font = QtGui.QFont(ensure_readable_ui_font(), 10)
+            if not _has_glyphs(preview_font):
+                painter.end()
+                raise RuntimeError("Onleesbaar lettertype in projectvoorbeeld")
+            self.setProperty("cws_recent_preview_font", preview_font.family())
+            painter.setFont(preview_font)
             painter.drawText(QtCore.QRectF(20, 164, 380, 30), QtCore.Qt.AlignmentFlag.AlignCenter, "3D-snapshot wordt opgebouwd")
             painter.end()
             return QtGui.QIcon(pixmap)

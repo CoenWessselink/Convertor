@@ -57,14 +57,18 @@ def test_phase2_compound_hole_reconstruction_and_representability() -> None:
 
 
 def test_phase2_promotion_is_confirmation_gated() -> None:
-    report = SimpleNamespace(readiness=SimpleNamespace(value="BLOCKED"))
+    report = SimpleNamespace(readiness=SimpleNamespace(value="BLOCKED"), part_id="P1",
+        source_file_id="fixture.step", source_sha256="fixture-sha", source_geometry_hash="fixture-geometry")
+    part = SimpleNamespace(source_identity=SimpleNamespace(source_file_id=report.source_file_id,
+        source_sha256=report.source_sha256), geometry_descriptor={"source_geometry_hash":report.source_geometry_hash})
+    project = SimpleNamespace(parts={"P1":part})
     from cws_convertor.manufacturing_interpreter.contracts import InterpretationReadiness
 
     report.readiness = InterpretationReadiness.BLOCKED
     result = WorkbenchPromotionCoordinator().promote(
         report=report,
         confirmation=None,
-        project=None,
+        project=project,
         user="test",
     )
     assert result.status == "BLOCKED"

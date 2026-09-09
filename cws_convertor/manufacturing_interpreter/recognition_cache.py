@@ -57,6 +57,7 @@ class RecognitionCacheV3:
         project_part_link: Any = None,
         part_id: str = "",
         source_file_id: str = "",
+        source_authority: Any = None,
     ) -> str:
         return stable_sha256(
             {
@@ -73,6 +74,7 @@ class RecognitionCacheV3:
                 "project_part_link": project_part_link,
                 "part_id": part_id,
                 "source_file_id": source_file_id,
+                "source_authority": source_authority,
             }
         )
 

@@ -7,6 +7,7 @@ from typing import Any
 from .contracts import (
     DecompositionHypothesis,
     GeometryProofStatus,
+    GeometricFeatureType,
     HypothesisScoreBreakdown,
     RecognizedGeometricFeature,
 )
@@ -90,11 +91,12 @@ def solve_hypotheses(
         unknown_ids = tuple(
             feature.feature_id for feature in candidate_features if feature.semantic_type.value == "UNKNOWN"
         )
-        negative_ids = tuple(feature.feature_id for feature in candidate_features)
+        positive_ids = tuple(feature.feature_id for feature in candidate_features if feature.geometric_type == GeometricFeatureType.POSITIVE_PRISM)
+        negative_ids = tuple(feature.feature_id for feature in candidate_features if feature.feature_id not in positive_ids)
         hypothesis = DecompositionHypothesis(
-            hypothesis_id=f"hypothesis-{stable_sha256((index, base_region_ids, negative_ids))[:20]}",
+            hypothesis_id=f"hypothesis-{stable_sha256((index, base_region_ids, positive_ids, negative_ids))[:20]}",
             base_region_ids=base_region_ids,
-            positive_feature_ids=(),
+            positive_feature_ids=positive_ids,
             negative_feature_ids=negative_ids,
             feature_graph_id=feature_graph_id,
             unknown_region_ids=unknown_ids,

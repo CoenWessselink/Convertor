@@ -10,7 +10,14 @@ from .topology import linear_tolerance, relative_tolerance, find_end_faces
 
 
 def reconstruct_prismatic(shape: Any, axis: AxisCandidate) -> Any:
-    faces = find_end_faces(shape, axis)
+    from .recognition_geometry import reference_section_faces
+    faces = reference_section_faces(shape, axis)
+    # Move a high-end reference to the physical low end before extrusion.
+    projections = [sum(v.Center().toTuple()[i] * axis.direction[i] for i in range(3)) for v in shape.Vertices()]
+    low = min(projections)
+    station = sum(faces[0].Center().toTuple()[i] * axis.direction[i] for i in range(3))
+    shift = tuple(axis.direction[i] * (low - station) for i in range(3))
+    faces = tuple(face.translate(shift) for face in faces)
     vector = cq.Vector(
         axis.direction[0] * axis.length_mm,
         axis.direction[1] * axis.length_mm,

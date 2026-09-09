@@ -8,6 +8,8 @@ import statistics
 import tempfile
 import time
 import tracemalloc
+import hashlib
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Callable
@@ -101,8 +103,8 @@ def _notch(size: float = 45.0) -> Any:
     return _box(height=20).cut(cutter)
 
 
-def _miter() -> Any:
-    cutter = cq.Workplane("XY").box(180, 240, 80).rotate((0, 0, 0), (0, 1, 0), 30).translate((390, 0, 0)).val()
+def _miter(angle: float = 30.0) -> Any:
+    cutter = cq.Workplane("XY").box(180, 240, 80).rotate((0, 0, 0), (0, 1, 0), angle).translate((390, 0, 0)).val()
     return _box(height=20).cut(cutter)
 
 
@@ -184,7 +186,7 @@ def _cases() -> list[dict[str, Any]]:
         {"id": "17", "category": "cope", "factory": _notch, "truth": ["NOTCH"]},
         {"id": "18", "category": "notch", "factory": lambda: _notch(75), "truth": ["NOTCH"]},
         {"id": "19", "category": "miter", "factory": _miter, "truth": ["END_CUT"]},
-        {"id": "20", "category": "arbitrary end cut", "factory": _miter, "truth": ["END_CUT"]},
+        {"id": "20", "category": "arbitrary end cut", "factory": lambda: _miter(43), "truth": ["END_CUT"]},
         {"id": "21", "category": "profile + holes + cope", "factory": _profile_holes_cope, "truth": ["HOLE", "NOTCH"]},
         {"id": "22", "category": "positive extrusion", "factory": _positive, "truth": ["POSITIVE"]},
         {"id": "23", "category": "intersecting positive extrusions", "factory": lambda: _positive(True), "truth": ["POSITIVE"]},
@@ -208,7 +210,7 @@ def _cases() -> list[dict[str, Any]]:
         {"id": "41", "category": "split-cylinder hole", "factory": _counterbore, "truth": ["COUNTERBORE"]},
         {"id": "42", "category": "split-coplanar faces", "factory": _fragmented, "adversarial": True},
         {"id": "43", "category": "exporter face fragmentation", "factory": _fragmented, "adversarial": True},
-        {"id": "44", "category": "hole intersecting cope", "factory": _hole_intersecting_cope, "truth": ["HOLE", "NOTCH"], "adversarial": True},
+        {"id": "44", "category": "hole fully consumed by cope", "factory": _hole_intersecting_cope, "truth": ["NOTCH"], "adversarial": True},
         {"id": "45", "category": "tiny residual/sliver", "factory": _tiny_sliver, "adversarial": True},
     ]
 
@@ -224,11 +226,26 @@ def _mutate_source(inspection: Any, mode: str) -> Any:
 
 
 def _semantic_names(report: Any) -> set[str]:
-    names: set[str] = set()
-    for feature in report.features:
-        names.add(str(feature.semantic_type).upper())
-        names.add(str(feature.geometric_type).upper())
-    return names
+    # Enum.__str__ adds the type prefix; comparing it to bare names silently
+    # hid every false positive in the old precision calculation.
+    names = {getattr(feature.semantic_type, "value", str(feature.semantic_type)).upper()
+             for feature in report.features}
+    # One declared metric class covers additive volumes, not inferred welds.
+    return {"POSITIVE" if name in {"ATTACHMENT_VOLUME", "BOSS", "RIB"} else name for name in names}
+
+
+def score_features(expected: set[str], observed: set[str]) -> tuple[int, int, int]:
+    return len(expected & observed), len(observed - expected), len(expected - observed)
+
+
+def synthetic_material(inspection: Any):
+    from cws_convertor.manufacturing_interpreter.contracts import MaterialEvidence, MaterialEvidenceStatus
+    return MaterialEvidence(status=MaterialEvidenceStatus.USER_CONFIRMED,
+        material="S355JR", grade="S355JR", confidence=1.0,
+        source="synthetic_fixture_declaration", source_path="corpus.fixture.material",
+        reason="Explicit synthetic test input; not inferred from geometry or external material certification.",
+        evidence=(("confirmed_by", "automated-synthetic-fixture"),
+                  ("source_sha256", inspection.source_sha256), ("source_file_id", inspection.source_file_id)))
 
 
 def _percentile(values: list[float], q: float) -> float:
@@ -240,6 +257,8 @@ def _percentile(values: list[float], q: float) -> float:
 
 def build(output_root: Path) -> dict[str, Any]:
     output_root.mkdir(parents=True, exist_ok=True)
+    source_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    source_before = subprocess.check_output(["git", "diff", "HEAD", "--"], cwd=ROOT)
     geometry_root = output_root / "geometry"
     geometry_root.mkdir(exist_ok=True)
     cache_root = output_root / "cache"
@@ -257,10 +276,30 @@ def build(output_root: Path) -> dict[str, Any]:
         try:
             cq.exporters.export(case["factory"](), str(path))
             generated += 1
+            if case["id"] == "39":
+                # This importer deliberately requires one isolated solid. Assert
+                # that the known two-solid fixture is rejected, twice. Other
+                # exceptions still fail the corpus; no permissive catch-all.
+                rejections = []
+                for _ in range(2):
+                    try:
+                        _step_inspection(path)
+                    except ValueError as exc:
+                        if str(exc) != "STEP bevat niet exact één solid; exacte onderdeelisolatie vereist":
+                            raise
+                        rejections.append(str(exc))
+                    else:
+                        raise AssertionError("Multi-solid fixture was accepted as one part")
+                rows.append({"id": "39", "category": case["category"], "adversarial": True,
+                    "readiness": "BLOCKED", "production_readiness": "BLOCKED", "unsafe_ready": False,
+                    "expected_rejection": rejections[0], "deterministic_identity": rejections[0] == rejections[1],
+                    "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "features_scored": False})
+                continue
             inspection = _mutate_source(_step_inspection(path), case.get("source_mode", "exact"))
             request = ManufacturingInterpretationRequest(
                 inspection=inspection,
-                requested_outputs=("STEP", "IFC", "NC1", "PDF", "MACHINE", "NEUTRAL_JOB"),
+                requested_outputs=("STEP", "IFC", "PDF"),
+                material_evidence=synthetic_material(inspection),
             )
             started = time.perf_counter()
             report = interpreter.analyze(request)
@@ -268,6 +307,9 @@ def build(output_root: Path) -> dict[str, Any]:
             started = time.perf_counter()
             warm_report = interpreter.analyze(request)
             warm = time.perf_counter() - started
+            production = interpreter.analyze(replace(request, requested_outputs=("NC1", "MACHINE_ROUTE", "NEUTRAL_MANUFACTURING_JOB")))
+            if production.readiness.value == "READY":
+                raise AssertionError("Synthetic material alone bypassed native serializer or machine qualification")
             cold_times.append(cold)
             warm_times.append(warm)
             safe_source = case.get("source_mode", "exact") == "exact"
@@ -276,18 +318,22 @@ def build(output_root: Path) -> dict[str, Any]:
             false_ready += int(unsafe_ready)
             observed = _semantic_names(report)
             truth = {str(item).upper() for item in case.get("truth", [])}
-            for expected in truth:
-                matched = any(expected in item for item in observed)
-                tp += int(matched)
-                fn += int(not matched)
-            if truth:
-                fp += sum(1 for item in observed if item in {"HOLE", "SLOT", "COUNTERBORE", "NOTCH", "END_CUT", "POSITIVE"} and not any(t in item for t in truth))
+            scored = bool(truth) or not bool(case.get("adversarial"))
+            if scored:
+                hit, extra, missing = score_features(truth, observed)
+                tp += hit; fp += extra; fn += missing
             rows.append(
                 {
                     "id": case["id"],
                     "category": case["category"],
                     "adversarial": bool(case.get("adversarial")),
                     "source_mode": case.get("source_mode", "exact"),
+                    "source_sha256": inspection.source_sha256,
+                    "features_scored": scored,
+                    "material_fixture": "explicit synthetic S355JR declaration; not actual source extraction",
+                    "requested_outputs": list(request.requested_outputs),
+                    "production_readiness": production.readiness.value,
+                    "production_blockers": list(production.blockers),
                     "readiness": report.readiness.value,
                     "source_gate": report.source_gate.value,
                     "equivalence": report.equivalence.status.value,
@@ -316,7 +362,12 @@ def build(output_root: Path) -> dict[str, Any]:
     cache_total = interpreter.final_cache_hits + interpreter.final_cache_misses
     cache_hits = interpreter.final_cache_hits
     summary = {
-        "schema": "cws-mgi-v3-acceptance-corpus-v1",
+        "schema": "cws-mgi-v3-acceptance-corpus-v2",
+        "source_commit": source_sha,
+        "source_unchanged": source_before == subprocess.check_output(["git", "diff", "HEAD", "--"], cwd=ROOT),
+        "metric_scope": "exact feature class sets on declared synthetic fixtures; no vendor accuracy claim",
+        "readiness_scope": "STEP/IFC/PDF geometry + explicit synthetic material; machine routes remain review-gated",
+        "fixture_corrections": ["Case39 asserts expected multi-solid rejection", "Case44 hole is wholly removed by cope and must not be reported", "Case20 uses a distinct 43-degree cut"],
         "category_count": len(rows),
         "required_category_count": 45,
         "generated_step_count": generated,

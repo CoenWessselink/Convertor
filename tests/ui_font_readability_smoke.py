@@ -54,6 +54,17 @@ class UIFontReadabilityTests(unittest.TestCase):
             self.assertIn(str(window.property("cws_font_family")), window.styleSheet())
         window.close()
 
+    def test_recent_placeholder_uses_real_readable_painter_font(self):
+        from cws_convertor.ui_qt.workspace_pages import IntakeDashboard
+        from cws_convertor.ui_qt.ui_fonts import _has_glyphs, ensure_readable_ui_font
+        widget = self.widgets.QWidget()
+        icon = IntakeDashboard._preview_icon(widget, "project", "CWS")
+        self.assertFalse(icon.isNull())
+        self.assertEqual(ensure_readable_ui_font(), widget.property("cws_recent_preview_font"))
+        self.assertTrue(_has_glyphs(self.gui.QFont(widget.property("cws_recent_preview_font"), 10)))
+        self.assertFalse(icon.pixmap(420, 224).isNull())
+        widget.close()
+
     def test_missing_glyphs_are_a_failure_not_a_valid_screenshot(self):
         from cws_convertor.ui_qt.ui_fonts import verify_widget_text_fonts
         widget = self.widgets.QLabel("BOM")

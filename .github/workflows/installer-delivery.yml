@@ -50,7 +50,7 @@ jobs:
       - name: Capture real BOM controls
         if: ${{ !cancelled() }}
         run: python tools/capture_bom_production_hub.py --project "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj" --output build/material_model_recognition/bom-screenshots
-      - name: Record recognition usefulness separately from software-beta approval
+      - name: Require source-bound recognition usefulness before promotion
         if: ${{ !cancelled() }}
         shell: python
         run: |
@@ -58,7 +58,8 @@ jobs:
           out=pathlib.Path('build/recognition-usefulness'); out.mkdir(parents=True,exist_ok=True)
           with (out/'corpus.log').open('w',encoding='utf-8') as log:
               result=subprocess.run([sys.executable,'tools/build_mgi_v3_acceptance_corpus.py','--output',str(out)],stdout=log,stderr=subprocess.STDOUT,timeout=300)
-          (out/'EXECUTION.json').write_text(json.dumps({'exit_code':result.returncode,'full_product_release_approved':False,'scope':'diagnostic coverage; failure is retained and not reclassified as recognition acceptance'}),encoding='utf-8')
+          (out/'EXECUTION.json').write_text(json.dumps({'exit_code':result.returncode,'full_product_release_approved':False,'scope':'required synthetic recognition acceptance; not supplier or machine qualification'}),encoding='utf-8')
+          raise SystemExit(result.returncode)
       - name: Capture resolved dependencies and declared license metadata
         if: ${{ !cancelled() }}
         shell: python

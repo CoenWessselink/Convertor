@@ -25,6 +25,7 @@ def enrich_phase2(report: Any, source_shape: Any, policy: Any, requested_outputs
             report.residual_report,
             policy,
             base_shape=base_shape,
+            axis=selected_axis,
         )
         graph = feature_graph(features)
         outcome = solve_hypotheses(
@@ -39,13 +40,19 @@ def enrich_phase2(report: Any, source_shape: Any, policy: Any, requested_outputs
         blockers = tuple(dict.fromkeys((*report.blockers, f"FEATURE_SOLVER_FAILED:{type(exc).__name__}")))
         return replace(report, blockers=blockers, readiness=InterpretationReadiness.BLOCKED)
 
+    # A proof for one hypothesis cannot certify features discarded by that hypothesis.
+    selected_ids = set(outcome.hypotheses[0].negative_feature_ids) | set(outcome.hypotheses[0].positive_feature_ids)
+    features = tuple(feature for feature in features if feature.feature_id in selected_ids)
     features = mark_features_proven(features, outcome.proof.status)
+    graph = feature_graph(features)
     representability = evaluate_representability(features, requested_outputs)
     blockers = [item for item in report.blockers if item != "INDEPENDENT_BREP_EQUIVALENCE_NOT_PROVEN"]
     proven = outcome.proof.status in {
         GeometryProofStatus.PROVEN_BREP_EQUIVALENT,
         GeometryProofStatus.PROVEN_WITHIN_POLICY,
     }
+    if proven and outcome.residual_report.boundary_distance_max_mm <= float(getattr(getattr(policy, "recognition", policy), "boundary_distance_mm", 0.1)):
+        blockers = [code for code in blockers if code != "BOUNDARY_DISTANCE_EXCEEDS_POLICY"]
     if not proven:
         blockers.append("COMPOUND_BREP_EQUIVALENCE_NOT_PROVEN")
     if outcome.ambiguous:
@@ -83,7 +90,7 @@ def enrich_phase2(report: Any, source_shape: Any, policy: Any, requested_outputs
         equivalence=outcome.proof,
         features=features,
         feature_graph=graph,
-        hypotheses=outcome.hypotheses,
+        hypotheses=(replace(outcome.hypotheses[0], feature_graph_id=graph.graph_id), *outcome.hypotheses[1:]),
         residual_report=outcome.residual_report,
         representability=tuple((target.target, target.status.value) for target in representability.targets),
         representability_report=representability,

@@ -41,9 +41,12 @@ class ManufacturingGeometryInterpreter:
         self, request: ManufacturingInterpretationRequest
     ) -> ManufacturingInterpretationReport:
         inspection = request.inspection
+        from .recognition_geometry import source_authority_state
         material_evidence = material_evidence_from_request(request)
         key_payload = {
             "engine": ENGINE_VERSION,
+            "tolerance_policy": self.tolerance_policy,
+            "source_authority": source_authority_state(inspection),
             "source_geometry_hash": str(getattr(inspection, "source_geometry_hash", "")),
             "source_sha256": str(getattr(inspection, "source_sha256", "")),
             "source_file_id": str(getattr(inspection, "source_file_id", "")),
@@ -101,7 +104,8 @@ class ManufacturingGeometryInterpreter:
                 return report
 
             selected_axis = axes[0]
-            end_faces = find_end_faces(shape, selected_axis)
+            from .recognition_geometry import reference_section_faces
+            end_faces = reference_section_faces(shape, selected_axis)
             section = section_signature(end_faces, selected_axis, topology)
             profile = recognize_profile(
                 section,
@@ -125,6 +129,12 @@ class ManufacturingGeometryInterpreter:
                 else InterpretationReadiness.BLOCKED
             )
             blockers: list[str] = []
+            from .topology import linear_tolerance
+            if any(abs(other.length_mm - selected_axis.length_mm) <= linear_tolerance(self.tolerance_policy)
+                   and abs(sum(other.direction[i] * selected_axis.direction[i] for i in range(3))) < 0.99
+                   for other in axes[1:]):
+                blockers.append("MANUFACTURING_AXIS_AMBIGUOUS")
+                readiness = InterpretationReadiness.REVIEW_REQUIRED
             if not proof_ready:
                 blockers.append("INDEPENDENT_BREP_EQUIVALENCE_NOT_PROVEN")
             if not profile_ready:
