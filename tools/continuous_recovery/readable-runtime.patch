@@ -1,0 +1,157 @@
+diff --git a/CWS_Convertor_App.py b/CWS_Convertor_App.py
+index 091af04..5eab282 100644
+--- a/CWS_Convertor_App.py
++++ b/CWS_Convertor_App.py
+@@ -187,6 +187,12 @@ def _gui_smoke(project: Path | None, *, screenshot: Path | None = None) -> dict[
+             "height": pixmap.height(),
+             "capture_runtime": "packaged_qt_window_grab" if bool(getattr(sys, "frozen", False)) else "source_qt_window_grab",
+         }
++    from cws_convertor.ui_qt.runtime_typography import inspect_visible_text
++
++    gui_details["typography"] = inspect_visible_text(window)
++    if gui_details["typography"]["status"] != "passed":
++        window.close()
++        raise RuntimeError(f"GUI contains unreadable text: {gui_details['typography']}")
+     project_viewer = getattr(getattr(window, "project_page", None), "viewer", None)
+     gui_details["viewer_widget"] = type(project_viewer).__name__ if project_viewer is not None else ""
+     gui_details["headless_viewer"] = bool(
+diff --git a/cws_convertor/ui_qt/design_system/stylesheet.py b/cws_convertor/ui_qt/design_system/stylesheet.py
+index c489fef..5df973a 100644
+--- a/cws_convertor/ui_qt/design_system/stylesheet.py
++++ b/cws_convertor/ui_qt/design_system/stylesheet.py
+@@ -85,7 +85,15 @@ V52_DARK_QSS = _stylesheet(DARK_COLORS, dark=True)
+ 
+ def apply_v52_design_system(application: Any, theme: str = "Default Light") -> str:
+     selected = "Engineering Dark" if str(theme).casefold() == "engineering dark" else "Default Light"
+-    application.setStyleSheet(V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS)
++    from cws_viewer.ui_qt.qt_compat import require_qt
++    from ..runtime_typography import ensure_ui_font
++
++    _core, _gui, widgets = require_qt()
++    font = ensure_ui_font(widgets.QApplication.instance())
++    family = font.family().replace("'", "").replace("\\", "")
++    stylesheet = V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS
++    stylesheet = stylesheet.replace("'Bahnschrift', 'Segoe UI Variable', 'Segoe UI'", f"'{family}'")
++    application.setStyleSheet(stylesheet)
+     application.setProperty("cws_ui_master", "V5.2")
+     application.setProperty("cws_theme", selected)
+     return selected
+diff --git a/cws_convertor/ui_qt/pdf12_evidence.py b/cws_convertor/ui_qt/pdf12_evidence.py
+index 1c1f555..99afb68 100644
+--- a/cws_convertor/ui_qt/pdf12_evidence.py
++++ b/cws_convertor/ui_qt/pdf12_evidence.py
+@@ -69,19 +69,10 @@ def _digest(path: Path) -> str:
+ 
+ 
+ def _install_evidence_fonts(application: Any, QtGui: Any) -> None:
+-    """Load readable Windows UI fonts for frozen offscreen Qt evidence."""
+-
+-    fonts_directory = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
+-    families: list[str] = []
+-    for filename in ("bahnschrift.ttf", "segoeui.ttf", "arial.ttf"):
+-        font_path = fonts_directory / filename
+-        if not font_path.is_file():
+-            continue
+-        font_id = QtGui.QFontDatabase.addApplicationFont(str(font_path))
+-        if font_id >= 0:
+-            families.extend(QtGui.QFontDatabase.applicationFontFamilies(font_id))
+-    if families:
+-        application.setFont(QtGui.QFont(families[0], 9))
++    """Use the same font initialization as the production shell."""
++    from .runtime_typography import ensure_ui_font
++
++    ensure_ui_font(application)
+ 
+ 
+ def _mesh(offset: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> tuple[np.ndarray, np.ndarray]:
+diff --git a/cws_convertor/ui_qt/u4_shell.py b/cws_convertor/ui_qt/u4_shell.py
+index f1886e4..4524365 100644
+--- a/cws_convertor/ui_qt/u4_shell.py
++++ b/cws_convertor/ui_qt/u4_shell.py
+@@ -427,7 +427,9 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
+             self.setObjectName("cwsConvertorUnifiedU4MainWindow")
+             self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
+             application = QtWidgets.QApplication.instance()
+-            product_font = QtGui.QFont("Bahnschrift", 9)
++            from .runtime_typography import ensure_ui_font
++
++            product_font = ensure_ui_font(application)
+             if application is not None:
+                 application.setFont(product_font)
+             self.setFont(product_font)
+diff --git a/tests/manufacturing_contact_core_smoke.py b/tests/manufacturing_contact_core_smoke.py
+index fa80ebb..7e04ca5 100644
+--- a/tests/manufacturing_contact_core_smoke.py
++++ b/tests/manufacturing_contact_core_smoke.py
+@@ -42,7 +42,7 @@ def _workbench_part(part_id: str, placement: Transform3D) -> Part:
+         part_position=part_id,
+         profile="RHS_TEST",
+         profile_type="M",
+-        material="S235",
++        material="S235JR",
+         material_grade="S235JR",
+         length_mm=1000.0,
+         local_placement=placement,
+@@ -58,7 +58,7 @@ def _workbench_part(part_id: str, placement: Transform3D) -> Part:
+     revision["dimensions"] = {"length_mm": 1000.0}
+     revision["production_properties"] = {
+         "profile": "RHS_TEST",
+-        "material": "S235",
++        "material": "S235JR",
+         "material_grade": "S235JR",
+         "part_position": part_id,
+         "assembly_position": "",
+diff --git a/tests/phase1_phase2_completion_smoke.py b/tests/phase1_phase2_completion_smoke.py
+index c843f44..c75e27e 100644
+--- a/tests/phase1_phase2_completion_smoke.py
++++ b/tests/phase1_phase2_completion_smoke.py
+@@ -140,6 +140,8 @@ class Phase1Phase2CompletionTests(unittest.TestCase):
+                 source_format="STEP", source_sha256="a" * 64, source_entity_id="#1", part_position="P1"
+             ),
+             profile="PL10",
++            material="S355JR",
++            material_grade="S355JR",
+             profile_confidence=1.0,
+             confidence=1.0,
+             geometry_descriptor={"kind": "plate", "bbox_mm": [300.0, 180.0, 10.0]},
+diff --git a/tests/viewer_v6_integration_smoke.py b/tests/viewer_v6_integration_smoke.py
+index 4732eb0..55661a0 100644
+--- a/tests/viewer_v6_integration_smoke.py
++++ b/tests/viewer_v6_integration_smoke.py
+@@ -156,6 +156,8 @@ class ViewerV6IntegrationTests(unittest.TestCase):
+                 part.internal_id,
+                 {
+                     "part_form": "plate",
++                    # This STEP has geometry only: reviewer explicitly supplies the test grade.
++                    "production_properties": {"profile": "PL10", "material": "S355JR", "material_grade": "S355JR"},
+                     "recognition": {"candidate": "PL10", "confidence": 1.0, "confirmed": True},
+                     "dimensions": {"length_mm": 100.0, "thickness_mm": 10.0, "diameter_mm": 0.0},
+                     "reference_sides": [
+@@ -179,6 +181,7 @@ class ViewerV6IntegrationTests(unittest.TestCase):
+                 user="test",
+                 reason="Owner canonical plate",
+             )
++            self.assertEqual(session.project.parts[part.internal_id].workbench["current_revision"]["validation_issues"], [])
+             session.rebuild_part_canonical(part.internal_id, user="test")
+             integrated = build_integrated_exact_part(session, part.internal_id)
+             comparison = integrated.validate_compare()
+diff --git a/tests/viewer_v6_tk_exact_integration_smoke.py b/tests/viewer_v6_tk_exact_integration_smoke.py
+index eca461d..28ebf2f 100644
+--- a/tests/viewer_v6_tk_exact_integration_smoke.py
++++ b/tests/viewer_v6_tk_exact_integration_smoke.py
+@@ -53,6 +53,7 @@ class ViewerV6TkExactIntegrationTests(unittest.TestCase):
+                     part.internal_id,
+                     {
+                         "part_form": "plate",
++                        "production_properties": {"profile": "PL10", "material": "S355JR", "material_grade": "S355JR"},
+                         "recognition": {"candidate": "PL10", "confidence": 1.0, "confirmed": True},
+                         "dimensions": {"length_mm": 100.0, "thickness_mm": 10.0},
+                         "reference_sides": [
+@@ -66,6 +67,7 @@ class ViewerV6TkExactIntegrationTests(unittest.TestCase):
+                     user="test",
+                     reason="Exact UI fixture",
+                 )
++                self.assertEqual(session.project.parts[part.internal_id].workbench["current_revision"]["validation_issues"], [])
+                 session.rebuild_part_canonical(part.internal_id, user="test")
+                 selections = []
+                 panel = ExactPartViewerPanel(
