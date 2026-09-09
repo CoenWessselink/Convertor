@@ -333,39 +333,65 @@ class IntegratedProjectWorkspace:
                     or cached_geometry != catalog_geometry
                     or len(cached_repository) != len(cached_geometry)
                 ):
-                    raise RuntimeError(
-                        "Exacte warmstartscene verschilt van de actuele canonical projectscene"
+                    # The scene cache is derived data, never production truth.
+                    # A changed reader/catalog or legacy migration can invalidate
+                    # it even when its package checksum is still correct. Reject
+                    # the whole cached scene and rebuild through the same verified
+                    # ProjectSession; never weaken identity checks or invent meshes.
+                    notify(38, "Verouderde warmstartcache afgewezen; geverifieerde bron opnieuw laden")
+                    load_result = loader.load_project(
+                        session.project,
+                        project_path,
+                        load_all=load_all_geometry,
+                        allow_proxy=allow_proxy,
+                        token=cancellation_token,
+                        progress=relay_geometry_progress,
+                        fast_proxy_catalog=effective_prefer_proxy,
+                        verify_ifc_source_geometry=verify_ifc_source_geometry,
                     )
-                ready_count = len(cached_geometry)
-                load_result = replace(
-                    load_result,
-                    scene=cached_scene,
-                    repository=cached_repository,
-                    geometry_report=BatchLoadReport(
-                        requested_count=ready_count,
-                        ready_count=ready_count,
-                        partial_count=0,
-                        failed_count=0,
-                        cancelled_count=0,
-                        cache_hit_count=ready_count,
-                        proxy_count=0,
-                        elapsed_seconds=float(preloaded_exact_scene.elapsed_seconds),
-                        results=(),
-                    ),
-                    scene_report=replace(
-                        load_result.scene_report,
-                        loaded_geometry_count=ready_count,
-                        proxy_geometry_count=0,
-                        deferred_geometry_count=0,
-                    ),
-                    timings=tuple(load_result.timings)
-                    + (("exact_scene_warmstart", float(preloaded_exact_scene.elapsed_seconds)),),
-                    load_profile={
-                        **dict(load_result.load_profile or {}),
-                        "warmstart": dict(preloaded_exact_scene.load_profile),
-                        "geometry_resources": [],
-                    },
-                )
+                    load_result = replace(
+                        load_result,
+                        load_profile={
+                            **dict(load_result.load_profile or {}),
+                            "warmstart": {
+                                "status": "rejected_canonical_mismatch",
+                                "source_reloaded": True,
+                                "cached_scene_used": False,
+                            },
+                        },
+                    )
+                    preloaded_exact_scene = None
+                else:
+                    ready_count = len(cached_geometry)
+                    load_result = replace(
+                        load_result,
+                        scene=cached_scene,
+                        repository=cached_repository,
+                        geometry_report=BatchLoadReport(
+                            requested_count=ready_count,
+                            ready_count=ready_count,
+                            partial_count=0,
+                            failed_count=0,
+                            cancelled_count=0,
+                            cache_hit_count=ready_count,
+                            proxy_count=0,
+                            elapsed_seconds=float(preloaded_exact_scene.elapsed_seconds),
+                            results=(),
+                        ),
+                        scene_report=replace(
+                            load_result.scene_report,
+                            loaded_geometry_count=ready_count,
+                            proxy_geometry_count=0,
+                            deferred_geometry_count=0,
+                        ),
+                        timings=tuple(load_result.timings)
+                        + (("exact_scene_warmstart", float(preloaded_exact_scene.elapsed_seconds)),),
+                        load_profile={
+                            **dict(load_result.load_profile or {}),
+                            "warmstart": dict(preloaded_exact_scene.load_profile),
+                            "geometry_resources": [],
+                        },
+                    )
             if cancellation_token is not None:
                 cancellation_token.check()
             notify(64, "Model volledig zichtbaar; selectie-index aanvullen")
