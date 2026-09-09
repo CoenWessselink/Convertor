@@ -1,0 +1,44 @@
+name: PDF V3 immutable source inventory
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/pdf-v3-source-inventory.yml']
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - name: Capture divergent UI source without changing any branch
+        shell: python
+        run: |
+          import hashlib,json,pathlib,subprocess,zipfile
+          def git(*args): return subprocess.check_output(['git',*args])
+          base='29f75add29d6bd01a57f9ee7b659b160f5049e4a'
+          incoming='dcaa319701dd8edb257345cebb422e5b2fd55b61'
+          git('fetch','--depth=1','origin',base,incoming)
+          out=pathlib.Path('build/pdf-v3-inventory');out.mkdir(parents=True,exist_ok=True)
+          paths=[p for p in git('diff','--name-only','-z',base,incoming).decode().strip('\0').split('\0') if not p.startswith(('.github/','tools/continuous'))]
+          manifest={'base':base,'incoming':incoming,'current':git('rev-parse','HEAD').decode().strip(),'files':[]}
+          with zipfile.ZipFile(out/'concurrent-ui-sources.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for path in paths:
+                  row={'path':path}
+                  for label,ref in [('base',base),('incoming',incoming)]:
+                      item=git('ls-tree',ref,'--',path).decode().strip()
+                      if not item: row[label]=None;continue
+                      mode,kind,sha=item.split('\t')[0].split()
+                      if kind!='blob': raise RuntimeError('Non-file object: '+path)
+                      data=git('cat-file','blob',sha);z.writestr(label+'/'+path,data)
+                      row[label]={'sha':sha,'mode':mode,'sha256':hashlib.sha256(data).hexdigest()}
+                  manifest['files'].append(row)
+              z.writestr('manifest.json',json.dumps(manifest,indent=2))
+          (out/'SHA256SUMS.txt').write_text(hashlib.sha256((out/'concurrent-ui-sources.zip').read_bytes()).hexdigest()+'  concurrent-ui-sources.zip\n')
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_PDF_V3_Source_Inventory_${{ github.sha }}
+          path: build/pdf-v3-inventory/*
+          if-no-files-found: error
+          retention-days: 14
