@@ -29,6 +29,7 @@ jobs:
           patches = {
               'readable-runtime.patch': 'b57d4504972bb89c28c7729db3eedfe5bb3f623182266257eb3f9e0ff69d07d7',
               'portable-plus.patch': 'b106d9403cb9cc9d50bf9ef7ae68c02f573930827898c3253816223fe96bf9e8',
+              'warmstart-recovery.patch': 'f7dd448af21b4fa6154332388f023feeb752fe970dca9b5d24254c86d0ba65ac',
           }
           for name, digest in patches.items():
               patch = pathlib.Path('tools/continuous_recovery') / name
@@ -47,6 +48,7 @@ jobs:
               'cws_convertor/ui_qt/runtime_typography.py': '0edc529b91520472fb16a8a4411b90dc7b42ef6bac6c5a4069feca16b83d4687',
               'tests/geometry_fixture_material_safety_smoke.py': '88799454137c689dc0e03468b6229656fd903b3036f3412af225e1ffc2e1f283',
               'tests/runtime_typography_smoke.py': '502da51106f0f4b60bad60b758d209870ddcc9e869a0a0418f42ff22b234d08b',
+              'tests/warmstart_recovery_smoke.py': 'eeba1024dbff9a9c5b2adce8c38f0dd0985e08cb1f8259a5adb97f1cff9e1757',
           }
           for name, digest in expected.items():
               path = pathlib.Path(name)
@@ -67,7 +69,7 @@ jobs:
           git config user.name 'CWS verified integration'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           if ! git diff --cached --quiet; then
-            git commit -m 'fix(ui): make native Windows action buttons readable without fullwidth glyphs'
+            git commit -m 'fix(viewer): recover stale exact scenes from verified canonical sources'
             git push origin HEAD:agent/cws-continuous-integration-20260908
           fi
           test -z "$(git status --porcelain --untracked-files=no)"
@@ -126,7 +128,7 @@ jobs:
       - name: Source regression and readable main-window preflight
         shell: pwsh
         run: |
-          $tests = @('build_identity','native_window_binding','assembly_ifc_materials','production_release_package','continuous_smoke_reporting','drawing_workspace_v3','drawing_canvas_native_events','manufacturing_contact_core','phase1_phase2_completion','viewer_v6_integration','geometry_fixture_material_safety','runtime_typography')
+          $tests = @('build_identity','native_window_binding','assembly_ifc_materials','production_release_package','continuous_smoke_reporting','drawing_workspace_v3','drawing_canvas_native_events','manufacturing_contact_core','phase1_phase2_completion','viewer_v6_integration','geometry_fixture_material_safety','runtime_typography','warmstart_recovery')
           foreach ($test in $tests) {
             python "tests/${test}_smoke.py"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
