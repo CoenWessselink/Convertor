@@ -349,6 +349,11 @@ def build(output_root: Path) -> dict[str, Any]:
         "errors": errors,
         "pass": len(rows) == 45 and generated == 45 and not errors and false_ready == 0 and all(row.get("deterministic_identity", False) for row in rows),
     }
+    from cws_convertor.manufacturing_interpreter.acceptance_policy import corpus_verdict
+    policy = corpus_verdict(summary, rows=rows)
+    summary["legacy_safety_pass"] = summary["pass"]
+    summary["useful_recognition_policy"] = policy
+    summary["pass"] = bool(summary["legacy_safety_pass"] and policy["passed"])
     payload = {"summary": summary, "categories": rows}
     (output_root / "CORPUS_MANIFEST.json").write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     (output_root / "ADVERSARIAL_CORPUS.json").write_text(json.dumps([row for row in rows if row.get("adversarial")], indent=2, sort_keys=True), encoding="utf-8")

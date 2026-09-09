@@ -158,7 +158,21 @@ class PlateNestingVisualization(QtWidgets.QWidget):
             rect = QtCore.QRectF(stock.left() + float(item.get("x_mm") or 0.0) * scale, stock.top() + float(item.get("y_mm") or 0.0) * scale, float(item.get("width_mm") or 0.0) * scale, float(item.get("height_mm") or 0.0) * scale)
             painter.setBrush(QtGui.QColor(colors[index % len(colors)]))
             painter.setPen(QtGui.QPen(QtGui.QColor("#102b3f"), 1))
-            painter.drawRect(rect)
+            geometry_raw = _dict(self._plan.get("geometries")).get(str(item.get("part_id")))
+            if geometry_raw:
+                from cws_convertor.optimization.plate_nesting.canonical import PlateGeometryRef, _placed_polygon
+                from cws_convertor.optimization.plate_nesting import PlatePlacement
+                polygon = _placed_polygon(PlatePlacement(**item), PlateGeometryRef(**geometry_raw))
+                shape = QtGui.QPainterPath()
+                shape.setFillRule(QtCore.Qt.FillRule.OddEvenFill)
+                for ring in (polygon.exterior, *polygon.interiors):
+                    coordinates = list(ring.coords)
+                    shape.moveTo(stock.left() + coordinates[0][0] * scale, stock.top() + coordinates[0][1] * scale)
+                    for x, y in coordinates[1:]: shape.lineTo(stock.left() + x * scale, stock.top() + y * scale)
+                    shape.closeSubpath()
+                painter.drawPath(shape)
+            else:
+                painter.drawRect(rect)
             painter.setPen(QtGui.QColor("white"))
             painter.drawText(rect.adjusted(3, 3, -3, -3), QtCore.Qt.AlignmentFlag.AlignCenter, str(item.get("part_id") or item.get("instance_id") or index + 1))
         painter.end()

@@ -54,7 +54,7 @@ def main() -> int:
     manifest = OUT / 'INSTALLER_ACCEPTANCE.json'
     write(manifest, report)
 
-    def run(name: str, args: list[str], timeout: int = 900) -> None:
+    def run(name: str, args: list[str], timeout: int = 900, *, env=None) -> None:
         tick = time.monotonic()
         record = {'name': name, 'command': args, 'status': 'RUNNING'}
         report['steps'].append(record)
@@ -63,7 +63,7 @@ def main() -> int:
         try:
             with (OUT / (name + '.log')).open('w', encoding='utf-8') as stream:
                 done = subprocess.run(args, cwd=ROOT, stdout=stream, stderr=subprocess.STDOUT,
-                                      timeout=timeout, check=False)
+                                      timeout=timeout, check=False, env=env)
             record['returncode'] = done.returncode
             if done.returncode:
                 raise RuntimeError(name + ': nonzero exit code ' + str(done.returncode))
@@ -134,6 +134,28 @@ def main() -> int:
                 or {r.get('direction') for r in matrix.get('routes', [])} != expected_routes
                 or matrix.get('route_count') != 12):
             raise RuntimeError('Installed conversion matrix lacks exact source/binary/route proof')
+        # Run the actual plate controls from the installed binary, not source
+        # imports or a reconstructed UI image. No external Python is on PATH.
+        plate_path = OUT / 'installed-plate-integration.json'
+        clean_env = os.environ.copy()
+        system_root = Path(clean_env.get('SystemRoot', r'C:\Windows'))
+        clean_env['PATH'] = os.pathsep.join(str(p) for p in (system_root / 'System32', system_root, system_root / 'System32/Wbem'))
+        clean_env.pop('PYTHONPATH', None); clean_env.pop('PYTHONHOME', None)
+        if shutil.which('python', path=clean_env['PATH']) or shutil.which('pip', path=clean_env['PATH']):
+            raise RuntimeError('Installed test environment still exposes an external Python')
+        run('installed_plate_integration', [str(STAGING / 'CWS_Convertor.exe'),
+            '--plate-integration-evidence', '--evidence-dir', str(OUT / 'plate-integration'),
+            '--report', str(plate_path)], 300, env=clean_env)
+        plate = json.loads(plate_path.read_text(encoding='utf-8'))
+        if (plate.get('status') != 'PASS' or plate.get('frozen') is not True
+                or plate.get('source_commit') != sha
+                or plate.get('executable_sha256') != binding['runtime_files']['CWS_Convertor.exe']
+                or len(plate.get('checks', [])) < 20
+                or any(c.get('status') != 'PASS' for c in plate['checks'])
+                or plate.get('production_release_allowed') is not False):
+            raise RuntimeError('Installed plate evidence lacks exact source/binary/function proof')
+        report['installed_plate_integration'] = {'status': 'PASS', 'checks': len(plate['checks']),
+                                               'report': plate_path.name, 'python_on_child_path': False}
         report['installed_conversion_routes_passed'] = 12
         report['conversion_matrix_report'] = matrix_path.name
         run('associations', [sys.executable, str(ROOT / 'tests/windows_installer_association_smoke.py'),
@@ -141,6 +163,15 @@ def main() -> int:
         user_file = STAGING / 'user-created-project-preservation.txt'
         user_file.write_text('Keep user-created files during uninstall', encoding='utf-8')
         user_digest = digest(user_file)
+        # Same-version repair/reinstall is not silently counted as an upgrade
+        # from every historical version or a Windows 11 acceptance test.
+        run('repair_reinstall', [str(installer), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-',
+                                '/CURRENTUSER', '/TASKS=fileassoc', '/DIR=' + str(STAGING),
+                                '/LOG=' + str(OUT / 'repair-inno.log')])
+        if digest(user_file) != user_digest or any(digest(STAGING / key) != value for key, value in binding['runtime_files'].items()):
+            raise RuntimeError('Repair changed user data or delivered binary identities')
+        smoke('reinstalled', STAGING)
+        report['same_version_reinstall_test'] = 'PASS'
         run('uninstall', [str(STAGING / 'unins000.exe'), '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
                           '/LOG=' + str(OUT / 'uninstall-inno.log')])
         deadline = time.monotonic() + 90.0

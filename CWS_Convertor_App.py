@@ -38,6 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--quick-self-test", action="store_true")
     parser.add_argument("--gui-smoke", action="store_true")
+    parser.add_argument("--plate-integration-evidence", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--pdf12-evidence", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--pdf12-reopen-evidence", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--evidence-dir", type=Path, help=argparse.SUPPRESS)
@@ -292,6 +293,14 @@ def main(argv: list[str] | None = None) -> int:
             }
         _write_report(report_path, payload)
         return _finish_diagnostic(0 if payload["status"] == "passed" else 2)
+    if args.plate_integration_evidence:
+        try:
+            from cws_convertor.ui_qt.plate_nesting_evidence import run_plate_nesting_evidence
+            payload = run_plate_nesting_evidence(args.evidence_dir or Path.cwd() / "plate-evidence")
+        except Exception as exc:
+            payload = {"status": "FAIL", "error": str(exc), "traceback": traceback.format_exc()}
+        _write_report(report_path, payload)
+        return _finish_diagnostic(0 if payload["status"] == "PASS" else 2)
     if args.pdf12_evidence:
         try:
             from cws_convertor.ui_qt.pdf12_evidence import run_pdf12_evidence
@@ -364,6 +373,7 @@ if __name__ == "__main__":
             "--gui-smoke",
             "--viewer-self-test",
             "--viewer-gui-smoke",
+            "--plate-integration-evidence",
             "--pdf12-evidence",
             "--pdf12-reopen-evidence",
             "--geometry-worker-service",

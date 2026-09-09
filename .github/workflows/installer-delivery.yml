@@ -1,8 +1,8 @@
-name: Build and verify Windows installer delivery
+name: Integrated gap repair - tested beta installer
 on:
   workflow_dispatch:
   push:
-    branches: [agent/cws-installer-recovery-20260908]
+    branches: [agent/cws-integrated-gap-repair-20260909]
 permissions:
   contents: read
 concurrency:
@@ -50,6 +50,22 @@ jobs:
       - name: Capture real BOM controls
         if: ${{ !cancelled() }}
         run: python tools/capture_bom_production_hub.py --project "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj" --output build/material_model_recognition/bom-screenshots
+      - name: Record recognition usefulness separately from software-beta approval
+        if: ${{ !cancelled() }}
+        shell: python
+        run: |
+          import json, pathlib, subprocess, sys
+          out=pathlib.Path('build/recognition-usefulness'); out.mkdir(parents=True,exist_ok=True)
+          with (out/'corpus.log').open('w',encoding='utf-8') as log:
+              result=subprocess.run([sys.executable,'tools/build_mgi_v3_acceptance_corpus.py','--output',str(out)],stdout=log,stderr=subprocess.STDOUT,timeout=300)
+          (out/'EXECUTION.json').write_text(json.dumps({'exit_code':result.returncode,'full_product_release_approved':False,'scope':'diagnostic coverage; failure is retained and not reclassified as recognition acceptance'}),encoding='utf-8')
+      - name: Capture resolved dependencies and declared license metadata
+        if: ${{ !cancelled() }}
+        shell: python
+        run: |
+          import importlib.metadata as m,json,pathlib,subprocess
+          rows=[{'name':d.metadata.get('Name'),'version':d.version,'license':d.metadata.get('License-Expression') or d.metadata.get('License') or 'UNKNOWN'} for d in m.distributions()]
+          pathlib.Path('build/RESOLVED_DEPENDENCIES.json').write_text(json.dumps({'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'packages':sorted(rows,key=lambda d:(d['name'] or '').lower()),'vulnerability_scan_performed':False,'license_approval':False},indent=2),encoding='utf-8')
       - name: Upload exact-source proof
         if: always()
         uses: actions/upload-artifact@v4
@@ -58,6 +74,9 @@ jobs:
           path: |
             build/material_model_recognition/**
             build/pdf12-source.json
+            build/recognition-usefulness/*.json
+            build/recognition-usefulness/*.log
+            build/RESOLVED_DEPENDENCIES.json
             validation/phases/PHASE_*_EVIDENCE.json
           retention-days: 30
   broad:
@@ -141,7 +160,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: CWS_Tested_Installer_${{ github.sha }}_Windows_x64
+          name: CWS_Installer_Candidate_${{ github.sha }}_Windows_x64
           path: release/installer/*
           if-no-files-found: error
           compression-level: 0
@@ -153,3 +172,87 @@ jobs:
           path: build/installer-evidence/**
           if-no-files-found: error
           retention-days: 30
+  promote:
+    name: Joint exact-source beta promotion
+    needs: [core, broad, installer]
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: CWS_Installer_Candidate_${{ github.sha }}_Windows_x64
+          path: build/promotion
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: CWS_Installer_Core_${{ github.sha }}
+          path: build/promotion
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: CWS_Installer_Regression_*_${{ github.sha }}
+          path: build/promotion
+      - name: Verify all required jobs and source/binary evidence
+        env:
+          CORE_RESULT: ${{ needs.core.result }}
+          BROAD_RESULT: ${{ needs.broad.result }}
+          INSTALLER_RESULT: ${{ needs.installer.result }}
+        shell: python
+        run: |
+          import json,os,subprocess,sys
+          jobs={key:os.environ[key.upper()+'_RESULT'] for key in ('core','broad','installer')}
+          subprocess.run([sys.executable,'tools/verify_integrated_delivery.py','--root','build/promotion','--sha',os.environ['GITHUB_SHA'],'--jobs',json.dumps(jobs)],check=True)
+      - name: Retain scope, audit register and exact-source proof
+        shell: python
+        run: |
+          import json,pathlib,shutil,zipfile
+          root=pathlib.Path('build/promotion');out=root/'promoted'
+          for name in ('INTEGRATED_GAP_REPAIR.md','INTEGRATED_GAP_REPAIR_REGISTER.json'):
+              shutil.copyfile(pathlib.Path('docs')/name,out/name)
+          with zipfile.ZipFile(out/'SOURCE_ACCEPTANCE_PROOF.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for path in root.rglob('*'):
+                  if path.is_file() and 'promoted' not in path.parts and path.suffix.lower() not in {'.exe','.dll','.ttf','.otf','.woff','.woff2'}:
+                      z.write(path,path.relative_to(root))
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Integrated_Tested_Installer_${{ github.sha }}_Windows_x64
+          path: build/promotion/promoted/*
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publish durable commit-bound software beta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const root='build/promotion/promoted';
+            const proof=JSON.parse(fs.readFileSync(root+'/PROMOTION.json','utf8'));
+            if(proof.status!=='PASS'||proof.source_commit!==context.sha||proof.full_product_release_approved!==false) throw new Error('Promotion binding invalid');
+            const tag='cws-gap-beta-'+context.sha.slice(0,12);
+            const repo={owner:context.repo.owner,repo:context.repo.repo};
+            let release;
+            try {release=(await github.rest.repos.getReleaseByTag({...repo,tag})).data;}
+            catch(error) {
+              if(error.status!==404)throw error;
+              const body=['Tested Windows x64 software beta. Source: '+context.sha,
+                'Joint core, broad regression and installed-runtime acceptance passed. Real installed plate planning/reservation/reopen and same-version reinstall are tested.',
+                'NOT full product or machine qualification. Broad manufacturing recognition, target hardware, certificates and signing remain separate limitations. Read INTEGRATED_GAP_REPAIR.md and the 36-item register. No machine transfer is authorized.'].join('\n\n');
+              release=(await github.rest.repos.createRelease({...repo,tag_name:tag,target_commitish:context.sha,name:'CWS Convertor integrated gap repair '+context.sha.slice(0,8),prerelease:true,draft:false,body})).data;
+            }
+            if(release.target_commitish!==context.sha)throw new Error('Existing release points to a different source');
+            const existing=(await github.rest.repos.listReleaseAssets({...repo,release_id:release.id,per_page:100})).data;
+            for(const name of fs.readdirSync(root)) {
+              const data=fs.readFileSync(root+'/'+name); const old=existing.find(a=>a.name===name);
+              if(old) {
+                const hash='sha256:'+require('crypto').createHash('sha256').update(data).digest('hex');
+                if(old.digest!==hash)throw new Error('Refusing to overwrite differing release asset: '+name);
+                continue;
+              }
+              await github.rest.repos.uploadReleaseAsset({...repo,release_id:release.id,name,data,headers:{'content-type':'application/octet-stream','content-length':data.length}});
+            }
+            core.info('Published '+release.html_url);

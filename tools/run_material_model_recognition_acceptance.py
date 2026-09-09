@@ -25,7 +25,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "validation" / "material_model_recognition"
-NATIVE_MODULES = ("cadquery", "OCP", "ifcopenshell", "PySide6.QtWidgets", "fitz", "ezdxf", "reportlab", "pypdf", "numpy")
+NATIVE_MODULES = ("cadquery", "OCP", "ifcopenshell", "PySide6.QtWidgets", "fitz", "ezdxf", "reportlab", "pypdf", "numpy", "shapely")
 
 
 @dataclass(frozen=True)
@@ -90,6 +90,10 @@ SUITES = (
     SuiteSpec("tests/assembly_material_binding_smoke.py", "assembly_material_binding", ("cadquery",)),
     SuiteSpec("tests/production_release_package_smoke.py", "assembly_release", ("cadquery",)),
     SuiteSpec("tests/ui_font_readability_smoke.py", "ui_readability", ("PySide6.QtWidgets",)),
+    SuiteSpec("tests/plate_integration_safety_smoke.py", "plate_integration", ("shapely", "fitz")),
+    SuiteSpec("tests/plate_ui_integration_smoke.py", "plate_ui_integration", ("PySide6.QtWidgets", "shapely"), "run"),
+    SuiteSpec("tests/recognition_acceptance_policy_smoke.py", "recognition_usefulness"),
+    SuiteSpec("tests/integrated_promotion_smoke.py", "release_promotion"),
     SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),
 )
 
