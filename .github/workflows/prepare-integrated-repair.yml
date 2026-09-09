@@ -2,9 +2,7 @@ name: Verify reviewed integrated repair before packaging
 on:
   push:
     branches: [agent/cws-integrated-gap-repair-20260909]
-    paths:
-      - 'tools/integrated_repair.*'
-      - '.github/workflows/prepare-integrated-repair.yml'
+    paths: ['tools/integrated_repair.*', '.github/workflows/prepare-integrated-repair.yml']
 permissions:
   contents: write
 jobs:
@@ -60,21 +58,19 @@ jobs:
               next(row for row in manifest['files'] if row['path']==path)['sha']=after
           amend('tools/run_material_model_recognition_acceptance.py','8ff6cb1c59f21a977067290ca5b1bd40eff1b1fb','4036c2f55ef5a803d635f939cc2c8430d979e809',b'"pypdf", "numpy")',b'"pypdf", "numpy", "shapely")')
           old=b'            self._plan = job.result; self._show_plan()'
-          new='''            # JobManager snapshots serialize dataclasses to plain dictionaries.
-                      # Rehydrate and independently validate before exposing the proposal.
-                      from cws_convertor.optimization.plate_nesting.canonical import PlateCutPlan, validate_canonical_plate_nesting
-                      try:
-                          plan = PlateCutPlan.from_dict(job.result) if isinstance(job.result, dict) else job.result
-                          validation = validate_canonical_plate_nesting(plan, self._inputs.demands, self._inputs.stock, stock_boundaries=self._inputs.boundaries)
-                          if not validation.passed and plan.complete:
-                              raise ValueError(', '.join(validation.blocking_codes))
-                          self._plan = plan; self._show_plan()
-                      except (ValueError, TypeError, KeyError, AttributeError) as exc:
-                          self._plan = None
-                          self.status.setText('Resultaat geblokkeerd: ' + str(exc))'''
-          # The first line has 12 source spaces; subsequent lines include the
-          # enclosing script's 10-column YAML offset removed here explicitly.
-          lines=new.splitlines(); new='\n'.join([lines[0],*[line[10:] for line in lines[1:]]]).encode()
+          new='\n'.join([
+              '            # JobManager snapshots serialize dataclasses to plain dictionaries.',
+              '            # Rehydrate and independently validate before exposing the proposal.',
+              '            from cws_convertor.optimization.plate_nesting.canonical import PlateCutPlan, validate_canonical_plate_nesting',
+              '            try:',
+              '                plan = PlateCutPlan.from_dict(job.result) if isinstance(job.result, dict) else job.result',
+              '                validation = validate_canonical_plate_nesting(plan, self._inputs.demands, self._inputs.stock, stock_boundaries=self._inputs.boundaries)',
+              '                if not validation.passed and plan.complete:',
+              "                    raise ValueError(', '.join(validation.blocking_codes))",
+              '                self._plan = plan; self._show_plan()',
+              '            except (ValueError, TypeError, KeyError, AttributeError) as exc:',
+              '                self._plan = None',
+              "                self.status.setText('Resultaat geblokkeerd: ' + str(exc))" ]).encode()
           amend('cws_convertor/ui_qt/v5_workspaces.py','1820ab154ade1beea4aa015b3a54f9be2407776d','558df0da6d67ea7ee8d1840a163102f0251ec44c',old,new)
           entries=[];blobs=[]
           for row in manifest['files']:
@@ -98,7 +94,7 @@ jobs:
       - name: Test complete native suite and actual Qt reservation workflow
         shell: python
         run: |
-          import json,pathlib,subprocess,sys,traceback
+          import json,pathlib,subprocess,sys
           out=pathlib.Path('build/integrated-preparation')
           result=subprocess.run([sys.executable,'tools/run_material_model_recognition_acceptance.py','--require-native','--output',str(out/'acceptance')],timeout=600)
           if result.returncode:raise SystemExit(result.returncode)
