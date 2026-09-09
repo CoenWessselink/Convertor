@@ -427,7 +427,9 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.setObjectName("cwsConvertorUnifiedU4MainWindow")
             self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
             application = QtWidgets.QApplication.instance()
-            product_font = QtGui.QFont("Bahnschrift", 9)
+            from .runtime_typography import ensure_ui_font
+
+            product_font = ensure_ui_font(application)
             if application is not None:
                 application.setFont(product_font)
             self.setFont(product_font)

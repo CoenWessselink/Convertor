@@ -187,6 +187,12 @@ def _gui_smoke(project: Path | None, *, screenshot: Path | None = None) -> dict[
             "height": pixmap.height(),
             "capture_runtime": "packaged_qt_window_grab" if bool(getattr(sys, "frozen", False)) else "source_qt_window_grab",
         }
+    from cws_convertor.ui_qt.runtime_typography import inspect_visible_text
+
+    gui_details["typography"] = inspect_visible_text(window)
+    if gui_details["typography"]["status"] != "passed":
+        window.close()
+        raise RuntimeError(f"GUI contains unreadable text: {gui_details['typography']}")
     project_viewer = getattr(getattr(window, "project_page", None), "viewer", None)
     gui_details["viewer_widget"] = type(project_viewer).__name__ if project_viewer is not None else ""
     gui_details["headless_viewer"] = bool(

@@ -156,6 +156,8 @@ class ViewerV6IntegrationTests(unittest.TestCase):
                 part.internal_id,
                 {
                     "part_form": "plate",
+                    # This STEP has geometry only: reviewer explicitly supplies the test grade.
+                    "production_properties": {"profile": "PL10", "material": "S355JR", "material_grade": "S355JR"},
                     "recognition": {"candidate": "PL10", "confidence": 1.0, "confirmed": True},
                     "dimensions": {"length_mm": 100.0, "thickness_mm": 10.0, "diameter_mm": 0.0},
                     "reference_sides": [
@@ -179,6 +181,7 @@ class ViewerV6IntegrationTests(unittest.TestCase):
                 user="test",
                 reason="Owner canonical plate",
             )
+            self.assertEqual(session.project.parts[part.internal_id].workbench["current_revision"]["validation_issues"], [])
             session.rebuild_part_canonical(part.internal_id, user="test")
             integrated = build_integrated_exact_part(session, part.internal_id)
             comparison = integrated.validate_compare()

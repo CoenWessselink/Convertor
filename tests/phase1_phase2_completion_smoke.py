@@ -140,6 +140,8 @@ class Phase1Phase2CompletionTests(unittest.TestCase):
                 source_format="STEP", source_sha256="a" * 64, source_entity_id="#1", part_position="P1"
             ),
             profile="PL10",
+            material="S355JR",
+            material_grade="S355JR",
             profile_confidence=1.0,
             confidence=1.0,
             geometry_descriptor={"kind": "plate", "bbox_mm": [300.0, 180.0, 10.0]},

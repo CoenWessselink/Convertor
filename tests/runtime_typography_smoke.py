@@ -19,7 +19,7 @@ class RuntimeTypographyTests(unittest.TestCase):
         cls.app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def test_production_font_shapes_dutch_engineering_text(self):
-        font = ensure_ui_font(cls_app := self.app)
+        font = ensure_ui_font(self.app)
         evidence = text_glyph_evidence("CWS Convertor – Hoeveelheden, beïnvloeden, Ø20 ±0,5 mm", font)
         self.assertEqual(evidence["status"], "passed", evidence)
         self.assertEqual(evidence["missing_glyphs"], 0)

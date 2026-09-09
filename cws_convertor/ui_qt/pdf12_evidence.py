@@ -69,19 +69,10 @@ def _digest(path: Path) -> str:
 
 
 def _install_evidence_fonts(application: Any, QtGui: Any) -> None:
-    """Load readable Windows UI fonts for frozen offscreen Qt evidence."""
+    """Use the same font initialization as the production shell."""
+    from .runtime_typography import ensure_ui_font
 
-    fonts_directory = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
-    families: list[str] = []
-    for filename in ("bahnschrift.ttf", "segoeui.ttf", "arial.ttf"):
-        font_path = fonts_directory / filename
-        if not font_path.is_file():
-            continue
-        font_id = QtGui.QFontDatabase.addApplicationFont(str(font_path))
-        if font_id >= 0:
-            families.extend(QtGui.QFontDatabase.applicationFontFamilies(font_id))
-    if families:
-        application.setFont(QtGui.QFont(families[0], 9))
+    ensure_ui_font(application)
 
 
 def _mesh(offset: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> tuple[np.ndarray, np.ndarray]:

@@ -85,7 +85,15 @@ V52_DARK_QSS = _stylesheet(DARK_COLORS, dark=True)
 
 def apply_v52_design_system(application: Any, theme: str = "Default Light") -> str:
     selected = "Engineering Dark" if str(theme).casefold() == "engineering dark" else "Default Light"
-    application.setStyleSheet(V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS)
+    from cws_viewer.ui_qt.qt_compat import require_qt
+    from ..runtime_typography import ensure_ui_font
+
+    _core, _gui, widgets = require_qt()
+    font = ensure_ui_font(widgets.QApplication.instance())
+    family = font.family().replace("'", "").replace("\\", "")
+    stylesheet = V52_DARK_QSS if selected == "Engineering Dark" else V52_LIGHT_QSS
+    stylesheet = stylesheet.replace("'Bahnschrift', 'Segoe UI Variable', 'Segoe UI'", f"'{family}'")
+    application.setStyleSheet(stylesheet)
     application.setProperty("cws_ui_master", "V5.2")
     application.setProperty("cws_theme", selected)
     return selected

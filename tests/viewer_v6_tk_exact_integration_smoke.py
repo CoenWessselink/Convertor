@@ -53,6 +53,7 @@ class ViewerV6TkExactIntegrationTests(unittest.TestCase):
                     part.internal_id,
                     {
                         "part_form": "plate",
+                        "production_properties": {"profile": "PL10", "material": "S355JR", "material_grade": "S355JR"},
                         "recognition": {"candidate": "PL10", "confidence": 1.0, "confirmed": True},
                         "dimensions": {"length_mm": 100.0, "thickness_mm": 10.0},
                         "reference_sides": [
@@ -66,6 +67,7 @@ class ViewerV6TkExactIntegrationTests(unittest.TestCase):
                     user="test",
                     reason="Exact UI fixture",
                 )
+                self.assertEqual(session.project.parts[part.internal_id].workbench["current_revision"]["validation_issues"], [])
                 session.rebuild_part_canonical(part.internal_id, user="test")
                 selections = []
                 panel = ExactPartViewerPanel(
