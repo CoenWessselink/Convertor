@@ -69,19 +69,10 @@ def _digest(path: Path) -> str:
 
 
 def _install_evidence_fonts(application: Any, QtGui: Any) -> None:
-    """Load readable Windows UI fonts for frozen offscreen Qt evidence."""
+    """Use the same font initialization as the production shell."""
+    from .runtime_typography import ensure_ui_font
 
-    fonts_directory = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
-    families: list[str] = []
-    for filename in ("bahnschrift.ttf", "segoeui.ttf", "arial.ttf"):
-        font_path = fonts_directory / filename
-        if not font_path.is_file():
-            continue
-        font_id = QtGui.QFontDatabase.addApplicationFont(str(font_path))
-        if font_id >= 0:
-            families.extend(QtGui.QFontDatabase.applicationFontFamilies(font_id))
-    if families:
-        application.setFont(QtGui.QFont(families[0], 9))
+    ensure_ui_font(application)
 
 
 def _mesh(offset: tuple[float, float, float] = (0.0, 0.0, 0.0)) -> tuple[np.ndarray, np.ndarray]:
@@ -281,6 +272,11 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
     window.setCentralWidget(panel)
     window.resize(1800, 1100)
     window.show()
+    if not QtTest.QTest.qWaitForWindowExposed(window, 5000):
+        raise RuntimeError("Qt-bewijsvenster werd niet zichtbaar")
+    # Native window-system input is asynchronous. Drain pending resize/layout
+    # and preview events before locating the real geometry in the canvas.
+    QtTest.QTest.qWait(100)
     application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 200)
 
     evidence: list[dict[str, Any]] = []
@@ -332,12 +328,14 @@ def run_pdf12_evidence(output_directory: str | Path, *, runtime_label: str = "so
         return values
 
     def move(point: tuple[float, float]) -> None:
-        QtTest.QTest.mouseMove(panel.preview, panel.preview.sheet_to_widget(point).toPoint())
+        QtTest.QTest.mouseMove(panel.preview, panel.preview.sheet_to_widget(point).toPoint(), delay=20)
+        QtTest.QTest.qWait(30)
         application.processEvents()
 
     def click(point: tuple[float, float], modifiers: Any = QtCore.Qt.KeyboardModifier.NoModifier) -> None:
         widget_point = panel.preview.sheet_to_widget(point).toPoint()
-        QtTest.QTest.mouseMove(panel.preview, widget_point)
+        QtTest.QTest.mouseMove(panel.preview, widget_point, delay=20)
+        QtTest.QTest.qWait(30)
         application.processEvents()
         QtTest.QTest.mouseClick(panel.preview, QtCore.Qt.MouseButton.LeftButton, modifiers, widget_point)
         application.processEvents()

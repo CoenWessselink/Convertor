@@ -664,10 +664,10 @@ class ProductionDrawingEngine:
         style = dict(item.get("style") or {})
         if not label:
             kind = str(item.get("kind") or "")
-            numeric = _number(item, "nominal_value_mm", "value_mm") / (10.0 if unit == "cm" else 1.0)
+            numeric = _number(item, "nominal_value_mm", "value_mm") / (10.0 if unit == "cm" and kind != "angle" else 1.0)
             decimals = max(0, min(6, int(style.get("decimals", 1))))
             value_text = f"{numeric:.{decimals}f}"
-            if not bool(style.get("trailing_zeros", False)):
+            if decimals > 0 and not bool(style.get("trailing_zeros", False)):
                 value_text = value_text.rstrip("0").rstrip(".")
             if str(style.get("decimal_separator") or ",") == ",":
                 value_text = value_text.replace(".", ",")
@@ -689,10 +689,10 @@ class ProductionDrawingEngine:
         tolerance = ""
         try:
             if upper is not None or lower is not None:
-                divisor = 10.0 if unit == "cm" else 1.0
+                divisor = 10.0 if unit == "cm" and str(item.get("kind")) != "angle" else 1.0
                 upper_value = float(upper or 0.0) / divisor
                 lower_value = float(lower or 0.0) / divisor
-                tolerance = f" +{upper_value:g}/{lower_value:g}"
+                tolerance = f" {upper_value:+g}/{lower_value:+g}"
         except (TypeError, ValueError):
             tolerance = ""
         reference = " REF" if bool(item.get("reference", False)) else ""
@@ -776,6 +776,7 @@ class ProductionDrawingEngine:
                         position = (float(position_raw[0]), float(position_raw[1]))
                 except (TypeError, ValueError, IndexError):
                     position = points[-1]
+                primitive_start = len(page.primitives)
                 kind = str(item.get("kind") or "aligned")
                 style = dict(item.get("style") or {})
                 color = str(style.get("line_color") or "#0066dc")
@@ -843,7 +844,11 @@ class ProductionDrawingEngine:
                             page,
                             start=(first[0] + delta[0], first[1] + delta[1]),
                             end=(second[0] + delta[0], second[1] + delta[1]),
-                            label=label if segment_index == 0 else _format_value(math.hypot(second[0] - first[0], second[1] - first[1]) / max(target_scale, 1.0e-9), unit),
+                            label=cls._interactive_label({
+                                **dict(item),
+                                "nominal_value_mm": math.hypot(second[0] - first[0], second[1] - first[1]) / max(target_scale, 1.0e-9),
+                                "label": str(item.get("label") or "") if segment_index == 0 else "",
+                            }, unit),
                             dimension_id=dimension_id,
                             refs=(*refs, str(segment_ids[segment_index])) if segment_index < len(segment_ids) else refs,
                             color=color,
@@ -872,6 +877,22 @@ class ProductionDrawingEngine:
                             text_size=text_size,
                             arrow=arrow_size,
                         )
+                # Text and line placement are independent persistent coordinates.
+                # Moving a text grip must alter the vector PDF, not only the editor.
+                text_raw = item.get("text_projected_position")
+                if isinstance(text_raw, Sequence) and not isinstance(text_raw, (str, bytes)) and len(text_raw) >= 2:
+                    text_position = cls._projected_to_sheet(text_raw, target)
+                else:
+                    text_raw = item.get("text_position")
+                    text_position = tuple(text_raw[:2]) if isinstance(text_raw, Sequence) and not isinstance(text_raw, (str, bytes)) and len(text_raw) >= 2 else None
+                texts = [primitive for primitive in page.primitives[primitive_start:]
+                         if primitive.kind == "text" and primitive.semantic_id == dimension_id]
+                if text_position is not None and texts:
+                    origin = texts[0].points[0]
+                    delta = (float(text_position[0]) - origin[0], float(text_position[1]) - origin[1])
+                    for text_primitive in texts:
+                        text_primitive.points = [[float(point[0]) + delta[0], float(point[1]) + delta[1]]
+                                                 for point in text_primitive.points]
                 continue
             target_min = target_projected.min(axis=0)
             target_center = (target_screen.min(axis=0) + target_screen.max(axis=0)) * 0.5
