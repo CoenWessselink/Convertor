@@ -51,15 +51,31 @@ jobs:
                   target.write_bytes(git('show','HEAD:'+path))
           patch_path=out/'reviewed.patch';patch_path.write_bytes(patch)
           git('apply','--check',str(patch_path));git('apply',str(patch_path))
-          # The first Windows probe exposed an unregistered dependency, not a
-          # missing installed package. Verify both sides of this reviewed fix.
-          runner='tools/run_material_model_recognition_acceptance.py'
-          data=(root/runner).read_bytes()
-          if blob(data)!='8ff6cb1c59f21a977067290ca5b1bd40eff1b1fb':raise RuntimeError('Unexpected runner before native-probe repair')
-          data=data.replace(b'"pypdf", "numpy")',b'"pypdf", "numpy", "shapely")')
-          if blob(data)!='4036c2f55ef5a803d635f939cc2c8430d979e809':raise RuntimeError('Unexpected runner after native-probe repair')
-          (root/runner).write_bytes(data)
-          next(row for row in manifest['files'] if row['path']==runner)['sha']='4036c2f55ef5a803d635f939cc2c8430d979e809'
+          def amend(path,before,after,old,new):
+              data=(root/path).read_bytes()
+              if blob(data)!=before or data.count(old)!=1:raise RuntimeError('Unexpected source before amendment: '+path)
+              data=data.replace(old,new)
+              if blob(data)!=after:raise RuntimeError('Unexpected source after amendment: '+path)
+              (root/path).write_bytes(data)
+              next(row for row in manifest['files'] if row['path']==path)['sha']=after
+          amend('tools/run_material_model_recognition_acceptance.py','8ff6cb1c59f21a977067290ca5b1bd40eff1b1fb','4036c2f55ef5a803d635f939cc2c8430d979e809',b'"pypdf", "numpy")',b'"pypdf", "numpy", "shapely")')
+          old=b'            self._plan = job.result; self._show_plan()'
+          new='''            # JobManager snapshots serialize dataclasses to plain dictionaries.
+                      # Rehydrate and independently validate before exposing the proposal.
+                      from cws_convertor.optimization.plate_nesting.canonical import PlateCutPlan, validate_canonical_plate_nesting
+                      try:
+                          plan = PlateCutPlan.from_dict(job.result) if isinstance(job.result, dict) else job.result
+                          validation = validate_canonical_plate_nesting(plan, self._inputs.demands, self._inputs.stock, stock_boundaries=self._inputs.boundaries)
+                          if not validation.passed and plan.complete:
+                              raise ValueError(', '.join(validation.blocking_codes))
+                          self._plan = plan; self._show_plan()
+                      except (ValueError, TypeError, KeyError, AttributeError) as exc:
+                          self._plan = None
+                          self.status.setText('Resultaat geblokkeerd: ' + str(exc))'''
+          # The first line has 12 source spaces; subsequent lines include the
+          # enclosing script's 10-column YAML offset removed here explicitly.
+          lines=new.splitlines(); new='\n'.join([lines[0],*[line[10:] for line in lines[1:]]]).encode()
+          amend('cws_convertor/ui_qt/v5_workspaces.py','1820ab154ade1beea4aa015b3a54f9be2407776d','558df0da6d67ea7ee8d1840a163102f0251ec44c',old,new)
           entries=[];blobs=[]
           for row in manifest['files']:
               data=(root/row['path']).read_bytes()
