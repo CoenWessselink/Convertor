@@ -1,0 +1,24 @@
+diff --git a/cws_convertor/ui_qt/workspace_pages.py b/cws_convertor/ui_qt/workspace_pages.py
+--- a/cws_convertor/ui_qt/workspace_pages.py
++++ b/cws_convertor/ui_qt/workspace_pages.py
+@@ -605,7 +605,7 @@
+             root.setContentsMargins(22, 18, 22, 18)
+             root.setSpacing(16)
+             actions = QtWidgets.QHBoxLayout()
+-            new_project = QtWidgets.QPushButton("＋  Nieuw project")
++            new_project = QtWidgets.QPushButton("+  Nieuw project")
+             new_project.setObjectName("primaryOutlineButton")
+             new_project.clicked.connect(self._choose_files)
+             open_project = QtWidgets.QPushButton("Open projectbestand")
+diff --git a/cws_convertor/ui_qt/functional_workspaces.py b/cws_convertor/ui_qt/functional_workspaces.py
+--- a/cws_convertor/ui_qt/functional_workspaces.py
++++ b/cws_convertor/ui_qt/functional_workspaces.py
+@@ -178,7 +178,7 @@
+             operation_layout = QtWidgets.QVBoxLayout(operations)
+             operation_layout.setContentsMargins(8, 8, 8, 8)
+             tools = QtWidgets.QHBoxLayout()
+-            self.add_operation = QtWidgets.QPushButton("＋ Toevoegen")
++            self.add_operation = QtWidgets.QPushButton("+ Toevoegen")
+             self.delete_operation = QtWidgets.QPushButton("Verwijderen")
+             self.duplicate_operation = QtWidgets.QPushButton("Dupliceren")
+             self.validate = QtWidgets.QPushButton("Valideren")
