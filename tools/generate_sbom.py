@@ -5,7 +5,13 @@ from datetime import datetime, timezone
 from importlib import metadata
 import json
 from pathlib import Path
+import sys
 import uuid
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from cws_convertor.product import APP_VERSION
 
 
 def main() -> int:
@@ -26,9 +32,9 @@ def main() -> int:
     payload = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
-        "serialNumber": f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'nl.cws.convertor:0.10.18')}",
+        "serialNumber": f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'nl.cws.convertor:' + APP_VERSION)}",
         "version": 1,
-        "metadata": {"timestamp": datetime.now(timezone.utc).isoformat(), "component": {"type": "application", "name": "CWS Convertor", "version": "0.10.18-beta-dev"}},
+        "metadata": {"timestamp": datetime.now(timezone.utc).isoformat(), "component": {"type": "application", "name": "CWS Convertor", "version": APP_VERSION}},
         "components": components,
     }
     target = Path(args.output)

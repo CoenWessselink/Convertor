@@ -5,9 +5,13 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
+import sys
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from cws_convertor.product import APP_VERSION
 PHASES = ROOT / "validation" / "phases"
 RELEASE = ROOT / "release" / "phase3"
 
@@ -113,7 +117,7 @@ def build_validation() -> dict[str, Any]:
     }
     sbom = RELEASE / "CWS_Convertor_SBOM.cdx.json"
     revision = str(windows.get("source_revision") or "")
-    source_package = RELEASE / f"CWS_Convertor_Source_0.10.18-beta-dev_{revision[:7]}.zip"
+    source_package = RELEASE / f"CWS_Convertor_Source_{APP_VERSION}_{revision[:7]}.zip"
     checks: list[dict[str, Any]] = []
 
     def add(identifier: str, condition: bool, evidence: Any, command: str = "") -> None:

@@ -18,7 +18,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       GALLIUM_DRIVER: llvmpipe
       LIBGL_ALWAYS_SOFTWARE: "1"
-      CWS_VERSION: 0.10.18-beta-dev
+      CWS_VERSION: 0.10.19-beta-dev
     steps:
       - uses: actions/checkout@v4
         with:

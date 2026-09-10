@@ -2,7 +2,18 @@ name: CWS PDF UI V3 native main application - verified beta
 on:
   workflow_dispatch:
   push:
-    branches: [agent/cws-integrated-gap-repair-20260909]
+    branches: [agent/cws-integrated-gap-repair-20260909, agent/cws-pdf-ui-v3-complete-20260909]
+    paths:
+      - '*.py'
+      - 'cws_convertor/**'
+      - 'cws_viewer/**'
+      - 'tools/**'
+      - 'tests/**'
+      - 'installer/**'
+      - 'pyinstaller_hooks/**'
+      - 'requirements*.txt'
+      - 'CWS_Convertor*.spec'
+      - '.github/workflows/installer-delivery.yml'
 permissions:
   contents: read
 concurrency:

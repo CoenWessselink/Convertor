@@ -5,12 +5,16 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
+import sys
 import re
 import subprocess
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from cws_convertor.product import APP_VERSION
 OUT = ROOT / "validation" / "master_completion"
 SOURCE_ROOT = ROOT / "requirements" / "sources"
 ALLOWED_STATUSES = (
@@ -411,7 +415,7 @@ def build() -> dict[str, Any]:
             "root": str(ROOT), "branch": branch, "head": head, "tree": tree,
             "remote_ref": remote_ref or None, "remote_head": remote_head or None,
             "ahead": ahead, "behind": behind,
-            "app_version": "0.10.18-beta-dev", "project_schema": "2.25", "canonical_part_schema": "1.1",
+            "app_version": APP_VERSION, "project_schema": "2.25", "canonical_part_schema": "1.1",
         },
         "allowed_statuses": list(ALLOWED_STATUSES),
         "source_count": len(source_entries),

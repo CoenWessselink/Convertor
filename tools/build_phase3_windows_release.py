@@ -16,7 +16,10 @@ import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.10.18-beta-dev"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from cws_convertor.product import APP_VERSION
+VERSION = APP_VERSION
 
 
 def source_revision() -> str:
