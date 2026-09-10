@@ -54,7 +54,7 @@ def install_native_navigation(window: Any) -> None:
         button=QtWidgets.QToolButton(body);button.setText(label);button.setCheckable(True)
         button.setObjectName("workspace_route_"+route);button.setAccessibleName(label)
         button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
-        button.setMinimumWidth(136);button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,QtWidgets.QSizePolicy.Policy.Fixed)
+        button.setMinimumWidth(174);button.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding,QtWidgets.QSizePolicy.Policy.Fixed)
         button.setToolTip(label+" — behoud project, selectie en viewer")
         button.clicked.connect(lambda _checked=False, name=route:window.workspace_router.open_workspace(name))
         group.addButton(button);layout.addWidget(button);window.native_workspace_buttons[route]=button

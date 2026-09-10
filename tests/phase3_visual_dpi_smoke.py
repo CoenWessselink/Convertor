@@ -106,7 +106,7 @@ def child(scale: str, output: Path, screenshot: Path) -> int:
 
 def parent(output: Path, screenshot_dir: Path) -> int:
     results = []
-    for label, factor in (("100", "1.0"), ("125", "1.25"), ("150", "1.5"), ("200", "2.0")):
+    for label, factor in (("100", "1.0"), ("125", "1.25"), ("150", "1.5"), ("175", "1.75"), ("200", "2.0")):
         attempts = []
         payload = {}
         for attempt in (1, 2):
@@ -146,7 +146,7 @@ def parent(output: Path, screenshot_dir: Path) -> int:
                 break
         payload["attempts"] = attempts
         results.append(payload)
-    passed = len(results) == 4 and all(
+    passed = len(results) == 5 and all(
         item.get("status") == "passed"
         and item.get("returncode") == 0
         and "Traceback (most recent call last)" not in str(item.get("stderr") or "")
@@ -154,7 +154,7 @@ def parent(output: Path, screenshot_dir: Path) -> int:
     )
     report = {
         "schema": "cws-phase3-ui-acceptance-1.0", "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "status": "passed" if passed else "failed", "dpi_factors": [100, 125, 150, 200],
+        "status": "passed" if passed else "failed", "dpi_factors": [100, 125, 150, 175, 200],
         "visual_baseline_count": sum(Path(str(item.get("screenshot") or "")).is_file() for item in results),
         "keyboard_accessibility": all(bool(item.get("checks", {}).get("keyboard_focus_moves")) for item in results),
         "results": results,

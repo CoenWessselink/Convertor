@@ -136,6 +136,8 @@ def main() -> int:
     parser.add_argument("--soak-seconds", type=float, default=600.0)
     parser.add_argument("--reuse-fresh-evidence", action="store_true")
     args = parser.parse_args()
+    source_revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    source_dirty = bool(subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True).strip())
     PHASES.mkdir(parents=True, exist_ok=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
     soak_path = PHASES / "PHASE_3_SOAK_EVIDENCE.json"
@@ -211,6 +213,10 @@ def main() -> int:
     passed = all(coverage.values())
     manifest = {
         "schema": "cws-phase3-source-evidence-2.0",
+        "source_revision": source_revision,
+        "source_dirty": source_dirty,
+        "source_unchanged": (not source_dirty and source_revision == subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip() and not subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True).strip()),
+        "reused_evidence": bool(args.reuse_fresh_evidence),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": "GREEN" if passed else "RED",
         "coverage": coverage,

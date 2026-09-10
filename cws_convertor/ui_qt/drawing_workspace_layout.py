@@ -227,9 +227,9 @@ def install_layout(panel: Any) -> None:
     edit_layout.addWidget(panel.move_line_button)
     edit_layout.addWidget(panel.move_text_button)
     edit_layout.addWidget(more)
-    panel.view_options_toggle = _button('Aanzichten & blad', lambda checked: panel.view_options_frame.setVisible(checked),
+    panel.view_options_toggle = _button('Aanzichten en blad', lambda checked: panel.view_options_frame.setVisible(checked),
         checkable=True, tooltip='Aanzichten, doorsneden, details en bladinstellingen')
-    panel.view_options_toggle.setChecked(True)
+    panel.view_options_toggle.setChecked(False)
     edit_layout.addWidget(panel.view_options_toggle)
     root.addWidget(edits)
 
@@ -251,6 +251,7 @@ def install_layout(panel: Any) -> None:
     # Retained command appears in the inspector as well; no duplicate signal binding.
     view_layout.addWidget(panel.clear_dimensions_button)
     root.addWidget(view_frame)
+    view_frame.setVisible(False)
 
     utility, utility_layout = _row(panel, 'drawingUtilityBar', margins=(2, 0, 2, 0))
     utility_layout.addWidget(panel.snap_filter)
@@ -465,7 +466,8 @@ def _select_dimension_rows(p: Any) -> None:
     ids = [item.data(0, QtCore.Qt.ItemDataRole.UserRole) for item in p.dimension_list.selectedItems()]
     p._dimension_model.select(ids)
     p.preview.set_selected_ids(ids)
-    p._update_dimension_properties()
+    # Do not delete native item widgets inside QTreeWidget mouse selection.
+    QtCore.QTimer.singleShot(0, p._update_dimension_properties)
 
 
 def _arm_move(p: Any, text_only: bool) -> None:
@@ -609,16 +611,25 @@ def _update_trees(p: Any, editor: Any, workspace: Any, issues: list[dict]) -> No
                     parent.setExpanded(True)
                     parent = parent.parent()
             iterator += 1
-    p.dimension_list.clear()
     selected_ids = set(getattr(p._dimension_model, 'selected_ids', ()))
-    for dimension in getattr(editor, 'dimensions', ()):
-        suffix = '' if dimension.visible else ' · verborgen'
-        row = QtWidgets.QTreeWidgetItem(p.dimension_list, (TOOL_NAMES.get(dimension.kind, dimension.kind) + suffix, dimension.state))
-        row.setData(0, QtCore.Qt.ItemDataRole.UserRole, dimension.dimension_id)
-        row.setToolTip(0, dimension.dimension_id + '\n' + '; '.join(dimension.entity_ids))
-        row.setSelected(dimension.dimension_id in selected_ids)
-        if dimension.state in {'ORPHANED', 'ORPHANED_VIEW', 'STALE', 'CONFLICT'}:
-            row.setForeground(1, QtGui.QColor('#a33218'))
+    dimensions = list(getattr(editor, 'dimensions', ()))
+    existing = {p.dimension_list.topLevelItem(i).data(0, QtCore.Qt.ItemDataRole.UserRole): p.dimension_list.topLevelItem(i)
+                for i in range(p.dimension_list.topLevelItemCount())}
+    wanted = {d.dimension_id for d in dimensions}
+    with QtCore.QSignalBlocker(p.dimension_list):
+        for key,row in existing.items():
+            if key not in wanted:
+                p.dimension_list.takeTopLevelItem(p.dimension_list.indexOfTopLevelItem(row))
+        for dimension in dimensions:
+            row = existing.get(dimension.dimension_id)
+            if row is None:row = QtWidgets.QTreeWidgetItem(p.dimension_list)
+            suffix = '' if dimension.visible else ' · verborgen'
+            row.setText(0, TOOL_NAMES.get(dimension.kind, dimension.kind) + suffix)
+            row.setText(1, dimension.state)
+            row.setData(0, QtCore.Qt.ItemDataRole.UserRole, dimension.dimension_id)
+            row.setToolTip(0, dimension.dimension_id + '\n' + '; '.join(dimension.entity_ids))
+            row.setSelected(dimension.dimension_id in selected_ids)
+            row.setForeground(1, QtGui.QColor('#a33218' if dimension.state in {'ORPHANED','ORPHANED_VIEW','STALE','CONFLICT'} else '#19334f'))
     p.linter_tree.clear()
     if p._drawing_document is None:
         QtWidgets.QTreeWidgetItem(p.linter_tree, ('Nog geen gevalideerd tekenblad',))

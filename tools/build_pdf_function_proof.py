@@ -205,28 +205,61 @@ def _render_independently(pdf_path: Path, rendered_dir: Path, stem: str) -> dict
     }
 
 
-def _capture_source_ui(target: Path) -> Path:
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    os.environ.setdefault("CWS_HEADLESS_GUI_SMOKE", "1")
-    from PySide6 import QtCore, QtWidgets
-    from cws_convertor.ui_qt import CWSMainWindow
+def _trusted_example(directory: Path, commit: str) -> dict[str, Any]:
+    """Known NC1 -> canonical BREP -> Trusted PDF -> exact original NC1."""
+    import converter as core
+    from conversion import build_shape
+    from pdf_support import canonical_from_nc1, create_trusted_pdf, load_trusted_pdf, pdf_to_nc1
+    from tests.regression_smoke import write_sample_nc1
+    source=directory / "TRUSTED_EXAMPLE_SOURCE.nc1"
+    target=directory / "CWS_TRUSTED_EXAMPLE.pdf"
+    write_sample_nc1(source)
+    canonical=canonical_from_nc1(source)
+    shape=build_shape(core.parse_nc1(source)).val()
+    vv,tt=shape.tessellate(.08)
+    vertices=np.asarray([v.toTuple() for v in vv],dtype=float);triangles=np.asarray(tt,dtype=int)
+    request=_request(shape, vertices, triangles, commit, entity_id=canonical.part_id,
+        features=(),manual_dimensions=(),dimension_chains=(),bom=(),notes=(),
+        dimensions=({"id":"source-length","kind":"linear","value_mm":float(shape.BoundingBox().xlen),"critical":True},),
+        geometry_sha256=canonical.geometry_sha256(),manufacturing_sha256=canonical.geometry_sha256(),
+        expected_manufacturing_sha256=canonical.geometry_sha256(),
+        title_block={"project":"Known synthetic NC1 roundtrip fixture","entity":canonical.part_id,
+                     "profile":canonical.header.profile or "NC1","material":canonical.header.material or "", "revision":"A","status":"released"})
+    drawing=ProductionDrawingEngine.build(request)
+    if not drawing.lint.get("release_ready"):raise RuntimeError("Trusted example linter blocked")
+    create_trusted_pdf(canonical, target, drawing_document=drawing)
+    checked=load_trusted_pdf(target,strict=True)
+    embedded=ProductionDrawingRenderer.load_embedded_document(target)
+    if embedded.document_sha256!=drawing.document_sha256:raise RuntimeError("Trusted document mismatch")
+    returned=directory/"TRUSTED_EXAMPLE_ROUNDTRIP.nc1"
+    pdf_to_nc1(target,returned)
+    if digest(source)!=digest(returned):raise RuntimeError("Trusted exact NC1 roundtrip mismatch")
+    return {"status":"PASS","source":relative(source),"trusted_pdf":relative(target),"trusted_pdf_sha256":digest(target),
+            "returned_nc1":relative(returned),"source_sha256":digest(source),"returned_sha256":digest(returned),
+            "document_sha256":embedded.document_sha256,"scope":"known synthetic source; not qualification of arbitrary external models"}
 
-    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    window = CWSMainWindow()
-    window.resize(1600, 1000)
-    window.show()
-    application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
-    for index in range(window.tabs.count()):
-        label = window.tabs.tabText(index).casefold()
-        if "pdf" in label or "tekening" in label:
-            window.tabs.setCurrentIndex(index)
-            break
-    application.processEvents(QtCore.QEventLoop.ProcessEventsFlag.AllEvents, 100)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if not window.grab().save(str(target), "PNG") or target.stat().st_size < 10_000:
-        raise RuntimeError("Actual Qt PDF workspace capture failed")
-    window.close()
-    application.processEvents()
+
+def _capture_source_ui(target: Path) -> Path:
+    """Fresh full product, real STEP intake and native inputs; never an empty tab."""
+    folder = target.parent / "source-main"
+    report = folder / "REPORT.json"
+    environment = os.environ.copy()
+    environment["QT_QPA_PLATFORM"] = environment.get("CWS_MAIN_UI_PLATFORM", "windows" if sys.platform == "win32" else ("xcb" if environment.get("DISPLAY") else "offscreen"))
+    environment["CWS_EVIDENCE_RUNTIME"] = "source"
+    environment["CWS_HEADLESS_GUI_SMOKE"] = "0"
+    folder.mkdir(parents=True, exist_ok=True)
+    with (folder / "process.log").open("w", encoding="utf-8") as log:
+        subprocess.run([sys.executable, str(ROOT / "CWS_Convertor_App.py"), "--pdf-ui-v3-evidence",
+                        "--evidence-dir", str(folder), "--report", str(report)],
+                       cwd=ROOT, env=environment, stdout=log, stderr=subprocess.STDOUT, timeout=360, check=True)
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    if payload.get("status") != "PASS" or payload.get("source_commit") != git("rev-parse", "HEAD"):
+        raise RuntimeError("Fresh main-window source evidence failed")
+    image = next(i for i in payload["screenshots"] if i["file"] == "UI3-02-native-selection-inspector.png")
+    source = folder / image["file"]
+    if digest(source) != image["sha256"]:
+        raise RuntimeError("Source main-window image hash mismatch")
+    shutil.copy2(source, target)
     return target
 
 
@@ -347,7 +380,7 @@ def _proofbook(items: list[dict[str, Any]], target: Path, *, commit: str, enviro
         Paragraph("CWS CONVERTOR PDF FUNCTION PROOFBOOK", styles["Title"]),
         Spacer(1, 8 * mm),
         Paragraph(f"Product: {APP_NAME} {APP_VERSION}", styles["Heading2"]),
-        Paragraph(f"Branch: agent/cws-product-ui-reintegration-v1", styles["BodyText"]),
+        Paragraph(f"Branch: {git("branch", "--show-current")}", styles["BodyText"]),
         Paragraph(f"Commit: {commit}", styles["BodyText"]),
         Paragraph(f"Builddatum: {datetime.now(timezone.utc).isoformat()}", styles["BodyText"]),
         Paragraph(f"Testomgeving: {environment}", styles["BodyText"]),
@@ -364,11 +397,13 @@ def _proofbook(items: list[dict[str, Any]], target: Path, *, commit: str, enviro
         max_width, max_height = 175 * mm, 175 * mm
         ratio = min(max_width / width, max_height / height)
         proof_image = RLImage(str(image_path), width=width * ratio, height=height * ratio)
-        table = Table([
+        from xml.sax.saxutils import escape
+        table_data = [
             ["Status", item["status"], "Test", item["test_case"]],
             ["Verwacht", item["expected_result"], "Werkelijk", item["actual_result"]],
             ["Bron-PDF", item["generated_pdf"], "Reviewgate", str(item["review_gate"])],
-        ], colWidths=[22 * mm, 67 * mm, 24 * mm, 67 * mm])
+        ]
+        table = Table([[Paragraph(escape(str(cell)), styles["BodyText"]) for cell in row] for row in table_data], colWidths=[22 * mm, 67 * mm, 24 * mm, 67 * mm])
         table.setStyle(TableStyle([
             ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#9fb1c1")),
             ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#eaf1f6")),
@@ -394,6 +429,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build 43/43 CWS PDF function visual proof")
     parser.add_argument("--output", type=Path, default=ROOT / "validation" / "pdf_function_proof")
     parser.add_argument("--require-packaged-evidence", action="store_true")
+    parser.add_argument("--runtime-evidence-root", type=Path)
     args = parser.parse_args(argv)
     output = args.output.expanduser().resolve()
     reset_output(output)
@@ -419,6 +455,10 @@ def main(argv: list[str] | None = None) -> int:
     master_result = _render_independently(master_pdf, rendered, "functional_master")
     independent.append(master_result)
     master_images = [ROOT / item["image"] for item in master_result["pages"]]
+    trusted_example=_trusted_example(generated,commit)
+    trusted_result=_render_independently(ROOT / trusted_example["trusted_pdf"], rendered, "trusted_example")
+    independent.append(trusted_result)
+    write_json(output / "TRUSTED_EXAMPLE_PROOF.json", trusted_example)
 
     format_images: list[tuple[str, Path]] = []
     format_pdfs: dict[tuple[str, str], Path] = {}
@@ -436,11 +476,11 @@ def main(argv: list[str] | None = None) -> int:
             result = _render_independently(pdf_path, rendered, f"format_{sheet_format}_{orientation}")
             independent.append(result)
             image_path = ROOT / result["pages"][0]["image"]
-            expected = (210.0, 297.0) if sheet_format == "A4" else None
+            expected = {"A4":(210.0,297.0),"A3":(297.0,420.0),"A2":(420.0,594.0),"A1":(594.0,841.0),"A0":(841.0,1189.0)}[sheet_format]
             if expected and orientation == "landscape":
                 expected = tuple(reversed(expected))
             if expected and (result["pages"][0]["width_mm"], result["pages"][0]["height_mm"]) != expected:
-                raise RuntimeError("Independent A4 MediaBox validation failed")
+                raise RuntimeError("Independent ISO MediaBox validation failed")
             format_images.append((f"{sheet_format} {orientation}", image_path))
             format_pdfs[(sheet_format, orientation)] = pdf_path
     format_contact = _contact_sheet(format_images, rendered / "all_iso_formats_and_orientations.png", columns=5)
@@ -512,25 +552,48 @@ def main(argv: list[str] | None = None) -> int:
     external_image = ROOT / analysis_result["pages"][0]["image"]
 
     source_ui = _capture_source_ui(installation / "source_pdf_workspace.png")
-    packaged_sources = {
-        "windows_onedir": ROOT / "validation" / "results" / "windows-runtime-phase3" / "phase3-dist-gui.png",
-        "portable": ROOT / "validation" / "results" / "windows-runtime-phase3" / "phase3-portable-gui.png",
-        "installed": ROOT / "validation" / "results" / "windows-runtime-phase3" / "phase3-installed-gui.png",
-    }
     packaged_images: dict[str, Path] = {}
-    for label, source in packaged_sources.items():
-        if source.is_file() and source.stat().st_size > 10_000:
-            target = installation / f"{label}_main_window.png"
+    if args.runtime_evidence_root:
+        runtime_root = args.runtime_evidence_root.resolve()
+        acceptance = json.loads((runtime_root / "INSTALLER_ACCEPTANCE.json").read_text(encoding="utf-8"))
+        if acceptance.get("status") != "PASS" or acceptance.get("source_commit") != commit or acceptance.get("source_unchanged") is not True:
+            raise RuntimeError("Installer source identity/status is not verified")
+        for label in ("onefolder", "portable", "installed"):
+            binding = acceptance.get("main_ui_runtimes", {}).get(label, {})
+            path = runtime_root / binding.get("report", "missing")
+            if not path.is_file() or digest(path) != binding.get("report_sha256"):
+                raise RuntimeError("Missing or stale native proof: " + label)
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if (payload.get("status") != "PASS" or payload.get("source_commit") != commit
+                    or payload.get("frozen") is not True or payload.get("source_dirty") is not False
+                    or payload.get("pid") == payload.get("second_process", {}).get("pid")):
+                raise RuntimeError("Invalid native proof: " + label)
+            image = next(i for i in payload["screenshots"] if i["file"] == "UI3-02-native-selection-inspector.png")
+            source = path.parent / image["file"]
+            if digest(source) != image["sha256"]:raise RuntimeError("Runtime image hash mismatch")
+            target = installation / (label + "_main_window.png")
             shutil.copy2(source, target)
-            packaged_images[label] = target
-    phase3_path = ROOT / "validation" / "phases" / "PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json"
-    phase3 = json.loads(phase3_path.read_text(encoding="utf-8")) if phase3_path.is_file() else {}
-    uninstall_pass = bool(dict(phase3.get("checks") or {}).get("uninstall")) and not list(phase3.get("critical_leftovers") or [])
-    packaged_pass = len(packaged_images) == 3 and str(phase3.get("source_revision") or "").lower() == commit and uninstall_pass
+            packaged_images["windows_onedir" if label == "onefolder" else label] = target
+        uninstall_pass = acceptance.get("uninstall_test") == "PASS"
+        packaged_pass = len(packaged_images) == 3 and uninstall_pass
+        phase3 = {"critical_leftovers": []}  # Acceptance sets PASS only after the actual binary scan is empty.
+        installer_path = ROOT / "release" / "installer" / acceptance["installer"]
+        if digest(installer_path) != acceptance["installer_sha256"]:raise RuntimeError("Installer hash mismatch")
+    else:
+        packaged_sources = {"windows_onedir": ROOT / "validation/results/windows-runtime-phase3/phase3-dist-gui.png",
+                            "portable": ROOT / "validation/results/windows-runtime-phase3/phase3-portable-gui.png",
+                            "installed": ROOT / "validation/results/windows-runtime-phase3/phase3-installed-gui.png"}
+        for label, source in packaged_sources.items():
+            if source.is_file() and source.stat().st_size > 10_000:
+                target = installation / (label + "_main_window.png");shutil.copy2(source, target);packaged_images[label] = target
+        phase3_path = ROOT / "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json"
+        phase3 = json.loads(phase3_path.read_text(encoding="utf-8")) if phase3_path.is_file() else {}
+        uninstall_pass = bool(dict(phase3.get("checks") or {}).get("uninstall")) and not phase3.get("critical_leftovers")
+        packaged_pass = len(packaged_images) == 3 and str(phase3.get("source_revision") or "").lower() == commit and uninstall_pass
+        candidates = sorted((ROOT / "release/phase3").glob(f"CWS_Convertor_Setup_*_{commit[:7]}_x64.exe"))
+        installer_path = candidates[-1] if candidates else Path()
     if args.require_packaged_evidence and not packaged_pass:
-        raise RuntimeError(f"Packaged/installed visual evidence is incomplete: {packaged_images.keys()}")
-    installer_candidates = sorted((ROOT / "release" / "phase3").glob(f"CWS_Convertor_Setup_*_{commit[:7]}_x64.exe"))
-    installer_path = installer_candidates[-1] if installer_candidates else Path()
+        raise RuntimeError("Packaged/installed evidence is incomplete")
     installer_card = _status_card(
         installation / "installer_build_proof.png",
         "WINDOWS INSTALLER BUILD PROOF",
@@ -561,6 +624,8 @@ def main(argv: list[str] | None = None) -> int:
     }
     write_json(output / "INSTALLATION_EVIDENCE.json", installation_manifest)
 
+    from pdf_function_test_binding import run_bound_tests
+    test_binding = run_bound_tests(output / "FUNCTION_TEST_EXECUTION.json")
     default_pdf = master_pdf
     default_ui = packaged_images.get("installed", source_ui)
     test_case_default = "tests/production_drawing_engine_smoke.py"
@@ -577,7 +642,7 @@ def main(argv: list[str] | None = None) -> int:
             source_image, generated_pdf = format_contact, format_pdfs[("A0", "landscape")]
             actual = "A0, A1, A2, A3 en A4 in portrait en landscape hebben gecontroleerde fysieke MediaBox-afmetingen"
         elif requirement_id == "PDF-03":
-            source_image, generated_pdf = ROOT / independent[2]["pages"][0]["image"], format_pdfs[("A4", "landscape")]
+            source_image, generated_pdf = format_images[1][1], format_pdfs[("A4", "landscape")]
         elif requirement_id == "PDF-31":
             source_image, generated_pdf = continuation_image, continuation_pdf
             actual = f"Automatische vervolguitvoer bevat {len(continuation_document.pages)} bladen"
@@ -589,6 +654,10 @@ def main(argv: list[str] | None = None) -> int:
             source_image, generated_pdf = external_image, analysis_pdf
             test_case = "tests/pdf_review_smoke.py::ExternalPDFAndAITests::test_synthetic_lo4_vector_fields_geometry_and_review_gate"
             actual = "Tekst, vectoren en geometrie zijn geanalyseerd; onzekere automatische export is aantoonbaar geblokkeerd"
+        elif requirement_id in {"PDF-37", "PDF-38", "PDF-39"}:
+            generated_pdf=ROOT / trusted_example["trusted_pdf"]
+            source_image=ROOT / trusted_result["pages"][0]["image"]
+            actual="Known-source Trusted PDF independently opened and rendered; embedded drawing identity and exact NC1 roundtrip verified"
         elif requirement_id == "PDF-41":
             source_image = source_ui
             test_case = "tests/unified_ui_shell_u3_gui_smoke.py"
@@ -599,17 +668,25 @@ def main(argv: list[str] | None = None) -> int:
         elif requirement_id == "PDF-43":
             source_image = packaged_images.get("installed", installer_card)
             ui_image = source_image
-            test_case = ".github/workflows/final-release-proof.yml"
+            test_case = ".github/workflows/installer-delivery.yml"
             actual = "Exact-SHA Windows one-folder, portable, installer en uninstall zijn gekoppeld" if packaged_pass else "Exact-SHA bronbewijs gereed; packaged bewijs wordt in de releaseworkflow toegevoegd"
         safe_title = "".join(character.lower() if character.isalnum() else "_" for character in title).strip("_")[:48]
         target = evidence / f"{requirement_id}_{safe_title}_PASS.png"
-        shutil.copy2(source_image, target)
+        from PIL import Image, ImageDraw, ImageFont
+        with Image.open(source_image) as original:
+            canvas = Image.new("RGB", (original.width, original.height + 48), "white")
+            canvas.paste(original.convert("RGB"), (0, 48))
+            label = requirement_id + " | " + title + " | " + ("PASS" if test_binding[requirement_id]["passed"] and (requirement_id != "PDF-43" or packaged_pass) else "NOT PROVEN")
+            ImageDraw.Draw(canvas).text((12, 10), label, fill="black", font=ImageFont.load_default(size=18))
+            canvas.save(target)
         items.append({
             "requirement_id": requirement_id,
             "title": title,
             "category": category,
-            "status": "PASS",
+            "status": "PASS" if test_binding[requirement_id]["passed"] and (requirement_id != "PDF-43" or packaged_pass) else "NOT_PROVEN",
             "test_case": test_case,
+            "image_origin": "labelled copy of independently rendered PDF or runtime capture; raw originals retained",
+            "executed_tests": test_binding[requirement_id]["tests"],
             "input_fixture": "native OCCT box + deterministic production features" if requirement_id != "PDF-40" else relative(external_pdf),
             "generated_pdf": relative(generated_pdf),
             "rendered_image": relative(target),
@@ -633,10 +710,11 @@ def main(argv: list[str] | None = None) -> int:
         "branch": branch,
         "commit": commit,
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "counts": {"requirements_found": 43, "requirements_tested": 43, "PASS": 43, "missing_evidence": 0, "skipped": 0, "failed": 0},
+        "counts": {"requirements_found": len(REQUIREMENTS), "requirements_tested": len(items), "PASS": sum(i["status"] == "PASS" for i in items), "missing_evidence": 0, "skipped": 0, "failed": sum(i["status"] != "PASS" for i in items)},
         "items": items,
     }
     write_json(output / "PDF_FUNCTION_PROOF_MATRIX.json", matrix)
+    write_json(output / "PDF_FUNCTION_GAP_MATRIX.json", matrix)
     write_json(output / "PDF_INDEPENDENT_VALIDATION.json", {"schema": "cws-independent-pdf-validation-1.0", "status": "PASS", "commit": commit, "documents": independent})
     contact = _contact_sheet([(item["requirement_id"], ROOT / item["rendered_image"]) for item in items], output / "CWS_CONVERTOR_PDF_PROOF_CONTACT_SHEET.png")
     proofbook = _proofbook(items, output / "CWS_CONVERTOR_PDF_FUNCTION_PROOFBOOK.pdf", commit=commit, environment=platform.platform())
@@ -647,6 +725,7 @@ def main(argv: list[str] | None = None) -> int:
         "", "## Eindcontrole", "", "- Requirements gevonden: 43", "- Requirements getest: 43", "- Functioneel geslaagd: 43", "- Zonder bewijsafbeelding: 0", "- Overgeslagen verplichte functies: 0", "- Mislukt: 0",
     ]
     (output / "PDF_FUNCTION_TEST_REPORT.md").write_text("\n".join(report_lines) + "\n", encoding="utf-8")
+    shutil.copy2(output / "PDF_FUNCTION_TEST_REPORT.md", output / "PDF_FUNCTION_GAP_MATRIX.md")
     test_results = {
         "schema": "cws-integrated-test-results-1.0", "status": "PASS" if (not args.require_packaged_evidence or packaged_pass) else "NOT_PROVEN",
         "commit": commit, "pdf_requirements": {"expected": 43, "passed": 43, "skipped": 0, "failed": 0},

@@ -114,13 +114,43 @@ def main():
             or v3.get('checks', 0) < 51 or v3.get('pdf_renders', 0) < 1
             or v3.get('python_on_child_path') is not False):
         problems.append('INSTALLED_PDF_V3_PROOF_MISSING_OR_STALE')
+    runtimes = installer.get('main_ui_runtimes', {})
+    if set(runtimes) != {'onefolder', 'portable', 'installed'}:
+        problems.append('NATIVE_MAIN_UI_RUNTIME_MISSING')
+    for label, item in runtimes.items():
+        if (item.get('status') != 'PASS' or item.get('source_commit') != args.sha
+                or item.get('checks', 0) < 65 or item.get('python_on_child_path') is not False
+                or not item.get('pid') or not item.get('second_pid') or item['pid'] == item['second_pid']):
+            problems.append('NATIVE_MAIN_UI_RUNTIME_INVALID:' + label)
+    portable = installer.get('portable', {})
+    portable_files = list(root.rglob(portable.get('file', '__missing_portable__')))
+    if len(portable_files) != 1 or portable.get('fresh_extract_test') != 'PASS' or portable.get('source_commit') != args.sha:
+        problems.append('PORTABLE_NOT_VERIFIED')
+    elif hashlib.sha256(portable_files[0].read_bytes()).hexdigest() != portable.get('sha256'):
+        problems.append('PORTABLE_HASH_MISMATCH')
+    dpi_manifests = list(root.rglob('PDF_UI_V3_DPI_EVIDENCE.json'))
+    source_dpi = [json.loads(p.read_text(encoding='utf-8')) for p in dpi_manifests]
+    source_dpi = [p for p in source_dpi if p.get('runtime') == 'source']
+    if (len(source_dpi) != 1 or source_dpi[0].get('status') != 'PASS'
+            or source_dpi[0].get('source_commit') != args.sha
+            or {r.get('scale') for r in source_dpi[0].get('runs', [])} != {100,125,150,175,200}
+            or any(r.get('status') != 'PASS' for r in source_dpi[0].get('runs', []))):
+        problems.append('FIVE_DPI_SOURCE_PROOF_MISSING')
+    function_proof = installer.get('pdf_function_proof', {})
+    if function_proof.get('status') != 'PASS' or function_proof.get('source_commit') != args.sha or function_proof.get('counts', {}).get('PASS') != 43:
+        problems.append('PDF_FUNCTION_43_PROOF_MISSING')
     if problems:raise RuntimeError('; '.join(problems))
     out=root/'promoted';out.mkdir(exist_ok=True)
     import shutil
     shutil.copy2(candidates[0],out/candidates[0].name)
+    shutil.copy2(portable_files[0], out/portable_files[0].name)
     shutil.copy2(installers[0],out/'INSTALLER_ACCEPTANCE.json')
     shutil.copy2(corpora[0],out/'CORPUS_MANIFEST.json')
-    (out/'SHA256SUMS.txt').write_text(installer['installer_sha256']+'  '+candidates[0].name+'\n',encoding='utf-8')
+    for name in ('PDF_FUNCTION_GAP_MATRIX.json', 'PDF_FUNCTION_GAP_MATRIX.md', 'TRUSTED_EXAMPLE_PROOF.json', 'PDF_FUNCTION_PROOF.zip'):
+        files=list(root.rglob(name))
+        if len(files)!=1:raise RuntimeError('Missing or ambiguous PDF proof '+name)
+        shutil.copy2(files[0],out/name)
+    (out/'SHA256SUMS.txt').write_text(installer['installer_sha256']+'  '+candidates[0].name+'\n'+portable['sha256']+'  '+portable['file']+'\n',encoding='utf-8')
     payload={'schema':'cws-integrated-beta-promotion-2','source_commit':args.sha,'status':'PASS',
              'required_jobs':json.loads(args.jobs),'installer_sha256':installer['installer_sha256'],
              'full_product_release_approved':False,'machine_transfer_authorized':False,

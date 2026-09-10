@@ -135,9 +135,9 @@ def build_validation() -> dict[str, Any]:
     add("no_leaked_jobs_threads_actors", soak.get("status") == "passed" and
         all(soak.get("checks", {}).get(key) for key in ("no_thread_leak", "no_widget_actor_leak")),
         str(PHASES / "PHASE_3_SOAK_EVIDENCE.json"))
-    add("visual_baselines", ui.get("status") == "passed" and int(ui.get("visual_baseline_count", 0)) == 4,
+    add("visual_baselines", ui.get("status") == "passed" and int(ui.get("visual_baseline_count", 0)) == 5,
         str(PHASES / "PHASE_3_UI_ACCEPTANCE.json"))
-    add("dpi_100_125_150_200", ui.get("dpi_factors") == [100, 125, 150, 200],
+    add("dpi_100_125_150_175_200", ui.get("dpi_factors") == [100, 125, 150, 175, 200],
         str(PHASES / "PHASE_3_UI_ACCEPTANCE.json"))
     add("basic_keyboard_accessibility", ui.get("keyboard_accessibility") is True,
         str(PHASES / "PHASE_3_UI_ACCEPTANCE.json"))

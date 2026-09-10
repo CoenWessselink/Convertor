@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import time
+import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'build' / 'installer-evidence'
@@ -84,6 +85,31 @@ def main() -> int:
         if result.get('status') != 'passed' or result.get('python_on_child_path') is not False:
             raise RuntimeError(label + ': incomplete self-contained runtime proof')
 
+    def main_ui_proof(label: str, directory: Path) -> None:
+        run(label + '_main_ui', [sys.executable, str(ROOT / 'tools/run_pdf_ui_v3_acceptance.py'),
+            '--runtime-dir', str(directory), '--runtime', label,
+            '--output', str(OUT / (label + '-main-ui')), '--scales', '100'], 900)
+        dpi = json.loads((OUT / (label + '-main-ui/PDF_UI_V3_DPI_EVIDENCE.json')).read_text(encoding='utf-8'))
+        evidence = OUT / (label + '-main-ui/dpi-100/REPORT.json')
+        payload = json.loads(evidence.read_text(encoding='utf-8'))
+        if (dpi.get('status') != 'PASS' or payload.get('status') != 'PASS'
+                or payload.get('source_commit') != sha or payload.get('source_dirty') is not False
+                or payload.get('frozen') is not True
+                or payload.get('executable_sha256') != binding['runtime_files']['CWS_Convertor.exe']
+                or len(payload.get('checks', [])) < 65 or len(payload.get('screenshots', [])) < 6
+                or payload.get('pid') == payload.get('second_process', {}).get('pid')
+                or any(c.get('status') != 'PASS' for c in payload['checks'])):
+            raise RuntimeError(label + ': incomplete main-window/second-process proof')
+        for image in payload['screenshots']:
+            if digest(evidence.parent / image['file']) != image['sha256']:
+                raise RuntimeError(label + ': main-window image hash mismatch')
+        report.setdefault('main_ui_runtimes', {})[label] = {
+            'status': 'PASS', 'source_commit': sha, 'executable_sha256': payload['executable_sha256'],
+            'checks': len(payload['checks']), 'pid': payload['pid'],
+            'second_pid': payload['second_process']['pid'], 'report': str(evidence.relative_to(OUT)),
+            'report_sha256': digest(evidence), 'python_on_child_path': False}
+        write(manifest, report)
+
     try:
         run('pyinstaller', [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', 'CWS_Convertor.spec'], 3600)
         for name in ('CWS_Convertor.exe', 'CWS_Convertor_CLI.exe'):
@@ -94,6 +120,27 @@ def main() -> int:
                    'generated_at_utc': report['generated_at_utc']}
         write(DIST / 'BUILD_SOURCE.json', binding)
         smoke('dist', DIST)
+        main_ui_proof('onefolder', DIST)
+        portable_name = f'CWS_Convertor_Portable_{APP_VERSION}_{sha[:7]}_x64.zip'
+        portable = RELEASE / portable_name
+        with zipfile.ZipFile(portable, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+            for path in sorted(DIST.rglob('*')):
+                if path.is_file():
+                    archive.write(path, Path('CWS_Convertor') / path.relative_to(DIST))
+        portable_root = ROOT / 'build' / 'fresh-portable-runtime'
+        if portable_root.exists():
+            raise RuntimeError('Portable acceptance requires a genuinely absent target')
+        with zipfile.ZipFile(portable) as archive:
+            archive.extractall(portable_root)
+        portable_runtime = portable_root / 'CWS_Convertor'
+        if json.loads((portable_runtime / 'BUILD_SOURCE.json').read_text()) != binding:
+            raise RuntimeError('Portable source binding differs')
+        if any(digest(portable_runtime / name) != expected for name, expected in binding['runtime_files'].items()):
+            raise RuntimeError('Portable executable hash differs')
+        smoke('portable', portable_runtime)
+        main_ui_proof('portable', portable_runtime)
+        report['portable'] = {'file': portable_name, 'sha256': digest(portable), 'size_bytes': portable.stat().st_size,
+                              'fresh_extract_test': 'PASS', 'source_commit': sha}
         compiler = next((p for p in [
             Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) / 'Inno Setup 6/ISCC.exe',
             Path(os.environ.get('ProgramFiles', r'C:\Program Files')) / 'Inno Setup 6/ISCC.exe',
@@ -117,6 +164,7 @@ def main() -> int:
         if json.loads((STAGING / 'BUILD_SOURCE.json').read_text()) != binding:
             raise RuntimeError('Installed source binding differs')
         smoke('installed', STAGING)
+        main_ui_proof('installed', STAGING)
         # Exercise all twelve directed NC1/STEP/IFC/PDF routes in the
         # installed executable, with no Python visible to child processes.
         matrix_path = OUT / 'installed-conversion-matrix.json'
@@ -231,8 +279,23 @@ def main() -> int:
                       user_file_preserved=True, python_required_on_client=False,
                       source_unchanged=True, signing='not_signed')
         write(manifest, report)
+        run('pdf_43_function_proof', [sys.executable, str(ROOT / 'tools/build_pdf_function_proof.py'),
+            '--output', str(ROOT / 'validation/pdf_ui_v3_function_proof'), '--require-packaged-evidence',
+            '--runtime-evidence-root', str(OUT)], 1200)
+        proof_root = ROOT / 'validation/pdf_ui_v3_function_proof'
+        matrix = json.loads((proof_root / 'PDF_FUNCTION_GAP_MATRIX.json').read_text(encoding='utf-8'))
+        if matrix.get('commit') != sha or matrix.get('status') != 'PASS' or matrix['counts']['PASS'] != 43:
+            raise RuntimeError('PDF 43-function acceptance did not pass')
+        report['pdf_function_proof'] = {'status': 'PASS', 'source_commit': sha, 'counts': matrix['counts'],
+            'matrix_sha256': digest(proof_root / 'PDF_FUNCTION_GAP_MATRIX.json')}
+        write(manifest, report)
         shutil.copy2(manifest, RELEASE / manifest.name)
-        (RELEASE / 'SHA256SUMS.txt').write_text(digest(target) + '  ' + name + '\n', encoding='ascii')
+        for filename in ('PDF_FUNCTION_GAP_MATRIX.json', 'PDF_FUNCTION_GAP_MATRIX.md', 'TRUSTED_EXAMPLE_PROOF.json'):
+            shutil.copy2(proof_root / filename, RELEASE / filename)
+        with zipfile.ZipFile(RELEASE / 'PDF_FUNCTION_PROOF.zip','w',zipfile.ZIP_DEFLATED) as z:
+            for path in proof_root.rglob('*'):
+                if path.is_file():z.write(path,path.relative_to(proof_root))
+        (RELEASE / 'SHA256SUMS.txt').write_text(digest(target) + '  ' + name + '\n' + digest(portable) + '  ' + portable.name + '\n', encoding='ascii')
         print(json.dumps(report, indent=2), flush=True)
         return 0
     except Exception as exc:

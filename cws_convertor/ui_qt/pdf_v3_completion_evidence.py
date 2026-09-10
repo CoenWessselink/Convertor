@@ -3,7 +3,7 @@
 The geometric input is an explicitly synthetic two-member assembly. No render,
 widget, save operation or input handler is replaced. Only the export directory
 is redirected into the evidence folder. This is not visual acceptance against
-an unavailable external specification or machine qualification.
+the separate full-main-window V3 specification or machine qualification.
 """
 from __future__ import annotations
 from hashlib import sha256
@@ -252,7 +252,7 @@ def run_pdf_v3_completion_evidence(output: Path) -> dict:
             "checks": checks, "screenshots": images, "pdf_renders": pdf_renders, "production_release_allowed": False,
             "scope": "Existing DrawingWorkspacePanel, native Qt input, synthetic two-component geometry, real project save/reopen and PDF render",
             "external_v3_specification_verified": False,
-            "limitations": ["Original V3 ZIP and reference images unavailable; no claim of full V3 visual conformity", "Synthetic geometry is review-only; not machine qualification"]}
+            "limitations": ["Legacy component smoke only; full main-window conformity is checked separately by PDF_UI_V3_MAIN_EVIDENCE.json", "Synthetic geometry is review-only; not machine qualification"]}
         (output / "V3_NATIVE_EVIDENCE.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         return report
     finally:
