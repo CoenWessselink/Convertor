@@ -1,0 +1,70 @@
+name: Apply verified existing V3 integration and dispatch exact-source installer
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/v3-apply-reviewed-integration.yml']
+permissions:
+  contents: write
+  actions: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Verify and apply scoped source patch without branch replacement
+        shell: python
+        run: |
+          import hashlib,json,lzma,os,pathlib,subprocess
+          root=pathlib.Path('.github/v3-reviewed-patch')
+          manifest=json.loads((root/'MANIFEST.json').read_text())
+          payload=b''.join((root/f'part{i}.bin').read_bytes() for i in range(1,6))
+          assert hashlib.sha256(payload).hexdigest()==manifest['compressed_sha256'],'Transport hash mismatch'
+          patch=lzma.decompress(payload)
+          assert hashlib.sha256(patch).hexdigest()==manifest['patch_sha256'],'Patch hash mismatch'
+          subprocess.run(['git','apply','--check'],input=patch,check=True)
+          subprocess.run(['git','apply'],input=patch,check=True)
+          for filename,expected in manifest['files'].items():
+              data=pathlib.Path(filename).read_bytes()
+              assert hashlib.sha256(data).hexdigest()==expected,filename
+              if filename.endswith('.py'): compile(data,filename,'exec')
+          subprocess.run(['git','diff','--check'],check=True)
+          subprocess.run(['git','add','--',*manifest['files']],check=True)
+          for i in range(1,6): subprocess.run(['git','rm',str(root/f'part{i}.bin')],check=True)
+          subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
+          subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+          subprocess.run(['git','commit','-m','fix(pdf-v3): complete native inspector, assembly geometry, strict scale and revision-safe persistence with installed-runtime gates'],check=True)
+          subprocess.run(['git','push','origin','HEAD:refs/heads/agent/cws-pdf-ui-v3-complete-20260909'],check=True)
+          final=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          assert not subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],text=True).strip()
+          with open(os.environ['GITHUB_ENV'],'a') as output: output.write('FINAL_SOURCE_SHA='+final+'\n')
+          print('FINAL_SOURCE_SHA='+final)
+      - name: Start existing Windows delivery workflow on final source commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo={owner:context.repo.owner,repo:context.repo.repo};
+            const branch='agent/cws-pdf-ui-v3-complete-20260909';
+            const ref=(await github.rest.git.getRef({...repo,ref:'heads/'+branch})).data;
+            if(ref.object.sha!==process.env.FINAL_SOURCE_SHA) throw new Error('Branch changed before installer dispatch');
+            await github.rest.actions.createWorkflowDispatch({...repo,workflow_id:'installer-delivery.yml',ref:branch});
+            core.notice('Installer dispatched for '+process.env.FINAL_SOURCE_SHA);
+      - name: Preserve final exact source and Git identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/v3-final-source
+          git archive --format=zip --output=build/v3-final-source/source.zip HEAD
+          git bundle create build/v3-final-source/source.bundle HEAD
+          git rev-parse HEAD > build/v3-final-source/COMMIT.txt
+          git rev-parse HEAD^{tree} > build/v3-final-source/TREE.txt
+          git show --stat --oneline HEAD > build/v3-final-source/CHANGES.txt
+          sha256sum build/v3-final-source/source.zip build/v3-final-source/source.bundle > build/v3-final-source/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_V3_Reviewed_Final_Source_${{ env.FINAL_SOURCE_SHA }}
+          path: build/v3-final-source/*
+          retention-days: 14
+          if-no-files-found: error
