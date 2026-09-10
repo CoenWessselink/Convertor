@@ -6,50 +6,22 @@ glyph shaping, not just file-size checks. No screenshot pixels are modified.
 """
 from __future__ import annotations
 
-import os
-from pathlib import Path
 from typing import Any
 
-_SAMPLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789éëïöüÉØ°±"
-_PREFERRED = ("Bahnschrift", "Segoe UI", "Arial", "DejaVu Sans", "Liberation Sans", "Noto Sans")
-
-
 def ensure_ui_font(application: Any) -> Any:
-    from cws_viewer.ui_qt.qt_compat import require_qt
+    """Compatibility entry point backed by the production font selector.
 
-    _core, gui, _widgets = require_qt()
-    if application is None:
-        raise RuntimeError("Create QApplication before initializing the UI fonts")
-    previous = application.property("cws_verified_ui_font")
-    if previous:
-        return gui.QFont(str(previous), 9)
-    loaded = []
-    # Windows' offscreen plugin can have an empty system font database. Use OS
-    # fonts, including bold variants and symbols; never a private font package.
-    if os.name == "nt":
-        directory = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
-        for name in ("bahnschrift.ttf", "segoeui.ttf", "segoeuib.ttf", "segoeuii.ttf",
-                     "arial.ttf", "arialbd.ttf", "seguisym.ttf", "seguiemj.ttf"):
-            path = directory / name
-            if path.is_file():
-                font_id = gui.QFontDatabase.addApplicationFont(str(path))
-                if font_id >= 0:
-                    loaded.extend(gui.QFontDatabase.applicationFontFamilies(font_id))
-    candidates = dict.fromkeys((*_PREFERRED, application.font().family(),
-                              *gui.QFontDatabase.families()))
-    available = set(gui.QFontDatabase.families())
-    for family in candidates:
-        if family not in available:
-            continue
-        font = gui.QFont(family, 9)
-        raw = gui.QRawFont.fromFont(font)
-        if raw.isValid() and all(raw.supportsCharacter(ord(c)) for c in _SAMPLE):
-            application.setFont(font)
-            application.setProperty("cws_verified_ui_font", family)
-            application.setProperty("cws_loaded_os_font_families", list(dict.fromkeys(loaded)))
-            return font
-    raise RuntimeError("Geen leesbaar UI-lettertype gevonden. Herstel een standaard "
-                       "systeemlettertype (Segoe UI/Arial/DejaVu Sans) en start opnieuw.")
+    The older PDF proof and the current design system must not select different
+    families or maintain independent validation caches. The shared selector
+    validates Dutch and engineering glyphs on every cached-font use.
+    """
+    from cws_viewer.ui_qt.qt_compat import require_qt
+    from .ui_fonts import ensure_readable_ui_font
+
+    _core, gui, widgets = require_qt()
+    if application is None or application is not widgets.QApplication.instance():
+        raise RuntimeError("Use the active QApplication when initializing UI fonts")
+    return gui.QFont(ensure_readable_ui_font(), 9)
 
 
 def text_glyph_evidence(text: str, font: Any) -> dict[str, Any]:

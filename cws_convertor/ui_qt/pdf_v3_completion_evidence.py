@@ -50,6 +50,7 @@ def run_pdf_v3_completion_evidence(output: Path) -> dict:
     from cws_convertor.ui_qt.functional_workspaces import DrawingWorkspacePanel
     from cws_convertor.ui_qt.design_system.stylesheet import apply_v52_design_system
     from cws_convertor.project.service import ProjectSession
+    from cws_convertor.ui_qt.runtime_typography import inspect_visible_text
     from cws_convertor.drawings import DrawingRole
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -73,8 +74,11 @@ def run_pdf_v3_completion_evidence(output: Path) -> dict:
     def screenshot(name):
         flush()
         path = output / name
+        glyphs = inspect_visible_text(host)
+        check("actual visible text has no missing glyphs: " + name,
+              glyphs["status"] == "passed" and glyphs["checked_glyphs"] > 0 and glyphs["missing_glyphs"] == 0)
         check("real Qt screenshot: " + name, host.grab().save(str(path), "PNG"))
-        images.append({"file": name, "sha256": sha256(path.read_bytes()).hexdigest(), "origin": "QMainWindow.grab; existing DrawingWorkspacePanel"})
+        images.append({"file": name, "sha256": sha256(path.read_bytes()).hexdigest(), "origin": "QMainWindow.grab; existing DrawingWorkspacePanel", "glyph_evidence": glyphs})
     def click(control):
         position = QtCore.QPoint(9, control.height() // 2) if isinstance(control, QtWidgets.QCheckBox) else control.rect().center()
         QtTest.QTest.mouseClick(control, QtCore.Qt.MouseButton.LeftButton, pos=position)

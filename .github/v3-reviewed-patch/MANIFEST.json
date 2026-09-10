@@ -12,13 +12,16 @@
     "cws_convertor/ui_qt/drawing_responsive.py": "d4639714d334fdcf9fc7e851e76b20f013bd95454cfee01a465cba80e5391db7",
     "cws_convertor/ui_qt/engineering_drawing.py": "27b266aa1248f8d3c76ca3b6a0fcfc39f0ef923c38a0d9dee469e3914278d467",
     "cws_convertor/ui_qt/functional_workspaces.py": "bebedfbda4db9678d5045f15ecaa80242e3be45cf3b7518c191df9a5f9fb9c9e",
-    "cws_convertor/ui_qt/pdf_v3_completion_evidence.py": "c8fe44fcc59e4fba3c565e51200ac309153335790d36417fd36dbf6ffb77c40d",
-    "docs/PDF_UI_V3_RESUMED_20260910.md": "2ad804e44cd3c947ace47f4d1c7f884d6712a7ec865f7f253aba6e14b5e6791a",
+    "cws_convertor/ui_qt/pdf_v3_completion_evidence.py": "59a3b343dd4140863e93498b227dd21b73731add7fcd6408dbcdde48990a13dc",
+    "docs/PDF_UI_V3_RESUMED_20260910.md": "0737d710c38f369d60695646d659d832398dfa37e8d1253a10eb1a89b011a2cd",
     "tests/drawing_v3_completion_smoke.py": "7f223884431b6e570e195fb27d5df46b29d129d9e918bd358826a24d870d1d52",
     "tests/drawing_v3_inspector_smoke.py": "f8aedc191025b5f507ec79d1bc35d89ed69ff6889697d8a7ca52c321102591d8",
     "tools/build_tested_installer.py": "789a43c0db9fd71814395d44799366ea96863fe25cce4f5e1304150ffac8f6b5",
     "tools/verify_integrated_delivery.py": "b78a5a0794734b7407029e9318eaf390b1d50d88f36306d399ecb8d50f6f442f",
-    "tests/drawing_v3_all_sheet_scale_smoke.py": "559ba0ed5716f21fe9da7209a68756181101426ab2769086d91e65bdbe54dcdf"
+    "tests/drawing_v3_all_sheet_scale_smoke.py": "559ba0ed5716f21fe9da7209a68756181101426ab2769086d91e65bdbe54dcdf",
+    "cws_convertor/ui_qt/ui_fonts.py": "dc60896f644949460d3f48b03863c8cdde6ad3e35815a7926d2875fbd631060e",
+    "cws_convertor/ui_qt/runtime_typography.py": "0fc845c62a7790a88ffb1e3c11403d4206ae12bf9bde18931eb7df5fc92c7839",
+    "tests/runtime_typography_smoke.py": "f35af748d9ad17bbafddd9037870ae25a98638bf6468ddf6cf39262abda6ee4e"
   },
   "scale_followup_base": "b7e9a037de7e62a067ee306462c26d6ebc656e3f",
   "scale_followup": "Sections retain stated scale; detail cells fit and display their actual independent scales."

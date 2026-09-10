@@ -7,7 +7,7 @@ from typing import Any
 
 from cws_viewer.ui_qt.qt_compat import require_qt
 
-GLYPH_PROBE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 éëïöü € × °"
+GLYPH_PROBE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz 0123456789 éëïöü É Ø ± € × °"
 PREFERRED_FAMILIES = ("Bahnschrift", "Segoe UI Variable", "Segoe UI", "Arial", "DejaVu Sans")
 
 
@@ -40,12 +40,15 @@ def ensure_readable_ui_font() -> str:
         raise RuntimeError("Een QApplication is nodig voor de lettertypecontrole")
     cached = str(app.property("cws_readable_font_family") or "")
     if cached and _has_glyphs(gui.QFont(cached, 9)):
+        # Both historical entry points attest the same currently validated font.
+        app.setProperty("cws_verified_ui_font", cached)
         return cached
     # The offscreen Windows plugin does not reliably enumerate installed GDI
     # fonts. Register the existing OS files before choosing the production font.
     if str(app.platformName()).lower() == "offscreen":
         directory = Path(os.environ.get("WINDIR", r"C:\Windows")) / "Fonts"
-        for filename in ("bahnschrift.ttf", "segoeui.ttf", "arial.ttf"):
+        for filename in ("bahnschrift.ttf", "segoeui.ttf", "segoeuib.ttf", "segoeuii.ttf",
+                         "arial.ttf", "arialbd.ttf", "seguisym.ttf", "seguiemj.ttf"):
             _load_font(directory / filename)
     known = {str(f).casefold() for f in gui.QFontDatabase.families()}
     chosen = next((f for f in PREFERRED_FAMILIES
@@ -61,6 +64,7 @@ def ensure_readable_ui_font() -> str:
             gui.QFont.insertSubstitution(family, chosen)
     app.setFont(gui.QFont(chosen, 9))
     app.setProperty("cws_readable_font_family", chosen)
+    app.setProperty("cws_verified_ui_font", chosen)
     return chosen
 
 

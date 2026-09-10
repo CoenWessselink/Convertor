@@ -72,3 +72,15 @@ Assembly components remain individually identified in those detail views.
 `tests/drawing_v3_all_sheet_scale_smoke.py` adds six native regression tests for
 these cases. This does not change the unavailable external V3 reference-image
 conformity limitation above.
+
+
+## Windows-regressie: gedeelde lettertype-initialisatie
+De brede Windows-run vond een echte integratiefout: het bestaande design system
+initialiseerde `ui_fonts`, terwijl de oudere PDF-bewijsketen een onafhankelijke
+`runtime_typography`-cache gebruikte. Beide routes gebruiken nu dezelfde
+gevalideerde selectie, inclusief Ø en ±, en dezelfde verificatie-eigenschap.
+De oorspronkelijke falende test blijft behouden en begint nu expliciet met een
+lege cache. Aanvullende tests controleren beide aanroepvolgordes en ongeldige
+aanroepdoelen. Alle vier V3-screenshots controleren ook de echt gevormde zichtbare
+tekst met Qt: ontbrekende glyphs blokkeren de bewijsketen. Er worden geen
+systeemlettertypen als losse bestanden toegevoegd of uitgeleverd.

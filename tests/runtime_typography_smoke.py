@@ -55,8 +55,31 @@ class RuntimeTypographyTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_both_entry_points_share_one_verified_font_after_a_cold_start(self):
+        from cws_convertor.ui_qt.ui_fonts import ensure_readable_ui_font
+        self.app.setProperty("cws_readable_font_family", None)
+        self.app.setProperty("cws_verified_ui_font", None)
+        current = ensure_readable_ui_font()
+        self.assertEqual(current, self.app.property("cws_verified_ui_font"))
+        self.assertEqual(current, ensure_ui_font(self.app).family())
+
+    def test_cached_production_font_reestablishes_the_verified_attestation(self):
+        from cws_convertor.ui_qt.ui_fonts import ensure_readable_ui_font
+        family = ensure_readable_ui_font()
+        self.app.setProperty("cws_verified_ui_font", None)
+        self.assertEqual(family, ensure_readable_ui_font())
+        self.assertEqual(family, self.app.property("cws_verified_ui_font"))
+
+    def test_non_application_target_is_rejected(self):
+        with self.assertRaisesRegex(RuntimeError, "QApplication"):
+            ensure_ui_font(None)
+        with self.assertRaisesRegex(RuntimeError, "QApplication"):
+            ensure_ui_font(QtWidgets.QLabel("Not the application"))
+
     def test_design_system_uses_the_verified_available_family(self):
         from cws_convertor.ui_qt.design_system.stylesheet import apply_v52_design_system
+        self.app.setProperty("cws_verified_ui_font", None)
+        self.app.setProperty("cws_readable_font_family", None)
         label = QtWidgets.QLabel("Materiaal S355JR – Revisie B")
         apply_v52_design_system(label)
         label.show()
