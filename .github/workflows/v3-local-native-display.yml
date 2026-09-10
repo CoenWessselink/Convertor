@@ -1,0 +1,22 @@
+name: V3 native display dependency transport
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/v3-local-native-display.yml']
+permissions:
+  contents: read
+jobs:
+  transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          mkdir runtime
+          curl --fail --location https://deb.debian.org/debian/pool/main/x/xcb-util-cursor/libxcb-cursor0_0.1.4-1_amd64.deb --output runtime/libxcb-cursor0.deb
+          sha256sum runtime/libxcb-cursor0.deb > runtime/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_V3_XCB_Display_Dependency
+          path: runtime/*
+          retention-days: 2
+          if-no-files-found: error
