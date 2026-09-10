@@ -2498,6 +2498,8 @@ if qt_available():
                 ("Tekst/leaders", SnapFilter.TEXT_LEADERS.value),
             ):
                 self.snap_filter.addItem(label, value)
+            for label, value in (("Eindpunten", "endpoints"), ("Middelpunten", "midpoints"), ("Eindpunten + centra", "endpoints_centers")):
+                if self.snap_filter.findData(value) < 0:self.snap_filter.addItem(label, value)
             self.snap_filter.setToolTip("Selectiefilter voor geometrische snapreferenties")
             self.snap_filter.currentIndexChanged.connect(lambda _index: self._refresh_snap_candidates())
             toolbar.addWidget(self.snap_filter)
@@ -2818,6 +2820,16 @@ if qt_available():
             if self._dimension_tool != "select" and not self._ensure_dimension_editable():
                 self._on_dimension_command("cancel")
                 return
+            if self._dimension_tool in {"move_line", "move_text"}:
+                if not self._ensure_dimension_editable() or not self._dimension_model.selected_ids:
+                    return
+                selected = [d for d in self._dimension_document.dimensions if d.dimension_id in self._dimension_model.selected_ids]
+                text_only = self._dimension_tool == "move_text"
+                origin = selected[0].text_position if text_only else selected[0].line_position
+                self._dimension_model.move_selected((point[0]-origin[0], point[1]-origin[1]), text_only=text_only, user=self._current_user())
+                for dimension in selected:self._sync_layout_projection(dimension)
+                self._persist_dimension_editor("drawing.native_position_changed")
+                self._on_dimension_command("cancel"); self.refresh_preview(); return
             if self._dimension_tool.startswith("reanchor:"):
                 if candidate is None or not candidate.valid:
                     self.status.setText("Selecteer een geldige nieuwe snapreferentie")
@@ -3322,6 +3334,8 @@ if qt_available():
             self.refresh_preview()
 
         def _update_dimension_properties(self) -> None:
+            from .drawing_workspace_layout import update_context
+            update_context(self)
             if not hasattr(self, "dimension_properties"):
                 return
             self._property_editor_generation = getattr(self, "_property_editor_generation", 0) + 1
@@ -3641,7 +3655,9 @@ if qt_available():
             self.set_context(self._workspace, selection)
 
         def _output_folder(self) -> Path:
-            target = Path.home() / "Documents" / "CWS Convertor" / "Tekeningen"
+            settings = self._workspace.project.settings if self._workspace is not None else {}
+            configured = str(settings.get("drawing_output_directory") or "").strip()
+            target = Path(configured).expanduser() if configured else Path.home() / "Documents" / "CWS Convertor" / "Tekeningen"
             target.mkdir(parents=True, exist_ok=True)
             return target
 
@@ -3679,7 +3695,7 @@ if qt_available():
                         return str(entity_id)
             return ""
 
-        def _generate(self, *, make_png: bool, make_pdf: bool):
+        def _generate(self, *, make_png: bool, make_pdf: bool, require_trusted: bool = False):
             if self._workspace is None:
                 self.status.setText("Open eerst een project en selecteer daarna een maakdeel.")
                 self.preview.setText("Geen project geopend")
@@ -3719,6 +3735,7 @@ if qt_available():
                     self._output_folder(), entity_id=self._entity_id,
                     sheet_format=self.format.currentText(), scale_label=self.scale.currentText(),
                     unit=self.unit.currentText(), make_png=make_png, make_pdf=make_pdf,
+                    require_trusted=require_trusted,
                     views=selected_views, dimensions=self.dimensions_button.isChecked(),
                     title_block=self.title_block_button.isChecked(),
                     dimension_mode=self.dimension_mode.currentText(),
@@ -3772,6 +3789,9 @@ if qt_available():
 
         def export_png(self) -> None:
             self._generate(make_png=True, make_pdf=False)
+
+        def export_trusted_pdf(self) -> None:
+            self._generate(make_png=True, make_pdf=True, require_trusted=True)
 
         def export_pdf(self) -> None:
             self._generate(make_png=True, make_pdf=True)

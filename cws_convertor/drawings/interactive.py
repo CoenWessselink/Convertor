@@ -11,6 +11,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from hashlib import sha256
 import json
 import math
 from pathlib import Path
@@ -104,12 +105,54 @@ class SnapType(str, Enum):
 class SnapFilter(str, Enum):
     ALL = "all"
     POINTS = "points"
+    ENDPOINTS = "endpoints"
+    MIDPOINTS = "midpoints"
+    ENDPOINTS_CENTERS = "endpoints_centers"
     EDGES = "edges"
     CENTERS = "centers"
     CENTERLINES = "centerlines"
     FEATURES = "features"
     DIMENSIONS = "dimensions"
     TEXT_LEADERS = "text_leaders"
+
+
+PRESENTATION_CHOICES = {
+    "layer": ("dimensions", "annotations"),
+    "line_type": ("solid", "dashed", "dotted"),
+    "arrow_type": ("closed_filled", "open", "tick", "dot", "none"),
+}
+
+
+def normalize_dimension_presentation(values: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate persisted per-dimension appearance before rendering or editing.
+
+    This does not replace the versioned document style or grant release approval.
+    Invalid imported values fail closed; values never alter geometric nominals.
+    """
+    allowed = {*PRESENTATION_CHOICES, "line_color", "text_height_mm"}
+    if set(values) - allowed:
+        raise ValueError("Onbekende maateigenschap voor opmaak")
+    result = dict(values)
+    for key, choices in PRESENTATION_CHOICES.items():
+        if key in result and result[key] not in choices:
+            raise ValueError(f"Ongeldige {key}: {result[key]}")
+    if "line_color" in result:
+        value = str(result["line_color"])
+        if len(value) != 7 or not value.startswith("#") or any(c not in "0123456789abcdefABCDEF" for c in value[1:]):
+            raise ValueError("Kleur vereist #RRGGBB")
+        # White or near-white dimensions are not legible on drawing paper.
+        rgb = [int(value[i:i+2], 16) / 255.0 for i in (1, 3, 5)]
+        linear = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in rgb]
+        luminance = sum(v * w for v, w in zip(linear, (.2126, .7152, .0722)))
+        if 1.05 / (luminance + .05) < 3.0:
+            raise ValueError("Kleur heeft onvoldoende contrast op wit papier (minimaal 3:1)")
+        result["line_color"] = value.lower()
+    if "text_height_mm" in result:
+        value = float(str(result["text_height_mm"]).replace(",", "."))
+        if not math.isfinite(value) or not 2.0 <= value <= 12.0:
+            raise ValueError("Teksthoogte moet tussen 2 en 12 mm op papier liggen")
+        result["text_height_mm"] = value
+    return result
 
 
 class DrawingRole(str, Enum):
@@ -424,7 +467,7 @@ class DimensionEditorDocument:
             key=lambda value: (int(value.metadata.get("cluster_order") or 0), value.dimension_id),
         ):
             record = item.to_render_dict()
-            record["style"] = self.style.to_dict()
+            record["style"] = {**self.style.to_dict(), **normalize_dimension_presentation(item.metadata.get("presentation") or {})}
             result.append(record)
         return result
 
@@ -504,6 +547,8 @@ class DimensionEditorModel:
                     "line_position": list(item.line_position),
                     "text_position": list(item.text_position),
                     "anchors": [anchor.to_dict() for anchor in item.anchors],
+                    "presentation": deepcopy(item.metadata.get("presentation") or {}),
+                    "presentation_approved_by": item.metadata.get("presentation_approved_by", ""),
                 }
             changes.append({"dimension_id": dimension_id, "old": audit_value(old), "new": audit_value(new)})
         audit_details = dict(details or {})
@@ -606,6 +651,12 @@ class DimensionEditorModel:
             for anchor in item.anchors
         ):
             raise ValueError("Niet-canoniek bewezen maatankers blokkeren vrijgave")
+        for dimension in self.document.dimensions:
+            presentation = dimension.metadata.get("presentation") or {}
+            if presentation:
+                normalize_dimension_presentation(presentation)
+                if not dimension.metadata.get("presentation_approved_by"):
+                    raise ValueError("Afwijkende maatopmaak vereist goedkeuring")
         style = self.document.style
         if style.profile_scope == "standard":
             if style.to_dict() != DimensionStyle.cws_standard().to_dict():
@@ -916,6 +967,30 @@ class DimensionEditorModel:
             item.modified_at = self.clock()
             item.modified_by = user or "system"
         self._commit(before, user=user, details={"fields": sorted(values)})
+        return len(targets)
+
+    def update_selected_presentation(self, changes: Mapping[str, Any], *, role: str, user: str = "system") -> int:
+        """One selection transaction; custom presentation needs checker approval.
+
+        Read-only roles and released documents never gain write access through a
+        cosmetic edit. Approval is revoked by any later drafter modification.
+        """
+        role_value = _enum_value(DrawingRole, role, DrawingRole.READ_ONLY)
+        if role_value == DrawingRole.READ_ONLY.value:
+            raise PermissionError("Alleen-lezen: maatopmaak kan niet worden gewijzigd")
+        values = normalize_dimension_presentation(changes)
+        targets = [item for item in self.document.dimensions if item.dimension_id in self.selected_ids]
+        if not targets or not values:
+            return 0
+        merged = [normalize_dimension_presentation({**dict(item.metadata.get("presentation") or {}), **values}) for item in targets]
+        approver = (user or "system") if role_value in {DrawingRole.CHECKER.value, DrawingRole.RELEASER.value} else ""
+        before = self._begin("dimension.presentation")
+        for item, presentation in zip(targets, merged):
+            item.metadata["presentation"] = presentation
+            item.metadata["presentation_approved_by"] = approver
+            item.modified_at = self.clock()
+            item.modified_by = user or "system"
+        self._commit(before, user=user, details={"fields": sorted(values), "approved_by": approver})
         return len(targets)
 
     def update_style(
@@ -1343,6 +1418,12 @@ def build_snap_candidates(
     def allowed(layer: str, kind: str) -> bool:
         if filter_value == SnapFilter.ALL.value:
             return True
+        if filter_value == SnapFilter.ENDPOINTS.value:
+            return kind in {SnapType.VERTEX.value, SnapType.ENDPOINT.value}
+        if filter_value == SnapFilter.MIDPOINTS.value:
+            return kind == SnapType.MIDPOINT.value
+        if filter_value == SnapFilter.ENDPOINTS_CENTERS.value:
+            return kind in {SnapType.VERTEX.value, SnapType.ENDPOINT.value, SnapType.CENTER.value}
         if filter_value == SnapFilter.POINTS.value:
             return kind in {
                 SnapType.VERTEX.value,
@@ -1405,18 +1486,22 @@ def build_snap_candidates(
         # repeated primitives for the same semantic target must not duplicate it.
         key = (page_number, view_id, anchor.entity_id, feature_id, kind,
                round(point_value[0] * 1000), round(point_value[1] * 1000))
-        candidates.setdefault(
-            key,
-            SnapCandidate(
-                candidate_id=f"{page_number}:{view_id}:{anchor.entity_id}:{subshape_id}:{kind}:{index}",
-                point=point_value,
-                snap_type=kind,
-                label=f"{kind} · {anchor.entity_id} · {feature_id or subshape_id} · {view_id}",
-                anchor=anchor,
-                valid=True,
-                layer=primitive.layer,
-            ),
+        candidate = SnapCandidate(
+            candidate_id=f"{page_number}:{view_id}:{anchor.entity_id}:{kind}:" + sha256(json.dumps(key, ensure_ascii=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+            point=point_value,
+            snap_type=kind,
+            label=f"{kind} · {anchor.entity_id} · {feature_id or subshape_id} · {view_id}",
+            anchor=anchor,
+            valid=True,
+            layer=primitive.layer,
         )
+        # Hidden edges are painted before the visible outline. A coincident
+        # hidden endpoint must not suppress the selectable visible endpoint.
+        # Retain semantic/entity/view de-duplication without crossing identity.
+        previous = candidates.get(key)
+        priority = {"visible": 0, "annotations": 1, "centerlines": 2, "hidden": 3, "dimensions": 4}
+        if previous is None or priority.get(candidate.layer, 5) < priority.get(previous.layer, 5):
+            candidates[key] = candidate
 
     for page in document.pages:
         for primitive_index, primitive in enumerate(page.primitives):

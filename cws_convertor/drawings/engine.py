@@ -600,6 +600,36 @@ class ProductionDrawingEngine:
             )
 
     @staticmethod
+    def _replace_arrowheads(page: DrawingPage, start: int, kind: str, size: float) -> None:
+        """Convert only the four wing strokes just emitted by a dimension helper.
+
+        Semantic IDs, layer and model references are retained for selection,
+        re-anchoring and PDF traceability. Automatic legacy dimensions stay open.
+        """
+        if kind == "open":
+            return
+        if kind not in {"closed_filled", "tick", "dot", "none"}:
+            raise ValueError("Onbekend type pijlpunt")
+        wings = page.primitives[start + 1:start + 5]
+        if len(wings) != 4 or any(p.kind != "line" for p in wings):
+            raise ValueError("Ongeldige vectoropbouw van de maatpijl")
+        main = page.primitives[start]
+        heads = []
+        for first, second in (wings[:2], wings[2:]):
+            tip = list(first.points[1])
+            if kind == "closed_filled":
+                heads.append(DrawingPrimitive("polygon", main.layer, points=[list(first.points[0]), tip, list(second.points[0])],
+                    color=main.color, fill=main.color, width=main.width, refs=list(main.refs), semantic_id=main.semantic_id))
+            elif kind == "dot":
+                heads.append(DrawingPrimitive("circle", main.layer, center=tip, radius=max(.2, size * .18),
+                    color=main.color, fill=main.color, width=main.width, refs=list(main.refs), semantic_id=main.semantic_id))
+            elif kind == "tick":
+                extent = size * .5
+                heads.append(_line(main.layer, (tip[0]-extent, tip[1]+extent), (tip[0]+extent, tip[1]-extent),
+                    color=main.color, width=main.width, refs=main.refs, semantic_id=main.semantic_id))
+        page.primitives[start + 1:start + 5] = heads
+
+    @staticmethod
     def _dimension_line(
         page: DrawingPage,
         *,
@@ -613,7 +643,9 @@ class ProductionDrawingEngine:
         width: float = 0.2,
         text_size: float = 2.2,
         arrow: float = 1.6,
+        arrow_type: str = "open",
     ) -> None:
+        primitive_start = len(page.primitives)
         page.primitives.append(_line("dimensions", start, end, color=color, width=width, refs=refs, semantic_id=dimension_id))
         if vertical:
             x, y = start
@@ -638,6 +670,8 @@ class ProductionDrawingEngine:
                 )
             )
 
+        ProductionDrawingEngine._replace_arrowheads(page, primitive_start, arrow_type, arrow)
+
     @staticmethod
     def _aligned_dimension_line(
         page: DrawingPage,
@@ -651,7 +685,9 @@ class ProductionDrawingEngine:
         width: float = 0.2,
         text_size: float = 2.2,
         arrow: float = 1.4,
+        arrow_type: str = "open",
     ) -> None:
+        primitive_start = len(page.primitives)
         dx, dy = end[0] - start[0], end[1] - start[1]
         length = max(1.0e-9, math.hypot(dx, dy))
         nx, ny = -dy / length, dx / length
@@ -665,6 +701,8 @@ class ProductionDrawingEngine:
                 _text("dimensions", (start[0] + end[0]) * 0.5, (start[1] + end[1]) * 0.5 - 1.5, label, size=text_size, color=color, semantic_id=dimension_id),
             )
         )
+
+        ProductionDrawingEngine._replace_arrowheads(page, primitive_start, arrow_type, arrow)
 
     @staticmethod
     def _interactive_label(item: Mapping[str, Any], unit: str) -> str:
@@ -788,6 +826,7 @@ class ProductionDrawingEngine:
                 kind = str(item.get("kind") or "aligned")
                 style = dict(item.get("style") or {})
                 color = str(style.get("line_color") or "#0066dc")
+                arrow_type = str(style.get("arrow_type") or "open")
                 line_width = max(0.05, _number(style, "line_width_mm", default=0.2))
                 text_size = max(1.0, _number(style, "text_height_mm", default=2.2))
                 arrow_size = max(0.5, _number(style, "arrow_size_mm", default=1.6))
@@ -842,7 +881,7 @@ class ProductionDrawingEngine:
                     )
                 elif kind in {"radius", "diameter"}:
                     start = points[0]
-                    cls._aligned_dimension_line(page, start=start, end=position, label=label, dimension_id=dimension_id, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size)
+                    cls._aligned_dimension_line(page, start=start, end=position, label=label, dimension_id=dimension_id, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size, arrow_type=arrow_type)
                 elif kind in {"chain", "baseline"} and len(points) >= 2:
                     pairs = zip(points, points[1:]) if kind == "chain" else ((points[0], point) for point in points[1:])
                     segment_ids = list(dict(item.get("metadata") or {}).get("segment_ids") or ())
@@ -862,14 +901,14 @@ class ProductionDrawingEngine:
                             color=color,
                             width=line_width,
                             text_size=text_size,
-                            arrow=arrow_size,
+                            arrow=arrow_size, arrow_type=arrow_type,
                         )
                 elif len(points) >= 2:
                     first, second = points[0], points[1]
                     if kind in {"horizontal", "ordinate_x"}:
-                        cls._dimension_line(page, start=(first[0], position[1]), end=(second[0], position[1]), label=label, dimension_id=dimension_id, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size)
+                        cls._dimension_line(page, start=(first[0], position[1]), end=(second[0], position[1]), label=label, dimension_id=dimension_id, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size, arrow_type=arrow_type)
                     elif kind in {"vertical", "ordinate_y"}:
-                        cls._dimension_line(page, start=(position[0], first[1]), end=(position[0], second[1]), label=label, dimension_id=dimension_id, vertical=True, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size)
+                        cls._dimension_line(page, start=(position[0], first[1]), end=(position[0], second[1]), label=label, dimension_id=dimension_id, vertical=True, refs=refs, color=color, width=line_width, text_size=text_size, arrow=arrow_size, arrow_type=arrow_type)
                     else:
                         midpoint = ((first[0] + second[0]) * 0.5, (first[1] + second[1]) * 0.5)
                         delta = (position[0] - midpoint[0], position[1] - midpoint[1])
@@ -883,8 +922,20 @@ class ProductionDrawingEngine:
                             color=color,
                             width=line_width,
                             text_size=text_size,
-                            arrow=arrow_size,
+                            arrow=arrow_size, arrow_type=arrow_type,
                         )
+                # Appearance is consumed by every renderer from the same vector
+                # primitives; it never changes anchors, nominal values or IDs.
+                dash = {"solid": [], "dashed": [2.0, 1.0], "dotted": [.25, .75]}.get(str(style.get("line_type") or "solid"))
+                if dash is None:
+                    raise ValueError("Onbekend lijntype voor maatvoering")
+                layer = str(style.get("layer") or "dimensions")
+                if layer not in {"dimensions", "annotations"}:
+                    raise ValueError("Onbekende maatlaag")
+                for primitive in page.primitives[primitive_start:]:
+                    primitive.layer = layer
+                    if primitive.kind in {"line", "polyline"}:
+                        primitive.dash = list(dash)
                 # Text and line placement are independent persistent coordinates.
                 # Moving a text grip must alter the vector PDF, not only the editor.
                 text_raw = item.get("text_projected_position")

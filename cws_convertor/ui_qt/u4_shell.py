@@ -448,7 +448,8 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self._install_context_ribbons()
             self._install_shortcuts()
             self._restore_layout()
-            self.menuBar().hide()
+            from .native_product_navigation import install_native_navigation
+            install_native_navigation(self)
             if hasattr(self, "context_strip"):
                 self.context_strip.hide()
             legacy_viewer_toolbar = self.project_page.findChild(
@@ -520,7 +521,12 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 self.tabs.removeTab(legacy_drawings_index)
                 self.drawings_page.hide()
             self._replace_page("edit_page", EditWorkspacePanel(self), "Bewerken")
-            self._replace_page("pdf_page", DrawingWorkspacePanel(self), "PDF / Tekening")
+            # Reuse the base drawing authority; retain the original external PDF analysis.
+            self.pdf_review_page = self.pdf_page
+            review_index = self.tabs.indexOf(self.pdf_review_page)
+            if review_index >= 0:self.tabs.removeTab(review_index)
+            self.pdf_page = self.drawings_page
+            self.pdf_page.show()
             self._replace_page("scribing_page", ScribingWorkspacePanel(self), "Scribing")
             self._replace_page("bom_excel_page", BomWorkspacePanel(self), "BOM / Hoeveelheden")
             bom_layout = self.bom_excel_page.layout()
@@ -595,7 +601,6 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 page.setProperty(U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN)
                 page.setProperty(U4_WORKFLOW_PROPERTY, U4_WORKFLOW_TOKEN)
                 page.action_requested.connect(self._route_action)
-            self.pdf_page.generate_pdf.connect(self._generate_pdf)
             self.bom_excel_page.show_project_requested.connect(lambda: self._route_action("viewer"))
             leaf_pages = (
                 self.import_page,
@@ -633,6 +638,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 host.setTabPosition(QtWidgets.QTabWidget.TabPosition.North)
                 for child, title in pages:
                     host.addTab(child, title)
+                host.currentChanged.connect(lambda _index, h=host: self.workspace_router.observe_current_page(h.currentWidget()) if self._product_ready else None)
                 return host
 
             self.project_workspace_page = primary_host(
@@ -654,7 +660,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             )
             self.output_workspace_page = primary_host(
                 "cwsPrimaryOutputWorkspace",
-                ((self.print_center_page, "Print Center"), (self.export_page, "Export Center"), (self.production_workflow_page, "Rapport & Pakket")),
+                ((self.pdf_review_page, "PDF-analyse"), (self.print_center_page, "Print Center"), (self.export_page, "Export Center"), (self.production_workflow_page, "Rapport & Pakket")),
             )
             self._edit_subworkspace_host = self.production_workspace_page
             self._production_subworkspace_host = self.production_workspace_page
@@ -722,9 +728,10 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 ("profile_nesting", self.profiles_page, "production", self.production_workspace_page, self._production_subworkspace_host),
                 ("plate_nesting", self.plate_nesting_page, "production", self.production_workspace_page, self._production_subworkspace_host),
                 ("settings", self.settings_page, "production", self.production_workspace_page, self._production_subworkspace_host),
-                ("production_workflow", self.production_workflow_page, "production", self.production_workspace_page, self._production_subworkspace_host),
+                ("production_workflow", self.production_workflow_page, "output", self.output_workspace_page, self.output_workspace_page),
                 ("report", self.production_workflow_page, "output", self.output_workspace_page, self.output_workspace_page),
                 ("output", self.output_workspace_page, "output", self.output_workspace_page, self.output_workspace_page),
+                ("pdf_review", self.pdf_review_page, "output", self.output_workspace_page, self.output_workspace_page),
                 ("pdf", self.pdf_page, "production", self.production_workspace_page, self.production_workspace_page),
                 ("print_center", self.print_center_page, "output", self.output_workspace_page, self.output_workspace_page),
                 ("manufacturability", self.manufacturability_page, "control", self.control_workspace_page, self.control_page),
@@ -737,7 +744,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.context_ribbons: dict[str, Any] = {}
             installed_pages: set[Any] = set()
             for workspace, page in self.workspace_router.pages.items():
-                if page in installed_pages:
+                if page in installed_pages or page is self.pdf_page or page is self.pdf_review_page:
                     continue
                 installed_pages.add(page)
                 layout = page.layout() if hasattr(page, "layout") else None
@@ -780,7 +787,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                     if command == "generate":
                         self._generate_pdf()
                     else:
-                        getattr(self.pdf_page, {"open": "_choose", "analyse": "_analyse"}[command])()
+                        getattr(self.pdf_review_page, {"open": "_choose", "analyse": "_analyse"}[command])()
                 elif namespace == "scribing":
                     if command == "verify":
                         self.scribing_page._verify_authority()
@@ -976,6 +983,8 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
 
         def _workspace_changed(self, workspace: str) -> None:
             super()._workspace_changed(workspace)
+            from .native_product_navigation import sync_navigation
+            sync_navigation(self, workspace)
             if not hasattr(self, "status_workspace"):
                 return
             # QVTK owns a native child window and cannot safely be reparented
@@ -987,6 +996,19 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 U4_WORKFLOW_TOKEN,
             )
             self.status_workspace.setText(f"Workspace: {workspace.replace('_', ' ').title()}")
+
+        def open_initial_paths(self, paths: Iterable[str | Path]) -> None:
+            values = [Path(value) for value in paths]
+            pdfs = [value for value in values if value.suffix.lower() == ".pdf"]
+            others = [value for value in values if value.suffix.lower() != ".pdf"]
+            if others:super().open_initial_paths(others)
+            if pdfs:
+                self.import_page.add_paths(pdfs)
+                self._open_pdf(pdfs[0])
+
+        def _open_pdf(self, value: str | Path) -> None:
+            self.pdf_review_page.load_pdf(value)
+            self.workspace_router.open_workspace("pdf_review")
 
         def _project_loaded(self, path: str) -> None:
             super()._project_loaded(path)

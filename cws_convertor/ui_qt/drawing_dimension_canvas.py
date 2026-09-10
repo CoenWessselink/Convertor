@@ -15,6 +15,7 @@ if qt_available():
         sheet_clicked = QtCore.Signal(object, object, object)
         pointer_moved = QtCore.Signal(object, object)
         command_requested = QtCore.Signal(str)
+        zoom_changed = QtCore.Signal(float)
         dimension_dragged = QtCore.Signal(str, object, bool)
         area_selected = QtCore.Signal(object, object, object)
 
@@ -104,8 +105,20 @@ if qt_available():
         def page_index(self) -> int:
             return self._page_index
 
+        @property
+        def zoom(self) -> float:
+            return self._zoom
+
+        def set_zoom(self, value: float) -> None:
+            if not math.isfinite(float(value)):
+                return
+            self._zoom = min(8.0, max(0.25, float(value)))
+            self.zoom_changed.emit(self._zoom)
+            self.update()
+
         def fit_to_view(self) -> None:
             self._zoom = 1.0
+            self.zoom_changed.emit(self._zoom)
             self._pan = QtCore.QPointF(0.0, 0.0)
             self.update()
 
@@ -137,6 +150,7 @@ if qt_available():
             self._pan = QtCore.QPointF(0.0, 0.0)
             target = self.sheet_to_widget(((left + right) * 0.5, (top + bottom) * 0.5))
             self._pan = QtCore.QPointF(self.width() * 0.5 - target.x(), self.height() * 0.5 - target.y())
+            self.zoom_changed.emit(self._zoom)
             self.update()
 
         def _page_size(self) -> tuple[float, float]:
@@ -341,8 +355,8 @@ if qt_available():
 
         def wheelEvent(self, event: Any) -> None:
             factor = 1.18 if event.angleDelta().y() > 0 else 1.0 / 1.18
-            self._zoom = min(8.0, max(0.4, self._zoom * factor))
-            self.update()
+            self.set_zoom(self._zoom * factor)
+            event.accept()
 
         def keyPressEvent(self, event: Any) -> None:
             modifiers = event.modifiers()
@@ -393,7 +407,11 @@ if qt_available():
                 painter.setPen(QtGui.QColor("#5b6b79"))
                 painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignCenter, self._placeholder)
                 return
-            painter.drawPixmap(rect, self._pixmap, QtCore.QRectF(self._pixmap.rect()))
+            if self._document is not None:
+                from cws_convertor.drawings.renderer import ProductionDrawingRenderer
+                self.last_vector_primitive_count = ProductionDrawingRenderer.paint_qt_page(self._document, self._page_index, painter, rect)
+            else:
+                painter.drawPixmap(rect, self._pixmap, QtCore.QRectF(self._pixmap.rect()))
             painter.setPen(QtGui.QPen(QtGui.QColor("#ff8a00"), 2.0))
             for point in self._draft_points:
                 target = self.sheet_to_widget(point)
@@ -402,7 +420,7 @@ if qt_available():
                 painter.setPen(QtGui.QPen(QtGui.QColor("#ff8a00"), 1.5, QtCore.Qt.PenStyle.DashLine))
                 painter.drawLine(self.sheet_to_widget(self._draft_points[-1]), self.sheet_to_widget(self._pointer_sheet))
             if self._drag_origin_sheet is not None and self._drag_current_sheet is not None:
-                painter.setPen(QtGui.QPen(QtGui.QColor("#e6007e"), 2.0, QtCore.Qt.PenStyle.DashLine))
+                painter.setPen(QtGui.QPen(QtGui.QColor("#0066dc"), 2.0, QtCore.Qt.PenStyle.DashLine))
                 painter.drawLine(self.sheet_to_widget(self._drag_origin_sheet), self.sheet_to_widget(self._drag_current_sheet))
             if self._selection_origin_sheet is not None and self._selection_current_sheet is not None:
                 first = self.sheet_to_widget(self._selection_origin_sheet)
@@ -419,7 +437,7 @@ if qt_available():
                 painter.setBrush(QtGui.QColor(217, 119, 6, 30) if crossing else QtGui.QColor(0, 102, 220, 30))
                 painter.drawRect(selection_rect)
             if self._document is not None and self._selected_ids:
-                painter.setPen(QtGui.QPen(QtGui.QColor("#e6007e"), 3.0))
+                painter.setPen(QtGui.QPen(QtGui.QColor("#0066dc"), 3.0))
                 grip_points: set[tuple[float, float]] = set()
                 for primitive in self._document.pages[self._page_index].primitives:
                     if primitive.semantic_id not in self._selected_ids:
@@ -438,7 +456,7 @@ if qt_available():
                             bottom_right = self.sheet_to_widget((bounds[2], bounds[3]))
                             painter.drawRect(QtCore.QRectF(top_left, bottom_right).normalized())
                             grip_points.add(((bounds[0] + bounds[2]) * 0.5, (bounds[1] + bounds[3]) * 0.5))
-                painter.setPen(QtGui.QPen(QtGui.QColor("#5a0039"), 1.0))
+                painter.setPen(QtGui.QPen(QtGui.QColor("#073b79"), 1.0))
                 painter.setBrush(QtGui.QColor("#ffffff"))
                 for point in sorted(grip_points):
                     target = self.sheet_to_widget(point)
@@ -471,10 +489,15 @@ if qt_available():
                     )
                 else:
                     painter.drawRect(QtCore.QRectF(target.x() - 5, target.y() - 5, 10, 10))
-                text_rect = QtCore.QRectF(target.x() + 9, target.y() - 24, 360, 22)
+                hint_width = min(450.0, max(40.0, self.width() - 12.0))
+                text_rect = QtCore.QRectF(min(target.x() + 9, self.width() - hint_width - 6),
+                                         max(3.0, min(target.y() - 28, self.height() - 25)), hint_width, 23)
+                self.setToolTip(candidate.label + "\n" + candidate.anchor.entity_id + " / " + candidate.anchor.view_id)
                 painter.fillRect(text_rect, QtGui.QColor(25, 43, 58, 225))
                 painter.setPen(QtGui.QColor("white"))
-                painter.drawText(text_rect.adjusted(6, 1, -4, -1), QtCore.Qt.AlignmentFlag.AlignVCenter, candidate.label)
+                painter.drawText(text_rect.adjusted(6, 1, -4, -1), QtCore.Qt.AlignmentFlag.AlignVCenter,
+                                 painter.fontMetrics().elidedText(candidate.label, QtCore.Qt.TextElideMode.ElideRight,
+                                                                 int(text_rect.width() - 10)))
 
 else:
     class InteractiveDrawingCanvas:

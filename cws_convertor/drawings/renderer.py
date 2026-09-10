@@ -41,6 +41,69 @@ class ProductionDrawingRenderer:
         "title",
     )
 
+    @classmethod
+    def paint_qt_page(cls, document: DrawingDocument, page_index: int, painter, rectangle) -> int:
+        """Native vector viewport of the SAME production drawing primitives.
+
+        The backend translates millimetres to the canvas only. It does not
+        regenerate geometry, evaluate measures, or own separate drawing state.
+        PDF export continues to use the signed/embedded document route below.
+        """
+        from cws_viewer.ui_qt.qt_compat import require_qt
+        QtCore, QtGui, _QtWidgets = require_qt()
+        page = document.pages[int(page_index)]
+        order = {name: index for index, name in enumerate(cls.LAYER_ORDER)}
+        painter.save()
+        try:
+            painter.setClipRect(rectangle)
+            painter.fillRect(rectangle, QtGui.QColor("#ffffff"))
+            painter.translate(rectangle.left(), rectangle.top())
+            painter.scale(rectangle.width() / page.width_mm, rectangle.height() / page.height_mm)
+            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, True)
+            painter.setRenderHint(QtGui.QPainter.RenderHint.TextAntialiasing, True)
+            for _index, primitive in sorted(enumerate(page.primitives), key=lambda v: (order.get(v[1].layer, len(order)), v[0])):
+                painter.save()
+                try:
+                    width = max(.03, float(primitive.width))
+                    pen = QtGui.QPen(QtGui.QColor(primitive.color or "#173b5d"))
+                    pen.setWidthF(width)
+                    pen.setCapStyle(QtCore.Qt.PenCapStyle.FlatCap)
+                    pen.setJoinStyle(QtCore.Qt.PenJoinStyle.MiterJoin)
+                    if primitive.dash:
+                        pen.setDashPattern([float(value) / width for value in primitive.dash])
+                    painter.setPen(pen)
+                    painter.setBrush(QtGui.QBrush(QtGui.QColor(primitive.fill)) if primitive.fill else QtCore.Qt.BrushStyle.NoBrush)
+                    points = [QtCore.QPointF(float(p[0]), float(p[1])) for p in primitive.points]
+                    if primitive.kind == "line" and len(points) >= 2:
+                        painter.drawLine(points[0], points[1])
+                    elif primitive.kind in {"polyline", "polygon"} and len(points) >= 2:
+                        path = QtGui.QPainterPath(points[0])
+                        for point in points[1:]:
+                            path.lineTo(point)
+                        if primitive.kind == "polygon":
+                            path.closeSubpath()
+                        painter.drawPath(path)
+                    elif primitive.kind == "rect" and len(points) >= 2:
+                        painter.drawRect(QtCore.QRectF(points[0], points[1]).normalized())
+                    elif primitive.kind == "circle" and len(primitive.center) == 2:
+                        painter.drawEllipse(QtCore.QPointF(*primitive.center), float(primitive.radius), float(primitive.radius))
+                    elif primitive.kind == "text" and len(points) == 1:
+                        # Font pixel sizes must not round a 2.5 mm glyph to 3 mm.
+                        # Local 64x precision keeps arbitrary paper text heights.
+                        painter.translate(points[0])
+                        painter.rotate(-float(primitive.rotation))
+                        painter.scale(1.0 / 64.0, 1.0 / 64.0)
+                        font = QtGui.QFont("Arial")
+                        font.setBold(bool(primitive.bold))
+                        font.setPixelSize(max(64, round(float(primitive.font_size) * 64.0)))
+                        painter.setFont(font)
+                        painter.drawText(QtCore.QPointF(0.0, 0.0), primitive.text)
+                finally:
+                    painter.restore()
+            return len(page.primitives)
+        finally:
+            painter.restore()
+
     @staticmethod
     def _paint_primitive(pdf, primitive: DrawingPrimitive, page_height_mm: float, mm: float) -> None:
         from reportlab.lib import colors

@@ -648,6 +648,7 @@ class EngineeringDrawingGenerator:
         dimension_editor_status: str = "",
         orientation: str = "landscape", include_sections: bool = True,
         include_details: bool = True, require_production_ready: bool = False,
+        require_trusted: bool = False,
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
         project = self.workspace.project
@@ -929,6 +930,8 @@ class EngineeringDrawingGenerator:
             exact_shape=exact_shape,
             assembly_components=assembly_components,
         )
+        if require_trusted and (canonical is None or not canonical_current or is_assembly):
+            raise ValueError("Trusted PDF vereist actuele canonieke onderdeelgegevens; geen terugval naar een review-PDF of enkel assemblyonderdeel.")
         document = ProductionDrawingEngine.build(request)
         lint_issues = tuple(dict(item) for item in document.lint.get("issues") or ())
         warnings.extend(str(item.get("message") or item.get("code")) for item in lint_issues)

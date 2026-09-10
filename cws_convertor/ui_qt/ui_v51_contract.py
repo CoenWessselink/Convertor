@@ -655,6 +655,7 @@ if QtWidgets is not None:
             self._place_screen_toolbar()
             self.window.setProperty("v51_active_screen", screen_id)
             self._rebuild_screen_actions(screen_id, str(screen.get("title", "")))
+            if self.screen_toolbar is not None:self.screen_toolbar.setVisible(SCREEN_ROUTES.get(screen_id) != "pdf")
             route = SCREEN_ROUTES.get(screen_id, domain.casefold())
             if route == "activity":
                 self._show_activity()
@@ -936,15 +937,20 @@ if QtWidgets is not None:
                 item = widget.item(row)
                 item.setHidden(bool(wanted) and wanted not in _plain(item.text()))
 
-        def _undo(self) -> None:
+        def _document_history(self, redo: bool = False) -> None:
             focus = QtWidgets.QApplication.focusWidget()
-            if focus is not None and hasattr(focus, "undo"):
-                focus.undo()
+            panel = getattr(self.window, "pdf_page", None)
+            editing = isinstance(focus, QtWidgets.QLineEdit) and focus.isModified()
+            if panel is not None and panel.isVisible() and hasattr(panel, "_undo_dimensions") and not editing:
+                (panel._redo_dimensions if redo else panel._undo_dimensions)()
+            elif focus is not None and hasattr(focus, "redo" if redo else "undo"):
+                getattr(focus, "redo" if redo else "undo")()
+
+        def _undo(self) -> None:
+            self._document_history(False)
 
         def _redo(self) -> None:
-            focus = QtWidgets.QApplication.focusWidget()
-            if focus is not None and hasattr(focus, "redo"):
-                focus.redo()
+            self._document_history(True)
 
         def runtime_inventory(self) -> list[dict[str, Any]]:
             items: list[dict[str, Any]] = []

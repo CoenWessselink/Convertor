@@ -318,6 +318,17 @@ class DrawingLinter:
         for item in document.manual_dimensions:
             dimension_id = str(item.get("id") or item.get("dimension_id") or "")
             anchors = [dict(value) for value in item.get("anchors") or () if isinstance(value, Mapping)]
+            presentation = dict(item.get("metadata") or {}).get("presentation") or {}
+            if presentation:
+                from .interactive import normalize_dimension_presentation
+                try:
+                    normalize_dimension_presentation(presentation)
+                except (ValueError, TypeError):
+                    issues.append(DrawingLintIssue("DRAWING_DIMENSION_PRESENTATION_INVALID",
+                        "Maatopmaak bevat ongeldige of onleesbare waarden.", semantic_id=dimension_id))
+                if not str(dict(item.get("metadata") or {}).get("presentation_approved_by") or "").strip():
+                    issues.append(DrawingLintIssue("DRAWING_DIMENSION_PRESENTATION_UNAPPROVED",
+                        "Afwijkende maatopmaak vereist controle door controleur/vrijgever.", semantic_id=dimension_id))
             if anchors:
                 if (
                     str(item.get("style_id") or "") != str(document.dimension_style.get("style_id") or "")
