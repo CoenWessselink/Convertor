@@ -84,3 +84,14 @@ lege cache. Aanvullende tests controleren beide aanroepvolgordes en ongeldige
 aanroepdoelen. Alle vier V3-screenshots controleren ook de echt gevormde zichtbare
 tekst met Qt: ontbrekende glyphs blokkeren de bewijsketen. Er worden geen
 systeemlettertypen als losse bestanden toegevoegd of uitgeleverd.
+
+
+## Geïnstalleerde Windows-runtime: Unicode in diagnostische rapportage
+De eerste volledige geïnstalleerde V3-test doorstond alle 48 controles, maar de
+launcher eindigde daarna met exitcode 2: het logkanaal gebruikte Windows CP1252
+en kon het werkelijk weergegeven teken ● niet afdrukken. De installer is daarom
+niet geaccepteerd. `_write_report` bewaart het volledige UTF-8-rapport en gebruikt
+voor stdout nu verliesvrije JSON-Unicode-escapes. Ook niet-BMP-tekens blijven na
+JSON-decoding exact behouden; echte schrijffouten worden niet onderdrukt.
+Vijf regressies controleren CP1252, ASCII, UTF-8, bestandsbehoud en foutdoorgifte.
+De nieuwe installer moet opnieuw alle bestaande acceptatiestappen doorlopen.

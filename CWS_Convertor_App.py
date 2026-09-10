@@ -72,7 +72,12 @@ def _write_report(path: Path | None, payload: dict[str, Any]) -> None:
     if path is not None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text + "\n", encoding="utf-8")
-    print(text)
+    # A frozen Windows GUI process can inherit a redirected CP1252/ASCII
+    # stream even while UTF-8 JSON files work. JSON escapes retain every
+    # Unicode code point (including non-BMP characters) without turning a
+    # successful diagnostic into UnicodeEncodeError after the report is saved.
+    # Do not suppress actual write/I/O errors or change the evidence payload.
+    print(json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True, default=str))
 
 
 def _terminate_frozen_process(exit_code: int) -> None:
