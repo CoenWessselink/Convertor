@@ -956,7 +956,36 @@ class ProductionDrawingEngine:
             page.primitives.append(_text("title", x + 1.5, y + 4.0, f"{key}: {value}", size=2.4, bold=key in {"Onderdeel", "Blad"}))
 
     @staticmethod
+    def _schedule_lines(value: str, width: float, size: float, *, bold: bool = False) -> list[str]:
+        """Wrap, never truncate, using the same font as the vector PDF renderer.
+
+        Retain the linter's conservative width estimate as well: neither an
+        actual PDF glyph nor an annotation bound may enter the next column.
+        """
+        from reportlab.pdfbase.pdfmetrics import stringWidth
+
+        if not math.isfinite(width) or width <= 0:
+            raise ValueError("Tabelkolom heeft geen bruikbare breedte")
+        font = "Helvetica-Bold" if bold else "Helvetica"
+        lines: list[str] = []
+        for paragraph in str(value).split("\n"):
+            line = ""
+            for character in paragraph:
+                candidate = line + character
+                measured = max(stringWidth(candidate, font, size), len(candidate) * size * 0.52)
+                if measured > width and line:
+                    lines.append(line)
+                    line = character
+                else:
+                    line = candidate
+                if max(stringWidth(line, font, size), len(line) * size * 0.52) > width:
+                    raise ValueError("Tabelkolom is te smal voor leesbare tekst")
+            lines.append(line)
+        return lines
+
+    @classmethod
     def _add_schedule(
+        cls,
         page: DrawingPage,
         *,
         title: str,
@@ -965,21 +994,45 @@ class ProductionDrawingEngine:
         top: float,
         right: float,
         layer: str,
-    ) -> None:
-        page.primitives.append(_text(layer, left, top, title, size=3.2, bold=True))
-        y = top + 5.0
-        row_height = 4.8
-        page.primitives.append(_rect(layer, left, y, right, min(page.height_mm - 42.0, y + row_height * (len(rows) + 1)), color="#8ca1b4", width=0.15))
-        for header_x, header in zip((left + 1.0, left + (right - left) * 0.28, left + (right - left) * 0.70), ("ID", "Waarde", "Bron / omschrijving")):
-            page.primitives.append(_text(layer, header_x, y + 3.4, header, size=2.2, bold=True))
-        for index, row in enumerate(rows):
-            row_y = y + row_height * (index + 1)
-            if row_y + row_height > page.height_mm - 40.0:
+    ) -> tuple[int, float]:
+        """Render whole, wrapped rows; return consumed rows and actual bottom.
+
+        The caller carries unconsumed rows to a continuation sheet. IDs remain
+        complete in visible text, semantic IDs and the embedded drawing model.
+        """
+        width = right - left
+        edges = (left, left + width * 0.28, left + width * 0.70, right)
+        widths = [edges[i + 1] - edges[i] - 2.0 for i in range(3)]
+        title_lines = cls._schedule_lines(title, width, 3.2, bold=True)
+        for index, line in enumerate(title_lines):
+            page.primitives.append(_text(layer, left, top + index * 4.2, line, size=3.2, bold=True))
+        y = top + (len(title_lines) - 1) * 4.2 + 5.0
+        headers = [cls._schedule_lines(text, available, 2.2, bold=True)
+                   for text, available in zip(("ID", "Waarde", "Bron / omschrijving"), widths)]
+        header_height = 4.8 + (max(map(len, headers)) - 1) * 2.8
+        for column, lines in enumerate(headers):
+            for index, line in enumerate(lines):
+                page.primitives.append(_text(layer, edges[column] + 1.0, y + 3.4 + index * 2.8,
+                                             line, size=2.2, bold=True))
+        cursor = y + header_height
+        consumed = 0
+        for row in rows:
+            cells = [cls._schedule_lines(str(value), available, 2.1) for value, available in zip(row, widths)]
+            row_height = 4.8 + (max(map(len, cells)) - 1) * 2.8
+            if cursor + row_height > page.height_mm - 42.0:
                 break
-            page.primitives.append(_line(layer, (left, row_y), (right, row_y), color="#b8c8d6", width=0.1))
-            for x, value in zip((left + 1.0, left + (right - left) * 0.28, left + (right - left) * 0.70), row):
-                semantic_id = row[0] if layer == "dimensions" else ""
-                page.primitives.append(_text(layer, x, row_y + 3.3, value, size=2.1, semantic_id=semantic_id))
+            page.primitives.append(_line(layer, (left, cursor), (right, cursor), color="#b8c8d6", width=0.1))
+            for column, lines in enumerate(cells):
+                for index, line in enumerate(lines):
+                    page.primitives.append(_text(layer, edges[column] + 1.0, cursor + 3.3 + index * 2.8,
+                        line, size=2.1, semantic_id=str(row[0]) if layer == "dimensions" else "",
+                        refs=("schedule:" + layer, "row:" + str(row[0]))))
+            cursor += row_height
+            consumed += 1
+        page.primitives.append(_rect(layer, left, y, right, cursor, color="#8ca1b4", width=0.15))
+        for edge in edges[1:-1]:
+            page.primitives.append(_line(layer, (edge, y), (edge, cursor), color="#b8c8d6", width=0.1))
+        return consumed, cursor
 
     @classmethod
     def _add_section_view(
@@ -1341,16 +1394,19 @@ class ProductionDrawingEngine:
                 )
                 for item in request.bom
             ]
-            first_capacity = max(1, int((height - 47.0 - schedule_top) / 4.8))
+            dimension_cursor = bom_cursor = 0
+            bom_bottom = schedule_top + 5.0
             if dimension_rows:
-                cls._add_schedule(detail_page, title="MAATVOERING / DIMENSIONGRAPH", rows=dimension_rows[:first_capacity], left=10.0, top=schedule_top, right=half - 4.0, layer="dimensions")
+                dimension_cursor, _ = cls._add_schedule(detail_page, title="MAATVOERING / DIMENSIONGRAPH", rows=dimension_rows, left=10.0, top=schedule_top, right=half - 4.0, layer="dimensions")
             if bom_rows:
-                cls._add_schedule(detail_page, title="BOM / MATERIAALLIJST", rows=bom_rows[:first_capacity], left=half + 4.0, top=schedule_top, right=width - 10.0, layer="bom")
+                bom_cursor, bom_bottom = cls._add_schedule(detail_page, title="BOM / MATERIAALLIJST", rows=bom_rows, left=half + 4.0, top=schedule_top, right=width - 10.0, layer="bom")
+            notes_top = bom_bottom + 7.0
+            notes_height = (5.0 * (len(request.notes[:8]) + 2) if request.notes else 0.0)
+            notes_height += (5.0 * (len(request.revisions[:8]) + 2) if request.revisions else 0.0)
             notes_need_page = bool(
                 (request.notes or request.revisions)
-                and max(len(dimension_rows), len(bom_rows)) > 8
+                and (max(len(dimension_rows), len(bom_rows)) > 8 or notes_top + notes_height > height - 42.0)
             )
-            notes_top = min(height - 48.0, schedule_top + 15.0 + min(len(bom_rows), 8) * 4.8)
             if request.notes and not notes_need_page:
                 detail_page.primitives.append(_text("notes", half + 4.0, notes_top, "ALGEMENE NOTITIES", size=3.0, bold=True))
                 for index, note in enumerate(request.notes[:8], start=1):
@@ -1451,20 +1507,19 @@ class ProductionDrawingEngine:
                         )
                     pages.append(detail_sheet)
 
-            dimension_cursor = first_capacity
-            bom_cursor = first_capacity
             continuation_top = 23.0
-            continuation_capacity = max(1, int((height - 47.0 - continuation_top) / 4.8))
             while dimension_cursor < len(dimension_rows) or bom_cursor < len(bom_rows):
                 continuation = cls._base_page(len(pages) + 1, "PRODUCTIEGEGEVENS - VERVOLG", width, height)
                 if dimension_cursor < len(dimension_rows):
-                    chunk = dimension_rows[dimension_cursor : dimension_cursor + continuation_capacity]
-                    cls._add_schedule(continuation, title="MAATVOERING / DIMENSIONGRAPH - VERVOLG", rows=chunk, left=10.0, top=continuation_top, right=half - 4.0, layer="dimensions")
-                    dimension_cursor += len(chunk)
+                    count, _ = cls._add_schedule(continuation, title="MAATVOERING / DIMENSIONGRAPH - VERVOLG", rows=dimension_rows[dimension_cursor:], left=10.0, top=continuation_top, right=half - 4.0, layer="dimensions")
+                    if not count:
+                        raise ValueError("Maatvoeringtabel bevat een rij die niet leesbaar op het blad past; kies een groter blad")
+                    dimension_cursor += count
                 if bom_cursor < len(bom_rows):
-                    chunk = bom_rows[bom_cursor : bom_cursor + continuation_capacity]
-                    cls._add_schedule(continuation, title="BOM / MATERIAALLIJST - VERVOLG", rows=chunk, left=half + 4.0, top=continuation_top, right=width - 10.0, layer="bom")
-                    bom_cursor += len(chunk)
+                    count, _ = cls._add_schedule(continuation, title="BOM / MATERIAALLIJST - VERVOLG", rows=bom_rows[bom_cursor:], left=half + 4.0, top=continuation_top, right=width - 10.0, layer="bom")
+                    if not count:
+                        raise ValueError("BOM-tabel bevat een rij die niet leesbaar op het blad past; kies een groter blad")
+                    bom_cursor += count
                 pages.append(continuation)
             if notes_need_page:
                 note_page = cls._base_page(len(pages) + 1, "ALGEMENE NOTITIES / REVISIES", width, height)

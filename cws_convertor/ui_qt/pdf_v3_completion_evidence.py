@@ -214,6 +214,28 @@ def run_pdf_v3_completion_evidence(output: Path) -> dict:
         result = panel._generate(make_png=True, make_pdf=True)
         check("actual renderer exports PDF for complete assembly", result is not None and result.pdf_path.is_file() and result.document.entity_id == "A1")
         check("override/review remains blocked from production", not result.release_ready)
+        # Verify complete wrapped table IDs and real exported page output,
+        # not merely the project-side numeric model or a mock preview.
+        table_text = [(page, p) for page in result.document.pages for p in page.primitives
+                      if p.kind == "text" and "schedule:" + p.layer in p.refs]
+        fragments = [p.text for page, p in table_text if p.semantic_id == dimension().dimension_id
+                     and abs(p.points[0][0] - 11.0) < 1e-6]
+        check("wrapped PDF table retains complete dimension ID", "".join(fragments) == dimension().dimension_id)
+        fits = bool(table_text)
+        for page, primitive in table_text:
+            half = page.width_mm * 0.5
+            left, right = (10.0, half - 4.0) if primitive.layer == "dimensions" else (half + 4.0, page.width_mm - 10.0)
+            width = right - left
+            edges = (left, left + width * .28, left + width * .70, right)
+            x, y = primitive.points[0]
+            column = min(range(3), key=lambda i: abs(x - edges[i] - 1.0))
+            fits = fits and primitive.bounds()[2] <= edges[column + 1] - 1.0 + 1e-9 and y <= page.height_mm - 42.0
+        check("PDF table text stays inside its columns and page", fits)
+        from cws_convertor.drawings import ProductionDrawingRenderer
+        rendered_table = ProductionDrawingRenderer.render_png(result.pdf_path, output / "05-exported-pdf-table.png", page_number=1)
+        check("real exported PDF table raster available", rendered_table.is_file() and rendered_table.stat().st_size > 1024)
+        pdf_renders = [{"file": rendered_table.name, "sha256": sha256(rendered_table.read_bytes()).hexdigest(),
+                       "origin": "ProductionDrawingRenderer.render_png; actual exported PDF page 2, not a UI mockup"}]
         if getattr(sys, "frozen", False):
             binding = json.loads((Path(sys.executable).parent / "BUILD_SOURCE.json").read_text(encoding="utf-8"))
             source = binding["source_commit"]
@@ -227,7 +249,7 @@ def run_pdf_v3_completion_evidence(output: Path) -> dict:
         report = {"schema": "cws-pdf-v3-native-proof-1.0", "status": "PASS", "source_commit": source,
             "source_tree": tree, "source_dirty": dirty, "frozen": bool(getattr(sys, "frozen", False)),
             "executable_sha256": sha256(Path(sys.executable).read_bytes()).hexdigest(),
-            "checks": checks, "screenshots": images, "production_release_allowed": False,
+            "checks": checks, "screenshots": images, "pdf_renders": pdf_renders, "production_release_allowed": False,
             "scope": "Existing DrawingWorkspacePanel, native Qt input, synthetic two-component geometry, real project save/reopen and PDF render",
             "external_v3_specification_verified": False,
             "limitations": ["Original V3 ZIP and reference images unavailable; no claim of full V3 visual conformity", "Synthetic geometry is review-only; not machine qualification"]}

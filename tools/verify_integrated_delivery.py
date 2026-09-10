@@ -111,7 +111,8 @@ def main():
     if (bound!=args.sha or source.get('dirty') is not False or strict.get('source_unchanged_during_run') is not True):problems.append('STRICT_SOURCE_SHA_MISMATCH')
     v3 = installer.get('installed_pdf_v3_integration', {})
     if (v3.get('status') != 'PASS' or v3.get('source_commit') != args.sha
-            or v3.get('checks', 0) < 40 or v3.get('python_on_child_path') is not False):
+            or v3.get('checks', 0) < 51 or v3.get('pdf_renders', 0) < 1
+            or v3.get('python_on_child_path') is not False):
         problems.append('INSTALLED_PDF_V3_PROOF_MISSING_OR_STALE')
     if problems:raise RuntimeError('; '.join(problems))
     out=root/'promoted';out.mkdir(exist_ok=True)

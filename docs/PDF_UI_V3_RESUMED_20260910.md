@@ -95,3 +95,17 @@ voor stdout nu verliesvrije JSON-Unicode-escapes. Ook niet-BMP-tekens blijven na
 JSON-decoding exact behouden; echte schrijffouten worden niet onderdrukt.
 Vijf regressies controleren CP1252, ASCII, UTF-8, bestandsbehoud en foutdoorgifte.
 De nieuwe installer moet opnieuw alle bestaande acceptatiestappen doorlopen.
+
+
+## Werkelijk gerenderde PDF-tabellen: tekstpassing en paginering
+De maatvoering- en BOM-tabellen gebruiken nu gemeten, vaste kolombreedten en
+meerregelige cellen. Lange volledige maat-ID's, waarden en bronverwijzingen
+worden niet afgekapt of verkleind tot onleesbare tekst. De teruggegeven werkelijke
+rijhoogten sturen de vervolgbladen; geen rij verdwijnt stilzwijgend. Een rij die
+zelfs op een leeg vervolgblad niet past wordt duidelijk geweigerd. Notities en
+revisies wijken naar een eigen blad uit wanneer de tabel onvoldoende ruimte laat.
+Zes regressies controleren de tien A4-A0/orientatiecombinaties, 80 lange rijen,
+brede lettertekens, behoud van ingebedde gegevens en weigering van te lange rijen.
+De native bewijsroute bevat nu 51 controles en daarnaast een echte rasterweergave
+van het geëxporteerde PDF-tabelblad. Installeracceptatie controleert ook de hash
+van deze render; alle bewijsbestanden blijven aan dezelfde broncommit gebonden.
