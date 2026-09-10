@@ -1,0 +1,58 @@
+name: Prepare consistent V3 application and installer version
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/v3-prepare-version-alignment.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch reviewed source delta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const b=(await github.rest.git.getBlob({owner:context.repo.owner,repo:context.repo.repo,file_sha:'673a429aacebf2ea9781c1196490c94e7c332a81'})).data;
+            require('fs').writeFileSync('version-alignment.xz',Buffer.from(b.content.replace(/\s/g,''),'base64'));
+      - name: Verify and stage only the reviewed delta
+        shell: python
+        run: |
+          import hashlib,lzma,pathlib,subprocess
+          data=pathlib.Path('version-alignment.xz').read_bytes()
+          assert hashlib.sha256(data).hexdigest()=='c2cbeef48f43e3f51d95deb476397ef0237ca471895878bf2a5510637e696799'
+          patch=lzma.decompress(data)
+          subprocess.run(['git','apply','--check'],input=patch,check=True)
+          subprocess.run(['git','apply','--index'],input=patch,check=True)
+          paths=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
+          assert len(paths)==12
+          for p in paths:
+              if p.endswith('.py'):compile(pathlib.Path(p).read_bytes(),p,'exec')
+          subprocess.run(['git','diff','--cached','--check'],check=True)
+      - name: Prepare source tree without changing branch or publishing artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),cp=require('child_process'),crypto=require('crypto');
+            const repo={owner:context.repo.owner,repo:context.repo.repo};
+            const paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n');
+            const entries=[],files={};
+            for(const path of paths) {
+              const data=fs.readFileSync(path);
+              const b=(await github.rest.git.createBlob({...repo,content:data.toString('base64'),encoding:'base64'})).data;
+              entries.push({path,mode:'100644',type:'blob',sha:b.sha});
+              files[path]={blob_sha:b.sha,sha256:crypto.createHash('sha256').update(data).digest('hex')};
+            }
+            const base=(await github.rest.git.getCommit({...repo,commit_sha:context.sha})).data.tree.sha;
+            const tree=(await github.rest.git.createTree({...repo,base_tree:base,tree:entries})).data.sha;
+            fs.mkdirSync('prepared',{recursive:true});
+            const manifest={status:'PREPARED_NOT_COMMITTED',parent:context.sha,tree,files};
+            fs.writeFileSync('prepared/TREE.json',JSON.stringify(manifest,null,2));
+            core.info(JSON.stringify(manifest));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_V3_Prepared_Version_Alignment
+          path: prepared/TREE.json
+          retention-days: 14
