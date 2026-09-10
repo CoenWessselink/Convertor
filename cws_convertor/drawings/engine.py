@@ -1053,7 +1053,12 @@ class ProductionDrawingEngine:
             )
         )
         span = np.maximum(maximum - minimum, 1.0)
-        scale = min(1.0 / max(1.0, float(denominator)), float(np.min(available / span)))
+        scale = 1.0 / max(1.0, float(denominator))
+        if scale > float(np.min(available / span)) + 1.0e-9:
+            raise ValueError(
+                f"Schaal 1:{denominator} past niet voor doorsnede A-A op dit blad. "
+                "Kies een grotere schaalnoemer of een groter blad; de doorsnede is niet verkleind."
+            )
         target = np.asarray(
             (
                 (rectangle[0] + rectangle[2]) * 0.5,
@@ -1130,7 +1135,14 @@ class ProductionDrawingEngine:
         unit = str(request.unit).lower()
         width, height = page_size_mm(sheet_format, orientation)
         rectangles = cls._view_rectangles(len(views), width, height, title_block=request.title_block_enabled)
-        denominator, adjusted = cls._fit_scale(vertices, views, rectangles, request.scale_denominator)
+        # A section has a smaller cell on the schedule sheet. It must use the
+        # same stated scale as the main views, even when only one main view is
+        # selected. Preflight its complete side projection before rendering;
+        # neither native BREP nor the review fallback may shrink silently.
+        section_rectangle = (10.0, 23.0, width * 0.5 - 4.0, min(height * 0.48, height - 52.0))
+        scale_views = (*views, "side") if request.include_sections else views
+        scale_rectangles = (*rectangles, section_rectangle) if request.include_sections else rectangles
+        denominator, adjusted = cls._fit_scale(vertices, scale_views, scale_rectangles, request.scale_denominator)
         features = cls._normalise_features(request.features)
         manual = cls._normalise_manual(request.manual_dimensions)
         semantic_dimensions = [dict(item) for item in request.dimensions]
@@ -1222,7 +1234,7 @@ class ProductionDrawingEngine:
             top = 23.0
             half = width * 0.5
             if request.include_sections:
-                section_rect = (10.0, top, half - 4.0, min(height * 0.48, height - 52.0))
+                section_rect = section_rectangle
                 section_method, section_geometry = cls._add_section_view(
                     detail_page,
                     vertices=vertices,
@@ -1262,14 +1274,17 @@ class ProductionDrawingEngine:
                 first_kind = str(first.get("kind") or "feature")
                 first_side = str(first.get("reference_side") or dict(first.get("parameters") or {}).get("face") or "").lower()
                 detail_view = cls._feature_target_view(first_kind, first_side, views)
+                detail_fit, _ = cls._fit_scale(vertices, (detail_view,), (detail_rect,), None)
+                detail_denominator = max(1, denominator // 2, detail_fit)
                 detail_projected, detail_screen, detail_scale, method = cls._add_view(
                     detail_page,
                     vertices=vertices,
                     triangles=triangles,
                     view=detail_view,
                     rectangle=detail_rect,
-                    denominator=max(1, denominator // 2),
+                    denominator=detail_denominator,
                     exact_shape=request.exact_shape,
+                    assembly_components=request.assembly_components,
                 )
                 hlr_methods.append(method)
                 detail_id = detail_page.view_ids[-1]
@@ -1297,6 +1312,7 @@ class ProductionDrawingEngine:
                 )
                 first_feature = str(first.get("feature_id") or "H1")
                 detail_page.primitives.append(_text("annotations", detail_rect[0] + 2.0, detail_rect[1] + 10.0, f"DETAIL {first_feature}", size=2.6, bold=True, refs=(first_feature,), semantic_id=f"{first_feature}-detail"))
+                detail_page.primitives.append(_text("annotations", detail_rect[0] + 2.0, detail_rect[1] + 14.0, f"SCHAAL 1:{detail_denominator}", size=2.4, refs=(first_feature,), semantic_id=f"{first_feature}-detail-scale"))
                 cls._add_dimensions(
                     detail_page,
                     geometry={detail_view: (detail_projected, detail_screen, detail_scale, detail_rect)},
@@ -1370,14 +1386,17 @@ class ProductionDrawingEngine:
                             or ""
                         ).lower()
                         feature_view = cls._feature_target_view(feature_kind, feature_side, views)
+                        detail_fit, _ = cls._fit_scale(vertices, (feature_view,), (feature_rectangle,), None)
+                        detail_denominator = max(1, denominator // 2, detail_fit)
                         projected, screen, detail_scale, method = cls._add_view(
                             detail_sheet,
                             vertices=vertices,
                             triangles=triangles,
                             view=feature_view,
                             rectangle=feature_rectangle,
-                            denominator=max(1, denominator // 2),
+                            denominator=detail_denominator,
                             exact_shape=request.exact_shape,
+                            assembly_components=request.assembly_components,
                         )
                         hlr_methods.append(method)
                         detail_id = detail_sheet.view_ids[-1]
@@ -1414,6 +1433,11 @@ class ProductionDrawingEngine:
                                 refs=(feature_id,),
                                 semantic_id=f"{feature_id}-detail",
                             )
+                        )
+                        detail_sheet.primitives.append(
+                            _text("annotations", feature_rectangle[0] + 2.0, feature_rectangle[1] + 14.0,
+                                  f"SCHAAL 1:{detail_denominator}", size=2.4, refs=(feature_id,),
+                                  semantic_id=f"{feature_id}-detail-scale")
                         )
                         cls._add_dimensions(
                             detail_sheet,

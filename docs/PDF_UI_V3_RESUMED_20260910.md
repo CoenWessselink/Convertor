@@ -56,3 +56,19 @@ V3-bewijs. Er wordt geen oudere installer hernoemd of hergebruikt.
 Geen fabricagevrijgave, machinekwalificatie, certificering, digitale ondertekening,
 Windows 11/hardwareacceptatie of volledige visuele V3-acceptatie wordt hiermee
 geclaimd. Lees ook het bestaande integratie- en herkenningsregister.
+
+## Additional all-sheet scale verification
+
+An adversarial native-BREP test exposed an existing schedule-sheet bug: a 1:2
+main view could fit while section A-A silently shrank to approximately 1:3.344,
+with the title block still declaring 1:2. The entire section cell is now included
+in scale preflight. Native sections and mesh review projections both preserve
+the stated global scale, or generation fails visibly; the direct native section
+route also refuses an insufficient scale instead of clamping it.
+
+Feature-detail views now choose a fitting independent scale and print that
+actual scale next to each detail title, including overflow detail sheets.
+Assembly components remain individually identified in those detail views.
+`tests/drawing_v3_all_sheet_scale_smoke.py` adds six native regression tests for
+these cases. This does not change the unavailable external V3 reference-image
+conformity limitation above.
