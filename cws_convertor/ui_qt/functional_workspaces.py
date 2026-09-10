@@ -2303,7 +2303,9 @@ if qt_available():
             self._loaded_lock_version = 0
             self._snap_candidates = []
             self._dimension_clipboard: list[dict[str, Any]] = []
+            self._applying_sheet_settings = False
             self._build()
+            self._default_sheet_settings = self._sheet_settings()
             install_responsive_drawing_controls(self)
             self.generate_pdf.connect(self.export_pdf)
 
@@ -2352,7 +2354,7 @@ if qt_available():
                 button = QtWidgets.QPushButton(label)
                 button.setCheckable(True)
                 button.setChecked(key in {"front", "top", "side"})
-                button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
+                button.toggled.connect(self._on_sheet_controls_changed)
                 self.view_buttons[key] = button
                 views.addWidget(button)
             self.dimensions_button = QtWidgets.QPushButton("Maatvoering")
@@ -2427,15 +2429,15 @@ if qt_available():
             self.preview_button.clicked.connect(self.refresh_preview)
             self.png_button.clicked.connect(self.export_png)
             self.pdf_button.clicked.connect(self.export_pdf)
-            self.format.currentTextChanged.connect(lambda _text: self.refresh_preview())
-            self.orientation.currentIndexChanged.connect(lambda _index: self.refresh_preview())
-            self.scale.currentTextChanged.connect(lambda _text: self.refresh_preview())
-            self.unit.currentTextChanged.connect(lambda _text: self.refresh_preview())
-            self.dimensions_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
-            self.title_block_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
-            self.sections_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
-            self.details_button.toggled.connect(lambda _checked: QtCore.QTimer.singleShot(0, self.refresh_preview))
-            self.dimension_mode.currentTextChanged.connect(lambda _text: self.refresh_preview())
+            self.format.currentTextChanged.connect(self._on_sheet_controls_changed)
+            self.orientation.currentIndexChanged.connect(self._on_sheet_controls_changed)
+            self.scale.currentTextChanged.connect(self._on_sheet_controls_changed)
+            self.unit.currentTextChanged.connect(self._on_sheet_controls_changed)
+            self.dimensions_button.toggled.connect(self._on_sheet_controls_changed)
+            self.title_block_button.toggled.connect(self._on_sheet_controls_changed)
+            self.sections_button.toggled.connect(self._on_sheet_controls_changed)
+            self.details_button.toggled.connect(self._on_sheet_controls_changed)
+            self.dimension_mode.currentTextChanged.connect(self._on_sheet_controls_changed)
             self.add_dimension_button.clicked.connect(self._add_manual_dimension)
             self.clear_dimensions_button.clicked.connect(self._clear_manual_dimensions)
             self.preview.sheet_clicked.connect(self._on_dimension_canvas_click)
@@ -2559,6 +2561,51 @@ if qt_available():
             toolbar.addWidget(self.dimension_instruction)
             root.addWidget(toolbar_frame)
 
+        def _sheet_settings(self) -> dict[str, Any]:
+            return {
+                "format": self.format.currentText(), "orientation": self.orientation.currentData(),
+                "scale": self.scale.currentText(), "unit": self.unit.currentText(),
+                "dimension_mode": self.dimension_mode.currentText(),
+                "views": [key for key, button in self.view_buttons.items() if button.isChecked()],
+                "dimensions": self.dimensions_button.isChecked(), "title_block": self.title_block_button.isChecked(),
+                "sections": self.sections_button.isChecked(), "details": self.details_button.isChecked(),
+            }
+
+        def _restore_sheet_settings(self) -> None:
+            values = dict(getattr(self, "_default_sheet_settings", {}))
+            if self._dimension_document is not None:
+                values.update(self._dimension_document.extensions.get("sheet_settings") or {})
+            self._applying_sheet_settings = True
+            try:
+                for key, control in (("format", self.format), ("scale", self.scale), ("unit", self.unit),
+                                     ("dimension_mode", self.dimension_mode)):
+                    if key in values:
+                        control.setCurrentText(str(values[key]))
+                if "orientation" in values:
+                    self.orientation.setCurrentIndex(max(0, self.orientation.findData(values["orientation"])))
+                for key, control in (("dimensions", self.dimensions_button), ("title_block", self.title_block_button),
+                                     ("sections", self.sections_button), ("details", self.details_button)):
+                    if key in values:
+                        control.setChecked(bool(values[key]))
+                for key, button in self.view_buttons.items():
+                    if "views" in values:
+                        button.setChecked(key in values["views"])
+            finally:
+                self._applying_sheet_settings = False
+
+        def _on_sheet_controls_changed(self, *_args: Any) -> None:
+            if self._applying_sheet_settings:
+                return
+            if self._dimension_document is not None and self._dimension_model is not None:
+                if not self._ensure_dimension_editable():
+                    self._restore_sheet_settings()
+                    return
+                if self._dimension_model.update_sheet_settings(self._sheet_settings(), user=self._current_user()):
+                    if not self._persist_dimension_editor("drawing.sheet_settings_changed"):
+                        self._restore_sheet_settings()
+                        return
+            self.refresh_preview()
+
         def _current_user(self) -> str:
             if self._workspace is None:
                 return "system"
@@ -2602,6 +2649,7 @@ if qt_available():
                 self._dimension_document = None
                 self._dimension_model = None
                 self._loaded_lock_version = 0
+                self._restore_sheet_settings()
                 self._update_dimension_properties()
                 return
             source_revision, geometry_sha256, manufacturing_sha256 = self._entity_revision_context()
@@ -2616,13 +2664,14 @@ if qt_available():
             self._loaded_lock_version = int(self._dimension_document.lock_version)
             self._dimension_model = DimensionEditorModel(self._dimension_document)
             self._manual_dimensions.clear()
+            self._restore_sheet_settings()
             self._update_dimension_properties()
 
         def _persist_dimension_editor(self, action: str) -> bool:
             if self._workspace is None or self._dimension_document is None:
                 return False
             session = getattr(self._workspace, "session", None)
-            if session is not None and bool(getattr(session, "read_only", False)):
+            if (session is not None and bool(getattr(session, "read_only", False))) or self._current_drawing_role() == DrawingRole.READ_ONLY.value:
                 self._load_dimension_editor()
                 self.status.setText("Project is alleen-lezen; wijzigingen zijn niet opgeslagen")
                 return False
@@ -2661,6 +2710,7 @@ if qt_available():
                 QtWidgets.QMessageBox.warning(self, "Maatvoeringsconflict", str(exc))
                 return False
             except Exception as exc:
+                self._load_dimension_editor()
                 self.status.setText(f"Maatvoering opslaan mislukt: {exc}")
                 return False
 
@@ -2699,8 +2749,8 @@ if qt_available():
             if self._workspace is None or self._dimension_document is None or self._dimension_model is None:
                 return False
             session = getattr(self._workspace, "session", None)
-            if session is not None and bool(getattr(session, "read_only", False)):
-                self.status.setText("Project is alleen-lezen; maatvoering kan niet worden gewijzigd")
+            if (session is not None and bool(getattr(session, "read_only", False))) or self._current_drawing_role() == DrawingRole.READ_ONLY.value:
+                self.status.setText("Project of tekenrol is alleen-lezen; maatvoering kan niet worden gewijzigd")
                 return False
             if self._dimension_document.status != "released":
                 return True
@@ -2711,8 +2761,8 @@ if qt_available():
             if self._dimension_document is None or self._dimension_model is None or self._workspace is None:
                 return
             session = getattr(self._workspace, "session", None)
-            if bool(getattr(session, "read_only", False)):
-                self.status.setText("Project is alleen-lezen")
+            if bool(getattr(session, "read_only", False)) or self._current_drawing_role() == DrawingRole.READ_ONLY.value:
+                self.status.setText("Project of tekenrol is alleen-lezen")
                 return
             if self._dimension_document.status != "released":
                 self.status.setText("De huidige tekeningsrevisie is al een concept")
@@ -2868,6 +2918,7 @@ if qt_available():
                 self.preview.set_selection_mode(True)
                 self.dimension_tool_buttons["select"].setChecked(True)
                 self._dimension_controller.set_state(InteractionState.IDLE)
+                self.dimension_instruction.setText("Selecteer een maatobject; Ctrl voor multiselectie")
                 self.preview.set_draft(())
                 self._update_dimension_properties()
                 self.refresh_preview()
@@ -3212,6 +3263,7 @@ if qt_available():
                 return
             if self._dimension_model is not None and self._dimension_model.undo(user=self._current_user()):
                 self._persist_dimension_editor("drawing.dimension_undo")
+                self._restore_sheet_settings()
                 self._update_dimension_properties()
                 self.refresh_preview()
 
@@ -3220,6 +3272,7 @@ if qt_available():
                 return
             if self._dimension_model is not None and self._dimension_model.redo(user=self._current_user()):
                 self._persist_dimension_editor("drawing.dimension_redo")
+                self._restore_sheet_settings()
                 self._update_dimension_properties()
                 self.refresh_preview()
 
@@ -3271,6 +3324,7 @@ if qt_available():
         def _update_dimension_properties(self) -> None:
             if not hasattr(self, "dimension_properties"):
                 return
+            self._property_editor_generation = getattr(self, "_property_editor_generation", 0) + 1
             self.dimension_properties.clear()
             released = []
             if self._dimension_document is not None:
@@ -3313,8 +3367,12 @@ if qt_available():
                 total = len(self._dimension_document.dimensions) if self._dimension_document is not None else 0
                 QtWidgets.QTreeWidgetItem(self.dimension_properties, ("Selectie", f"geen · {total} maatobject(en)"))
                 return
+            from cws_convertor.ui_qt.drawing_property_editor import populate_dimension_editors
+            editable = editable and self._current_drawing_role() != DrawingRole.READ_ONLY.value
+            self.edit_properties_button.setEnabled(editable)
             if len(selected) > 1:
                 QtWidgets.QTreeWidgetItem(self.dimension_properties, ("Selectie", f"{len(selected)} maatobjecten"))
+                populate_dimension_editors(self, selected, editable)
                 return
             item = selected[0]
             values = (
@@ -3348,9 +3406,15 @@ if qt_available():
                 ("Waarschuwing", "vrijgave geblokkeerd" if item.state in {"ORPHANED", "ORPHANED_VIEW", "CONFLICT", "STALE"} else "geen"),
                 ("Gewijzigd door", item.modified_by),
             )
-            for label, value in values:
+            for label, value in values[:3]:
                 QtWidgets.QTreeWidgetItem(self.dimension_properties, (label, str(value)))
-            self.dimension_properties.resizeColumnToContents(0)
+            populate_dimension_editors(self, selected, editable)
+            for label, value in values[3:]:
+                QtWidgets.QTreeWidgetItem(self.dimension_properties, (label, str(value)))
+            header = self.dimension_properties.header()
+            header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Interactive)
+            header.resizeSection(0, 180)
+            header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
         def _edit_dimension_properties(self) -> None:
             if self._dimension_model is None or self._dimension_document is None or not self._dimension_model.selected_ids:
@@ -3603,42 +3667,12 @@ if qt_available():
                 except Exception:
                     return False
 
-            # Assemblies now have their own multi-sheet drawing/BOM route.
-            if current in project.assemblies and drawable(current):
+            # Assembly roots are containers: their child geometry is resolved by
+            # EngineeringDrawingGenerator, never substituted with the main part.
+            if current in project.assemblies:
                 return current
-            if current in project.parts and drawable(current):
-                return current
-
-            candidates: list[str] = []
-
-            def add_assembly_parts(assembly: Any | None) -> None:
-                if assembly is None:
-                    return
-                main = str(getattr(assembly, "main_part_id", "") or "")
-                if main in project.parts:
-                    candidates.append(main)
-                for part_id in getattr(assembly, "part_ids", ()) or ():
-                    part_id = str(part_id)
-                    if part_id in project.parts:
-                        candidates.append(part_id)
-
-            add_assembly_parts(project.assemblies.get(current))
             if current:
-                for assembly in project.assemblies.values():
-                    related_ids = (
-                        tuple(getattr(assembly, "fastener_ids", ()) or ())
-                        + tuple(getattr(assembly, "weld_ids", ()) or ())
-                        + tuple(getattr(assembly, "purchased_item_ids", ()) or ())
-                    )
-                    if current in related_ids:
-                        add_assembly_parts(assembly)
-
-            ordered = tuple(dict.fromkeys(candidates))
-            for candidate in ordered:
-                if drawable(candidate):
-                    return candidate
-            if drawable(current):
-                return current
+                return current if drawable(current) else ""
             for collection in (project.parts, project.purchased_items):
                 for entity_id in collection:
                     if drawable(str(entity_id)):
@@ -3652,6 +3686,10 @@ if qt_available():
                 return None
             resolved_part_id = self._resolved_drawing_entity_id()
             if not resolved_part_id:
+                self._drawing_document = None
+                self._last_png = None
+                self.preview.set_drawing(QtGui.QPixmap(), None, ())
+                self._update_dimension_properties()
                 self.status.setText("Selecteer een geometrisch onderdeel in de Viewer, modelstructuur of BOM.")
                 self.preview.setText(
                     "Deze selectie heeft geen geladen 3D-geometrie.\n"
@@ -3695,7 +3733,7 @@ if qt_available():
                 )
                 self._drawing_document = result.document
                 if self._dimension_document is not None and result.document is not None:
-                    if not self._dimension_document.dimensions:
+                    if not self._dimension_document.dimensions and self._dimension_document.status != "released":
                         self._dimension_document.geometry_sha256 = result.document.geometry_sha256
                         self._dimension_document.manufacturing_sha256 = result.document.manufacturing_sha256
                     previous_states = [item.state for item in self._dimension_document.dimensions]
@@ -3718,8 +3756,15 @@ if qt_available():
                 self._update_dimension_properties()
                 return result
             except Exception as exc:
-                self.status.setText("Tekening genereren mislukt")
-                QtWidgets.QMessageBox.critical(self, "Review-PDF / Tekening", f"{type(exc).__name__}: {exc}")
+                self._drawing_document = None
+                self._last_png = None
+                self._snap_candidates = []
+                self.preview.set_drawing(QtGui.QPixmap(), None, ())
+                self.preview.setText(str(exc))
+                self._update_dimension_properties()
+                self.status.setText(f"Tekening niet uitgevoerd: {exc}")
+                if not isinstance(exc, ValueError):
+                    QtWidgets.QMessageBox.critical(self, "Review-PDF / Tekening", f"{type(exc).__name__}: {exc}")
                 return None
 
         def refresh_preview(self) -> None:

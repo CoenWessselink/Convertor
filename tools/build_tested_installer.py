@@ -171,6 +171,26 @@ def main() -> int:
         report['installed_recognition_integration'] = {'status': 'PASS', 'checks': len(native['checks']),
             'source_commit': sha, 'executable_sha256': native['executable_sha256'],
             'report': native_path.name, 'python_on_child_path': False}
+        v3_path = OUT / 'installed-pdf-v3-integration.json'
+        run('installed_pdf_v3_integration', [str(STAGING / 'CWS_Convertor.exe'),
+            '--pdf-v3-evidence', '--evidence-dir', str(OUT / 'pdf-v3-integration'),
+            '--report', str(v3_path)], 300, env=clean_env)
+        v3 = json.loads(v3_path.read_text(encoding='utf-8'))
+        if (v3.get('status') != 'PASS' or v3.get('frozen') is not True
+                or v3.get('source_commit') != sha or v3.get('source_dirty') is not False
+                or v3.get('executable_sha256') != binding['runtime_files']['CWS_Convertor.exe']
+                or len(v3.get('checks', [])) < 40 or len(v3.get('screenshots', [])) < 4
+                or any(c.get('status') != 'PASS' for c in v3['checks'])
+                or v3.get('production_release_allowed') is not False):
+            raise RuntimeError('Installed V3 proof lacks exact source/binary/interaction binding')
+        for image in v3['screenshots']:
+            image_path = OUT / 'pdf-v3-integration' / image['file']
+            if digest(image_path) != image['sha256']:
+                raise RuntimeError('Installed V3 screenshot hash mismatch')
+        report['installed_pdf_v3_integration'] = {'status': 'PASS', 'checks': len(v3['checks']),
+            'source_commit': sha, 'executable_sha256': v3['executable_sha256'],
+            'report': v3_path.name, 'python_on_child_path': False,
+            'external_v3_specification_verified': v3['external_v3_specification_verified']}
         report['installed_conversion_routes_passed'] = 12
         report['conversion_matrix_report'] = matrix_path.name
         run('associations', [sys.executable, str(ROOT / 'tests/windows_installer_association_smoke.py'),

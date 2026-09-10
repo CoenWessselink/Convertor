@@ -210,7 +210,7 @@ class ProductionDrawingEngine:
         rectangles: Sequence[tuple[float, float, float, float]],
         requested: int | None,
     ) -> tuple[int, bool]:
-        required = 1.0
+        required = 0.0
         for view, rectangle in zip(views, rectangles):
             projected, _depth = DrawingProjectionModel.project(vertices, view)
             span = np.maximum(projected.max(axis=0) - projected.min(axis=0), 1.0)
@@ -221,10 +221,18 @@ class ProductionDrawingEngine:
                 float(span[0]) / available_width,
                 float(span[1]) / available_height,
             )
-        fitted = cls.next_standard_scale(required * 1.05)
+        fitted = cls.next_standard_scale(max(1.0, required * 1.05))
         if requested is None:
             return fitted, False
-        return max(int(requested), fitted), fitted > int(requested)
+        if not math.isfinite(float(requested)) or int(requested) != requested or requested < 1:
+            raise ValueError("Een vaste schaal vereist een positieve gehele noemer")
+        if float(requested) + 1.0e-9 < required * 1.05:
+            raise ValueError(
+                f"Vaste schaal 1:{requested} past niet op dit blad met deze aanzichten. "
+                f"Kies Auto, minimaal 1:{fitted}, een groter blad of minder aanzichten. "
+                "Er is geen tekening op een afwijkende schaal uitgevoerd."
+            )
+        return int(requested), False
 
     @staticmethod
     def _base_page(number: int, title: str, width: float, height: float) -> DrawingPage:

@@ -435,6 +435,7 @@ class _EditorSnapshot:
 
     dimensions: list[InteractiveDimension]
     style: DimensionStyle
+    sheet_settings: dict[str, Any] | None = None
 
 
 class DimensionEditorModel:
@@ -448,11 +449,26 @@ class DimensionEditorModel:
         self._redo: list[tuple[str, _EditorSnapshot]] = []
 
     def _snapshot(self) -> _EditorSnapshot:
-        return _EditorSnapshot(deepcopy(self.document.dimensions), deepcopy(self.document.style))
+        return _EditorSnapshot(deepcopy(self.document.dimensions), deepcopy(self.document.style),
+                               deepcopy(self.document.extensions.get("sheet_settings")))
 
     def _restore(self, snapshot: _EditorSnapshot) -> None:
         self.document.dimensions = deepcopy(snapshot.dimensions)
         self.document.style = deepcopy(snapshot.style)
+        if snapshot.sheet_settings is None:
+            self.document.extensions.pop("sheet_settings", None)
+        else:
+            self.document.extensions["sheet_settings"] = deepcopy(snapshot.sheet_settings)
+
+    def update_sheet_settings(self, settings: Mapping[str, Any], *, user: str = "system") -> bool:
+        values = deepcopy(dict(settings))
+        previous = self.document.extensions.get("sheet_settings")
+        if previous == values:
+            return False
+        before = self._begin("drawing.sheet_settings")
+        self.document.extensions["sheet_settings"] = values
+        self._commit(before, user=user, details={"before": previous, "after": values})
+        return True
 
     def _begin(self, action: str) -> tuple[str, _EditorSnapshot]:
         if self.document.status == "released":
@@ -1046,7 +1062,10 @@ class DimensionEditorModel:
             if str(item.get("feature_id") or item.get("id") or "")
         }
         counts = {state.value: 0 for state in DimensionState}
-        for item in self.document.dimensions:
+        # A validation preview may report stale anchors but must never rewrite
+        # the immutable, released drawing revision. Linter also checks hashes.
+        items = deepcopy(self.document.dimensions) if self.document.status == "released" else self.document.dimensions
+        for item in items:
             if item.kind == DimensionKind.TEXT.value:
                 item.state = DimensionState.RESOLVED.value
                 counts[item.state] += 1

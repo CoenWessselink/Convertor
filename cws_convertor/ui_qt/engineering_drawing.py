@@ -269,6 +269,12 @@ class EngineeringDrawingGenerator:
                 resolved_entity_id, entity = str(fallback[0]), fallback[1]
         if entity is None:
             raise ValueError("Geen maakbaar onderdeel beschikbaar voor de tekening")
+        if resolved_entity_id in project.assemblies:
+            components = self._assembly_component_geometry(entity)
+            if components is None:
+                raise ValueError("De geselecteerde assembly bevat geen geladen componentgeometrie")
+            vertices, triangles, _components = components
+            return entity, None, resolved_entity_id, vertices, triangles
         node_id = self.workspace.interaction.node_for_entity(resolved_entity_id)
         node = self.workspace.controller.index.node(node_id)
         if node.geometry_id is None:
@@ -282,6 +288,37 @@ class EngineeringDrawingGenerator:
             raise ValueError("Het geselecteerde onderdeel heeft lege 3D-geometrie")
         return entity, node, resolved_entity_id, self._principal_orientation(vertices), triangles
 
+    def _assembly_members(self, assembly: Any) -> dict[str, str]:
+        """Resolve the entire selected assembly, with cycle and missing-child checks."""
+        members: dict[str, str] = {}
+        active: set[str] = set()
+        visited: set[str] = set()
+
+        def visit(value: Any) -> None:
+            identity = str(value.internal_id)
+            if identity in active:
+                raise ValueError(f"Cyclische assemblystructuur bij {identity}")
+            if identity in visited:
+                return
+            active.add(identity)
+            for attribute, kind in (("part_ids", "part"), ("purchased_item_ids", "purchased"),
+                                    ("fastener_ids", "fastener"), ("weld_ids", "weld")):
+                for member in getattr(value, attribute, ()) or ():
+                    members[str(member)] = kind
+            main = str(getattr(value, "main_part_id", "") or "")
+            if main:
+                members[main] = "part"
+            for child_id in getattr(value, "child_assembly_ids", ()) or ():
+                child = self.workspace.project.assemblies.get(str(child_id))
+                if child is None:
+                    raise ValueError(f"Subassembly {child_id} ontbreekt")
+                visit(child)
+            active.remove(identity)
+            visited.add(identity)
+
+        visit(assembly)
+        return members
+
     def _assembly_component_geometry(
         self,
         assembly: Any,
@@ -289,33 +326,36 @@ class EngineeringDrawingGenerator:
         """Return child meshes in one assembly/world coordinate system."""
 
         raw_components: list[tuple[str, np.ndarray, np.ndarray]] = []
-        assembly_entity_ids = tuple(
-            dict.fromkeys(
-                str(value)
-                for attribute in ("part_ids", "purchased_item_ids", "fastener_ids", "weld_ids")
-                for value in (getattr(assembly, attribute, ()) or ())
-                if str(value)
-            )
-        )
+        members = self._assembly_members(assembly)
+        assembly_entity_ids = tuple(members)
+        missing: list[str] = []
+        required_ids = {key for key, kind in members.items() if kind != "weld"}
         for entity_id in assembly_entity_ids:
             try:
                 node_id = self.workspace.interaction.node_for_entity(str(entity_id))
                 node = self.workspace.controller.index.node(node_id)
                 mesh = self.workspace.load_result.repository.get(node.geometry_id) if node.geometry_id else None
                 if mesh is None:
-                    continue
+                    raise ValueError("componentgeometrie ontbreekt")
                 local = np.asarray(mesh.vertices, dtype=float).reshape((-1, 3))
                 faces = np.asarray(mesh.triangles, dtype=int).reshape((-1, 3))
+                if not len(local) or not len(faces) or not np.isfinite(local).all():
+                    raise ValueError("lege of ongeldige componentgeometrie")
                 matrix = np.asarray(
                     self.workspace.controller.index.world_transform_by_node[node_id].to_rows(),
                     dtype=float,
                 )
                 homogeneous = np.column_stack((local, np.ones(len(local), dtype=float)))
                 world = (homogeneous @ matrix.T)[:, :3]
+                if matrix.shape != (4, 4) or not np.isfinite(world).all():
+                    raise ValueError("ongeldige componenttransformatie")
                 raw_components.append((str(entity_id), world, faces))
-            except Exception:
-                continue
-        if len(raw_components) < 2:
+            except Exception as exc:
+                if entity_id in required_ids:
+                    missing.append(f"{entity_id}: {exc}")
+        if missing:
+            raise ValueError("Assemblytekening geblokkeerd; componenten ontbreken: " + "; ".join(missing))
+        if not raw_components:
             return None
         combined_world = np.concatenate([item[1] for item in raw_components], axis=0)
         center = combined_world.mean(axis=0)
@@ -461,9 +501,14 @@ class EngineeringDrawingGenerator:
         if text in {"", "auto", "automatisch"}:
             return None
         try:
-            return max(1, int(float(text.split(":")[-1].replace(",", "."))))
-        except ValueError:
-            return None
+            if ":" in text and text.split(":", 1)[0] != "1":
+                raise ValueError
+            denominator = float(text.split(":")[-1].replace(",", "."))
+            if not math.isfinite(denominator) or denominator < 1 or not denominator.is_integer():
+                raise ValueError
+            return int(denominator)
+        except (ValueError, OverflowError) as exc:
+            raise ValueError(f"Ongeldige vaste schaal: {value!r}; kies Auto of 1:n") from exc
 
     @staticmethod
     def _next_standard_scale(required: float) -> int:
@@ -786,7 +831,8 @@ class EngineeringDrawingGenerator:
         )
         bom: list[dict[str, Any]] = []
         if is_assembly:
-            part_ids = list(getattr(entity, "part_ids", ()) or ())
+            assembly_members = self._assembly_members(entity)
+            part_ids = [key for key, kind in assembly_members.items() if kind == "part"]
             for part_id in part_ids:
                 item = project.parts.get(str(part_id))
                 if item is None:
@@ -800,10 +846,14 @@ class EngineeringDrawingGenerator:
                         "material": str(getattr(item, "normalized_material", "") or getattr(item, "material", "")),
                     }
                 )
-            for fastener_id in getattr(entity, "fastener_ids", ()) or ():
+            for purchased_id in (key for key, kind in assembly_members.items() if kind == "purchased"):
+                item = project.purchased_items.get(purchased_id)
+                bom.append({"id": purchased_id, "mark": str(getattr(item, "name", "") or purchased_id),
+                            "quantity": int(getattr(item, "quantity", 1) or 1), "description": "Koopdeel"})
+            for fastener_id in (key for key, kind in assembly_members.items() if kind == "fastener"):
                 fastener = project.fasteners.get(str(fastener_id))
                 bom.append({"id": str(fastener_id), "mark": str(getattr(fastener, "name", "") or fastener_id), "quantity": int(getattr(fastener, "quantity", 1) or 1), "description": "Bevestiger"})
-            for weld_id in getattr(entity, "weld_ids", ()) or ():
+            for weld_id in (key for key, kind in assembly_members.items() if kind == "weld"):
                 weld = project.welds.get(str(weld_id))
                 bom.append({"id": str(weld_id), "mark": str(getattr(weld, "name", "") or weld_id), "quantity": 1, "description": "Las"})
         else:

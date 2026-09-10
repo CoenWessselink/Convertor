@@ -1,4 +1,4 @@
-name: Integrated gap repair - tested beta installer
+name: CWS V3 integrated - tested beta installer
 on:
   workflow_dispatch:
   push:
@@ -47,6 +47,14 @@ jobs:
       - name: PDF dimensioning
         if: ${{ !cancelled() }}
         run: python tools/run_pdf12_v2_tests.py --output build/pdf12-source.json
+      - name: V3 native drawing interaction and core regressions
+        if: ${{ !cancelled() }}
+        shell: python
+        run: |
+          import subprocess,sys
+          for name in ('drawing_v3_completion_smoke.py','drawing_v3_inspector_smoke.py','drawing_workspace_v3_smoke.py','interactive_dimension_v3_regression_smoke.py'):
+              subprocess.run([sys.executable,'tests/'+name],check=True)
+          subprocess.run([sys.executable,'CWS_Convertor_App.py','--pdf-v3-evidence','--evidence-dir','build/pdf-v3-source','--report','build/pdf-v3-source.json'],check=True)
       - name: Capture real BOM controls
         if: ${{ !cancelled() }}
         run: python tools/capture_bom_production_hub.py --project "validation/master_completion/hvpc_project/HVPC te Hengelo fasen totaal.cwscproj" --output build/material_model_recognition/bom-screenshots
@@ -75,6 +83,8 @@ jobs:
           path: |
             build/material_model_recognition/**
             build/pdf12-source.json
+            build/pdf-v3-source.json
+            build/pdf-v3-source/**
             build/recognition-usefulness/*.json
             build/recognition-usefulness/*.log
             build/RESOLVED_DEPENDENCIES.json
@@ -198,6 +208,10 @@ jobs:
         with:
           pattern: CWS_Installer_Regression_*_${{ github.sha }}
           path: build/promotion
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: CWS_Installer_Runtime_Proof_${{ github.sha }}
+          path: build/runtime-proof
       - name: Verify all required jobs and source/binary evidence
         env:
           CORE_RESULT: ${{ needs.core.result }}
@@ -215,6 +229,11 @@ jobs:
           root=pathlib.Path('build/promotion');out=root/'promoted'
           for name in ('INTEGRATED_GAP_REPAIR.md','INTEGRATED_GAP_REPAIR_REGISTER.json'):
               shutil.copyfile(pathlib.Path('docs')/name,out/name)
+          shutil.copyfile(pathlib.Path('docs')/'PDF_UI_V3_RESUMED_20260910.md',out/'PDF_UI_V3_RESUMED_20260910.md')
+          with zipfile.ZipFile(out/'INSTALLED_RUNTIME_PROOF.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for path in pathlib.Path('build/runtime-proof').rglob('*'):
+                  if path.is_file() and path.suffix.lower() not in {'.exe','.dll','.ttf','.otf','.woff','.woff2'}:
+                      z.write(path,path.relative_to('build/runtime-proof'))
           with zipfile.ZipFile(out/'SOURCE_ACCEPTANCE_PROOF.zip','w',zipfile.ZIP_DEFLATED) as z:
               for path in root.rglob('*'):
                   if path.is_file() and 'promoted' not in path.parts and path.suffix.lower() not in {'.exe','.dll','.ttf','.otf','.woff','.woff2'}:
@@ -234,16 +253,17 @@ jobs:
             const root='build/promotion/promoted';
             const proof=JSON.parse(fs.readFileSync(root+'/PROMOTION.json','utf8'));
             if(proof.status!=='PASS'||proof.source_commit!==context.sha||proof.full_product_release_approved!==false) throw new Error('Promotion binding invalid');
-            const tag='cws-gap-beta-'+context.sha.slice(0,12);
+            const tag='cws-pdf-v3-beta-'+context.sha.slice(0,12);
             const repo={owner:context.repo.owner,repo:context.repo.repo};
             let release;
             try {release=(await github.rest.repos.getReleaseByTag({...repo,tag})).data;}
             catch(error) {
               if(error.status!==404)throw error;
               const body=['Tested Windows x64 software beta. Source: '+context.sha,
+                'V3 native inspector, selected-assembly rendering, exact-scale rejection, project reopen and released-revision guards tested inside installed executable. Original V3 ZIP/reference-image conformity is not verified; see PDF_UI_V3_RESUMED_20260910.md.',
                 'Joint core, broad regression and installed-runtime acceptance passed. Real installed plate planning/reservation/reopen and same-version reinstall are tested.',
                 'NOT full product or machine qualification. Broad manufacturing recognition, target hardware, certificates and signing remain separate limitations. Read INTEGRATED_GAP_REPAIR.md and the 36-item register. No machine transfer is authorized.'].join('\n\n');
-              release=(await github.rest.repos.createRelease({...repo,tag_name:tag,target_commitish:context.sha,name:'CWS Convertor integrated gap repair '+context.sha.slice(0,8),prerelease:true,draft:false,body})).data;
+              release=(await github.rest.repos.createRelease({...repo,tag_name:tag,target_commitish:context.sha,name:'CWS Convertor PDF/UI V3 integration '+context.sha.slice(0,8),prerelease:true,draft:false,body})).data;
             }
             if(release.target_commitish!==context.sha)throw new Error('Existing release points to a different source');
             const existing=(await github.rest.repos.listReleaseAssets({...repo,release_id:release.id,per_page:100})).data;
