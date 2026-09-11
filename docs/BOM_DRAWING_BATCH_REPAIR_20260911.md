@@ -92,3 +92,20 @@ Lokale gewijzigde-sourceproeven zijn diagnostiek, geen releasebewijs.
 Installer/portable en alle definitieve bewijzen moeten uit de nieuwe
 ongewijzigde broncommit komen. Alleen een gezamenlijke geslaagde Windows-run
 met installatiecontrole mag de beta promoveren.
+
+## Gevonden Windows-regressie in het bestaande componentbewijs
+
+De eerste Windows-run op `464dbad1` voerde 234 scripts uit waarvan één
+oude BOM-componentproef na 300 seconden stopte: zij verwachtte nog dat
+`drawing.batch_pdf` niet bestond. Nu de functie is aangesloten, opende
+die ongewijzigde test een native mapkeuze waarop niemand antwoordde.
+
+De proef stuurt nu expliciet die echte mapkeuze aan. De eenvoudige
+componenthost heeft geen viewer-meshes en moet daarom correct weigeren:
+geen PDF, geen tijdelijke bestanden en geen achterblijvende job.
+De positieve deel-, subset- en assemblybatches blijven in de afzonderlijke
+echte CWSMainWindow-proef verplicht. Geen productielogica of timeout is
+versoepeld. De finalizer vereist beide nieuwe negatieve controlepunten;
+een eenheidstest bewijst dat het weglaten ervan promotie verhindert.
+De aangepaste componentproef is lokaal werkelijk uitgevoerd, niet geskipt.
+Definitief Windows-/installerbewijs vereist een nieuwe commitgebonden run.

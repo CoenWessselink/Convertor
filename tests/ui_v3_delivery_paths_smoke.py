@@ -164,6 +164,21 @@ class DeliveryPathTests(unittest.TestCase):
                                        '--runtime-root', str(runtime), '--sha', SHA]), contextlib.redirect_stdout(io.StringIO()):
             return delivery.main()
 
+    def test_missing_component_batch_refusal_checks_blocks_promotion(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            report = runtime / 'installed-bom-actions.json'
+            payload = delivery.load(report)
+            payload['checks'] = [row for row in payload['checks']
+                                 if row.get('name') != 'Rejected batch publishes no files or running job']
+            write_json(report, payload)
+            acceptance = root / 'promoted' / 'INSTALLER_ACCEPTANCE.json'
+            binding = delivery.load(acceptance)
+            binding['installed_bom_actions']['report_sha256'] = delivery.digest(report)
+            write_json(acceptance, binding)
+            with self.assertRaisesRegex(RuntimeError, 'BOM review action checks missing'):
+                self.run_finalizer(root, runtime)
+
     def test_missing_one_review_action_blocks_promotion(self):
         with TemporaryDirectory() as folder:
             root, runtime = fixture(Path(folder))

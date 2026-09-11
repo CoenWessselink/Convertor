@@ -70,6 +70,8 @@ BOM_REVIEW_CHECKS = {
     "Cancelled review creates no files and is not passed",
     "Changed project during review dialog creates no files",
     "Empty explicit review selection does not open output or widen scope",
+    "Batch without component geometry blocks explicitly",
+    "Rejected batch publishes no files or running job",
 }
 
 

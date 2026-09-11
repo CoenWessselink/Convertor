@@ -152,9 +152,15 @@ def run_bom_action_evidence(output: Path) -> dict:
             check('Machine grouping without assignment fails preflight',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and host.export_page.grouping.currentData()=='machine')
             check('Original grouping intent retained',updates[-1]['grouping']=='machine')
             screenshot('BOM-03-machine-group-missing-evidence-blocked.png')
-            # Existing explicit drawing batch limitation is never mislabeled as a produced batch.
-            trigger('drawing.batch_pdf',('A',))
-            check('Unimplemented batch drawing blocks explicitly',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and 'drawing.batch_pdf' in warnings[-1])
+            # This component host has no exact viewer geometry. Drive the real
+            # directory dialog, then require a visible, clean preflight refusal.
+            # Positive part/subset/assembly batches run in CWSMainWindow proof.
+            host.pdf_page=SimpleNamespace(_default_sheet_settings={})
+            rejected_batch=output/'drawing-without-geometry';rejected_batch.mkdir(exist_ok=True)
+            with patch.object(QtWidgets.QFileDialog,'getExistingDirectory',return_value=str(rejected_batch)):
+                trigger('drawing.batch_pdf',('A',))
+            check('Batch without component geometry blocks explicitly',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and any('componentgeometrie' in message for message in warnings))
+            check('Rejected batch publishes no files or running job',not list(rejected_batch.iterdir()) and not getattr(panel,'_drawing_batch_job',''))
             # Actual format-specific writers, invoked by the shipping BOM QActions.
             # Only dialogs are driven by the harness; file production is not mocked.
             review_root=output/'review-exports';review_root.mkdir(exist_ok=True)
