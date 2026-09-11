@@ -51,6 +51,32 @@ def grouped_fixture(root):
     return {'report':'exports/BOM_EXPORT_EVIDENCE.json','sha256':delivery.digest(report)}
 
 
+def drawing_batch_fixture(root):
+    """Hash/provenance-only fixture. Payload is NOT an actual PDF or UI evidence."""
+    rows = []
+    for mode, ids in (('part_subset', ['PART-A']), ('parts', ['PART-A','PART-B']), ('assembly', ['UIV3-A1'])):
+        folder = root / ('drawing-batch-' + mode)
+        folder.mkdir(parents=True, exist_ok=True)
+        pdf = folder / 'Tekeningen.pdf'
+        pdf.write_bytes(b'MANIFEST UNIT FIXTURE - NOT A PDF OR SCREENSHOT')
+        files = {'Tekeningen.pdf': delivery.digest(pdf)}
+        docs = []
+        for index, key in enumerate(ids):
+            child = folder / (key + '.pdf')
+            child.write_bytes(b'MANIFEST UNIT FIXTURE - NOT A PDF')
+            files[child.name] = delivery.digest(child)
+            docs.append({'entity_id': key, 'first_page': index + 1, 'page_count': 1,
+                         'file': child.name, 'sha256': files[child.name],
+                         'document_type': 'assembly' if mode == 'assembly' else 'part'})
+        manifest = folder / 'BATCH_MANIFEST.json'
+        write_json(manifest, {'schema': 'cws-drawing-review-batch-1', 'status': 'verified_review',
+                             'production_release_granted': False, 'entity_ids': ids,
+                             'documents': docs, 'files': files, 'page_count': len(ids)})
+        rows.append({'mode': mode, 'entity_ids': ids, 'manifest': manifest.relative_to(root).as_posix(),
+                     'manifest_sha256': delivery.digest(manifest), 'pdf_sha256': delivery.digest(pdf)})
+    return {'status': 'PASS', 'expected_part_ids': ['PART-A','PART-B'], 'runs': rows}
+
+
 def fixture(base):
     """Synthetic manifest fixture; deliberately not a software acceptance run."""
     root, runtime = base / 'source', base / 'runtime'
@@ -75,6 +101,7 @@ def fixture(base):
         write_json(child, {'pid': 2, 'status': 'PASS', 'executable_sha256': 'c' * 64})
         report = folder / 'REPORT.json'
         write_json(report, {
+            'drawing_batches': drawing_batch_fixture(folder),
             'source_commit': SHA, 'source_dirty': False, 'status': 'PASS',
             'specification_sha256': delivery.SPEC, 'viewer_backend': 'VtkUnitFixture',
             'checks': [{'status': 'PASS'} for _ in range(65)] + [{'name': name, 'status': 'PASS'} for name in sorted(delivery.RELEASE_EVIDENCE_CHECKS)],
@@ -171,6 +198,29 @@ class DeliveryPathTests(unittest.TestCase):
             self.assertFalse(payload['original_archive_rehashed_in_ci'])
             release = delivery.load(root / 'promoted' / 'RELEASE_MANIFEST.json')
             self.assertEqual(release['full_original_specification_acceptance'], 'SOFTWARE_BETA_WITH_RECORDED_VISUAL_REVIEW')
+
+    def test_missing_batch_proof_cannot_promote_old_green_report(self):
+        with TemporaryDirectory() as folder:
+            with self.assertRaisesRegex(RuntimeError, 'batch result missing'):
+                delivery._verify_drawing_batches({}, Path(folder))
+
+    def test_changed_batch_output_is_rejected_even_with_green_report(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            binding = drawing_batch_fixture(root)
+            (root/'drawing-batch-parts/Tekeningen.pdf').write_bytes(b'tampered')
+            with self.assertRaisesRegex(RuntimeError, 'batch output hash'):
+                delivery._verify_drawing_batches({'drawing_batches': binding}, root)
+
+    def test_batch_cannot_gain_unselected_objects_by_rebinding_manifest(self):
+        with TemporaryDirectory() as folder:
+            root = Path(folder)
+            binding = drawing_batch_fixture(root)
+            path = root / binding['runs'][0]['manifest']
+            payload = delivery.load(path); payload['entity_ids'].append('EXTRA')
+            write_json(path, payload); binding['runs'][0]['manifest_sha256'] = delivery.digest(path)
+            with self.assertRaisesRegex(RuntimeError, 'batch exact documents'):
+                delivery._verify_drawing_batches({'drawing_batches': binding}, root)
 
     def test_hash_tampering_still_blocks_promotion(self):
         with TemporaryDirectory() as folder:

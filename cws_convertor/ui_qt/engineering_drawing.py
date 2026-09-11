@@ -649,6 +649,7 @@ class EngineeringDrawingGenerator:
         orientation: str = "landscape", include_sections: bool = True,
         include_details: bool = True, require_production_ready: bool = False,
         require_trusted: bool = False,
+        record_output: bool = True,
     ) -> DrawingOutput:
         entity, _node, resolved_entity_id, vertices, triangles = self._resolve(entity_id)
         project = self.workspace.project
@@ -943,7 +944,8 @@ class EngineeringDrawingGenerator:
 
         output = Path(output_directory)
         output.mkdir(parents=True, exist_ok=True)
-        stem = part_label.replace("/", "-")
+        from cws_convertor.production_export.utils import safe_filename
+        stem = safe_filename(part_label)
         png_path = output / f"{stem}_tekening.png" if make_png else None
         pdf_path = output / f"{stem}_tekening.pdf" if make_pdf else None
         if pdf_path is not None and canonical is not None and canonical_current and not is_assembly:
@@ -954,12 +956,12 @@ class EngineeringDrawingGenerator:
                 ProductionDrawingRenderer.render_png(pdf_path, png_path)
         else:
             ProductionDrawingRenderer.render(document, pdf_path=pdf_path, png_path=png_path)
-        if pdf_path is not None:
+        if record_output and pdf_path is not None:
             DocumentOutputService.shared().register(pdf_path,kind="engineering_drawing",producer="EngineeringDrawingGenerator",entity_ids=(resolved_entity_id,))
-        if png_path is not None:
+        if record_output and png_path is not None:
             DocumentOutputService.shared().register(png_path,kind="drawing_preview",producer="EngineeringDrawingGenerator",entity_ids=(resolved_entity_id,))
         properties = getattr(entity, "properties", None)
-        if isinstance(properties, dict):
+        if record_output and isinstance(properties, dict):
             properties["drawing_state"] = {
                 "status": "current" if release_ready else "review_blocked",
                 "manufacturing_hash": str(getattr(entity, "manufacturing_hash", "")),
@@ -970,7 +972,7 @@ class EngineeringDrawingGenerator:
                 "release_ready": release_ready,
                 "lint": document.lint,
             }
-        if hasattr(entity, "drawing_status"):
+        if record_output and hasattr(entity, "drawing_status"):
             entity.drawing_status = "released" if release_ready else "review"
         return DrawingOutput(
             png_path=png_path,

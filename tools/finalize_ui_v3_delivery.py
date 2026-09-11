@@ -23,6 +23,15 @@ RELEASE_EVIDENCE_CHECKS = {
     'Main-window grouped preflight preserves exact canonical ID',
     'Grouped export cannot promote unapproved imported source',
     'Blocked grouped export starts no production job',
+    'Native batch retains complete assembly document',
+    'Native batch retains existing workspace and viewer',
+} | {
+    name + ' ' + mode
+    for mode in ('part_subset', 'parts', 'assembly')
+    for name in ('Native batch completed', 'Native batch exact object scope',
+                 'Native batch manifest bytes bound', 'Native batch no new revision release',
+                 'Native batch contains every selected drawing', 'Native combined PDF parsed',
+                 'Native combined PDF has real vectors', 'Native batch left no temporary files')
 } | {
     f'{name} at {width} logical pixels'
     for width in (1280, 1440, 1920)
@@ -139,6 +148,47 @@ def _verify_bom_exports(bom: dict, base: Path, sha: str, executable_sha256: str)
     return {'status':'PASS','report_sha256':digest(path),'checks':len(report['checks']),
             'real_groupings':sorted(expected),'review_formats':['csv','json','xlsx']}
 
+def _verify_drawing_batches(data: dict, base: Path) -> dict:
+    """Check the bytes of every batch built inside this exact native process."""
+    binding = data.get('drawing_batches', {})
+    require(binding.get('status') == 'PASS', 'Native drawing batch result missing')
+    parts = binding.get('expected_part_ids', [])
+    require(len(parts) == len(set(parts)) == 2 and all(isinstance(x, str) and x for x in parts),
+            'Native drawing batch fixture scope')
+    expected = {'part_subset': sorted(parts)[:1], 'parts': sorted(parts), 'assembly': ['UIV3-A1']}
+    runs = binding.get('runs', [])
+    require(len(runs) == 3 and {r.get('mode') for r in runs} == set(expected), 'Three native drawing batches required')
+    for row in runs:
+        ids = expected[row['mode']]
+        require(row.get('entity_ids') == ids, 'Native drawing batch selected identity')
+        path = evidence_path(base, row.get('manifest'))
+        require(path.is_file() and digest(path) == row.get('manifest_sha256'), 'Drawing batch manifest hash')
+        manifest = load(path)
+        require(manifest.get('schema') == 'cws-drawing-review-batch-1'
+                and manifest.get('status') == 'verified_review'
+                and manifest.get('production_release_granted') is False, 'Drawing batch review-only authority')
+        docs = manifest.get('documents', [])
+        require(manifest.get('entity_ids') == ids and [d.get('entity_id') for d in docs] == ids,
+                'Drawing batch exact documents')
+        files = manifest.get('files', {})
+        actual = {p.relative_to(path.parent).as_posix() for p in path.parent.rglob('*') if p.is_file()}
+        require(actual == set(files) | {'BATCH_MANIFEST.json'}, 'Drawing batch file inventory')
+        require('Tekeningen.pdf' in files and files['Tekeningen.pdf'] == row.get('pdf_sha256'),
+                'Drawing batch combined file identity')
+        for name, expected_hash in files.items():
+            require(digest(evidence_path(path.parent, name)) == expected_hash, 'Drawing batch output hash')
+        next_page = 1
+        for doc in docs:
+            require(doc.get('sha256') == files.get(doc.get('file')) and doc.get('first_page') == next_page
+                    and isinstance(doc.get('page_count'), int) and doc['page_count'] > 0,
+                    'Drawing batch missing/overlapping document pages')
+            next_page += doc['page_count']
+        require(manifest.get('page_count') == next_page - 1, 'Drawing batch total pages')
+        if row['mode'] == 'assembly':
+            require(docs[0].get('document_type') == 'assembly', 'Batch assembly substituted by part')
+    return {'status': 'PASS', 'modes': sorted(expected), 'production_release_granted': False}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
@@ -180,6 +230,7 @@ def main() -> int:
         require(data['specification_sha256'] == SPEC and 'Headless' not in data['viewer_backend'], 'Native viewer/spec binding: '+label)
         require(len(data['checks']) >= 65 and all(c['status'] == 'PASS' for c in data['checks']), 'Native controls incomplete: '+label)
         require(RELEASE_EVIDENCE_CHECKS.issubset({c.get('name') for c in data['checks']}), 'Native release-evidence regression missing: '+label)
+        drawing_batches = _verify_drawing_batches(data, path.parent)
         child_path = evidence_path(path.parent, data['second_process']['report']); child = load(child_path)
         require(digest(child_path) == data['second_process']['sha256'], 'Independent reopen hash: '+label)
         require(child['pid'] != data['pid'] and child['status'] == 'PASS' and child['executable_sha256'] == data['executable_sha256'], 'Independent reopen: '+label)
@@ -189,7 +240,7 @@ def main() -> int:
             require(image['missing_glyphs'] == 0, 'Unrendered glyphs: '+label)
             images.append({'file':str(evidence_path(path.parent, image['file']).relative_to(runtime if not label.startswith('source-') else root)), 'sha256':image['sha256']})
         records[label] = {'status':'PASS','source_commit':sha,'checks':len(data['checks']),'pid':data['pid'], 'second_pid':child['pid'],
-                          'executable_sha256':data['executable_sha256'],'viewer_backend':data['viewer_backend'],'screenshots':images}
+                          'executable_sha256':data['executable_sha256'],'viewer_backend':data['viewer_backend'],'screenshots':images,'drawing_batches':drawing_batches}
     require(len({records[label]['executable_sha256'] for label in ('onefolder','portable','installed')}) == 1, 'Different packaged binaries')
     for label in ('dist','portable','installed'):
         legacy = load(only(runtime, label + '-packaged-runtime.json'))

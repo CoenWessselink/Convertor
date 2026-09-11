@@ -224,7 +224,12 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
                     + ". Kies/controleer de uitvoermap en bevestig Generate; nog geen bestanden gemaakt")
 
 
-def _drawing(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
+def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = None) -> _Outcome:
+    if action == "drawing.batch_pdf":
+        if preflight is None:
+            raise ValueError("Batchtekening vereist een actuele BOM-preflight")
+        from .bom_drawing_batch import prepare_batch_action
+        return prepare_batch_action(panel, ids, preflight)
     window = panel.window
     if len(ids) != 1:
         raise ValueError("Deze tekenactie vereist één onderdeel of één assembly; batchtekeningen zijn nog apart af te nemen (W18)")
@@ -295,6 +300,6 @@ def _dispatch(panel: Any, action: str, route: str, ids: tuple[str, ...], preflig
     if action.startswith("export.") or action == "production_export":
         return _export(panel, action, ids, preflight)
     if action.startswith("drawing."):
-        return _drawing(panel, action, ids)
+        return _drawing(panel, action, ids, preflight)
     panel.action_requested.emit(route)
     return _Outcome("prepared", f"{action}: scope doorgezet naar {route}; geen voltooide bewerking geclaimd")

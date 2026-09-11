@@ -93,7 +93,7 @@ class DispatchGuards(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'één onderdeel'):_drawing(self.panel,'drawing.generate',('A','B'))
     def test_batch_request_not_replaced_by_png_preview(self):
         self.panel.window.pdf_page=object()
-        with self.assertRaisesRegex(ValueError,'niet afzonderlijk'):_drawing(self.panel,'drawing.batch_pdf',('A',))
+        with self.assertRaisesRegex(ValueError,'preflight'):_drawing(self.panel,'drawing.batch_pdf',('A',))
     def test_unknown_drawing_intent_is_explicitly_rejected(self):
         self.panel.window.pdf_page=object()
         with self.assertRaises(ValueError):_drawing(self.panel,'drawing.nonexistent',('A',))

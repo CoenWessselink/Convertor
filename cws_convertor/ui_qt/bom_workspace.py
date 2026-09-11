@@ -912,7 +912,17 @@ if qt_available():
             else:
                 self._select_context_rows()
             self.viewer.set_context(workspace, selection)
-            QtCore.QTimer.singleShot(0, self._apply_color_mode)
+            # Colour changes publish viewer state through the shared selection
+            # context. Requeueing them for every context echo creates a render
+            # feedback loop, particularly during a modal preflight/batch action.
+            color_request = (
+                id(workspace), id(getattr(self.viewer, "_viewer", None)),
+                getattr(getattr(workspace, "bom_snapshot", None), "snapshot_sha256", ""),
+                self.color_mode.currentText(), tuple(sorted(self._revision_statuses.items())),
+            )
+            if color_request != getattr(self, "_last_color_mode_request", None):
+                self._last_color_mode_request = color_request
+                QtCore.QTimer.singleShot(0, self._apply_color_mode)
             main_viewer = getattr(getattr(self.window, "project_page", None), "viewer", None)
             if main_viewer is not self._main_viewer_registered:
                 if self._main_viewer_registered is not None:
@@ -2749,20 +2759,30 @@ if qt_available():
         def _route_scoped_action(self, action: str, route: str) -> None:
             workspace, state = self._workspace, self._hub_state
             rows = self._selected_rows()
-            if action.startswith("export."):
+            if action.startswith("export.") or action == "drawing.batch_pdf":
                 try:
                     rows = self._exact_export_rows(rows)
                 except ValueError as exc:
                     QtWidgets.QMessageBox.warning(self, "BOM-export geblokkeerd", str(exc))
                     return
             readonly_machine = action in {"machine.recommend", "machine.validate", "machine.alternatives", "machine.explain"}
-            preflight = self._confirm_preflight("inspect" if readonly_machine else action, rows,
-                                                allow_blocked_review_export=readonly_machine)
+            readonly_review = readonly_machine or action == "drawing.batch_pdf"
+            preflight = self._confirm_preflight("inspect" if readonly_review else action, rows,
+                                                allow_blocked_review_export=readonly_review)
             if preflight is None:
                 return
             allowed = set(preflight.eligible_group_ids)
             selected = tuple(row for row in rows if row.group_id in allowed)
             entity_ids = tuple(dict.fromkeys(entity_id for row in selected for entity_id in row.entity_ids))
+            if action == "drawing.batch_pdf":
+                from cws_convertor.drawings.batch import exact_drawing_batch_ids
+                try:
+                    entity_ids = exact_drawing_batch_ids(
+                        workspace.project, entity_ids, getattr(self._selection, "entity_ids", ()) or (),
+                    )
+                except ValueError as exc:
+                    QtWidgets.QMessageBox.warning(self, "Tekenbatch geblokkeerd", str(exc))
+                    return
             if entity_ids and self._workspace is not None:
                 self.window.application_context.request_selection(
                     entity_ids, primary_entity_id=entity_ids[0], origin=f"bom_{action}",
@@ -2799,7 +2819,13 @@ if qt_available():
                                               messages=(outcome.message, request["request_sha256"]))
                 self._mark_project_dirty()
             if outcome.start is not None:
-                self._start_scoped_nesting(action, preflight, outcome)
+                if action == "drawing.batch_pdf":
+                    try:
+                        outcome.start()
+                    except Exception as exc:
+                        QtWidgets.QMessageBox.warning(self, "Tekenbatch niet gestart", str(exc))
+                else:
+                    self._start_scoped_nesting(action, preflight, outcome)
             elif outcome.status == "blocked":
                 QtWidgets.QMessageBox.warning(self, "BOM-actie geblokkeerd", outcome.message)
 

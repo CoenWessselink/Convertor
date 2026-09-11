@@ -241,6 +241,80 @@ def _exercise_grouped_export_guard(window, check, flush, snap, output):
     return {'status':'PASS','part_ids':list(selected),'release_allowed':False}
 
 
+def _exercise_bom_drawing_batch(window, check, flush, snap, output):
+    """Use the shipping QAction/JobManager, then independently read actual PDFs."""
+    from copy import deepcopy
+    from unittest.mock import patch
+    from PySide6 import QtCore, QtWidgets
+    from cws_convertor.drawings.interactive import DIMENSION_SETTINGS_KEY
+    import fitz
+    workspace = window.workspace
+    parts = sorted(workspace.project.assemblies['UIV3-A1'].part_ids)
+    check('Batch fixture has two distinct canonical parts', len(parts) == 2)
+    bom = window.bom_excel_page
+    records = []
+    def accept_review():
+        for dialog in QtWidgets.QApplication.topLevelWidgets():
+            if isinstance(dialog, QtWidgets.QMessageBox) and dialog.isVisible():
+                for button in dialog.buttons():
+                    if dialog.standardButton(button) == QtWidgets.QMessageBox.StandardButton.Yes or button.text() == 'Alleen geschikte uitvoeren':
+                        button.click()
+                        return
+    for mode, selected, family in (('part_subset', parts[:1], 0),
+                                  ('parts', parts, 0),
+                                  ('assembly', ['UIV3-A1'], 1)):
+        folder = output / ('drawing-batch-' + mode)
+        folder.mkdir(exist_ok=True)
+        window.workspace_router.open_workspace('bom')
+        bom.family_tabs.setCurrentIndex(family)
+        window.application_context.request_selection(tuple(selected), primary_entity_id=selected[0], origin='batch-native-acceptance')
+        flush()
+        bom._populate_action_matrix()
+        action = bom._matrix_qactions['drawing.batch_pdf']
+        check('Native review batch action available ' + mode, action.isEnabled())
+        editor_before = deepcopy(workspace.project.settings.get(DIMENSION_SETTINGS_KEY, {}))
+        timer = QtCore.QTimer()
+        timer.timeout.connect(accept_review)
+        timer.start(10)
+        try:
+            # Automate only the output-directory chooser, not the actual command,
+            # generator, linter, publication or source/selection checks.
+            with patch.object(QtWidgets.QFileDialog, 'getExistingDirectory', return_value=str(folder)):
+                action.trigger()
+            deadline = time.monotonic() + 90
+            while getattr(bom, '_drawing_batch_job', '') and time.monotonic() < deadline:
+                flush(.04)
+        finally:
+            timer.stop()
+        result = getattr(bom, '_last_drawing_batch', {})
+        check('Native batch completed ' + mode, not getattr(bom, '_drawing_batch_job', '') and result.get('status') == 'passed')
+        check('Native batch exact object scope ' + mode, result.get('entity_ids') == sorted(selected))
+        manifest_path = Path(result['manifest'])
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        check('Native batch manifest bytes bound ' + mode, digest(manifest_path) == result['manifest_sha256'])
+        check('Native batch no new revision release ' + mode, manifest['production_release_granted'] is False
+              and workspace.project.settings.get(DIMENSION_SETTINGS_KEY, {}) == editor_before)
+        docs = manifest['documents']
+        check('Native batch contains every selected drawing ' + mode, [d['entity_id'] for d in docs] == sorted(selected))
+        if mode == 'assembly':
+            check('Native batch retains complete assembly document', docs[0]['document_type'] == 'assembly')
+        with fitz.open(result['pdf']) as document:
+            check('Native combined PDF parsed ' + mode, document.page_count == manifest['page_count']
+                  == sum(d['page_count'] for d in docs) and len(document.get_toc()) == len(selected))
+            check('Native combined PDF has real vectors ' + mode, sum(len(p.get_drawings()) for p in document) > 0)
+        check('Native batch left no temporary files ' + mode, not list(folder.glob('.cws-drawing-batch-*')))
+        records.append({'mode': mode, 'entity_ids': sorted(selected),
+                        'manifest': manifest_path.relative_to(output).as_posix(),
+                        'manifest_sha256': digest(manifest_path),
+                        'pdf_sha256': digest(Path(result['pdf']))})
+    check('Native batch retains existing workspace and viewer', window.workspace is workspace)
+    snap('UI3-BOM-drawing-batch-native-main.png')
+    window.application_context.request_selection(('UIV3-A1',), primary_entity_id='UIV3-A1', origin='batch-native-restore')
+    window.workspace_router.open_workspace('pdf')
+    flush()
+    return {'status': 'PASS', 'expected_part_ids': parts, 'runs': records}
+
+
 def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | None=None) -> dict[str,Any]:
     from PySide6 import QtCore,QtWidgets,QtTest
     from . import CWSMainWindow
@@ -408,6 +482,7 @@ def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | 
                 check('Shared state retained through '+route,window.workspace is stable_workspace and window.viewer_page is stable_viewer and window.centralWidget() is central)
             report['bom_action'] = _exercise_bom_machine_route(window, check, flush, snap)
             report['grouped_export_guard'] = _exercise_grouped_export_guard(window, check, flush, snap, output)
+            report['drawing_batches'] = _exercise_bom_drawing_batch(window, check, flush, snap, output)
             tree_select('UIV3-A1')
             points=[c for c in panel._snap_candidates if c.valid and c.layer=='visible' and 'front' in c.anchor.view_id and c.snap_type=='endpoint']
             check('Actual geometry snap targets exist',len(points)>3)

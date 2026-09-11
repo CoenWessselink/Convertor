@@ -1146,7 +1146,7 @@ ACTION_DEFINITIONS = (
     BOMActionDefinition("drawing.dimension_check", "Maatvoering controleren", "Tekening en documenten", ("parts", "assemblies"), "drawings"),
     BOMActionDefinition("drawing.revision", "Tekeningrevisie toevoegen", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
     BOMActionDefinition("drawing.approve", "Tekening goedkeuren", "Tekening en documenten", ("parts", "assemblies"), "drawings", True),
-    BOMActionDefinition("drawing.batch_pdf", "Batch-PDF maken", "Tekening en documenten", ("parts", "assemblies"), "drawings"),
+    BOMActionDefinition("drawing.batch_pdf", "Batch-PDF maken", "Tekening en documenten", ("parts", "assemblies"), "drawings", allow_blocked=True),
     BOMActionDefinition("drawing.print", "Printen", "Tekening en documenten", ("parts", "assemblies"), "print"),
     # Machine en productie
     BOMActionDefinition("machine.recommend", "Aanbevolen machine bekijken", "Machine en productie", ("parts",), "machine", allow_blocked=True),
