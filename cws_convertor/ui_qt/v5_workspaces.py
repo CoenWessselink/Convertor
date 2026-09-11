@@ -86,6 +86,10 @@ class PlateNestingPanel(_TaskPage):
         self.scope_combo.addItem('Hele project', 'project'); self.scope_combo.addItem('Huidige selectie', 'selection')
         self.scope_combo.currentIndexChanged.connect(self._scope_changed)
         controls.addWidget(self.scope_combo)
+        self.include_remnants = QtWidgets.QCheckBox('Reststukken meenemen')
+        self.include_remnants.setChecked(True)
+        self.include_remnants.toggled.connect(lambda _checked: self._scope_changed())
+        controls.addWidget(self.include_remnants)
         self.kerf = QtWidgets.QDoubleSpinBox(); self.kerf.setRange(0, 25); self.kerf.setValue(3); self.kerf.setSuffix(' mm')
         self.margin = QtWidgets.QDoubleSpinBox(); self.margin.setRange(0, 100); self.margin.setValue(10); self.margin.setSuffix(' mm')
         for label, widget in (('Snede', self.kerf), ('Rand', self.margin)):
@@ -130,6 +134,9 @@ class PlateNestingPanel(_TaskPage):
                 for record in reversed(records):
                     try:
                         self._plan = verify_saved_plan(project, record); self._saved = record
+                        self.include_remnants.blockSignals(True)
+                        self.include_remnants.setChecked(bool(record["inputs"].get("include_remnants", True)))
+                        self.include_remnants.blockSignals(False)
                         self._show_plan(); break
                     except (ValueError, KeyError, TypeError):
                         continue
@@ -145,7 +152,7 @@ class PlateNestingPanel(_TaskPage):
         if project is None:
             return
         from cws_convertor.optimization.plate_nesting.project_service import collect_project_input
-        inputs = collect_project_input(project, scope=self.scope_combo.currentData(), entity_ids=getattr(self._selection, 'entity_ids', ()) or ())
+        inputs = collect_project_input(project, scope=self.scope_combo.currentData(), entity_ids=getattr(self._selection, 'entity_ids', ()) or (), include_remnants=self.include_remnants.isChecked())
         self.inventory.setRowCount(len(inputs.stock))
         for index, stock in enumerate(inputs.stock):
             for col, value in enumerate((stock.stock_id, stock.width_mm, stock.height_mm, stock.thickness_mm, stock.grade, stock.quantity)):
@@ -159,6 +166,8 @@ class PlateNestingPanel(_TaskPage):
         self._update_buttons()
 
     def solve(self):
+        from uuid import uuid4
+        self._bom_generation = uuid4().hex
         from cws_convertor.optimization.plate_nesting.project_service import collect_project_input, plan_project_input
         project = _project(self._workspace)
         if project is None:
@@ -166,7 +175,7 @@ class PlateNestingPanel(_TaskPage):
         self._plan = self._saved = None; self._last_pdf = None
         self.sheet_combo.clear(); self.visual.set_plan({}); self._update_buttons()
         try:
-            inputs = collect_project_input(project, scope=self.scope_combo.currentData(), entity_ids=getattr(self._selection, 'entity_ids', ()) or ())
+            inputs = collect_project_input(project, scope=self.scope_combo.currentData(), entity_ids=getattr(self._selection, 'entity_ids', ()) or (), include_remnants=self.include_remnants.isChecked())
             if inputs.blockers or not inputs.demands:
                 raise ValueError('Onvolledige plaatvraag; zie invoerblokkades. Geen exemplaren stil weggelaten.')
             self._inputs = inputs

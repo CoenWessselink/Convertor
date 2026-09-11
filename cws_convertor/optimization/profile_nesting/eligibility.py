@@ -266,6 +266,7 @@ def extract_demand(
     kernel: LengthKernel | None = None,
     candidate_machine_ids_by_part: dict[str, list[str]] | None = None,
     defer_machine_compatibility: bool = False,
+    part_ids: tuple[str, ...] | None = None,
 ) -> NestingEligibilityReport:
     kernel = kernel or LengthKernel()
     project_revision_hash = project.revision_content_sha256()
@@ -273,7 +274,13 @@ def extract_demand(
     instances: list[PieceInstance] = []
     report_messages: list[NestingMessage] = []
 
-    for part_id in sorted(project.parts):
+    selected_ids = tuple(sorted(project.parts)) if part_ids is None else tuple(sorted(set(part_ids)))
+    if part_ids is not None and not selected_ids:
+        raise ValueError("Profielnesting: expliciete selectie is leeg; projectverbreding is verboden")
+    unknown = set(selected_ids).difference(project.parts)
+    if unknown:
+        raise ValueError("Profielnesting: onbekende onderdeel-IDs: " + ", ".join(sorted(unknown)))
+    for part_id in selected_ids:
         part = project.parts[part_id]
         if part.category != "make_part":
             continue

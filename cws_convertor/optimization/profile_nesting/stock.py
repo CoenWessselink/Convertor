@@ -10,23 +10,29 @@ from .models import NestingDemandLine, NestingMessage, PurchaseOption, StockCand
 from .units import LengthKernel
 
 ALLOWED_POLICIES = {
-    "new_only", "stock_only", "remnants_only", "stock_and_remnants",
+    "new_only", "stock_only", "stock_purchase", "remnants_only", "stock_and_remnants",
     "stock_remnants_purchase", "stock_first", "remnants_first", "cost",
     "waste", "lead_time",
 }
+
+
+def _entity_value(item, field: str, default=""):
+    # Older runtime stock objects exposed extra fields; the canonical model
+    # persists those optional values in properties. Never invent certificates.
+    return getattr(item, field, (getattr(item, "properties", None) or {}).get(field, default))
 
 
 def _candidate_from_stock(item: StockItem, kernel: LengthKernel) -> StockCandidate:
     free = max(0, int(round(float(item.available_quantity) - float(item.reserved_quantity))))
     c = StockCandidate(
         candidate_id=f"stock:{item.internal_id}", source_type="full_stock", source_id=item.internal_id,
-        physical=True, profile_id=item.profile, section_hash=item.section_hash or str(item.properties.get("section_hash") or ""),
+        physical=True, profile_id=item.profile, section_hash=str(_entity_value(item, "section_hash")),
         material=item.material, material_grade=item.grade, length_mm=float(item.stock_length_mm),
         length_units=kernel.mm_to_units(item.stock_length_mm), available_quantity=free,
         heat=item.heat_number, batch=item.batch, certificate=item.certificate,
         supplier=item.supplier, location=item.location, unit_price=float(item.unit_price),
-        minimum_reusable_mm=float(item.minimum_reusable_mm), reservation_status=item.status,
-        reservation_revision=int(item.reservation_revision), measurement_reliability=item.measurement_reliability,
+        minimum_reusable_mm=float(_entity_value(item, "minimum_reusable_mm", 0.0)), reservation_status=item.status,
+        reservation_revision=int(item.reservation_revision), measurement_reliability=str(_entity_value(item, "measurement_reliability", "unknown")),
         provenance={"project_entity": item.internal_id},
     ); c.refresh_hash(); return c
 
@@ -35,13 +41,13 @@ def _candidate_from_remnant(item: Remnant, kernel: LengthKernel) -> StockCandida
     reserved = bool(item.reservation_ids) or item.status == "reserved"
     c = StockCandidate(
         candidate_id=f"remnant:{item.internal_id}", source_type="remnant", source_id=item.internal_id,
-        physical=True, profile_id=item.profile, section_hash=item.section_hash or str(item.properties.get("section_hash") or ""),
+        physical=True, profile_id=item.profile, section_hash=str(_entity_value(item, "section_hash")),
         material=item.material, material_grade=item.grade, length_mm=float(item.remaining_length_mm),
         length_units=kernel.mm_to_units(item.remaining_length_mm), available_quantity=0 if reserved else 1,
-        heat=item.heat_number, batch=item.batch, certificate=item.certificate,
-        supplier=item.supplier, location=item.location, unit_price=float(item.cost_book_value),
-        minimum_reusable_mm=float(item.minimum_reusable_mm), reservation_status=item.status,
-        reservation_revision=int(item.reservation_revision), measurement_reliability=item.measurement_reliability,
+        heat=str(_entity_value(item, "heat_number")), batch=str(_entity_value(item, "batch")), certificate=str(_entity_value(item, "certificate")),
+        supplier=str(_entity_value(item, "supplier")), location=item.location, unit_price=float(_entity_value(item, "cost_book_value", 0.0)),
+        minimum_reusable_mm=float(_entity_value(item, "minimum_reusable_mm", 0.0)), reservation_status=item.status,
+        reservation_revision=int(item.reservation_revision), measurement_reliability=str(_entity_value(item, "measurement_reliability", "unknown")),
         provenance={"project_entity": item.internal_id, "parent_stock_item_id": item.stock_item_id},
     ); c.refresh_hash(); return c
 
@@ -72,7 +78,7 @@ def build_stock_snapshot(
     candidates: list[StockCandidate] = []
     include_stock = policy not in {"new_only", "remnants_only"}
     include_rem = policy in {"remnants_only", "stock_and_remnants", "stock_remnants_purchase", "stock_first", "remnants_first", "cost", "waste", "lead_time"}
-    include_purchase = policy in {"new_only", "stock_remnants_purchase", "stock_first", "remnants_first", "cost", "waste", "lead_time"}
+    include_purchase = policy in {"new_only", "stock_purchase", "stock_remnants_purchase", "stock_first", "remnants_first", "cost", "waste", "lead_time"}
     if include_stock:
         for item in sorted(project.stock_items.values(), key=lambda x: x.internal_id):
             if item.status in {"available", "reserved"} and item.stock_length_mm > 0:

@@ -162,6 +162,49 @@ def _exercise_primary_navigation(window: Any, check: Any, flush: Any, snap: Any)
     return rows
 
 
+def _exercise_bom_machine_route(window, check, flush, snap):
+    from copy import deepcopy
+    from PySide6 import QtCore, QtWidgets
+    from cws_convertor.machine_routing import MachineRoutingService
+    workspace = window.workspace
+    selected = (sorted(workspace.project.assemblies['UIV3-A1'].part_ids)[0],)
+    assignments = deepcopy(MachineRoutingService.assignments(workspace.project))
+    window.workspace_router.open_workspace('bom')
+    bom = window.bom_excel_page
+    bom.family_tabs.setCurrentIndex(0)
+    window.application_context.request_selection(selected, primary_entity_id=selected[0], origin='bom-native-acceptance')
+    flush()
+    bom._populate_action_matrix()
+    action = bom._matrix_qactions['machine.validate']
+    check('BOM machine review enabled for actual imported part', action.isEnabled())
+    def confirm_readonly_dialog():
+        for dialog in QtWidgets.QApplication.topLevelWidgets():
+            if isinstance(dialog, QtWidgets.QMessageBox) and dialog.isVisible():
+                for button in dialog.buttons():
+                    if dialog.standardButton(button) == QtWidgets.QMessageBox.StandardButton.Yes or button.text() == 'Alleen geschikte uitvoeren':
+                        button.click()
+                        return
+    timer = QtCore.QTimer();timer.timeout.connect(confirm_readonly_dialog);timer.start(10)
+    try:
+        action.trigger()
+    finally:
+        timer.stop()
+    flush()
+    review = getattr(bom, '_last_machine_review', {})
+    check('Actual BOM action retains canonical part ID', review.get('entity_ids') == list(selected))
+    check('Actual BOM action has explicit machine.validate intent', review.get('action_id') == 'machine.validate')
+    check('Machine advice cannot grant release or assignment',
+          review.get('machine_transfer_allowed') is False and review.get('production_release_allowed') is False
+          and MachineRoutingService.assignments(workspace.project) == assignments)
+    check('Machine advice visible in existing main-window BOM', bom.isVisible() and bom.detail_tabs.currentIndex() == 2 and 'Alleen controle/advies' in bom.detail_labels['machine'].text())
+    check('Existing canonical workspace retained after BOM action', window.workspace is workspace)
+    snap('UI3-BOM-machine-review-native-main.png')
+    window.application_context.request_selection(('UIV3-A1',), primary_entity_id='UIV3-A1', origin='bom-native-restore')
+    window.workspace_router.open_workspace('pdf')
+    flush()
+    return {'action': 'machine.validate', 'entity_ids': list(selected), 'status': 'PASS', 'report_sha256': review['sha256']}
+
+
 def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | None=None) -> dict[str,Any]:
     from PySide6 import QtCore,QtWidgets,QtTest
     from . import CWSMainWindow
@@ -327,6 +370,7 @@ def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | 
             for route in ('bom','converter','control','profile_nesting','plate_nesting','export','pdf_review','pdf'):
                 click(window.native_workspace_buttons[route])
                 check('Shared state retained through '+route,window.workspace is stable_workspace and window.viewer_page is stable_viewer and window.centralWidget() is central)
+            report['bom_action'] = _exercise_bom_machine_route(window, check, flush, snap)
             tree_select('UIV3-A1')
             points=[c for c in panel._snap_candidates if c.valid and c.layer=='visible' and 'front' in c.anchor.view_id and c.snap_type=='endpoint']
             check('Actual geometry snap targets exist',len(points)>3)

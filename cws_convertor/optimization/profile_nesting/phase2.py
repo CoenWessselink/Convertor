@@ -12,10 +12,10 @@ from .snapshot import _storage_canonical, create_input_snapshot
 from .stock import build_stock_snapshot, evaluate_stock_compatibility, stock_snapshot_to_dict
 
 
-def prepare_phase2_context(project, *, mode: str = "production", stock_policy: str = "stock_remnants_purchase") -> dict[str, Any]:
+def prepare_phase2_context(project, *, mode: str = "production", stock_policy: str = "stock_remnants_purchase", part_ids: tuple[str, ...] | None = None) -> dict[str, Any]:
     profiles, tools, formulas = load_machine_profiles(project), load_tools(project), load_formulas(project)
     purchases = load_purchase_options(project)
-    preliminary = extract_demand(project, mode=mode, defer_machine_compatibility=True)
+    preliminary = extract_demand(project, mode=mode, defer_machine_compatibility=True, part_ids=part_ids)
     reports = []
     candidates_by_part: dict[str, list[str]] = {}
     for line in preliminary.demand_lines:
@@ -26,7 +26,7 @@ def prepare_phase2_context(project, *, mode: str = "production", stock_policy: s
             if report.feasible:
                 feasible_ids.append(profile.machine_id)
         candidates_by_part[line.part_id] = sorted(set(feasible_ids))
-    demand = extract_demand(project, mode=mode, candidate_machine_ids_by_part=candidates_by_part)
+    demand = extract_demand(project, mode=mode, candidate_machine_ids_by_part=candidates_by_part, part_ids=part_ids)
     machine_snapshot = build_machine_snapshot(profiles, tools, formulas)
     tool_payload = {"schema_version": "1.0", "tools": [asdict(t) for t in sorted(tools, key=lambda x: x.tool_id)]}
     tool_payload["snapshot_hash"] = stable_sha256(tool_payload)
@@ -70,8 +70,8 @@ def prepare_phase2_context(project, *, mode: str = "production", stock_policy: s
     }
 
 
-def create_phase2_input_snapshot(project, *, mode: str = "production", stock_policy: str = "stock_remnants_purchase", created_by: str = "", objective_configuration: dict | None = None, solver_configuration: dict | None = None):
-    context = prepare_phase2_context(project, mode=mode, stock_policy=stock_policy)
+def create_phase2_input_snapshot(project, *, mode: str = "production", stock_policy: str = "stock_remnants_purchase", created_by: str = "", objective_configuration: dict | None = None, solver_configuration: dict | None = None, part_ids: tuple[str, ...] | None = None):
+    context = prepare_phase2_context(project, mode=mode, stock_policy=stock_policy, part_ids=part_ids)
     # create_input_snapshot re-extracts demand; preserve the phase-2 proven
     # demand explicitly afterwards and refresh the binding hash.
     snapshot, _ = create_input_snapshot(

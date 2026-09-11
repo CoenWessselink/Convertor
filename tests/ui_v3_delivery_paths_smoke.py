@@ -69,7 +69,13 @@ def fixture(base):
         write_json(runtime / (label + '-packaged-runtime.json'), {
             'status': 'passed', 'python_on_child_path': False,
             'pdf12_interactive_dimensioning': {'passed': 35}})
+    bom_path = runtime / 'installed-bom-actions.json'
+    write_json(bom_path, {'status': 'PASS', 'frozen': True, 'source_dirty': False,
+                         'source_commit': SHA, 'executable_sha256': 'c' * 64,
+                         'checks': [{'status': 'PASS'} for _ in range(40)],
+                         'machine_transfer_allowed': False, 'screenshots': {}})
     write_json(promoted / 'INSTALLER_ACCEPTANCE.json', {
+        'installed_bom_actions': {'report_sha256': delivery.digest(bom_path), 'python_on_child_path': False},
         'status': 'PASS', 'source_commit': SHA, 'source_tree': 'b' * 40,
         'version': 'unit-fixture-not-a-release', 'main_ui_runtimes': bindings,
         'pdf_function_proof': {'matrix_sha256': delivery.digest(promoted / 'PDF_FUNCTION_GAP_MATRIX.json')}})
@@ -129,6 +135,22 @@ class DeliveryPathTests(unittest.TestCase):
             manifest['runs'][0]['sha256'] = delivery.digest(report)
             write_json(index, manifest)
             with self.assertRaisesRegex(RuntimeError, 'release-evidence regression missing'):
+                self.run_finalizer(root, runtime)
+
+    def test_missing_installed_bom_proof_cannot_promote(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            (runtime / 'installed-bom-actions.json').unlink()
+            with self.assertRaisesRegex(RuntimeError, 'installed-bom-actions'):
+                self.run_finalizer(root, runtime)
+
+    def test_tampered_installed_bom_proof_cannot_promote(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            report = runtime / 'installed-bom-actions.json'
+            payload = delivery.load(report); payload['source_commit'] = 'wrong'
+            write_json(report, payload)
+            with self.assertRaisesRegex(RuntimeError, 'BOM report hash'):
                 self.run_finalizer(root, runtime)
 
     def test_relative_windows_and_posix_paths_resolve_to_same_file(self):

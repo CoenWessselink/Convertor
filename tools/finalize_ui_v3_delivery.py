@@ -14,6 +14,11 @@ RELEASE_EVIDENCE_CHECKS = {
     'Fresh actual geometry linter still blocks review release',
     'Blocked release writes no release audit',
     'Status line has full text access without vertical clipping',
+    'Actual BOM action retains canonical part ID',
+    'Actual BOM action has explicit machine.validate intent',
+    'Machine advice cannot grant release or assignment',
+    'Machine advice visible in existing main-window BOM',
+    'Existing canonical workspace retained after BOM action',
 } | {
     f'{name} at {width} logical pixels'
     for width in (1280, 1440, 1920)
@@ -104,6 +109,16 @@ def main() -> int:
     for label in ('dist','portable','installed'):
         legacy = load(only(runtime, label + '-packaged-runtime.json'))
         require(legacy['status'] == 'passed' and legacy['python_on_child_path'] is False and legacy['pdf12_interactive_dimensioning']['passed'] == 35, 'PDF12 35 native controls: '+label)
+    bom_path = only(runtime, 'installed-bom-actions.json')
+    bom = load(bom_path)
+    binding = acceptance.get('installed_bom_actions', {})
+    require(digest(bom_path) == binding.get('report_sha256'), 'Installed BOM report hash')
+    require(bom.get('source_commit') == sha and bom.get('source_dirty') is False and bom.get('frozen') is True
+            and bom.get('status') == 'PASS' and bom.get('executable_sha256') == records['installed']['executable_sha256'], 'Installed BOM source/binary binding')
+    require(len(bom.get('checks', [])) >= 40 and all(c.get('status') == 'PASS' for c in bom['checks'])
+            and bom.get('machine_transfer_allowed') is False and binding.get('python_on_child_path') is False, 'Installed BOM controls')
+    for image, expected in bom.get('screenshots', {}).items():
+        require(digest(evidence_path(bom_path.parent / 'bom-actions', image)) == expected, 'Installed BOM screenshot hash')
     original_review['source_commit'] = sha
     (out / 'ORIGINAL_SPECIFICATION_REVIEW.json').write_text(json.dumps(original_review, ensure_ascii=False, indent=2), encoding='utf-8')
     for name in ('CODEX_INTEGRATIEPROMPT_PDF_UI_V3.md', 'REFERENCE_IMAGES.md'):
@@ -115,6 +130,7 @@ def main() -> int:
                         'original_input_verification_scope':'Archive and PNGs verified before commit; CI verifies committed original text and review record',
                         'original_archive_rehashed_in_ci':original_review['original_archive_rehashed_in_this_execution'],
                         'full_original_specification_acceptance':'SOFTWARE_BETA_WITH_RECORDED_VISUAL_REVIEW', 'runtimes':records,
+                        'installed_bom_actions': {'status': 'PASS', 'checks': len(bom['checks']), 'report_sha256': digest(bom_path)},
                         'pdf12_native_controls_per_packaged_runtime':35,'five_dpi_checked':[100,125,150,175,200], 'phase3_soak_seconds':soak['elapsed_seconds']}
     (out / 'PDF_RUNTIME_EVIDENCE.json').write_text(json.dumps(runtime_manifest, indent=2), encoding='utf-8')
     manifest = {'schema':'cws-native-ui-v3-release-manifest-1.0','source_commit':sha,'source_tree':acceptance['source_tree'], 'status':'PASS',

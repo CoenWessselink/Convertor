@@ -1149,14 +1149,14 @@ ACTION_DEFINITIONS = (
     BOMActionDefinition("drawing.batch_pdf", "Batch-PDF maken", "Tekening en documenten", ("parts", "assemblies"), "drawings"),
     BOMActionDefinition("drawing.print", "Printen", "Tekening en documenten", ("parts", "assemblies"), "print"),
     # Machine en productie
-    BOMActionDefinition("machine.recommend", "Aanbevolen machine bekijken", "Machine en productie", ("parts",), "machine"),
+    BOMActionDefinition("machine.recommend", "Aanbevolen machine bekijken", "Machine en productie", ("parts",), "machine", allow_blocked=True),
     BOMActionDefinition("machine.explain", "Waarom deze machine?", "Machine en productie", ("parts",), "machine", allow_blocked=True),
     BOMActionDefinition("machine.assign", "Machine toewijzen", "Machine en productie", ("parts",), "machine", True),
     BOMActionDefinition("machine.auto_accept", "Automatische toewijzing accepteren", "Machine en productie", ("parts",), "machine", True),
     BOMActionDefinition("machine.manual_lock", "Handmatige toewijzing vergrendelen", "Machine en productie", ("parts",), "machine", True),
     BOMActionDefinition("machine.reset", "Machinekeuze resetten", "Machine en productie", ("parts",), "machine", True),
-    BOMActionDefinition("machine.validate", "Geschiktheid opnieuw controleren", "Machine en productie", ("parts",), "machine"),
-    BOMActionDefinition("machine.alternatives", "Alternatieve machine tonen", "Machine en productie", ("parts",), "machine"),
+    BOMActionDefinition("machine.validate", "Geschiktheid opnieuw controleren", "Machine en productie", ("parts",), "machine", allow_blocked=True),
+    BOMActionDefinition("machine.alternatives", "Alternatieve machine tonen", "Machine en productie", ("parts",), "machine", allow_blocked=True),
     BOMActionDefinition("machine.blocker", "Productieblokker bekijken", "Machine en productie", ("parts",), "inspect", allow_blocked=True),
     BOMActionDefinition("production.route", "Productieroute bekijken", "Machine en productie", ("parts", "assemblies"), "production"),
     BOMActionDefinition("production.operations", "Bewerkingen bekijken", "Machine en productie", ("parts",), "production"),
@@ -1933,6 +1933,7 @@ class BOMHubState:
                 "message": "Regel door preflight uitgesloten; niet stilzwijgend overgeslagen",
             }
             for group_id in preflight.blocked_group_ids
+            if group_id not in preflight.eligible_group_ids
         )
 
     def _store_result(self, result: BOMBatchResult, *, user: str) -> BOMBatchResult:
@@ -1949,10 +1950,13 @@ class BOMHubState:
         outputs: Iterable[str] = (),
         messages: Iterable[str] = (),
         user: str = "bom-operator",
+        status: str = "passed",
     ) -> BOMBatchResult:
+        if status not in {"passed", "prepared", "running", "blocked", "failed", "cancelled"}:
+            raise ValueError("Onbekende BOM-resultaatstatus: " + str(status))
         digest = stable_sha256(self.project.to_dict())
         return self._store_result(BOMBatchResult(
-            transaction_id=str(uuid4()), action=str(action), status="passed",
+            transaction_id=str(uuid4()), action=str(action), status=status,
             snapshot_sha256=preflight.snapshot_sha256,
             preflight_sha256=preflight.preflight_sha256,
             before_hash=digest, after_hash=digest,
@@ -1960,7 +1964,7 @@ class BOMHubState:
             blocked_group_ids=preflight.blocked_group_ids,
             changed_entity_ids=(), outputs=_unique(outputs), messages=_unique(messages),
             undo_available=False,
-            item_results=self._result_items(preflight, eligible_status="passed"),
+            item_results=self._result_items(preflight, eligible_status=status),
         ), user=user)
 
     def execute_transaction(

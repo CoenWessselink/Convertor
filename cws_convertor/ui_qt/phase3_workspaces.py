@@ -653,7 +653,10 @@ class Phase3ExportCenterPanel(QWidget):
         self.grouping = QComboBox(form_host)
         for grouping in ExportGrouping:
             self.grouping.addItem(grouping.value.replace("_", " ").title(), grouping)
+        # Only combined packages are implemented by the current backend.
+        self.grouping.setCurrentIndex(self.grouping.findData(ExportGrouping.COMBINED))
         form.addRow("3. Groepering", self.grouping)
+        self.grouping.activated.connect(self._confirm_bom_grouping_change)
         formats_host = QWidget(form_host)
         formats_layout = QHBoxLayout(formats_host)
         formats_layout.setContentsMargins(0, 0, 0, 0)
@@ -761,7 +764,22 @@ class Phase3ExportCenterPanel(QWidget):
     def _formats(self) -> tuple[str, ...]:
         return tuple(name.lower() for name, check in self._format_checks.items() if check.isChecked())
 
+    def _confirm_bom_grouping_change(self, _index: int) -> None:
+        if getattr(self, "_bom_unsupported_grouping", ""):
+            if self.grouping.currentData() == ExportGrouping.COMBINED:
+                self._bom_unsupported_grouping = ""
+                self.generate_button.setEnabled(True)
+                self._preflight()
+            else:
+                self.blockers.setPlainText("BLOCKED: alleen een expliciet gekozen combined-export is aangesloten")
+
     def _preflight(self) -> Any:
+        if self.grouping.currentData() != ExportGrouping.COMBINED:
+            self.blockers.setPlainText("BLOCKED: afzonderlijk gegroepeerde packages zijn nog niet aangesloten (W18); geen combined-vervanging")
+            return None
+        if getattr(self, "_bom_unsupported_grouping", ""):
+            self.blockers.setPlainText("BLOCKED: gevraagde BOM-groepering heeft nog geen package-uitvoerder")
+            return None
         if self.service is None:
             self.blockers.setPlainText("BLOCKED: geen actief project")
             return None
@@ -824,6 +842,9 @@ class Phase3ExportCenterPanel(QWidget):
             create_zip=True,
             progress=lambda progress, message: context.update(progress, message),
         )
+        from cws_viewer.export_center.models import ExportJobStatus
+        if result.status != ExportJobStatus.COMPLETED:
+            raise RuntimeError(result.error or "Export niet voltooid: " + result.status.value)
         context.stage("reimport_verify", 0.92, "Manifest en package opnieuw lezen")
         package = Path(result.package_path) if result.package_path else None
         if package is not None and not package.is_file():

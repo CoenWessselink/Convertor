@@ -204,6 +204,20 @@ def main() -> int:
             raise RuntimeError('Installed plate evidence lacks exact source/binary/function proof')
         report['installed_plate_integration'] = {'status': 'PASS', 'checks': len(plate['checks']),
                                                'report': plate_path.name, 'python_on_child_path': False}
+        bom_path = OUT / 'installed-bom-actions.json'
+        run('installed_bom_actions', [str(STAGING / 'CWS_Convertor.exe'),
+            '--bom-action-evidence', '--evidence-dir', str(OUT / 'bom-actions'),
+            '--report', str(bom_path)], 300, env=clean_env)
+        bom = json.loads(bom_path.read_text(encoding='utf-8'))
+        if (bom.get('status') != 'PASS' or bom.get('frozen') is not True
+                or bom.get('source_commit') != sha or bom.get('source_dirty') is not False
+                or bom.get('executable_sha256') != binding['runtime_files']['CWS_Convertor.exe']
+                or len(bom.get('checks', [])) < 40 or any(c.get('status') != 'PASS' for c in bom['checks'])
+                or bom.get('machine_transfer_allowed') is not False):
+            raise RuntimeError('Installed BOM action proof lacks exact source/binary/selection binding')
+        report['installed_bom_actions'] = {'status': 'PASS', 'checks': len(bom['checks']),
+            'source_commit': sha, 'executable_sha256': bom['executable_sha256'],
+            'report': bom_path.name, 'report_sha256': digest(bom_path), 'python_on_child_path': False}
         native_path = OUT / 'installed-recognition-integration.json'
         run('installed_recognition_integration', [str(STAGING / 'CWS_Convertor.exe'),
             '--recognition-integration-evidence', '--evidence-dir', str(OUT / 'recognition-integration'),

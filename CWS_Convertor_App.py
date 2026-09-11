@@ -40,6 +40,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--gui-smoke", action="store_true")
     parser.add_argument("--recognition-integration-evidence", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--plate-integration-evidence", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--bom-action-evidence", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--pdf-ui-v3-evidence", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--pdf-ui-v3-reopen", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--pdf-v3-evidence", action="store_true", help=argparse.SUPPRESS)
@@ -310,6 +311,14 @@ def main(argv: list[str] | None = None) -> int:
             payload = {"status": "FAIL", "error": str(exc), "traceback": traceback.format_exc()}
         _write_report(report_path, payload)
         return _finish_diagnostic(0 if payload["status"] == "PASS" else 2)
+    if args.bom_action_evidence:
+        try:
+            from cws_convertor.ui_qt.bom_action_evidence import run_bom_action_evidence
+            payload = run_bom_action_evidence(args.evidence_dir or Path.cwd() / "bom-action-evidence")
+        except Exception as exc:
+            payload = {"status": "FAIL", "error": str(exc), "traceback": traceback.format_exc()}
+        _write_report(report_path, payload)
+        return _finish_diagnostic(0 if payload["status"] == "PASS" else 2)
     if args.plate_integration_evidence:
         try:
             from cws_convertor.ui_qt.plate_nesting_evidence import run_plate_nesting_evidence
@@ -408,6 +417,7 @@ if __name__ == "__main__":
             "--viewer-self-test",
             "--viewer-gui-smoke",
             "--plate-integration-evidence",
+            "--bom-action-evidence",
             "--recognition-integration-evidence",
             "--pdf-v3-evidence",
             "--pdf-ui-v3-evidence",

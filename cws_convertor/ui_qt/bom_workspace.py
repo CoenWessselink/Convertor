@@ -655,6 +655,9 @@ if qt_available():
                 and self._read_model.snapshot.validation.production_ready
             )
             categories: dict[str, Any] = {}
+            # Keep Python wrappers alive while QAction callbacks are reachable.
+            self._matrix_submenus = categories
+            self._matrix_qactions: dict[str, Any] = {}
             for definition, enabled, reason in self._action_matrix.available(
                 rows, production_ready=production_ready
             ):
@@ -664,6 +667,7 @@ if qt_available():
                     categories[definition.category] = submenu
                 action = submenu.addAction(definition.label)
                 action.setData(definition.action_id)
+                self._matrix_qactions[definition.action_id] = action
                 action.setEnabled(enabled)
                 action.setToolTip(reason)
                 action.setStatusTip(reason or f"Uitvoeren: {definition.label}")
@@ -673,6 +677,13 @@ if qt_available():
 
         def _execute_matrix_action(self, definition: BOMActionDefinition) -> None:
             action_id = definition.action_id
+            ready = bool(self._workspace is not None and self._workspace.bom_snapshot.validation
+                         and self._workspace.bom_snapshot.validation.production_ready)
+            allowed = next(((enabled, reason) for item, enabled, reason in self._action_matrix.available(
+                self._selected_rows(), production_ready=ready) if item.action_id == action_id), (False, "Onbekende actie"))
+            if not allowed[0]:
+                QtWidgets.QMessageBox.warning(self, "BOM-actie geweigerd", allowed[1])
+                return
             if action_id == "viewer.zoom":
                 self._zoom_selection()
                 return
@@ -733,10 +744,7 @@ if qt_available():
             if action_id in {
                 "machine.recommend", "machine.explain", "machine.validate", "machine.alternatives"
             }:
-                if action_id == "machine.explain":
-                    self._explain_machine()
-                else:
-                    self._route_scoped_action(action_id, "machine")
+                self._route_scoped_action(action_id, "machine")
                 return
             if action_id == "production.release":
                 self._open_production_workflow()
@@ -1711,7 +1719,9 @@ if qt_available():
                 f"{machine}: {len(ids)} occurrences"
                 for machine, ids in (impact.machine_partitions if impact else ())
             ]
-            self.detail_labels["machine"].setText("\n".join(machine_lines) or "Geen machine-indeling.")
+            from .bom_action_dispatch import _machine_review_text
+            review_text = _machine_review_text(self, tuple(entity_id for row in rows for entity_id in row.entity_ids))
+            self.detail_labels["machine"].setText(review_text or "\n".join(machine_lines) or "Geen machine-indeling.")
             self.detail_labels["drawing"].setText(
                 f"Tekeningstatus: {mixed('document_status')}\nDubbelklik een regel om in de Viewer te zoomen."
             )
@@ -2621,6 +2631,7 @@ if qt_available():
             allow_blocked_review_export: bool = False,
             expected_outputs: tuple[str, ...] = (),
         ) -> BOMBatchPreflight | None:
+            self._preflight_partition_mode = "eligible"
             if self._scope_engine is None or self._workspace is None:
                 return None
             try:
@@ -2691,8 +2702,11 @@ if qt_available():
             return preflight if answer == QtWidgets.QMessageBox.StandardButton.Yes else None
 
         def _route_scoped_action(self, action: str, route: str) -> None:
+            workspace, state = self._workspace, self._hub_state
             rows = self._selected_rows()
-            preflight = self._confirm_preflight(action, rows)
+            readonly_machine = action in {"machine.recommend", "machine.validate", "machine.alternatives", "machine.explain"}
+            preflight = self._confirm_preflight("inspect" if readonly_machine else action, rows,
+                                                allow_blocked_review_export=readonly_machine)
             if preflight is None:
                 return
             allowed = set(preflight.eligible_group_ids)
@@ -2702,22 +2716,74 @@ if qt_available():
                 self.window.application_context.request_selection(
                     entity_ids, primary_entity_id=entity_ids[0], origin=f"bom_{action}",
                 )
-            if action == "production_export":
-                update_export = getattr(self.window.application_context, "update_export_context", None)
-                if callable(update_export):
-                    update_export(
-                        active_export_scope=entity_ids,
-                        grouping=("machine" if self._preflight_partition_mode == "machine" else "combined"),
-                        formats=("nc1", "step", "ifc", "dxf", "production_pdf"),
-                        preflight_hash=preflight.preflight_sha256,
-                    )
+            if self._workspace is not workspace:
+                QtWidgets.QMessageBox.warning(self, "BOM-actie geweigerd", "Project gewijzigd tijdens selectieoverdracht")
+                return
+            from .bom_action_dispatch import _dispatch
+            from cws_convertor.project.model import stable_sha256
+            request = {"action_id": action, "requested_route": route, "entity_ids": list(entity_ids),
+                       "partition_mode": self._preflight_partition_mode,
+                       "project_id": self._workspace.project.project_id,
+                       "bom_snapshot_sha256": preflight.snapshot_sha256,
+                       "preflight_sha256": preflight.preflight_sha256}
+            request["request_sha256"] = stable_sha256(request)
+            self._last_scoped_request = request
+            if state is not None:
+                requests = state.data.setdefault("scoped_requests", [])
+                requests.append(dict(request))
+                del requests[:-200]
+            try:
+                outcome = _dispatch(self, action, route, entity_ids, preflight)
+            except Exception as exc:
+                if self._hub_state is not None:
+                    self._hub_state.record_result(action, preflight, status="blocked",
+                                                  messages=(str(exc), request["request_sha256"]))
+                    self._mark_project_dirty()
+                QtWidgets.QMessageBox.warning(self, "BOM-actie niet uitgevoerd", str(exc))
+                return
+            self._last_scoped_outcome = outcome
             if self._hub_state is not None:
-                self._hub_state.record_result(
-                    action, preflight,
-                    messages=(f"Scope doorgezet naar werkruimte {route}",),
-                )
+                self._hub_state.record_result(action, preflight, status=outcome.status,
+                                              outputs=outcome.outputs,
+                                              messages=(outcome.message, request["request_sha256"]))
                 self._mark_project_dirty()
-            self.action_requested.emit(route)
+            if outcome.start is not None:
+                self._start_scoped_nesting(action, preflight, outcome)
+            elif outcome.status == "blocked":
+                QtWidgets.QMessageBox.warning(self, "BOM-actie geblokkeerd", outcome.message)
+
+        def _start_scoped_nesting(self, action: str, preflight: Any, outcome: Any) -> None:
+            """Record completion only after the existing worker/validator finishes."""
+            workspace, state, page = self._workspace, self._hub_state, outcome.page
+            page._bom_last_solve_state = "pending"
+            if state is None:
+                raise RuntimeError("Canonieke BOM-resultaatregistratie ontbreekt")
+            try:
+                outcome.start()
+            except Exception as exc:
+                state.record_result(action, preflight, status="failed", messages=(str(exc),))
+                self._mark_project_dirty()
+                return
+            generation = getattr(page, "_bom_generation", None)
+            timer = QtCore.QTimer(self)
+            timer.setInterval(100)
+            def finish():
+                same_project = (self._workspace is workspace and getattr(page, "_workspace", None) is workspace
+                                and generation == getattr(page, "_bom_generation", None))
+                if same_project and getattr(page, "_job_id", None):
+                    return
+                timer.stop(); timer.deleteLater()
+                if hasattr(page, "_plan"):
+                    ok = same_project and page._plan is not None and page._plan.complete
+                else:
+                    ok = same_project and getattr(page, "_bom_last_solve_state", "") == "committed"
+                status = "passed" if ok else "blocked"
+                message = page.status.text() if same_project else "Project gewijzigd; geen resultaat voor de huidige BOM"
+                state.record_result(action, preflight, status=status, messages=(message,))
+                workspace.session.dirty = True
+            timer.timeout.connect(finish)
+            timer.start()
+            finish()
 
         def _save_revision_baseline(self) -> None:
             if self._hub_state is None or self._read_model is None:

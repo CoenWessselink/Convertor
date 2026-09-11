@@ -53,6 +53,7 @@ def prepare_phase5_solve(
     *,
     mode: str = "production",
     stock_policy: str = "stock_remnants_purchase",
+    part_ids: tuple[str, ...] | None = None,
     created_by: str = "gui",
     scenario_id: str = "ui-waste",
     scenario_family: str = "waste",
@@ -70,10 +71,13 @@ def prepare_phase5_solve(
     solver_config.setdefault("backend", backend)
     solver_config.setdefault("cut_scope", "geometry_backed_angle_sequence")
     solver_config.setdefault("angle_exact_max_pieces", 7)
+    if part_ids is not None:
+        solver_config["selected_part_ids"] = sorted(set(part_ids))
     snapshot, demand, context = create_phase2_input_snapshot(
         project,
         mode=mode,
         stock_policy=stock_policy,
+        part_ids=part_ids,
         created_by=created_by,
         objective_configuration=objective,
         solver_configuration=solver_config,

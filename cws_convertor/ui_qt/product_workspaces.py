@@ -556,6 +556,20 @@ if qt_available():
             self.mode = QtWidgets.QComboBox()
             self.mode.addItem("Concept / review", "concept")
             self.mode.addItem("Productie (strikte gate)", "production")
+            self.scope_combo = QtWidgets.QComboBox()
+            self.scope_combo.addItem("Hele project", "project")
+            self.scope_combo.addItem("Huidige selectie", "selection")
+            self.scope_combo.currentIndexChanged.connect(lambda _index: self._analyse())
+            self.stock_policy_combo = QtWidgets.QComboBox()
+            for label, policy in (
+                ("Voorraad + reststukken + inkoop", "stock_remnants_purchase"),
+                ("Voorraad + inkoop, geen reststukken", "stock_purchase"),
+                ("Alleen aanwezige voorraad", "stock_only"),
+                ("Voorraad + reststukken", "stock_and_remnants"),
+                ("Alleen handelslengten uit inkoopcatalogus", "new_only"),
+                ("Alleen reststukken", "remnants_only"),
+            ):
+                self.stock_policy_combo.addItem(label, policy)
             controls.addWidget(self.analyse)
             controls.addWidget(self.solve)
             controls.addWidget(self.mode)
@@ -563,6 +577,13 @@ if qt_available():
             controls.addStretch(1)
             controls.addWidget(viewer)
             root.addLayout(controls)
+            scope_controls = QtWidgets.QHBoxLayout()
+            scope_controls.addWidget(QtWidgets.QLabel("Berekeningsscope"))
+            scope_controls.addWidget(self.scope_combo)
+            scope_controls.addWidget(QtWidgets.QLabel("Voorraadbeleid"))
+            scope_controls.addWidget(self.stock_policy_combo)
+            scope_controls.addStretch(1)
+            root.addLayout(scope_controls)
 
             self.tabs = QtWidgets.QTabWidget()
             demand_page = QtWidgets.QWidget()
@@ -615,9 +636,10 @@ if qt_available():
                     self._workspace.project,
                     mode=mode,
                     defer_machine_compatibility=True,
+                    part_ids=(_selection_ids(self._selection) if self.scope_combo.currentData() == "selection" else None),
                 )
                 self._demand_report = report
-                selected = set(_selection_ids(self._selection))
+                selected = set(_selection_ids(self._selection)) if self.scope_combo.currentData() == "selection" else set()
                 visible = 0
                 for line in report.demand_lines:
                     if selected and str(line.part_id) not in selected:
@@ -649,12 +671,16 @@ if qt_available():
         def _start_solve(self) -> None:
             if self._workspace is None or self._job_id is not None:
                 return
+            from uuid import uuid4
+            self._bom_generation = uuid4().hex
             try:
                 from cws_convertor.optimization.profile_nesting import prepare_phase5_solve
 
                 prepared = prepare_phase5_solve(
                     self._workspace.project,
                     mode=str(self.mode.currentData() or "concept"),
+                    stock_policy=str(self.stock_policy_combo.currentData()),
+                    part_ids=(_selection_ids(self._selection) if self.scope_combo.currentData() == "selection" else None),
                     created_by="qt-gui",
                     scenario_id=f"ui-{str(getattr(getattr(self, 'phase3_scenario', None), 'currentData', lambda: 'waste')() or 'waste')}",
                     scenario_family=str(getattr(getattr(self, "phase3_scenario", None), "currentData", lambda: "waste")() or "waste"),
@@ -692,11 +718,14 @@ if qt_available():
                 from cws_convertor.optimization.profile_nesting import commit_phase5_outcome
 
                 state = commit_phase5_outcome(self._workspace.project, outcome, user="qt-gui")
+                self._bom_last_solve_state = "blocked"
                 if state == "committed":
                     self._workspace.session.save(
                         user="qt-gui",
                         revision_message="Profile Nesting 0.8.12 run opgeslagen",
                     )
+                    if outcome.plan is not None and outcome.validation is not None and outcome.validation.valid:
+                        self._bom_last_solve_state = state
                 self.status.setText(
                     f"Optimalisatie {state} | resultaat: {getattr(outcome.prepared.run, 'result_status', '-')} | "
                     "machine-transfer gesloten"
@@ -707,6 +736,7 @@ if qt_available():
                 self.status.setText(f"Optimalisatieresultaat geblokkeerd: {type(exc).__name__}: {exc}")
 
         def _solve_failed(self, message: str) -> None:
+            self._bom_last_solve_state = "blocked"
             self.status.setText(f"Optimalisatie mislukt of geblokkeerd: {message}")
 
         def _solve_finished(self) -> None:

@@ -118,6 +118,7 @@ class PlateProjectInput:
     exclusions: tuple[dict, ...]
     geometry_basis: tuple[dict, ...]
     project_binding: str
+    include_remnants: bool = True
 
     @property
     def blockers(self):
@@ -149,7 +150,7 @@ def project_binding(project, ids):
                     'remnants': {i: asdict(s) for i, s in project.remnants.items()}})
 
 
-def collect_project_input(project, *, scope='project', entity_ids: Iterable[str] = ()) -> PlateProjectInput:
+def collect_project_input(project, *, scope='project', entity_ids: Iterable[str] = (), include_remnants: bool = True) -> PlateProjectInput:
     if scope not in {'project', 'selection'}:
         raise ValueError('Scope moet project of selectie zijn')
     ids = tuple(sorted(project.parts if scope == 'project' else set(entity_ids)))
@@ -185,7 +186,7 @@ def collect_project_input(project, *, scope='project', entity_ids: Iterable[str]
                 sources.append({'id': identifier, 'type': 'full_stock', 'revision': item.reservation_revision})
             except (ValueError, TypeError) as exc:
                 exclusions.append({'id': identifier, 'reason': 'Voorraad: ' + str(exc), 'blocking': True})
-        for identifier, item in sorted(project.remnants.items()):
+        for identifier, item in sorted(project.remnants.items()) if include_remnants else ():
             if identifier in project.stock_items:
                 exclusions.append({'id': identifier, 'reason': 'Dubbele voorraad-/reststuk-ID', 'blocking': True})
                 continue
@@ -202,7 +203,7 @@ def collect_project_input(project, *, scope='project', entity_ids: Iterable[str]
             except (ValueError, TypeError, KeyError) as exc:
                 exclusions.append({'id': identifier, 'reason': 'Reststuk: ' + str(exc), 'blocking': True})
         return PlateProjectInput(project.project_id, scope, ids, tuple(demands), tuple(stock), tuple(boundaries),
-                                 tuple(sources), tuple(exclusions), tuple(basis), project_binding(project, ids))
+                                 tuple(sources), tuple(exclusions), tuple(basis), project_binding(project, ids), bool(include_remnants))
 
 
 def plan_project_input(inputs: PlateProjectInput, *, kerf_mm=3.0, edge_margin_mm=10.0, run_id=None, check_cancelled=None):
