@@ -1,8 +1,18 @@
 # PDF/UI V3 — native integratie in CWS Convertor
 
-Specificatie: `CWS_CODEX_PDF_UI_INTEGRATIE_V3_2026-09-06(1)(1)(3).zip`.
-SHA-256: `f20b9597ee02eab1c45f06d85ae3d652d03eaeddb68614cc3bbcd15716a7f06e`.
-De volledige prompt en de drie referentiebeelden zijn als uitgangspunt gebruikt.
+Historisch vastgelegde specificatieverwijzing:
+`CWS_CODEX_PDF_UI_INTEGRATIE_V3_2026-09-06(1)(1)(3).zip`.
+Destijds vastgelegde SHA-256:
+`f20b9597ee02eab1c45f06d85ae3d652d03eaeddb68614cc3bbcd15716a7f06e`.
+De eerdere integratie vermeldt dat de volledige prompt en drie referentiebeelden
+als uitgangspunt zijn gebruikt. Bij hervatting op 11 september 2026 kon de
+originele ZIP niet opnieuw worden gelezen: noch de aangevraagde naam met `(2)`,
+noch de historische naam met `(3)` is aanwezig in de gecontroleerde repository
+of de beschikbare bijlagen. De beschikbare koppelingen bieden geen Library-read.
+Een vaste specification_sha256 in een testrapport is uitsluitend deze historische
+verwijzing; het is geen bewijs dat het oorspronkelijke bestand opnieuw is gelezen.
+De huidige softwaretests verifiëren de aanwezige productiecode en concrete eisen.
+Volledige visuele/specification-acceptatie tegen de originele ZIP blijft onbevestigd.
 De programmaversie is 0.10.19-beta-dev. Definitieve broncommit en daadwerkelijke
 uitkomsten staan uitsluitend in de bij deze build gegenereerde manifesten;
 dit document op zichzelf verklaart geen test geslaagd.
@@ -37,7 +47,7 @@ en werkelijke reviewmeldingen gaan vóór de fictieve inhoud van de referentiebe
 | Undo/redo, projectopslag en onafhankelijke herstart | ui_v51_contract.py, ProjectSession | run_pdf_ui_v3_acceptance.py; verschillende PIDs, pakket-SHA en alle maatvelden |
 | Assemblytekening zonder hoofdonderdeelterugval | engineering_drawing.py | drawing_v3_completion_smoke.py; twee werkelijk ingelezen STEP-componenten |
 | Vaste schaal exact of expliciet geweigerd; A0–A4 | drawings/engine.py | drawing_v3_all_sheet_scale_smoke.py; onafhankelijke PDF MediaBox-controle |
-| Vectorpreview en uitvoer uit één document | drawings/renderer.py | production_drawing_renderer_parity_smoke.py; onafhankelijke PDF-parser |
+| Vectorpreview en uitvoer uit één document | drawings/renderer.py | production_drawing_engine_smoke.py; onafhankelijke PDF-parser |
 | BOM, linter, revisies, readonly en releasebeveiliging | drawing_workspace_layout.py, interactive.py, linter.py | V3 completion/inspector/presentation, PDF12 native 35 controles |
 | Normal / Trusted / externe PDF fail closed | engineering_drawing.py, bestaande PDF-keten | positieve bekende-NC1 Trusted roundtrip, negatieve assembly, 12 conversieroutes |
 | DPI 100/125/150/175/200, glyphs en primaire bediening | drawing_workspace_layout.py, runtime_typography.py | vijf verse hoofdvensterprocessen plus vijf onafhankelijke herstarts |

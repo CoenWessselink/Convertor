@@ -286,9 +286,12 @@ if qt_available():
 
         def resizeEvent(self, event: Any) -> None:
             super().resizeEvent(event)
-            self._phase2_markup_overlay.setGeometry(self.rect())
-            self._phase2_markup_overlay.raise_()
-            self._phase2_markup_overlay.update()
+            # Native handle creation can resize before this subclass is ready.
+            overlay = self.__dict__.get("_phase2_markup_overlay")
+            if overlay is not None:
+                overlay.setGeometry(self.rect())
+                overlay.raise_()
+                overlay.update()
 
 else:
 

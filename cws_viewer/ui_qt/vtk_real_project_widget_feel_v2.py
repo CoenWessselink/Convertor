@@ -188,14 +188,14 @@ if qt_available():
 
         def resizeEvent(self, event: Any) -> None:
             super().resizeEvent(event)
-            controls = getattr(self, "_viewport_controls", None)
+            controls = self.__dict__.get("_viewport_controls")
             if controls is not None:
                 controls.move(12, 12)
                 controls.raise_()
 
         def showEvent(self, event: Any) -> None:
             super().showEvent(event)
-            controls = getattr(self, "_viewport_controls", None)
+            controls = self.__dict__.get("_viewport_controls")
             if controls is not None:
                 controls.raise_()
 

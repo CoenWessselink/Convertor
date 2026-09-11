@@ -412,8 +412,18 @@ if qt_available():
                 super().keyPressEvent(event)
 
             def resizeEvent(self, event: Any) -> None:
+                # Qt may dispatch resize while QVTK creates its native winId,
+                # before the VTK interactor (or CWS overlays) exists. getattr /
+                # hasattr are unsafe here: QVTK.__getattr__ delegates to _Iren
+                # and recurses when that member has not yet been initialized.
+                if self.__dict__.get("_Iren") is None:
+                    return
                 super().resizeEvent(event)
-                self._lasso_overlay.setGeometry(self.rect())
+                overlay = self.__dict__.get("_lasso_overlay")
+                if overlay is not None:
+                    overlay.setGeometry(self.rect())
+                if self.__dict__.get("_controller") is None:
+                    return
                 size = event.size()
                 if size.width() > 0 and size.height() > 0:
                     self._cws_pending_resize = (size.width(), size.height())

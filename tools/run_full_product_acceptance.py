@@ -327,6 +327,16 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
     operation_import = OUTPUT / "runtime-inventory-operations.json"
     operation_export = OUTPUT / "runtime-inventory-operations-export.json"
     operation_import.write_text('{"features": []}\n', encoding="utf-8")
+    # Exercise the new public V3 paths with a real local PDF, not a fake path
+    # or an exclusion from the public-method coverage gate.
+    from reportlab.pdfgen.canvas import Canvas
+    inventory_pdf = OUTPUT / "runtime-inventory-external.pdf"
+    pdf_canvas = Canvas(str(inventory_pdf))
+    pdf_canvas.drawString(36, 72, "CWS V3 runtime inventory")
+    pdf_canvas.save()
+    pdf_selection = SimpleNamespace(
+        primary_entity_id="inventory-part", feature_id="inventory-feature", origin="inventory"
+    )
     safe_mgi_report = SimpleNamespace(
         readiness=SimpleNamespace(value="REVIEW_REQUIRED"),
         source_gate=SimpleNamespace(value="EXACT"),
@@ -375,6 +385,7 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
             (),
         ),
         "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_active_page": (0,),
+        "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_zoom": (1.25,),
         "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_candidates": ((),),
         "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_draft": ((), None),
         "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas.set_selected_ids": ((),),
@@ -425,6 +436,10 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.show_project_selection": (None,),
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_png": (),
         "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_pdf": (),
+        "cws_convertor.ui_qt.functional_workspaces.DrawingWorkspacePanel.export_trusted_pdf": (),
+        "cws_convertor.ui_qt.pdf_panel.PDFPanel.load_pdf": (inventory_pdf,),
+        "cws_convertor.ui_qt.pdf_panel.PDFPanel.show_project_selection": (pdf_selection,),
+        "cws_convertor.ui_qt.u4_shell.CWSMainWindow.open_initial_paths": ((inventory_pdf,),),
         "cws_convertor.ui_qt.product_workspaces.BomWorkspacePanel.refresh": (),
         "cws_convertor.ui_qt.product_workspaces.BomWorkspacePanel.handle_ribbon": ("totals",),
         "cws_convertor.ui_qt.project_workspace.IntegratedProjectWorkspaceWidget.choose_project": (),
@@ -464,6 +479,7 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
         "cws_convertor.ui_qt.drawing_dimension_canvas.InteractiveDrawingCanvas": (
             "current_candidate",
             "page_index",
+            "zoom",
         ),
     }
     for item in all_widgets:
@@ -476,6 +492,18 @@ def runtime_inventory(project: Path | None = None) -> tuple[list[dict[str, Any]]
                 safe_method_errors.append(
                     f"{owner}.{property_name}: {type(exc).__name__}: {exc}"
                 )
+    # Assert results, rather than treating a traced call as functional proof.
+    try:
+        assert window.pdf_review_page.path == inventory_pdf.resolve()
+        assert window.pdf_review_page.path_edit.text() == str(inventory_pdf.resolve())
+        assert window.pdf_review_page.entity_id.text() == pdf_selection.primary_entity_id
+        assert window.pdf_review_page.feature_id.text() == pdf_selection.feature_id
+        assert any(
+            type(item).__name__ == "InteractiveDrawingCanvas" and abs(item.zoom - 1.25) < 1e-9
+            for item in all_widgets
+        )
+    except AssertionError as exc:
+        safe_method_errors.append(f"V3 public method postconditions: {exc!r}")
     from unittest.mock import patch
     from cws_convertor.output import DocumentOutputService
 
