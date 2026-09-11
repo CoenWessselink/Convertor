@@ -471,10 +471,11 @@ if QtWidgets is not None:
             toolbar.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
             toolbar.setMaximumWidth(440)
             toolbar.setFixedHeight(38)
-            tabs = self._primary_tabs()
-            if tabs is not None:
-                toolbar.setParent(tabs)
-                tabs.setCornerWidget(toolbar, QtCore.Qt.Corner.TopRightCorner)
+            chrome_layout = getattr(self.window, "_product_chrome_layout", None)
+            if chrome_layout is not None:
+                # Share the product header row, never the primary tab row.
+                # Keep the existing selector, actions and binding identities.
+                chrome_layout.addWidget(toolbar)
             else:
                 self.window.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, toolbar)
                 brand = QtWidgets.QLabel("CWS CONVERTOR")
@@ -538,13 +539,36 @@ if QtWidgets is not None:
             if toolbar is None or tabs is None:
                 return
             page = tabs.currentWidget()
+            # QTabWidget owns a private layout. Inserting into it either fails
+            # or creates an unmanaged child over the main menu at (0, 0).
+            # Only an actual leaf workspace may host contextual controls.
+            while isinstance(page, QtWidgets.QTabWidget):
+                page = page.currentWidget()
             layout = page.layout() if page is not None else None
-            if layout is None or not hasattr(layout, "insertWidget"):
+            if (page is getattr(self.window, "pdf_page", None)
+                    or not isinstance(layout, QtWidgets.QBoxLayout)):
                 toolbar.hide()
                 return
-            else:
+            if toolbar.parentWidget() is not page:
+                toolbar.hide()
                 toolbar.setParent(page)
+            if layout.indexOf(toolbar) < 0:
                 layout.insertWidget(0, toolbar)
+            # Direct sidebar/tab navigation blocks selector signals on purpose.
+            # Update the existing heading too, without creating another set of
+            # controls or changing the route a second time.
+            if self.screen_selector is not None:
+                screen_id = str(self.screen_selector.currentData())
+                screen = next((item for item in self.screens
+                               if str(item.get("screen_id")) == screen_id), None)
+                if screen is not None:
+                    self.window.setProperty("v51_active_screen", screen_id)
+                    for name, text in (("cwsScreenNumber", screen_id),
+                                       ("cwsWorkspaceTitle", str(screen.get("title", "")).upper())):
+                        label = toolbar.findChild(QtWidgets.QLabel, name)
+                        if label is not None:
+                            label.setText(text)
+                            label.setToolTip(text)
             toolbar.show()
 
         def _dock(self, title: str, object_name: str) -> tuple[QtWidgets.QDockWidget, QtWidgets.QVBoxLayout]:
@@ -652,10 +676,8 @@ if QtWidgets is not None:
             domain = _screen_domain(screen_id)
             if tabs is not None and DOMAIN_INDEX[domain] < tabs.count():
                 tabs.setCurrentIndex(DOMAIN_INDEX[domain])
-            self._place_screen_toolbar()
             self.window.setProperty("v51_active_screen", screen_id)
             self._rebuild_screen_actions(screen_id, str(screen.get("title", "")))
-            if self.screen_toolbar is not None:self.screen_toolbar.setVisible(SCREEN_ROUTES.get(screen_id) != "pdf")
             route = SCREEN_ROUTES.get(screen_id, domain.casefold())
             if route == "activity":
                 self._show_activity()
@@ -671,6 +693,7 @@ if QtWidgets is not None:
                     settings_tabs = self.settings_dock.findChild(QtWidgets.QTabWidget, "cwsV51SettingsTabs")
                     if settings_tabs is not None:
                         settings_tabs.setCurrentIndex(0 if screen_id == "26" else 1)
+            self._place_screen_toolbar()
             QtCore.QTimer.singleShot(0, lambda value=screen_id: self._select_subtab(value))
 
         def _select_subtab(self, screen_id: str) -> None:

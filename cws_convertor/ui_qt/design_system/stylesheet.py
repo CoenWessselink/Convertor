@@ -47,6 +47,7 @@ QScrollBar:horizontal {{ background: {c['canvas']}; height: 12px; }}
 QScrollBar::handle:horizontal {{ background: {c['border_strong']}; min-width: 28px; border-radius: 3px; }}
 QStatusBar {{ background: {c['surface']}; color: {c['text_muted']}; border-top: 1px solid {c['border']}; }}
 QToolTip {{ background: {tooltip_bg}; color: white; border: 1px solid {c['border_strong']}; padding: 4px; }}
+QFrame#cwsProductChrome {{ background: {c['nav_background']}; border: 0; }}
 QFrame#cwsProductHeader {{ background: {c['nav_background']}; border: 0; border-right: 1px solid {c['border']}; }}
 QFrame#cwsProductHeader QLabel#productName {{ color: #FFFFFF; font-size: 12pt; font-weight: 700; padding: 0 4px; }}
 QFrame#cwsProductHeader QLabel#versionBadge {{ color: #D9EEFB; background: {c['nav_active']}; border: 1px solid #5D88A8; border-radius: 3px; padding: 3px 6px; }}

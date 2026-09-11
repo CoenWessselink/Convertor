@@ -680,13 +680,24 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
             self.tabs.tabBar().setUsesScrollButtons(True)
 
         def _install_product_header(self) -> None:
-            self.product_header = _ProductHeader(self.tabs)
+            # The brand and global actions must not consume the tab bar's
+            # width. At 1280 px the old two corner widgets hid three primary
+            # workspaces. Keep the same live controls in a separate chrome row.
+            self.product_chrome = QtWidgets.QFrame(self.centralWidget())
+            self.product_chrome.setObjectName("cwsProductChrome")
+            self.product_chrome.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+            self._product_chrome_layout = QtWidgets.QHBoxLayout(self.product_chrome)
+            self._product_chrome_layout.setContentsMargins(0, 0, 0, 0)
+            self._product_chrome_layout.setSpacing(0)
+            self.product_header = _ProductHeader(self.product_chrome)
             self.product_header.back_requested.connect(self.workspace_router.back)
             self.product_header.forward_requested.connect(self.workspace_router.forward)
-            self.tabs.setCornerWidget(
-                self.product_header,
-                QtCore.Qt.Corner.TopLeftCorner,
-            )
+            self._product_chrome_layout.addWidget(self.product_header)
+            self._product_chrome_layout.addStretch(1)
+            self.centralWidget().layout().insertWidget(0, self.product_chrome)
 
         def _install_quick_workspace_bar(self) -> None:
             layout = self.project_page.layout()

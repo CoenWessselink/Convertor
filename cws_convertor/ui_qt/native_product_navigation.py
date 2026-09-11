@@ -40,7 +40,8 @@ def sync_navigation(window: Any, route: str) -> None:
             index=next((i for i in range(selector.count()) if SCREEN_ROUTES.get(str(selector.itemData(i)))==route),-1)
             if index>=0:
                 with QtCore.QSignalBlocker(selector):selector.setCurrentIndex(index)
-        if binding.screen_toolbar is not None:binding.screen_toolbar.setVisible(route!="pdf")
+        if binding.screen_toolbar is not None:
+            binding._place_screen_toolbar()
 
 
 def install_native_navigation(window: Any) -> None:

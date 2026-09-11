@@ -14,6 +14,13 @@ RELEASE_EVIDENCE_CHECKS = {
     'Fresh actual geometry linter still blocks review release',
     'Blocked release writes no release audit',
     'Status line has full text access without vertical clipping',
+} | {
+    f'{name} at {width} logical pixels'
+    for width in (1280, 1440, 1920)
+    for name in ('Primary navigation fits', 'Global actions do not obscure tabs',
+                 'Primary navigation clickable', 'Context toolbar stays inside workspace',
+                 'Primary navigation keyboard works', 'Workspace and viewer preserved',
+                 'PDF menu remains unobscured', 'Drawing controls fit')
 }
 
 def digest(path: Path) -> str:
@@ -101,7 +108,7 @@ def main() -> int:
     (out / 'ORIGINAL_SPECIFICATION_REVIEW.json').write_text(json.dumps(original_review, ensure_ascii=False, indent=2), encoding='utf-8')
     for name in ('CODEX_INTEGRATIEPROMPT_PDF_UI_V3.md', 'REFERENCE_IMAGES.md'):
         shutil.copyfile(SPEC_ROOT / name, out / ('ORIGINAL_' + name))
-    for name in ('PDF_UI_V3_SPEC_REVIEW_20260911.md', 'PDF_UI_V3_QUICK_GUIDE.md'):
+    for name in ('PDF_UI_V3_SPEC_REVIEW_20260911.md', 'PDF_UI_V3_QUICK_GUIDE.md', 'PDF_UI_V3_NAVIGATION_REPAIR_20260911.md'):
         shutil.copyfile(SPEC_ROOT.parent / name, out / name)
     runtime_manifest = {'schema':'cws-pdf-runtime-evidence-3.0','source_commit':sha,'specification_sha256':SPEC,'status':'PASS',
                         'original_specification_file_reverified':True,

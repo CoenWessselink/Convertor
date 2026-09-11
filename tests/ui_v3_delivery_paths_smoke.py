@@ -116,6 +116,21 @@ class DeliveryPathTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'release-evidence regression missing'):
                 self.run_finalizer(root, runtime)
 
+    def test_pre_navigation_green_report_cannot_be_promoted(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            report = root / 'dpi' / 'dpi-100' / 'REPORT.json'
+            value = delivery.load(report)
+            value['checks'] = [c for c in value['checks']
+                if c.get('name') != 'Primary navigation fits at 1280 logical pixels']
+            write_json(report, value)
+            index = root / 'dpi' / 'PDF_UI_V3_DPI_EVIDENCE.json'
+            manifest = delivery.load(index)
+            manifest['runs'][0]['sha256'] = delivery.digest(report)
+            write_json(index, manifest)
+            with self.assertRaisesRegex(RuntimeError, 'release-evidence regression missing'):
+                self.run_finalizer(root, runtime)
+
     def test_relative_windows_and_posix_paths_resolve_to_same_file(self):
         with TemporaryDirectory() as folder:
             root = Path(folder)

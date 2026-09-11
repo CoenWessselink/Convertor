@@ -66,6 +66,102 @@ def _fixture(output: Path) -> Path:
     return path
 
 
+def _exercise_primary_navigation(window: Any, check: Any, flush: Any, snap: Any) -> list[dict[str, Any]]:
+    """Real mouse/keyboard traversal at narrow and wide logical window sizes.
+
+    Used unchanged in the source and all three packaged main-window proofs.
+    No click handlers are called directly and no widgets are mocked/replaced.
+    """
+    from PySide6 import QtCore, QtWidgets, QtTest
+    tabs = window.tabs
+    bar = tabs.tabBar()
+    original_size = window.size()
+    original_page = tabs.currentWidget()
+    workspace = window.workspace
+    viewer = window.viewer_page.viewer
+    rows = []
+    def rect(widget: Any) -> Any:
+        return QtCore.QRect(widget.mapTo(window, QtCore.QPoint()), widget.size())
+    for width in (1280, 1440, 1920):
+        window.resize(width, 1000)
+        flush(.08)
+        row = {'requested_width': width, 'window_size': [window.width(), window.height()],
+               'device_pixel_ratio': window.devicePixelRatioF(), 'tabs': []}
+        fits = (window.width() == width and bar.isVisible()
+                and [tabs.tabText(i) for i in range(tabs.count())]
+                == ['Project', 'Viewer', 'Productie', 'Controle', 'Uitvoer'])
+        for index in range(tabs.count()):
+            tab_rect = bar.tabRect(index)
+            inside = bar.rect().contains(tab_rect) and bar.visibleRegion().contains(tab_rect)
+            row['tabs'].append({'title': tabs.tabText(index), 'rect': list(tab_rect.getRect()), 'fully_visible': inside})
+            fits = fits and inside
+        check(f'Primary navigation fits at {width} logical pixels', fits)
+        globals_bar = window.findChild(QtWidgets.QToolBar, 'cwsV51GlobalBar')
+        chrome = getattr(window, 'product_chrome', None)
+        chrome_fits = (chrome is not None and globals_bar is not None
+                       and window.rect().contains(rect(chrome))
+                       and rect(chrome).contains(rect(window.product_header))
+                       and rect(chrome).contains(rect(globals_bar))
+                       and not rect(chrome).intersects(rect(bar)))
+        if globals_bar is not None:
+            for action in globals_bar.actions():
+                widget = globals_bar.widgetForAction(action)
+                if widget is not None:
+                    chrome_fits = chrome_fits and widget.isVisible() and rect(globals_bar).contains(rect(widget))
+        check(f'Global actions do not obscure tabs at {width} logical pixels', chrome_fits)
+        clicked = []
+        menus_clear = True
+        for index in range(tabs.count()):
+            QtTest.QTest.mouseClick(bar, QtCore.Qt.MouseButton.LeftButton, pos=bar.tabRect(index).center())
+            flush()
+            clicked.append(tabs.currentIndex() == index)
+            contextual = window._v51_binding.screen_toolbar
+            if contextual is not None and contextual.isVisible():
+                parent = contextual.parentWidget()
+                menus_clear = (menus_clear and parent is not window and parent is not None
+                               and (tabs.currentWidget() is parent or tabs.currentWidget().isAncestorOf(parent))
+                               and parent.rect().contains(contextual.geometry())
+                               and not rect(contextual).intersects(rect(window.menuBar())))
+        check(f'Primary navigation clickable at {width} logical pixels', all(clicked))
+        check(f'Context toolbar stays inside workspace at {width} logical pixels', menus_clear)
+        QtTest.QTest.mouseClick(bar, QtCore.Qt.MouseButton.LeftButton, pos=bar.tabRect(0).center())
+        bar.setFocus(QtCore.Qt.FocusReason.OtherFocusReason)
+        flush()
+        keyboard = []
+        for index in range(1, tabs.count()):
+            QtTest.QTest.keyClick(bar, QtCore.Qt.Key.Key_Right)
+            flush()
+            keyboard.append(tabs.currentIndex() == index)
+        check(f'Primary navigation keyboard works at {width} logical pixels', all(keyboard))
+        check(f'Workspace and viewer preserved at {width} logical pixels', window.workspace is workspace and window.viewer_page.viewer is viewer)
+        # Capture the live drawing page, not an empty/synthetic navigation shell.
+        button = window.native_workspace_buttons['pdf']
+        QtTest.QTest.mouseClick(button, QtCore.Qt.MouseButton.LeftButton, pos=button.rect().center())
+        flush()
+        check(f'PDF menu remains unobscured at {width} logical pixels', not window._v51_binding.screen_toolbar.isVisible())
+        panel = window.pdf_page
+        controls = [panel.format, panel.orientation, panel.scale, panel.pdf_button,
+                    panel.trusted_pdf_button, *panel.dimension_tool_buttons.values()]
+        rectangles = [rect(widget) for widget in controls]
+        drawing_fits = (all(widget.isVisible() for widget in controls)
+                        and all(rect(panel).contains(item) for item in rectangles)
+                        and all(not a.intersects(b) for i, a in enumerate(rectangles)
+                                for b in rectangles[i+1:])
+                        and panel.preview.width() >= 300 and panel.preview.height() >= 200)
+        check(f'Drawing controls fit at {width} logical pixels', drawing_fits)
+        row['canvas_size'] = [panel.preview.width(), panel.preview.height()]
+        if snap is not None:
+            snap(f'UI3-NAV-{width}-native-navigation.png')
+        row.update(mouse_traversal=clicked, keyboard_traversal=keyboard, status='PASS')
+        rows.append(row)
+    window.resize(original_size)
+    index = tabs.indexOf(original_page)
+    if index >= 0:
+        QtTest.QTest.mouseClick(bar, QtCore.Qt.MouseButton.LeftButton, pos=bar.tabRect(index).center())
+    flush(.08)
+    return rows
+
+
 def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | None=None) -> dict[str,Any]:
     from PySide6 import QtCore,QtWidgets,QtTest
     from . import CWSMainWindow
@@ -128,6 +224,8 @@ def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | 
                 iterator+=1
             raise AssertionError('Missing source entity '+identity_value)
         tree_select('UIV3-A1')
+        report['primary_navigation'] = _exercise_primary_navigation(window, check, flush, snap)
+        click(window.native_workspace_buttons['pdf'])
         check('Selected assembly remains selected',panel._entity_id=='UIV3-A1')
         check('Assembly draws through production engine',panel._drawing_document is not None and panel._drawing_document.document_type=='assembly')
         part_ids=set(window.workspace.project.assemblies['UIV3-A1'].part_ids)
