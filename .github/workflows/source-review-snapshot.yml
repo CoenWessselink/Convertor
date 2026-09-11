@@ -1,0 +1,46 @@
+name: CWS exact-commit source review snapshot
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Archive committed source and ancestry without modifying the worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p snapshot
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git archive --format=zip --output=snapshot/source.zip "$GITHUB_SHA"
+          git log -30 --format='%H %P %s' > snapshot/ANCESTRY.txt
+          git ls-tree -r "$GITHUB_SHA" > snapshot/TREE.txt
+          python - <<'PY'
+          import hashlib, json, os, pathlib, subprocess
+          root = pathlib.Path('snapshot')
+          manifest = {
+              'source_commit': os.environ['GITHUB_SHA'],
+              'source_tree': subprocess.check_output(['git','rev-parse','HEAD^{tree}'], text=True).strip(),
+              'workflow_run': os.environ['GITHUB_RUN_ID'],
+              'purpose': 'Unmodified committed source for review/recovery; NOT an installer or test-pass claim',
+              'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in root.iterdir() if p.is_file()},
+              'required_ancestors': {}
+          }
+          for ref in ('e5c09f42fece5f7dbc84a9c2841ea1da96773846','3cccd357','8f56b58e'):
+              result = subprocess.run(['git','merge-base','--is-ancestor',ref,'HEAD'], capture_output=True, text=True)
+              manifest['required_ancestors'][ref] = {'is_ancestor': result.returncode == 0, 'exit_code': result.returncode}
+          (root/'SOURCE_SNAPSHOT.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Source_Review_${{ github.sha }}
+          path: snapshot/*
+          if-no-files-found: error
+          retention-days: 30
