@@ -8,6 +8,7 @@ has no implementation. Full native behaviour remains covered by the Windows
 installer acceptance suite.
 """
 
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -29,7 +30,6 @@ class _Page:
         self.scale = SimpleNamespace(setFocus=lambda: None)
         self.format = SimpleNamespace(setFocus=lambda: None)
         self._root = root
-        self.printed = []
     def set_context(self, workspace, selection) -> None:
         pass
     def _generate(self, *, make_png: bool, make_pdf: bool):
@@ -40,17 +40,14 @@ class _Page:
         if png:
             png.write_bytes(b"png")
         return SimpleNamespace(pdf_path=pdf, png_path=png, document=SimpleNamespace())
-    def _print_pdf(self, path: str):
-        self.printed.append(str(path))
-        return True
 
 
 class _Router:
     def open_workspace(self, route: str) -> bool:
-        return route == "pdf"
+        return route in {"pdf", "plate_nesting", "profile_nesting"}
 
 
-def test_drawing_print_generates_pdf_before_native_print() -> None:
+def test_drawing_print_generates_pdf_but_does_not_fake_headless_print() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         page = _Page(root)
@@ -61,11 +58,36 @@ def test_drawing_print_generates_pdf_before_native_print() -> None:
         )
         project = SimpleNamespace(parts={"P1": object()}, assemblies={})
         panel = SimpleNamespace(window=window, _workspace=SimpleNamespace(project=project))
-        outcome = dispatch._drawing(panel, "drawing.print", ("P1",), object())
-        assert outcome.status == "passed"
+        before_headless = os.environ.get("CWS_HEADLESS_GUI_SMOKE")
+        os.environ["CWS_HEADLESS_GUI_SMOKE"] = "1"
+        try:
+            outcome = dispatch._drawing(panel, "drawing.print", ("P1",), object())
+        finally:
+            if before_headless is None:
+                os.environ.pop("CWS_HEADLESS_GUI_SMOKE", None)
+            else:
+                os.environ["CWS_HEADLESS_GUI_SMOKE"] = before_headless
+        assert outcome.status == "prepared"
         assert len(outcome.outputs) == 1
         assert Path(outcome.outputs[0]).suffix.lower() == ".pdf"
-        assert page.printed == [outcome.outputs[0]]
+        assert Path(outcome.outputs[0]).is_file()
+        assert "printerdialoog" in outcome.message
+
+
+def _nest_panel(*, plate: bool, page) -> tuple[SimpleNamespace, object, object]:
+    project = SimpleNamespace(parts={"P1": SimpleNamespace(profile="PL10" if plate else "HEA180")})
+    workspace = SimpleNamespace(project=project)
+    window = SimpleNamespace(
+        plate_nesting_page=page if plate else SimpleNamespace(),
+        profiles_page=page if not plate else SimpleNamespace(),
+        workspace_router=_Router(),
+        application_context=SimpleNamespace(selection=()),
+    )
+    panel = SimpleNamespace(window=window, _workspace=workspace)
+    module = __import__("cws_convertor.optimization.plate_nesting.project_service", fromlist=["is_plate"])
+    old = module.is_plate
+    module.is_plate = lambda part: plate
+    return panel, module, old
 
 
 def test_plate_compare_refuses_without_canonical_compare() -> None:
@@ -74,18 +96,7 @@ def test_plate_compare_refuses_without_canonical_compare() -> None:
         set_context=lambda *args: None,
         scope_combo=SimpleNamespace(findData=lambda value: 0, setCurrentIndex=lambda value: None),
     )
-    project = SimpleNamespace(parts={"P1": SimpleNamespace(profile="PL10")})
-    workspace = SimpleNamespace(project=project)
-    window = SimpleNamespace(
-        plate_nesting_page=page,
-        profiles_page=SimpleNamespace(),
-        workspace_router=SimpleNamespace(open_workspace=lambda route: True),
-        application_context=SimpleNamespace(selection=()),
-    )
-    panel = SimpleNamespace(window=window, _workspace=workspace)
-    original = __import__("cws_convertor.optimization.plate_nesting.project_service", fromlist=["is_plate"])
-    old = original.is_plate
-    original.is_plate = lambda part: True
+    panel, module, old = _nest_panel(plate=True, page=page)
     try:
         try:
             dispatch._nesting(panel, "optimize.compare", ("P1",))
@@ -94,40 +105,52 @@ def test_plate_compare_refuses_without_canonical_compare() -> None:
         else:
             raise AssertionError("plate compare must fail closed when no canonical compare exists")
     finally:
-        original.is_plate = old
+        module.is_plate = old
 
 
-def test_profile_alternatives_use_existing_phase3_action() -> None:
+def test_profile_compare_uses_existing_phase3_action_and_reads_status() -> None:
     calls = []
+    status = _Text("Scenariovergelijking gereed")
     page = SimpleNamespace(
         _job_id=None,
         set_context=lambda *args: None,
         scope_combo=SimpleNamespace(findData=lambda value: 0, setCurrentIndex=lambda value: None),
         _analyse=lambda: None,
         _phase3_action=lambda name: calls.append(name),
+        phase3_nesting_status=status,
     )
-    project = SimpleNamespace(parts={"P1": SimpleNamespace(profile="HEA180")})
-    workspace = SimpleNamespace(project=project)
-    window = SimpleNamespace(
-        plate_nesting_page=SimpleNamespace(),
-        profiles_page=page,
-        workspace_router=SimpleNamespace(open_workspace=lambda route: True),
-        application_context=SimpleNamespace(selection=()),
-    )
-    panel = SimpleNamespace(window=window, _workspace=workspace)
-    original = __import__("cws_convertor.optimization.plate_nesting.project_service", fromlist=["is_plate"])
-    old = original.is_plate
-    original.is_plate = lambda part: False
+    panel, module, old = _nest_panel(plate=False, page=page)
     try:
-        outcome = dispatch._nesting(panel, "optimize.alternatives", ("P1",))
+        outcome = dispatch._nesting(panel, "optimize.compare", ("P1",))
         assert outcome.status == "passed"
-        assert calls == ["alternatives"]
+        assert calls == ["compare"]
+        assert outcome.message == "Scenariovergelijking gereed"
     finally:
-        original.is_plate = old
+        module.is_plate = old
+
+
+def test_profile_alternatives_remain_fail_closed_without_canonical_executor() -> None:
+    page = SimpleNamespace(
+        _job_id=None,
+        set_context=lambda *args: None,
+        scope_combo=SimpleNamespace(findData=lambda value: 0, setCurrentIndex=lambda value: None),
+        _analyse=lambda: None,
+    )
+    panel, module, old = _nest_panel(plate=False, page=page)
+    try:
+        try:
+            dispatch._nesting(panel, "optimize.alternatives", ("P1",))
+        except ValueError as exc:
+            assert "geen canonieke uitvoerder" in str(exc)
+        else:
+            raise AssertionError("alternatives must stay fail-closed until a canonical executor exists")
+    finally:
+        module.is_plate = old
 
 
 if __name__ == "__main__":
-    test_drawing_print_generates_pdf_before_native_print()
+    test_drawing_print_generates_pdf_but_does_not_fake_headless_print()
     test_plate_compare_refuses_without_canonical_compare()
-    test_profile_alternatives_use_existing_phase3_action()
+    test_profile_compare_uses_existing_phase3_action_and_reads_status()
+    test_profile_alternatives_remain_fail_closed_without_canonical_executor()
     print("PASS: BOM completion dispatcher keeps W03/W18 intent explicit")
