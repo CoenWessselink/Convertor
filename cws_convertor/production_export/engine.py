@@ -64,6 +64,7 @@ class ExportRequest:
     include_blocked_review_files: bool = True
     create_zip: bool = True
     deterministic_zip: bool = True
+    include_assembly_packages: bool = True
     filename_template: str = (
         "{project}_{assembly_mark}_{part_position}_{profile}_{revision}_{identity}"
     )

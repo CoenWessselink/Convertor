@@ -653,7 +653,7 @@ class Phase3ExportCenterPanel(QWidget):
         self.grouping = QComboBox(form_host)
         for grouping in ExportGrouping:
             self.grouping.addItem(grouping.value.replace("_", " ").title(), grouping)
-        # Only combined packages are implemented by the current backend.
+        # All listed groupings resolve an exact partition, or fail preflight.
         self.grouping.setCurrentIndex(self.grouping.findData(ExportGrouping.COMBINED))
         form.addRow("3. Groepering", self.grouping)
         self.grouping.activated.connect(self._confirm_bom_grouping_change)
@@ -665,8 +665,13 @@ class Phase3ExportCenterPanel(QWidget):
             check.setChecked(value in {"STEP", "JSON"})
             formats_layout.addWidget(check)
             self._format_checks[value] = check
+            if value == "XLSX":
+                check.setEnabled(False)
+                check.setToolTip("Gebruik BOM → Export → XLSX voor een afzonderlijke BOM-reviewexport.")
         form.addRow("4. Formats", formats_host)
-        self.naming = QLineEdit("{project}_{scope}_{revision}", form_host)
+        self.naming = QLineEdit("CWS_project_groepering_jobID_unieke-uitvoer", form_host)
+        self.naming.setReadOnly(True)
+        self.naming.setToolTip("Pakketnamen zijn herleidbaar en overschrijven geen eerdere uitvoer. Vrije naamtemplates zijn niet aangesloten.")
         self.output_dir = QLineEdit(str(Path.cwd() / "build" / "exports"), form_host)
         browse = QPushButton("Kies map", form_host)
         browse.clicked.connect(self._choose_output)
@@ -728,7 +733,7 @@ class Phase3ExportCenterPanel(QWidget):
         values = self._values()
         entity_ids = self.selection_ids if kind is ExportScopeKind.SELECTION else ()
         if kind is ExportScopeKind.SELECTED_PARTS:
-            entity_ids = values or self.selection_ids
+            entity_ids = values  # Explicit IDs never fall back to mutable global selection.
         return ExportScope(
             kind=kind,
             values=values,
@@ -738,6 +743,10 @@ class Phase3ExportCenterPanel(QWidget):
 
     def _filtered_entity_ids(self, scope: ExportScope) -> tuple[str, ...]:
         wanted = set(scope.values)
+        if scope.kind is ExportScopeKind.ASSEMBLY:
+            if self.service is None or not wanted or not wanted.issubset(self.project.assemblies):
+                return ()
+            return tuple(sorted({key for owner in wanted for key in self.service._assembly_part_ids(owner, scope.recursive)}))
         field = "assembly_id" if scope.kind is ExportScopeKind.ASSEMBLY else "machine_batch_id"
         matches: list[str] = []
         for identifier, part in _iter_records(getattr(self.project, "parts", ())):
@@ -765,21 +774,11 @@ class Phase3ExportCenterPanel(QWidget):
         return tuple(name.lower() for name, check in self._format_checks.items() if check.isChecked())
 
     def _confirm_bom_grouping_change(self, _index: int) -> None:
-        if getattr(self, "_bom_unsupported_grouping", ""):
-            if self.grouping.currentData() == ExportGrouping.COMBINED:
-                self._bom_unsupported_grouping = ""
-                self.generate_button.setEnabled(True)
-                self._preflight()
-            else:
-                self.blockers.setPlainText("BLOCKED: alleen een expliciet gekozen combined-export is aangesloten")
+        self._bom_unsupported_grouping = ""
+        self.generate_button.setEnabled(True)
+        self._preflight()
 
     def _preflight(self) -> Any:
-        if self.grouping.currentData() != ExportGrouping.COMBINED:
-            self.blockers.setPlainText("BLOCKED: afzonderlijk gegroepeerde packages zijn nog niet aangesloten (W18); geen combined-vervanging")
-            return None
-        if getattr(self, "_bom_unsupported_grouping", ""):
-            self.blockers.setPlainText("BLOCKED: gevraagde BOM-groepering heeft nog geen package-uitvoerder")
-            return None
         if self.service is None:
             self.blockers.setPlainText("BLOCKED: geen actief project")
             return None
@@ -801,6 +800,9 @@ class Phase3ExportCenterPanel(QWidget):
             return None
         lines = [f"scope_sha256: {preflight.resolution.manifest_sha256}", f"preflight_sha256: {preflight.manifest_sha256}"]
         lines.extend(f"BLOCKED: {code}" for code in preflight.blocking_codes)
+        lines.extend(preflight.resolution.messages)
+        lines.extend(preflight.messages)
+        lines.extend(f"Groep {group['key']}: {len(group['part_ids'])} onderdeel-IDs" for group in preflight.group_plan)
         for item in preflight.items:
             lines.extend(f"{item.part_position}: {code}" for code in item.blocking_codes)
         if not preflight.blocking_codes and not any(item.blocking_codes for item in preflight.items):
@@ -810,6 +812,11 @@ class Phase3ExportCenterPanel(QWidget):
         return preflight
 
     def _generate(self) -> None:
+        if self.job_manager is not None and self.current_background_job_id:
+            record = self.job_manager.get(self.current_background_job_id)
+            if record.status in {"queued", "running"}:
+                self.blockers.append("Export is al actief; wacht op voltooiing of annuleer.")
+                return
         preflight = self._preflight()
         if preflight is None or preflight.blocking_codes or any(item.blocking_codes for item in preflight.items):
             return
@@ -821,36 +828,44 @@ class Phase3ExportCenterPanel(QWidget):
             self.blockers.append("BLOCKED: centrale JobManager ontbreekt")
             return
         project_id = str(getattr(self.project, "project_id", getattr(self.project, "id", "")))
+        self._active_export_service = self.service
+        binding = getattr(self, "_bom_export_binding", None)
+        self._active_bom_binding = (binding if binding and binding["ids"] == tuple(planned.preflight.resolution.selected_part_ids)
+                                   and binding["formats"] == self._formats()
+                                   and binding["grouping"] == ExportGrouping(self.grouping.currentData()).value else None)
+        self._bom_result_recorded = False
         self.current_background_job_id = self.job_manager.submit(
             "phase3-export",
             self._execute_export,
             planned.job_id,
             self.output_dir.text().strip(),
+            self.service,
             description="Scope-first export, verificatie en package manifest",
             project_id=project_id,
             metadata={"scope": self._scope().kind.value, "formats": list(self._formats())},
         )
         self.status.setText(f"Export job gestart: {self.current_background_job_id}")
 
-    def _execute_export(self, context: Any, export_job_id: str, output_dir: str) -> dict[str, Any]:
-        if self.service is None:
+    def _execute_export(self, context: Any, export_job_id: str, output_dir: str, service: Any = None) -> dict[str, Any]:
+        service = service or self.service
+        if service is None:
             raise RuntimeError("Exportservice is niet beschikbaar")
         context.stage("generate", 0.05, "Artifacts genereren")
-        result = self.service.execute_job(
+        result = service.execute_job(
             export_job_id,
             output_dir,
             create_zip=True,
             progress=lambda progress, message: context.update(progress, message),
+            cancelled=lambda: context.is_cancelled() or not context.is_current_generation(),
         )
         from cws_viewer.export_center.models import ExportJobStatus
         if result.status != ExportJobStatus.COMPLETED:
             raise RuntimeError(result.error or "Export niet voltooid: " + result.status.value)
-        context.stage("reimport_verify", 0.92, "Manifest en package opnieuw lezen")
+        # Child artifacts and final ZIP were already re-read before atomic publication.
         package = Path(result.package_path) if result.package_path else None
         if package is not None and not package.is_file():
             raise RuntimeError("Package ontbreekt na export")
-        manifest = self.service.evidence_manifest()
-        context.stage("manifest", 1.0, "Manifest en checksums vastgelegd")
+        manifest = service.evidence_manifest()
         return {
             "export_job_id": result.job_id,
             "package_path": result.package_path,
@@ -862,11 +877,26 @@ class Phase3ExportCenterPanel(QWidget):
     def _on_job_event(self, record: Any) -> None:
         if getattr(record, "job_id", "") != self.current_background_job_id:
             return
+        if getattr(self, "_active_export_service", self.service) is not self.service:
+            return  # A completed job of a previous project cannot update this page.
         self.status.setText(f"{record.stage}: {record.message} ({record.progress:.0%})")
+        if record.status in {"completed", "failed", "cancelled", "timed_out", "stale_discarded"}:
+            binding = getattr(self, "_active_bom_binding", None)
+            if binding and not getattr(self, "_bom_result_recorded", False):
+                panel = binding["panel"]
+                self._bom_result_recorded = True
+                if panel._workspace is binding["workspace"] and panel._hub_state is not None:
+                    payload = record.result or {}
+                    passed = record.status == "completed" and payload.get("reimport_verified") is True
+                    panel._hub_state.record_result(binding["action"], binding["preflight"],
+                        status="passed" if passed else ("cancelled" if record.status == "cancelled" else "failed"),
+                        outputs=(payload["package_path"],) if passed else (),
+                        messages=(str(payload.get("export_manifest_sha256") or record.error or record.message),))
+                    panel._mark_project_dirty()
         if record.status == "completed":
             result = record.result or {}
             self.verify.setPlainText(
-                "GREEN: deterministic package heropend en manifest checksum aanwezig."
+                "GREEN: pakket heropend; checksums en exacte selectie geverifieerd."
                 if result.get("reimport_verified")
                 else "BLOCKED: re-import verificatie ontbreekt."
             )

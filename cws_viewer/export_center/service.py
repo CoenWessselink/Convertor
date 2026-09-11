@@ -375,8 +375,7 @@ class V15ExportCenterService:
         result: list[str] = []
         for value in formats:
             fmt = _text(value).lower().lstrip(".")
-            if fmt == "pdf":
-                fmt = "production_pdf"
+            fmt = {"pdf": "production_pdf", "dstv": "nc1", "labels": "label_pdf"}.get(fmt, fmt)
             if fmt and fmt not in result:
                 result.append(fmt)
         return tuple(result)
@@ -384,7 +383,16 @@ class V15ExportCenterService:
     def preflight(self, scope: ExportScope, formats: Iterable[str]) -> ExportPreflight:
         resolution = self.resolve_scope(scope)
         requested_formats = self._normalize_formats(formats)
+        from .grouped import _plan, _revision, GroupingError
         codes = list(resolution.blocking_codes)
+        groups = ()
+        messages = []
+        if resolution.allowed:
+            try:
+                groups = _plan(self.project, resolution.selected_part_ids, str(scope.metadata.get("grouping", "combined")))
+            except GroupingError as exc:
+                codes.append("CWS-EXPORT-GROUPING-BLOCKED")
+                messages.append(str(exc))
         items: list[ExportPreflightItem] = []
         if not requested_formats:
             codes.append(FORMAT_INVALID)
@@ -411,6 +419,9 @@ class V15ExportCenterService:
             resolution=resolution,
             requested_formats=requested_formats,
             items=tuple(items),
+            group_plan=groups,
+            messages=tuple(messages),
+            source_revision_sha256=_revision(self.project),
             blocking_codes=tuple(codes),
         )
 
@@ -424,6 +435,8 @@ class V15ExportCenterService:
             "requested_formats": list(preflight.requested_formats),
         }
         job_id = "EXP-" + stable_hash(payload)[:16].upper()
+        if job_id in self.jobs and self.jobs[job_id].status == ExportJobStatus.RUNNING:
+            raise RuntimeError("Deze exportopdracht wordt al uitgevoerd")
         status = ExportJobStatus.READY if preflight.allowed else ExportJobStatus.BLOCKED
         job = ExportJob(
             job_id=job_id,
@@ -451,6 +464,7 @@ class V15ExportCenterService:
         *,
         create_zip: bool = True,
         progress: Callable[[float, str], None] | None = None,
+        cancelled: Callable[[], bool] | None = None,
     ) -> ExportJob:
         job = self.jobs[job_id]
         if job.status == ExportJobStatus.CANCELLED:
@@ -460,49 +474,29 @@ class V15ExportCenterService:
             return job
         if job.status not in {ExportJobStatus.READY, ExportJobStatus.PLANNED}:
             raise RuntimeError(f"Exportjob {job.job_id} heeft status {job.status.value}")
-        target = Path(output_dir).expanduser().resolve()
-        job.output_dir = str(target)
+        from .grouped import _execute, GroupingError
+        from cws_convertor.project.jobs import JobCancelled
+        job.output_dir = str(Path(output_dir).expanduser().resolve())
         job.status = ExportJobStatus.RUNNING
-        job.progress = 0.05
-        if progress:
-            progress(job.progress, "Exportscope vastgezet en preflight groen")
+        job.package_path = ""
+        job.export_manifest_sha256 = ""
         try:
-            request = ExportRequest(
-                output_dir=target,
-                formats=list(job.requested_formats),
-                part_ids=set(job.preflight.resolution.selected_part_ids),
-                strict_mode=True,
-                include_blocked_review_files=True,
-                create_zip=bool(create_zip),
-                deterministic_zip=True,
-            )
-            job.progress = 0.20
-            if progress:
-                progress(job.progress, "Canonical release-engine voert verse validatie en export uit")
-            manifest, root, zip_path = self.exporter.export_project(self.project, request)
-            job.progress = 0.92
-            job.export_manifest_sha256 = manifest.manifest_sha256
-            job.package_path = str(zip_path or root)
-            ready = bool(manifest.summary.get("production_ready"))
-            selected = set(job.preflight.resolution.selected_part_ids)
-            manifest_ids = {item.part_id for item in manifest.items}
-            all_exported = all(item.status == ExportStatus.EXPORTED for item in manifest.items)
-            exact_scope = selected == manifest_ids
-            if ready and all_exported and exact_scope:
-                job.status = ExportJobStatus.COMPLETED
-                job.progress = 1.0
-                if progress:
-                    progress(1.0, "Export compleet; manifest en checksums geschreven")
-            else:
-                job.status = ExportJobStatus.BLOCKED
-                job.error = "Runtime release-gate blokkeerde één of meer artifacts of wijzigde de scope"
-                if progress:
-                    progress(job.progress, job.error)
+            path, digest = _execute(self, job, output_dir, create_zip=create_zip,
+                                    progress=progress, cancelled=cancelled)
+            job.package_path = str(path)
+            job.export_manifest_sha256 = digest
+            job.status = ExportJobStatus.COMPLETED
+            job.progress = 1.0
+        except JobCancelled as exc:
+            job.status = ExportJobStatus.CANCELLED
+            job.error = str(exc)
+        except GroupingError as exc:
+            job.status = ExportJobStatus.BLOCKED
+            job.error = str(exc)
         except Exception as exc:
             job.status = ExportJobStatus.FAILED
             job.error = f"{type(exc).__name__}: {exc}"
-            if progress:
-                progress(job.progress, job.error)
+
         return job
 
     def evidence_manifest(self) -> dict[str, Any]:

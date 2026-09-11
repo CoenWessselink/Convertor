@@ -97,13 +97,13 @@ class DispatchGuards(unittest.TestCase):
     def test_unknown_drawing_intent_is_explicitly_rejected(self):
         self.panel.window.pdf_page=object()
         with self.assertRaises(ValueError):_drawing(self.panel,'drawing.nonexistent',('A',))
-    def test_noncombined_export_grouping_cannot_bypass_bom_guard(self):
+    def test_grouped_export_without_service_still_fails_closed(self):
         from cws_convertor.ui_qt.phase3_workspaces import Phase3ExportCenterPanel
         from cws_convertor.project.manufacturing_contracts import ExportGrouping
         blocker=Mock()
-        panel=NS(grouping=NS(currentData=lambda:ExportGrouping.PER_PART), blockers=blocker)
+        panel=NS(grouping=NS(currentData=lambda:ExportGrouping.PER_PART), blockers=blocker, service=None)
         self.assertIsNone(Phase3ExportCenterPanel._preflight(panel))
-        self.assertIn('geen combined-vervanging',blocker.setPlainText.call_args.args[0])
+        self.assertIn('geen actief project',blocker.setPlainText.call_args.args[0])
     def test_machine_partition_nesting_not_replaced_with_combined(self):
         self.panel._preflight_partition_mode='machine'
         with self.assertRaisesRegex(ValueError,'per machine'):

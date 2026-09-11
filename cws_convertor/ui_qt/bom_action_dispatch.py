@@ -171,6 +171,7 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
 def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _Outcome:
     from cws_convertor.project.manufacturing_contracts import ExportGrouping, ExportScopeKind
     window, page = panel.window, panel.window.export_page
+    page._bom_export_binding = None
     formats = {"export.nc1": ("DSTV",), "export.step": ("STEP",), "export.ifc": ("IFC",),
                "export.dxf": ("DXF",), "export.pdf": ("PDF",),
                "export.production": ("DSTV", "STEP", "IFC", "DXF", "PDF"),
@@ -202,20 +203,20 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
     for name, check in page._format_checks.items():
         if action in formats:
             check.setChecked(name in formats[action])
-    if grouping is not None:
-        # The existing backend ignores grouping metadata. Do not make its UI
-        # falsely promise separately grouped packages. W18 remains explicit.
-        page.generate_button.setEnabled(False)
-        page._bom_unsupported_grouping = grouping
-        page.blockers.setPlainText("BLOCKED: groepering " + grouping + " heeft nog geen geteste package-uitvoerder; geen bestanden gemaakt")
-        window.application_context.update_export_context(active_export_scope=tuple(parts), grouping=grouping,
-                                                          formats=tuple(page._formats()), preflight_hash=preflight.preflight_sha256)
-        return _Outcome("blocked", "Gevraagde groepering bewaard: " + grouping + "; package-uitvoerder nog niet beschikbaar (W18)")
     page._bom_unsupported_grouping = ""
     page.generate_button.setEnabled(True)
-    page.grouping.setCurrentIndex(page.grouping.findData(ExportGrouping.COMBINED))
+    if grouping == "choose_explicit_grouping":
+        page.grouping.setFocus()
+        return _Outcome("prepared", "Kies en controleer de groepering en uitvoermap; nog geen bestanden gemaakt")
+    if grouping == "part_mark" and all(key in panel._workspace.project.assemblies for key in ids):
+        grouping = "assembly_mark"
+    chosen = ExportGrouping(grouping or "combined")
+    page.grouping.setCurrentIndex(page.grouping.findData(chosen))
+    page._bom_export_binding = {"panel": panel, "workspace": panel._workspace, "preflight": preflight,
+                                "ids": tuple(sorted(set(parts))), "grouping": chosen.value,
+                                "formats": tuple(page._formats()), "action": action}
     prepared = page._preflight()
-    window.application_context.update_export_context(active_export_scope=tuple(parts), grouping="combined",
+    window.application_context.update_export_context(active_export_scope=tuple(parts), grouping=chosen.value,
                                                       formats=tuple(page._formats()), preflight_hash=preflight.preflight_sha256)
     if prepared is None or prepared.blocking_codes or any(item.blocking_codes for item in prepared.items):
         return _Outcome("blocked", "Exacte exportselectie/format ingesteld maar preflight blokkeert; geen bestanden gemaakt")

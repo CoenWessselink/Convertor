@@ -113,6 +113,15 @@ class _FakeExporter:
         )
         root = Path(request.output_dir) / "fixture"
         root.mkdir(parents=True, exist_ok=True)
+        # This is a manifest fixture, not native geometry evidence. The stronger
+        # package boundary now requires even this stub to return verifiable bytes.
+        from cws_convertor.production_export.utils import canonical_json_bytes, stable_hash
+        from cws_convertor.production_export.engine import ProductionExportEngine
+        payload = manifest.to_dict(); payload.pop("manifest_sha256", None)
+        manifest.manifest_sha256 = stable_hash(payload)
+        (root / "manifest.json").write_bytes(canonical_json_bytes(manifest.to_dict()))
+        (root / "UNIT_FIXTURE.txt").write_text("Synthetic orchestration fixture, not a production artifact")
+        ProductionExportEngine._write_checksums(root)
         return manifest, root, None
 
 

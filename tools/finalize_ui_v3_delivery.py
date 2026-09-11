@@ -19,6 +19,10 @@ RELEASE_EVIDENCE_CHECKS = {
     'Machine advice cannot grant release or assignment',
     'Machine advice visible in existing main-window BOM',
     'Existing canonical workspace retained after BOM action',
+    'Actual grouped Export Center visible in main window',
+    'Main-window grouped preflight preserves exact canonical ID',
+    'Grouped export cannot promote unapproved imported source',
+    'Blocked grouped export starts no production job',
 } | {
     f'{name} at {width} logical pixels'
     for width in (1280, 1440, 1920)
@@ -53,6 +57,50 @@ def only(root: Path, name: str) -> Path:
     values = list(root.rglob(name))
     require(len(values) == 1, 'Expected exactly one ' + name)
     return values[0]
+
+def _verify_bom_exports(bom: dict, base: Path, sha: str, executable_sha256: str) -> dict:
+    """Require newly executed, byte-bound positive exports; not only UI navigation."""
+    binding = bom.get('export_followup', {})
+    path = evidence_path(base, binding.get('report'))
+    require(path.is_file() and digest(path) == binding.get('sha256'), 'Grouped BOM report hash')
+    report = load(path)
+    require(report.get('status') == 'PASS' and report.get('source_commit') == sha
+            and report.get('source_dirty') is False and report.get('frozen') is True
+            and report.get('executable_sha256') == executable_sha256, 'Grouped BOM source/binary binding')
+    require(len(report.get('checks', [])) >= 130 and all(c.get('status') == 'PASS' for c in report['checks'])
+            and report.get('machine_transfer_allowed') is False, 'Grouped BOM controls')
+    expected = {'per_part','part_mark','assembly','assembly_mark','phase','batch','machine','combined'}
+    require(len(report.get('packages', [])) == 8 and {p.get('grouping') for p in report['packages']} == expected,
+            'Eight real export groupings required')
+    for record in report['packages']:
+        package = evidence_path(path.parent, record['file'])
+        require(package.is_file() and digest(package) == record['sha256'], 'Grouped BOM package hash')
+        with zipfile.ZipFile(package) as archive:
+            manifest = json.loads(archive.read('manifest.json'))
+            require(manifest['manifest_sha256'] == record['manifest_sha256']
+                    and manifest['grouping'] == record['grouping']
+                    and manifest['machine_transfer_allowed'] is False, 'Grouped BOM package identity')
+            require(manifest['selected_part_ids'] == ['EXPORT-A','EXPORT-B']
+                    and sorted(p for g in manifest['groups'] for p in g['part_ids']) == ['EXPORT-A','EXPORT-B']
+                    and set(manifest['requested_formats']) == {'step','nc1','production_pdf'}, 'Grouped BOM exact scope/formats')
+            for group in manifest['groups']:
+                require(hashlib.sha256(archive.read(group['file'])).hexdigest() == group['sha256'], 'Grouped BOM child package hash')
+    require(len(report.get('review_exports', [])) == 3
+            and {item['format'] for item in report['review_exports']} == {'xlsx','csv','json'}, 'Three review formats required')
+    for review in report['review_exports']:
+        require(bool(review['files']), 'Review export files missing')
+        for name, expected_hash in review['files'].items():
+            require(digest(evidence_path(path.parent, name)) == expected_hash, 'Review export file hash')
+        manifests = [name for name in review['files'] if PurePosixPath(name).name == 'manifest.json']
+        require(len(manifests) == 1, 'Review manifest missing')
+        manifest = load(evidence_path(path.parent, manifests[0]))
+        require(manifest['selected_formats'] == [review['format']]
+                and manifest['scope']['entity_ids'] == ['EXPORT-A'], 'Review format/exact part selection')
+    require(len(report.get('screenshots', {})) >= 3, 'Grouped BOM real screenshots missing')
+    for image, expected_hash in report['screenshots'].items():
+        require(digest(evidence_path(path.parent, image)) == expected_hash, 'Grouped BOM screenshot hash')
+    return {'status':'PASS','report_sha256':digest(path),'checks':len(report['checks']),
+            'real_groupings':sorted(expected),'review_formats':['csv','json','xlsx']}
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -119,6 +167,7 @@ def main() -> int:
             and bom.get('machine_transfer_allowed') is False and binding.get('python_on_child_path') is False, 'Installed BOM controls')
     for image, expected in bom.get('screenshots', {}).items():
         require(digest(evidence_path(bom_path.parent / 'bom-actions', image)) == expected, 'Installed BOM screenshot hash')
+    grouped_bom = _verify_bom_exports(bom, bom_path.parent/'bom-actions', sha, records['installed']['executable_sha256'])
     original_review['source_commit'] = sha
     (out / 'ORIGINAL_SPECIFICATION_REVIEW.json').write_text(json.dumps(original_review, ensure_ascii=False, indent=2), encoding='utf-8')
     for name in ('CODEX_INTEGRATIEPROMPT_PDF_UI_V3.md', 'REFERENCE_IMAGES.md'):
@@ -130,7 +179,7 @@ def main() -> int:
                         'original_input_verification_scope':'Archive and PNGs verified before commit; CI verifies committed original text and review record',
                         'original_archive_rehashed_in_ci':original_review['original_archive_rehashed_in_this_execution'],
                         'full_original_specification_acceptance':'SOFTWARE_BETA_WITH_RECORDED_VISUAL_REVIEW', 'runtimes':records,
-                        'installed_bom_actions': {'status': 'PASS', 'checks': len(bom['checks']), 'report_sha256': digest(bom_path)},
+                        'installed_bom_actions': {'status': 'PASS', 'checks': len(bom['checks']), 'report_sha256': digest(bom_path), 'exports':grouped_bom},
                         'pdf12_native_controls_per_packaged_runtime':35,'five_dpi_checked':[100,125,150,175,200], 'phase3_soak_seconds':soak['elapsed_seconds']}
     (out / 'PDF_RUNTIME_EVIDENCE.json').write_text(json.dumps(runtime_manifest, indent=2), encoding='utf-8')
     manifest = {'schema':'cws-native-ui-v3-release-manifest-1.0','source_commit':sha,'source_tree':acceptance['source_tree'], 'status':'PASS',

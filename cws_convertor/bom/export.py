@@ -477,18 +477,26 @@ def export_bom_package(
     output_dir: str | Path,
     *,
     package_name: str | None = None,
+    formats: Iterable[str] | None = None,
+    create_zip: bool = True,
 ) -> dict[str, Path]:
+    selected = tuple(dict.fromkeys(formats if formats is not None else ("json", "xlsx", "pdf", "csv")))
+    if not selected or any(fmt not in {"json", "xlsx", "pdf", "csv"} for fmt in selected):
+        raise ValueError("Kies ondersteunde BOM-reviewformaten: json/xlsx/pdf/csv")
     target = Path(output_dir)
     target.mkdir(parents=True, exist_ok=True)
     stem = package_name or re.sub(r"[^A-Za-z0-9._-]+", "_", snapshot.project_name).strip("_") or "CWS_BOM"
     work = Path(tempfile.mkdtemp(prefix="cws-bom-", dir=str(target)))
     try:
         json_path = work / f"{stem}_BOM.json"
-        json_path.write_text(json.dumps(snapshot.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
+        if "json" in selected:
+            json_path.write_text(json.dumps(snapshot.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
         xlsx_path = work / f"{stem}_BOM.xlsx"
-        _write_xlsx(xlsx_path, snapshot)
-        _scan_xlsx_formula_errors(xlsx_path)
-        _write_pdf(work / f"{stem}_BOM.pdf", snapshot)
+        if "xlsx" in selected:
+            _write_xlsx(xlsx_path, snapshot)
+            _scan_xlsx_formula_errors(xlsx_path)
+        if "pdf" in selected:
+            _write_pdf(work / f"{stem}_BOM.pdf", snapshot)
         datasets = {
             "part_bom": snapshot.part_bom,
             "assembly_bom": snapshot.assembly_bom,
@@ -499,7 +507,7 @@ def export_bom_package(
             "conflicts": snapshot.conflicts,
             "traceability": snapshot.traceability,
         }
-        for name, rows in datasets.items():
+        for name, rows in (datasets.items() if "csv" in selected else ()):
             _write_csv(work / f"{name}.csv", _flatten_rows(rows))
         validation_path = work / "validation.json"
         validation_path.write_text(
@@ -508,6 +516,9 @@ def export_bom_package(
         )
         manifest = {
             "format": "CWS_BOM_PACKAGE_V1",
+            "selected_formats": list(selected),
+            "review_only": True,
+            "machine_transfer_allowed": False,
             "app": APP_NAME,
             "app_version": APP_VERSION,
             "project_id": snapshot.project_id,
@@ -530,10 +541,11 @@ def export_bom_package(
             shutil.copy2(path, final)
             outputs[path.name] = final
         zip_path = target / f"{stem}_BOM_PACKAGE.zip"
-        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-            for path in sorted(work.iterdir()):
-                archive.write(path, arcname=path.name)
-        outputs[zip_path.name] = zip_path
+        if create_zip:
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+                for path in sorted(work.iterdir()):
+                    archive.write(path, arcname=path.name)
+            outputs[zip_path.name] = zip_path
         return outputs
     finally:
         shutil.rmtree(work, ignore_errors=True)

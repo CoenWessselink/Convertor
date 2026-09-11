@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import hashlib, zipfile
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -19,6 +20,35 @@ SHA = 'a' * 40
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value), encoding='utf-8')
+
+
+def grouped_fixture(root):
+    """Deliberately synthetic manifest fixture: no CAD, installer or GUI claim."""
+    root.mkdir(parents=True, exist_ok=True)
+    packages = []
+    for kind in ('per_part','part_mark','assembly','assembly_mark','phase','batch','machine','combined'):
+        path = root / (kind + '.zip')
+        payload = b'MANIFEST UNIT FIXTURE - NOT CAD OR MACHINE OUTPUT'
+        manifest = {'manifest_sha256':'d'*64,'grouping':kind,'machine_transfer_allowed':False,
+            'selected_part_ids':['EXPORT-A','EXPORT-B'],'requested_formats':['step','nc1','production_pdf'],
+            'groups':[{'file':'unit.txt','part_ids':['EXPORT-A','EXPORT-B'],'sha256':hashlib.sha256(payload).hexdigest()}]}
+        with zipfile.ZipFile(path,'w') as archive:
+            archive.writestr('manifest.json',json.dumps(manifest));archive.writestr('unit.txt',payload)
+        packages.append({'grouping':kind,'file':path.name,'sha256':delivery.digest(path),'manifest_sha256':'d'*64})
+    reviews=[]
+    for fmt in ('csv','xlsx','json'):
+        path=root/fmt/'manifest.json'
+        write_json(path, {'selected_formats':[fmt], 'scope':{'entity_ids':['EXPORT-A']}})
+        reviews.append({'format':fmt,'files':{fmt+'/manifest.json':delivery.digest(path)}})
+    images={}
+    for index in range(3):
+        path=root/('unit-screenshot-'+str(index)+'.bin');path.write_bytes(b'MANIFEST UNIT FIXTURE - NOT A SCREENSHOT')
+        images[path.name]=delivery.digest(path)
+    report=root/'BOM_EXPORT_EVIDENCE.json'
+    write_json(report, {'status':'PASS','source_commit':SHA,'source_dirty':False,'frozen':True,
+        'executable_sha256':'c'*64, 'checks':[{'status':'PASS'} for _ in range(130)],
+        'machine_transfer_allowed':False,'screenshots':images,'packages':packages,'review_exports':reviews})
+    return {'report':'exports/BOM_EXPORT_EVIDENCE.json','sha256':delivery.digest(report)}
 
 
 def fixture(base):
@@ -69,8 +99,9 @@ def fixture(base):
         write_json(runtime / (label + '-packaged-runtime.json'), {
             'status': 'passed', 'python_on_child_path': False,
             'pdf12_interactive_dimensioning': {'passed': 35}})
+    grouped = grouped_fixture(runtime / 'bom-actions' / 'exports')
     bom_path = runtime / 'installed-bom-actions.json'
-    write_json(bom_path, {'status': 'PASS', 'frozen': True, 'source_dirty': False,
+    write_json(bom_path, {'export_followup':grouped, 'status': 'PASS', 'frozen': True, 'source_dirty': False,
                          'source_commit': SHA, 'executable_sha256': 'c' * 64,
                          'checks': [{'status': 'PASS'} for _ in range(40)],
                          'machine_transfer_allowed': False, 'screenshots': {}})
@@ -152,6 +183,41 @@ class DeliveryPathTests(unittest.TestCase):
             write_json(report, payload)
             with self.assertRaisesRegex(RuntimeError, 'BOM report hash'):
                 self.run_finalizer(root, runtime)
+
+    def test_old_bom_pass_without_grouped_exports_cannot_promote(self):
+        with TemporaryDirectory() as folder:
+            root,runtime=fixture(Path(folder));bom=delivery.load(runtime/'installed-bom-actions.json')
+            bom.pop('export_followup')
+            with self.assertRaisesRegex(RuntimeError, 'Invalid evidence path'):
+                delivery._verify_bom_exports(bom,runtime/'bom-actions',SHA,'c'*64)
+
+    def test_tampered_grouped_output_cannot_promote(self):
+        with TemporaryDirectory() as folder:
+            root,runtime=fixture(Path(folder));bom=delivery.load(runtime/'installed-bom-actions.json')
+            (runtime/'bom-actions/exports/per_part.zip').write_bytes(b'changed')
+            with self.assertRaisesRegex(RuntimeError, 'package hash'):
+                delivery._verify_bom_exports(bom,runtime/'bom-actions',SHA,'c'*64)
+
+    def test_missing_grouping_cannot_promote_with_rebound_report_hash(self):
+        with TemporaryDirectory() as folder:
+            root,runtime=fixture(Path(folder));bom=delivery.load(runtime/'installed-bom-actions.json')
+            path=runtime/'bom-actions/exports/BOM_EXPORT_EVIDENCE.json';report=delivery.load(path)
+            report['packages'].pop();write_json(path,report);bom['export_followup']['sha256']=delivery.digest(path)
+            with self.assertRaisesRegex(RuntimeError, 'Eight real export groupings'):
+                delivery._verify_bom_exports(bom,runtime/'bom-actions',SHA,'c'*64)
+
+    def test_grouped_report_bound_to_other_binary_cannot_promote(self):
+        with TemporaryDirectory() as folder:
+            root,runtime=fixture(Path(folder));bom=delivery.load(runtime/'installed-bom-actions.json')
+            with self.assertRaisesRegex(RuntimeError, 'source/binary binding'):
+                delivery._verify_bom_exports(bom,runtime/'bom-actions',SHA,'wrong')
+
+    def test_review_file_tampering_cannot_promote(self):
+        with TemporaryDirectory() as folder:
+            root,runtime=fixture(Path(folder));bom=delivery.load(runtime/'installed-bom-actions.json')
+            (runtime/'bom-actions/exports/csv/manifest.json').write_text('{}')
+            with self.assertRaisesRegex(RuntimeError, 'Review export file hash'):
+                delivery._verify_bom_exports(bom,runtime/'bom-actions',SHA,'c'*64)
 
     def test_relative_windows_and_posix_paths_resolve_to_same_file(self):
         with TemporaryDirectory() as folder:

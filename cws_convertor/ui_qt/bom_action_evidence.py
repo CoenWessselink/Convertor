@@ -149,9 +149,9 @@ def run_bom_action_evidence(output: Path) -> dict:
                 check(action+' exact IDs',host.export_page._scope().entity_ids==('A',) and updates[-1]['active_export_scope']==('A',))
                 check(action+' no false success without generated output',panel._hub_state.data['batch_results'][-1]['status'] in {'prepared','blocked'})
             trigger('export.per_machine',('A',))
-            check('Unsupported machine grouping fails closed',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and not host.export_page.generate_button.isEnabled())
+            check('Machine grouping without assignment fails preflight',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and host.export_page.grouping.currentData()=='machine')
             check('Original grouping intent retained',updates[-1]['grouping']=='machine')
-            screenshot('BOM-03-grouped-export-explicitly-blocked.png')
+            screenshot('BOM-03-machine-group-missing-evidence-blocked.png')
             # Existing explicit drawing batch limitation is never mislabeled as a produced batch.
             trigger('drawing.batch_pdf',('A',))
             check('Unimplemented batch drawing blocks explicitly',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and 'drawing.batch_pdf' in warnings[-1])
@@ -163,6 +163,12 @@ def run_bom_action_evidence(output: Path) -> dict:
             report['requests']=requests;report['machine_review']=review
             report['result_statuses']=[{'action':r['action'],'status':r['status']} for r in panel._hub_state.data['batch_results']]
             report['warnings']=warnings
+            from .bom_export_evidence import run_bom_export_evidence
+            followup = run_bom_export_evidence(output/'exports')
+            check('Real reviewed CAD exports pass all grouping modes',followup['status']=='PASS')
+            check('Follow-up runs in identical source and executable',all(followup[k]==report[k] for k in ('source_commit','source_dirty','frozen','executable_sha256')))
+            report['export_followup']={'report':'exports/BOM_EXPORT_EVIDENCE.json',
+                'sha256':digest(output/'exports/BOM_EXPORT_EVIDENCE.json'),'checks':len(followup['checks'])}
             report['status']='PASS'
             (output/'BOM_ACTION_EVIDENCE.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
             return report

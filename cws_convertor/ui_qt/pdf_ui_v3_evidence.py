@@ -205,6 +205,42 @@ def _exercise_bom_machine_route(window, check, flush, snap):
     return {'action': 'machine.validate', 'entity_ids': list(selected), 'status': 'PASS', 'report_sha256': review['sha256']}
 
 
+def _exercise_grouped_export_guard(window, check, flush, snap, output):
+    """Real main-window controls; unapproved imported geometry must stay blocked."""
+    from PySide6 import QtCore,QtTest
+    from cws_convertor.project.manufacturing_contracts import ExportGrouping,ExportScopeKind
+    workspace=window.workspace
+    selected=(sorted(workspace.project.assemblies['UIV3-A1'].part_ids)[0],)
+    window.application_context.request_selection(selected,primary_entity_id=selected[0],origin='export-native-acceptance')
+    QtTest.QTest.mouseClick(window.native_workspace_buttons['export'],QtCore.Qt.MouseButton.LeftButton);flush()
+    page=window.export_page
+    check('Actual grouped Export Center visible in main window',page.isVisible() and window.workspace is workspace)
+    for combo,value in ((page.scope,ExportScopeKind.SELECTED_PARTS),(page.grouping,ExportGrouping.PER_PART)):
+        index=combo.findData(value);check('Native export choice available '+value.value,index>=0)
+        combo.setFocus()
+        for _ in range(combo.count()+1):
+            if combo.currentIndex()==index:break
+            QtTest.QTest.keyClick(combo,QtCore.Qt.Key.Key_Down if combo.currentIndex()<index else QtCore.Qt.Key.Key_Up);flush(.02)
+        check('Native export choice selected '+value.value,combo.currentIndex()==index)
+    page.scope_values.setFocus();QtTest.QTest.keyClick(page.scope_values,QtCore.Qt.Key.Key_A,QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtTest.QTest.keyClicks(page.scope_values,selected[0]);flush()
+    QtTest.QTest.mouseClick(page.preflight_button,QtCore.Qt.MouseButton.LeftButton);flush()
+    proof=page.service.preflight(page._backend_scope(page._scope()),page._formats())
+    check('Main-window grouped preflight preserves exact canonical ID',proof.resolution.scope.entity_ids==selected
+          and set(proof.resolution.selected_part_ids).issubset(selected))
+    check('Grouped export cannot promote unapproved imported source',proof.allowed is False)
+    check('Unknown category is rejected before group publication',not proof.group_plan and 'CWS-V15-T7-SCOPE-NON-MAKE-PART' in proof.blocking_codes)
+    before=page.current_background_job_id
+    QtTest.QTest.mouseClick(page.generate_button,QtCore.Qt.MouseButton.LeftButton);flush()
+    check('Blocked grouped export starts no production job',page.current_background_job_id==before)
+    snap('UI3-EXPORT-grouped-release-guard.png')
+    page.grouping.setCurrentIndex(page.grouping.findData(ExportGrouping.COMBINED))
+    page.scope.setCurrentIndex(page.scope.findData(ExportScopeKind.SELECTION));page.scope_values.clear()
+    window.application_context.request_selection(('UIV3-A1',),primary_entity_id='UIV3-A1',origin='export-native-restore')
+    QtTest.QTest.mouseClick(window.native_workspace_buttons['pdf'],QtCore.Qt.MouseButton.LeftButton);flush()
+    return {'status':'PASS','part_ids':list(selected),'release_allowed':False}
+
+
 def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | None=None) -> dict[str,Any]:
     from PySide6 import QtCore,QtWidgets,QtTest
     from . import CWSMainWindow
@@ -371,6 +407,7 @@ def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | 
                 click(window.native_workspace_buttons[route])
                 check('Shared state retained through '+route,window.workspace is stable_workspace and window.viewer_page is stable_viewer and window.centralWidget() is central)
             report['bom_action'] = _exercise_bom_machine_route(window, check, flush, snap)
+            report['grouped_export_guard'] = _exercise_grouped_export_guard(window, check, flush, snap, output)
             tree_select('UIV3-A1')
             points=[c for c in panel._snap_candidates if c.valid and c.layer=='visible' and 'front' in c.anchor.view_id and c.snap_type=='endpoint']
             check('Actual geometry snap targets exist',len(points)>3)

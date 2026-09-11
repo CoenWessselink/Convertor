@@ -1213,13 +1213,16 @@ class ProjectProductionExportEngine:
                     shapes[part.internal_id] = shape
                     canonicals[part.internal_id] = canonical
 
-            assemblies = self._assembly_packages(project, root, request, selected, items, shapes, canonicals, bom)
+            assemblies = (self._assembly_packages(project, root, request, selected, items, shapes, canonicals, bom)
+                          if request.include_assembly_packages else [])
             production_ready = all(item.status == ExportStatus.EXPORTED for item in items) and all(
                 item.status == ExportStatus.EXPORTED for item in assemblies
             )
             if production_ready or request.include_blocked_review_files:
+                from cws_convertor.bom.review_export import _part_snapshot
+                report_bom = _part_snapshot(bom, project, [part.internal_id for part in selected])
                 export_bom_package(
-                    bom,
+                    report_bom,
                     root / "reports" / "BOM",
                     package_name=safe_filename(project.project_name),
                 )

@@ -40,6 +40,7 @@ class ExportGrouping(str, Enum):
     OBJECT = "object"
     PHASE = "phase"
     BATCH = "batch"
+    MACHINE = "machine"
     COMBINED = "combined"
 
 

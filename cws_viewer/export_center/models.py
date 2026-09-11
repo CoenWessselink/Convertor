@@ -141,6 +141,9 @@ class ExportPreflight:
     resolution: ScopeResolution
     requested_formats: tuple[str, ...]
     items: tuple[ExportPreflightItem, ...]
+    group_plan: tuple[dict[str, Any], ...] = ()
+    messages: tuple[str, ...] = ()
+    source_revision_sha256: str = ""
     blocking_codes: tuple[str, ...] = ()
     schema_version: str = V15_T7_SCHEMA
     manifest_sha256: str = ""
@@ -162,6 +165,9 @@ class ExportPreflight:
             "scope_manifest_sha256": self.resolution.manifest_sha256,
             "requested_formats": list(self.requested_formats),
             "items": [item.to_dict() for item in self.items],
+            "group_plan": list(self.group_plan),
+            "messages": list(self.messages),
+            "source_revision_sha256": self.source_revision_sha256,
             "blocking_codes": list(self.blocking_codes),
             "allowed": self.allowed,
         }
