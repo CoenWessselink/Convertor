@@ -101,3 +101,17 @@ Ook vrije naamtemplates, multi-assembly occurrenceverdeling, de onafhankelijke
 leveranciers-/DXF-/complex-profielmatrix, echte certificaten en machine-, GPU-,
 printer-, Windows 11- en upgradeafname blijven open volgens het werkregister.
 Er wordt geen universele herkenning of volledige productievrijgave verklaard.
+
+## Aanvullende visuele fout, tijdens deze afname hersteld
+
+De verse gegroepeerde PDF bevatte een oude generieke H-profielschets bij een
+plaat. De roundtrip geeft nu de echte canonical rebuild-BREP door aan Trusted
+PDF. De bestaande gedeelde DrawingProjectionModel/OCCT-HLR verzorgt de
+isometrie; er is geen nieuwe geometriewriter. Zonder BREP verschijnt een
+expliciete ontbreektmelding, nooit een verzonnen H-profiel. Een mislukte HLR
+bij aangeleverde BREP breekt de export af. De zichtbare PDF-roundtrip vereist
+het bewijslabel van deze exacte projectie. Plaatrandaanzichten heten geen
+flenzen meer. Individueel passende nevenaanzichten worden NTS gemarkeerd.
+De schaal van het hoofdaanzicht wordt werkelijk toegepast, niet afgerond
+naar een andere opdruk; een niet-passende vaste schaal wordt geweigerd.
+Deze correctie verandert geen STEP/IFC/NC1-writer of materiaalautoriteit.

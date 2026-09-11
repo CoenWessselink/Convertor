@@ -1263,58 +1263,52 @@ def _draw_isometric_profile(
     y: float,
     width: float,
     height: float,
+    exact_shape: Any | None = None,
 ) -> None:
-    """Draw a deterministic review projection from exact header dimensions."""
+    """Use the shared OCCT projection, never a generic H-shaped illustration.
 
+    This review view is fitted independently and explicitly not to scale.
+    Missing geometry produces a notice, not plausible invented geometry.
+    A provided BREP that fails projection aborts the calling export.
+    """
     pdf.setFont("Helvetica-Bold", 6.5)
-    pdf.drawString(x, y + height - 3.5 * mm, "3D VIEW - REVIEW")
-    left = x + 8 * mm
-    right = x + width - 7 * mm
-    bottom = y + 7 * mm
-    top = y + height - 11 * mm
-    dx = 13 * mm
-    dy = 5 * mm
-    web_low = bottom + (top - bottom) * 0.28
-    web_high = bottom + (top - bottom) * 0.72
-
-    pdf.setFillColorRGB(0.73, 0.78, 0.84)
-    pdf.setStrokeColorRGB(0.18, 0.24, 0.31)
-    pdf.setLineWidth(0.65)
-    web = pdf.beginPath()
-    web.moveTo(left, web_low)
-    web.lineTo(right, web_low)
-    web.lineTo(right + dx, web_low + dy)
-    web.lineTo(left + dx, web_low + dy)
-    web.close()
-    pdf.drawPath(web, stroke=1, fill=1)
-    web2 = pdf.beginPath()
-    web2.moveTo(left + dx, web_low + dy)
-    web2.lineTo(right + dx, web_low + dy)
-    web2.lineTo(right + dx, web_high + dy)
-    web2.lineTo(left + dx, web_high + dy)
-    web2.close()
-    pdf.setFillColorRGB(0.64, 0.69, 0.76)
-    pdf.drawPath(web2, stroke=1, fill=1)
-    for level in (bottom, top):
-        flange = pdf.beginPath()
-        flange.moveTo(left, level)
-        flange.lineTo(right, level)
-        flange.lineTo(right + dx, level + dy)
-        flange.lineTo(left + dx, level + dy)
-        flange.close()
-        pdf.setFillColorRGB(0.78, 0.82, 0.87)
-        pdf.drawPath(flange, stroke=1, fill=1)
-    if part.holes:
-        bounds = _contour_bounds(_main_contour(part), part)
-        length = max(bounds[2] - bounds[0], 1.0)
-        for hole in part.holes:
-            fraction = min(1.0, max(0.0, (float(hole.x) - bounds[0]) / length))
-            hx = left + dx + fraction * (right - left)
-            hy = web_low + dy + (web_high - web_low) * 0.5
-            pdf.setFillColorRGB(1, 1, 1)
-            pdf.circle(hx, hy, 1.2, stroke=1, fill=1)
-    pdf.setFillColorRGB(0, 0, 0)
-    pdf.setStrokeColorRGB(0, 0, 0)
+    pdf.drawString(x, y + height - 3.5 * mm, "3D VIEW - REVIEW (NTS)")
+    if exact_shape is None:
+        pdf.setFont("Helvetica", 5.5)
+        pdf.drawString(x, y + height / 2, "3D niet weergegeven: exact bronmodel ontbreekt.")
+        return
+    from cws_convertor.drawings.projection import DrawingProjectionModel
+    try:
+        visible, hidden = DrawingProjectionModel._occt_hlr_polylines(exact_shape, "iso")
+        points = np.vstack([*visible, *hidden])
+        if not np.isfinite(points).all():
+            raise ValueError("Niet-eindige projectiecoordinaten")
+        lower, upper = points.min(axis=0), points.max(axis=0)
+        span = upper - lower
+        if min(span) <= 1.e-9:
+            raise ValueError("Lege 3D-projectie")
+        usable_w, usable_h = width - 4 * mm, height - 11 * mm
+        factor = min(usable_w / span[0], usable_h / span[1])
+        if factor <= 0:
+            raise ValueError("Geen ruimte voor 3D-projectie")
+        origin = np.array((x + (width - span[0] * factor) / 2,
+                           y + 2 * mm + (usable_h - span[1] * factor) / 2))
+        pdf.saveState()
+        for layers, dashed in ((hidden, True), (visible, False)):
+            pdf.setDash(2, 2) if dashed else pdf.setDash()
+            pdf.setLineWidth(0.25 if dashed else 0.65)
+            for polyline in layers:
+                projected = origin + (polyline - lower) * factor
+                path = pdf.beginPath()
+                path.moveTo(float(projected[0, 0]), float(projected[0, 1]))
+                for px, py in projected[1:]:
+                    path.lineTo(float(px), float(py))
+                pdf.drawPath(path, stroke=1, fill=0)
+        pdf.restoreState()
+        pdf.setFont("Helvetica", 4.5)
+        pdf.drawString(x, y, "OCCT HLR - exacte BREP; NTS = afzonderlijk passend, niet op bladschaal")
+    except Exception as exc:
+        raise PDFSupportError("Exacte 3D-projectie mislukt; PDF-export afgebroken") from exc
 
 
 def bounds_min(part: CanonicalPart, axis: str) -> float:
@@ -1490,6 +1484,7 @@ def render_part_pdf(
     output_path: str | Path,
     *,
     template: DrawingTemplate | None = None,
+    exact_shape: Any | None = None,
 ) -> Path:
     """Render a deterministic, vector-only technical part drawing."""
 
@@ -1534,24 +1529,33 @@ def render_part_pdf(
     model_width = max(bounds[2] - bounds[0], 1e-6)
     model_height = max(bounds[3] - bounds[1], 1e-6)
     elevation_height = 36 * mm
-    factor = min(main_available_width * 0.94 / model_width, elevation_height / model_height)
-    factor *= 0.92
+    maximum_factor = min(main_available_width * 0.94 / model_width, elevation_height / model_height) * 0.92
+    required_scale = mm / maximum_factor
+    requested_scale = str(part.drawing.scale or "").strip()
+    if requested_scale and requested_scale.lower() != "auto":
+        match = re.fullmatch(r"1\s*:\s*([0-9]+(?:[.,][0-9]+)?)", requested_scale)
+        if not match or float(match[1].replace(",", ".")) <= 0:
+            raise PDFSupportError("Ongeldige vaste PDF-schaal")
+        denominator = float(match[1].replace(",", "."))
+        if denominator + 1.e-8 < required_scale:
+            raise PDFSupportError("Vaste PDF-schaal past niet in het hoofdaanzicht")
+    else:
+        common_scales = (1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 500, 1000)
+        denominator = next((v for v in common_scales if v >= required_scale), math.ceil(required_scale / 500) * 500)
+    factor = mm / denominator
     elevation_bottom = drawing_top - 51 * mm
     origin = (
         drawing_left + (main_available_width - model_width * factor) / 2,
         elevation_bottom + (elevation_height - model_height * factor) / 2,
     )
-    scale_ratio = 72.0 / 25.4 / factor if factor > 0 else 1.0
-    common_scales = [1, 2, 2.5, 5, 10, 20, 25, 50, 100]
-    denominator = min(common_scales, key=lambda value: abs(value - scale_ratio))
-    scale_label = part.drawing.scale or f"1:{_fmt(float(denominator), 1)}"
+    scale_label = f"1:{_fmt(float(denominator), 3)}"
 
     # Sheet border and heading.
     pdf.setLineWidth(0.8)
     pdf.rect(margin, margin, page_width - 2 * margin, page_height - 2 * margin, stroke=1, fill=0)
     _draw_sheet_header(pdf, part, active, page_width, page_height)
     pdf.setFont("Helvetica-Bold", 7.5)
-    pdf.drawString(drawing_left, drawing_top + 3.2 * mm, "ELEVATION / MAIN VIEW")
+    pdf.drawString(drawing_left, drawing_top + 3.2 * mm, f"ELEVATION / MAIN VIEW - SCALE {scale_label}")
     pdf.setFont("Helvetica", 6.5)
     pdf.drawRightString(sidebar_x - 2 * mm, drawing_top + 3.2 * mm, f"Source: {part.source_file}")
 
@@ -1608,7 +1612,7 @@ def render_part_pdf(
     _draw_plan_view(
         pdf,
         part,
-        label="PLAN - TOP FLANGE",
+        label=("PLATE - EDGE VIEW 1 (NTS)" if part.header.profile_type.upper() == "B" else "PLAN - TOP FLANGE (NTS)"),
         faces={"o", "top"},
         x=drawing_left,
         y=drawing_top - 105 * mm,
@@ -1618,7 +1622,7 @@ def render_part_pdf(
     _draw_plan_view(
         pdf,
         part,
-        label="PLAN - BOTTOM FLANGE",
+        label=("PLATE - EDGE VIEW 2 (NTS)" if part.header.profile_type.upper() == "B" else "PLAN - BOTTOM FLANGE (NTS)"),
         faces={"u", "bottom"},
         x=drawing_left,
         y=drawing_top - 145 * mm,
@@ -1697,6 +1701,7 @@ def render_part_pdf(
         y=detail_y,
         width=sidebar_x - iso_x - 3 * mm,
         height=detail_height,
+        exact_shape=exact_shape,
     )
 
     _draw_title_block(pdf, part, active, page_width, page_height, scale_label=scale_label)
@@ -1834,6 +1839,7 @@ def create_trusted_pdf(
     *,
     template: DrawingTemplate | None = None,
     drawing_document: Any | None = None,
+    exact_shape: Any | None = None,
 ) -> PDFConversionResult:
     """Create a vector drawing with exact canonical JSON and integrity hashes.
 
@@ -1878,7 +1884,7 @@ def create_trusted_pdf(
             prepared.drawing.sheet_count = len(document.pages)
             prepared.properties.setdefault("trusted_pdf", {})["drawing_document_sha256"] = drawing_document_sha256
         else:
-            render_part_pdf(prepared, base, template=template)
+            render_part_pdf(prepared, base, template=template, exact_shape=exact_shape)
         visible_hash = visible_pdf_sha256(base)
         prepared.drawing.visible_content_sha256 = visible_hash
         prepared.properties.setdefault("trusted_pdf", {})

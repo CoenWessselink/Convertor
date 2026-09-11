@@ -330,6 +330,7 @@ def _visible_pdf_checks(
         _check("pdf_page_count", True, len(reader.pages) >= 1),
         _check("pdf_vector_content_present", True, content_bytes >= 500),
         _check("pdf_main_view_visible", True, "ELEVATION / MAIN VIEW" in page_text),
+        _check("pdf_exact_brep_projection", True, "OCCT HLR" in page_text),
     ]
     identity = canonical.header.position_number or canonical.header.part_number or canonical.part_id
     if identity:
@@ -404,7 +405,7 @@ def _run_one(
         restored = extract_native_canonical(path, strict=True)
         visible = _mesh_metrics(path)
     elif format_name == "pdf":
-        pdf_result = create_trusted_pdf(canonical, path)
+        pdf_result = create_trusted_pdf(canonical, path, exact_shape=shape)
         restored = load_trusted_pdf(path, strict=True).part
         visible = None
     else:
