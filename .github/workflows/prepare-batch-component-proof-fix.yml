@@ -1,0 +1,47 @@
+name: Complete reviewed batch component proof
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/prepare-batch-component-proof-fix.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - name: Execute reviewed replacements with corrected YAML indentation
+        shell: python
+        run: |
+          import pathlib,textwrap,subprocess
+          assert subprocess.check_output(['git','rev-parse','HEAD^'],text=True).strip()=='3f6dfcd5396e02298da01a0e37994c7df9d24831'
+          source=pathlib.Path('.github/workflows/prepare-batch-component-proof.yml').read_text(encoding='utf-8')
+          script=textwrap.dedent(source.split('        run: |\n',1)[1].split('      - name: Store exact',1)[0])
+          # YAML already removed the outer indentation; preserve the reviewed
+          # method indentation rather than stripping it a second time.
+          script=script.replace("lines=test.splitlines(True)\ntest=lines[0]+''.join(line[6:] if line.startswith('      ') else line for line in lines[1:])\n",'')
+          script=script.replace("git('rev-parse','HEAD^')","git('rev-parse','HEAD^^')")
+          exec(compile(script,'reviewed-replacements','exec'))
+      - name: Store exact source blobs without updating application refs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),repo={owner:context.repo.owner,repo:context.repo.repo};
+            const expected=JSON.parse(fs.readFileSync('/tmp/batch-proof-files.json','utf8'));
+            const parent=(await github.rest.git.getCommit({...repo,commit_sha:context.sha})).data,tree=[];
+            for(const path of Object.keys(expected)){
+              const blob=(await github.rest.git.createBlob({...repo,content:fs.readFileSync(path).toString('base64'),encoding:'base64'})).data;
+              tree.push({path,mode:'100644',type:'blob',sha:blob.sha});
+            }
+            for(const path of ['.github/workflows/prepare-batch-component-proof.yml','.github/workflows/prepare-batch-component-proof-fix.yml'])tree.push({path,mode:'100644',type:'blob',sha:null});
+            fs.mkdirSync('prepared');fs.writeFileSync('prepared/PREPARED.json',JSON.stringify({parent:context.sha,base_tree:parent.tree.sha,expected_final_tree:'251b53ee9b12ea86541f4b1e5ef6b3b5cbd08cb6',tree,files:expected,release_tests_passed:false},null,2));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Batch_Component_Fixed_${{ github.sha }}
+          path: prepared/PREPARED.json
+          if-no-files-found: error
+          retention-days: 30
