@@ -57,7 +57,7 @@ _LABELS = {
     "product.client": "Opdrachtgever",
     "product.assembly_id": "Samenstelling",
     "product.coating": "Coating",
-    "drawing.scale": "Schaal",
+    "drawing.scale": "Uitvoerschaal (bronbewijs apart)",
     "drawing.sheet_format": "Bladformaat",
     "drawing.orientation": "Oriëntatie",
     "drawing.projection_method": "Projectiemethode",

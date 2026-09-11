@@ -129,3 +129,18 @@ omvang en objecteigenaar. Dubbele ZIP-namen worden geweigerd. Dit geldt ook voor
 de bestaande legacywriter; verschillende objecten krijgen geen gedeeld pad.
 De werkelijke CAD-regressie controleert beide identiteiten na gegroepeerde
 export. Synthetische negatieve manifestproeven zijn geen CAD/installerbewijs.
+
+
+## Bronbladschaal tegenover expliciete uitvoerschaal
+
+De brede Windows-regressie op `1dfed35c` toonde twee fouten in externe-PDF-review:
+het nieuw strikt renderen behandelde de gedetecteerde bronbladschaal als een
+expliciet gevraagde uitvoerschaal. De fout is lokaal opnieuw aangetoond. Nieuwe
+externe-PDF-analyses bewaren schaal, bladformaat, orientatie en bronhash als
+`source_drawing`-bewijs. Het nieuwe uitvoerblad begint in Auto; detectiewaarden
+en oorspronkelijke veld-evidence blijven ongewijzigd. Het bestaande reviewveld
+heet nu Uitvoerschaal. Een expliciete gebruikerskeuze blijft strikt: een te grote
+schaal wordt niet naar Auto omgezet. Vier regressies controleren de bronherkomst,
+fysieke PDF-lijnlengte, expliciete schaal en weigering zonder gepubliceerd bestand.
+De twee eerder falende reviewproeven blijven ongewijzigd en moeten opnieuw slagen.
+Reeds opgeslagen expliciete schaalkeuzes worden niet door deze reparatie gewist.

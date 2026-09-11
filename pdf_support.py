@@ -2807,7 +2807,11 @@ def analyze_external_pdf(
             main_dimensions_mm=[value for value in (header.length, header.dim1, header.dim2) if value > 0],
         ),
         drawing=CanonicalDrawingData(
-            scale=str(detected.get("scale", "")),
+            # A scale printed on the imported source is evidence about that
+            # source layout, not an instruction for our different output layout.
+            # Preserve it below and start the newly generated drawing in Auto.
+            # Explicit human edits of drawing.scale remain strict at rendering.
+            scale="auto",
             sheet_format=sheet,
             orientation=orientation,
             title_block={"subject": str(detected.get("subject", ""))},
@@ -2820,6 +2824,13 @@ def analyze_external_pdf(
         },
         properties={
             "material_candidate_evidence": material_evidence.to_dict(),
+            "source_drawing": {
+                "scale": str(detected.get("scale", "")),
+                "sheet_format": sheet,
+                "orientation": orientation,
+                "source_sha256": sha256_file(source),
+                "role": "source_layout_evidence_not_output_scale",
+            },
             "drawing_callouts": {
                 "holes": hole_callouts,
                 "hole_count": sum(int(item["count"]) for item in hole_callouts),

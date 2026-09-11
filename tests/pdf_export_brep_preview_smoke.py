@@ -64,4 +64,63 @@ class BRepPDFTests(unittest.TestCase):
             rows=report['formats']['pdf']['checks']
             self.assertTrue(any(c['property']=='pdf_exact_brep_projection' and c['status']=='passed' for c in rows))
 
+class ExternalSourceScaleTests(unittest.TestCase):
+    def reviewed(self, folder, output_scale=None):
+        from pdf_support import analyze_external_pdf, apply_review
+        from validation.pdf_fixtures import create_synthetic_lo4_pdf
+        source=create_synthetic_lo4_pdf(Path(folder)/'external.pdf')
+        analysis=analyze_external_pdf(source)
+        self.assertEqual(analysis.detected_fields['scale'],'1:2')
+        self.assertEqual(analysis.part.field_evidence['scale'].value,'1:2')
+        self.assertEqual(analysis.part.drawing.scale,'auto')
+        self.assertEqual(analysis.part.properties['source_drawing']['source_sha256'],analysis.source_sha256)
+        values={} if output_scale is None else {'drawing.scale':output_scale}
+        reviewed=apply_review(analysis,{'reviewed_by':'synthetic-regression',
+            'confirm':['holes[0]','material'],'values':values})
+        self.assertTrue(reviewed.production_export_allowed)
+        return reviewed
+
+    def test_source_scale_stays_provenance_and_auto_output_is_physically_true(self):
+        from pdf_support import finalize_reviewed_analysis,load_trusted_pdf
+        with tempfile.TemporaryDirectory() as folder:
+            reviewed=self.reviewed(folder);target=Path(folder)/'output.pdf'
+            finalize_reviewed_analysis(reviewed,target)
+            saved=load_trusted_pdf(target).part
+            self.assertEqual(saved.properties['source_drawing']['scale'],'1:2')
+            self.assertEqual(saved.field_evidence['scale'].value,'1:2')
+            self.assertEqual(reviewed.part.drawing.scale,'auto')
+            with fitz.open(target) as doc:
+                self.assertIn('SCALE 1:5',doc[0].get_text())
+                wanted=120*72/25.4/5
+                lines=[item for drawing in doc[0].get_drawings() for item in drawing['items'] if item[0]=='l']
+                self.assertTrue(any(abs(abs((line[2]-line[1]).y)-wanted)<.01 and abs((line[2]-line[1]).x)<.01 for line in lines))
+
+    def test_explicit_output_scale_is_applied_without_changing_source_evidence(self):
+        from pdf_support import finalize_reviewed_analysis,load_trusted_pdf
+        with tempfile.TemporaryDirectory() as folder:
+            reviewed=self.reviewed(folder,'1:10');target=Path(folder)/'output.pdf'
+            finalize_reviewed_analysis(reviewed,target)
+            saved=load_trusted_pdf(target).part
+            self.assertEqual(saved.drawing.scale,'1:10')
+            self.assertEqual(saved.properties['source_drawing']['scale'],'1:2')
+            with fitz.open(target) as doc:self.assertIn('SCALE 1:10',doc[0].get_text())
+
+    def test_explicit_oversized_scale_is_not_silently_changed_to_auto(self):
+        from pdf_support import finalize_reviewed_analysis
+        with tempfile.TemporaryDirectory() as folder:
+            reviewed=self.reviewed(folder,'1:1');target=Path(folder)/'output.pdf'
+            with self.assertRaisesRegex(PDFSupportError,'past niet'):finalize_reviewed_analysis(reviewed,target)
+            self.assertFalse(target.exists())
+            self.assertEqual(reviewed.part.drawing.scale,'1:1')
+
+    def test_output_review_field_is_distinct_from_source_scale_evidence(self):
+        from review_workflow import collect_review_fields
+        with tempfile.TemporaryDirectory() as folder:
+            reviewed=self.reviewed(folder)
+            row=next(f for f in collect_review_fields(reviewed.part) if f.path=='drawing.scale')
+            self.assertIn('Uitvoerschaal',row.label)
+            self.assertEqual(row.current_value,'auto')
+            self.assertEqual(row.evidence_path,'scale')
+
+
 if __name__=='__main__':unittest.main(verbosity=2)
