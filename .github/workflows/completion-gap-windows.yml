@@ -67,17 +67,24 @@ jobs:
               path = pathlib.Path('tests') / name
               if path.is_file():
                   subprocess.run([sys.executable, str(path)], check=True)
+      - name: Audit every official BOM action
+        run: python tools/audit_bom_action_completion.py --output build/bom-action-completion.json --fail-on-missing
       - name: Record exact-source gate
         shell: python
         run: |
           import json, os, pathlib
           pathlib.Path('build').mkdir(exist_ok=True)
+          audit=json.loads(pathlib.Path('build/bom-action-completion.json').read_text(encoding='utf-8'))
           pathlib.Path('build/completion-gap-gate.json').write_text(json.dumps({
               'status':'PASS','source_commit':os.environ['GITHUB_SHA'],
-              'scope':'focused W03/W18 dispatcher plus existing BOM/PDF regression set'
+              'scope':'focused W03/W18 dispatcher plus existing BOM/PDF regression set',
+              'action_count':audit['action_count'],'action_counts':audit['counts'],
+              'fully_closed':audit['fully_closed']
           }, indent=2), encoding='utf-8')
       - uses: actions/upload-artifact@v4
         with:
           name: CWS_Completion_Gap_${{ github.sha }}
-          path: build/completion-gap-gate.json
+          path: |
+            build/completion-gap-gate.json
+            build/bom-action-completion.json
           retention-days: 30
