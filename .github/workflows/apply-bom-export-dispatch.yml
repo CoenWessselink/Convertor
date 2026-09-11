@@ -1,0 +1,36 @@
+name: Apply BOM export dispatcher patch
+
+on:
+  push:
+    branches: [agent/cws-completion-gap-20260911]
+    paths:
+      - 'tools/apply_bom_export_dispatch_patch.py'
+      - '.github/workflows/apply-bom-export-dispatch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/cws-completion-gap-20260911
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact dispatcher patch
+        run: python tools/apply_bom_export_dispatch_patch.py
+      - name: Commit dispatcher integration
+        run: |
+          if git diff --quiet; then
+            echo 'No dispatcher change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add cws_convertor/ui_qt/bom_action_dispatch.py
+          git commit -m 'fix(export): start canonical export from BOM action'
+          git push origin HEAD:agent/cws-completion-gap-20260911
