@@ -767,10 +767,28 @@ def scoped_bom_snapshot(
     group_ids: Iterable[str] = (),
     scope: BOMScope | None = None,
     project: Any | None = None,
+    strict_entities: bool = False,
 ) -> BOMSnapshot:
     """Return a deterministic export snapshot for an explicit BOM scope."""
     entities = set(_unique(entity_ids if scope is None else scope.entity_ids))
     groups = set(_unique(group_ids if scope is None else scope.group_ids))
+    if strict_entities:
+        if project is None or scope is None:
+            raise ValueError("Exacte reviewexport vereist een project en expliciete BOM-scope")
+        known = set().union(*(set(getattr(project, name)) for name in
+                              ("parts", "assemblies", "purchased_items", "fasteners", "welds")))
+        if entities - known:
+            raise ValueError("Reviewselectie bevat onbekende IDs: " + ", ".join(sorted(entities - known)))
+        if not entities and not groups:
+            raise ValueError("Lege reviewselectie wordt niet verbreed naar het hele project")
+        known_groups = {getattr(row, "group_id", getattr(row, "conflict_id", ""))
+                        for name in ("part_bom", "assembly_bom", "purchase_bom", "fastener_bom",
+                                     "weld_bom", "material_bom", "conflicts") for row in getattr(snapshot, name)}
+        if groups - known_groups:
+            raise ValueError("Reviewselectie bevat onbekende BOM-groepen")
+        if not entities and scope.family != "conflicts":
+            raise ValueError("Exacte reviewexport vereist expliciete onderdeel-/object-IDs")
+    exact_scope = bool(strict_entities and scope.family != "assemblies") if scope is not None else False
     if not entities and not groups:
         return snapshot
     direct_groups = groups | {
@@ -788,6 +806,23 @@ def scoped_bom_snapshot(
         or bool(entities.intersection(getattr(row, "fastener_ids", ())))
         or bool(entities.intersection(getattr(row, "weld_ids", ())))
     ]
+    if strict_entities and scope.family == "assemblies":
+        explicit_assemblies = set(entities.intersection(project.assemblies))
+        pending = list(explicit_assemblies)
+        while pending:
+            current = project.assemblies[pending.pop()]
+            for child in current.child_assembly_ids:
+                if child not in project.assemblies:
+                    raise ValueError("Assembly bevat een ontbrekend child-ID")
+                if child not in explicit_assemblies:
+                    explicit_assemblies.add(child); pending.append(child)
+        if not explicit_assemblies:
+            raise ValueError("Reviewexport vereist expliciete assembly-IDs")
+        if any(set(row.assembly_ids) - explicit_assemblies for row in assembly_rows):
+            raise ValueError("Assembly-BOM-groep bevat niet-geselecteerde occurrences; splits de selectie expliciet")
+    if exact_scope:
+        # Parent assemblies are context, not permission to include siblings.
+        assembly_rows = []
     known_assembly_groups = {row.group_id for row in assembly_rows}
     while True:
         child_ids = {
@@ -804,6 +839,9 @@ def scoped_bom_snapshot(
             break
         assembly_rows.extend(discovered)
         known_assembly_groups.update(row.group_id for row in discovered)
+    if strict_entities and scope.family == "assemblies":
+        if any(set(row.assembly_ids) - explicit_assemblies for row in assembly_rows):
+            raise ValueError("Assembly-BOM-kindgroep bevat niet-geselecteerde occurrences")
     related_entities = {
         entity_id
         for row in assembly_rows
@@ -837,28 +875,42 @@ def scoped_bom_snapshot(
     weld_rows = [row for row in snapshot.weld_bom if selected(row, "weld_ids")]
     assembly_scope = bool(scope is not None and scope.family == "assemblies" and project is not None)
     selected_assembly_marks = {row.assembly_mark for row in assembly_rows}
-    if assembly_scope:
-        exact_part_ids = related_entities.intersection(project.parts)
-        exact_purchase_ids = related_entities.intersection(project.purchased_items)
-        exact_fastener_ids = related_entities.intersection(project.fasteners)
-        exact_weld_ids = related_entities.intersection(project.welds)
+    if exact_scope:
+        selected_assembly_marks = {
+            project.assemblies[assembly_id].assembly_mark
+            for name in ("parts", "purchased_items", "fasteners", "welds")
+            for key, item in getattr(project, name).items() if key in entities
+            for assembly_id in getattr(item, "assembly_ids", ()) if assembly_id in project.assemblies
+        }
+    def scope_quantity(value: Any) -> int:
+        if strict_entities:
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError("Reviewaantal ontbreekt of is geen niet-negatief geheel getal")
+            return value
+        return max(1, int(value or 1))
+
+    if assembly_scope or exact_scope:
+        exact_part_ids = effective_entities.intersection(project.parts)
+        exact_purchase_ids = effective_entities.intersection(project.purchased_items)
+        exact_fastener_ids = effective_entities.intersection(project.fasteners)
+        exact_weld_ids = effective_entities.intersection(project.welds)
         narrowed_parts = []
         for row in part_rows:
             ids = sorted(exact_part_ids.intersection(row.part_ids))
             if not ids:
                 continue
             parts = [project.parts[part_id] for part_id in ids]
-            quantity = sum(max(1, int(part.quantity_total or 1)) for part in parts)
+            quantity = sum(scope_quantity(part.quantity_total) for part in parts)
             narrowed_parts.append(replace(
                 row,
                 part_ids=ids,
                 quantity=quantity,
                 total_mass_kg=round(sum(
-                    float(part.mass_each_kg or 0.0) * max(1, int(part.quantity_total or 1))
+                    float(part.mass_each_kg or 0.0) * scope_quantity(part.quantity_total)
                     for part in parts
                 ), 6),
                 total_surface_area_m2=round(sum(
-                    float(part.surface_area_each_m2 or 0.0) * max(1, int(part.quantity_total or 1))
+                    float(part.surface_area_each_m2 or 0.0) * scope_quantity(part.quantity_total)
                     for part in parts
                 ), 9),
                 assembly_marks=sorted(selected_assembly_marks.intersection(row.assembly_marks)),
@@ -879,7 +931,7 @@ def scoped_bom_snapshot(
             legacy = [project.parts[part_id] for part_id in part_ids]
             purchased = [project.purchased_items[item_id] for item_id in purchased_ids]
             quantity = sum(
-                max(1, int(part.quantity_total or 1)) for part in legacy
+                scope_quantity(part.quantity_total) for part in legacy
             ) + sum(float(item.quantity or 0.0) for item in purchased)
             narrowed_purchase.append(replace(
                 row,
@@ -902,7 +954,7 @@ def scoped_bom_snapshot(
             narrowed_fasteners.append(replace(
                 row,
                 fastener_ids=ids,
-                quantity=sum(max(1, int(project.fasteners[item_id].quantity or 1)) for item_id in ids),
+                quantity=sum(scope_quantity(project.fasteners[item_id].quantity) for item_id in ids),
                 assembly_marks=sorted(selected_assembly_marks.intersection(row.assembly_marks)),
                 source_entity_ids=sorted({
                     project.fasteners[item_id].source_identity.source_entity_id
@@ -936,7 +988,7 @@ def scoped_bom_snapshot(
         for row in (*part_rows, *purchase_rows)
         for mark in getattr(row, "assembly_marks", ())
     }
-    assembly_rows = list({row.group_id: row for row in (
+    assembly_rows = [] if exact_scope else list({row.group_id: row for row in (
         *assembly_rows,
         *(
             row for row in snapshot.assembly_bom
@@ -952,7 +1004,7 @@ def scoped_bom_snapshot(
         ]
         if row.group_id not in selected_groups and not matching_parts:
             continue
-        if assembly_scope:
+        if assembly_scope or exact_scope:
             if not matching_parts:
                 continue
             material_rows.append(replace(
@@ -987,14 +1039,15 @@ def scoped_bom_snapshot(
     conflicts = [
         row for row in snapshot.conflicts
         if included_entities.intersection(row.entity_ids)
-        or (not assembly_scope and included_groups.intersection(row.group_ids))
+        or (not (assembly_scope or exact_scope) and included_groups.intersection(row.group_ids))
+        or (not row.entity_ids and included_groups.intersection(row.group_ids))
         or row.conflict_id in selected_groups
     ]
     traceability = [
         dict(row) for row in snapshot.traceability
         if str(row.get("internal_id") or "") in included_entities
         or (
-            not assembly_scope
+            not (assembly_scope or exact_scope)
             and str(row.get("group_id") or "") in included_groups
         )
     ]

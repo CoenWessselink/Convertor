@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from cws_convertor.bom.export import export_bom_package
+from cws_convertor.bom.review_export import REVIEW_EXPORT_ACTIONS
 from cws_convertor.bom.workspace import (
     BOM_FAMILIES,
     BOM_FAMILY_LABELS,
@@ -2584,78 +2585,87 @@ if qt_available():
             by_group = {row.group_id: row for row in exact.family_rows("parts")}
             return tuple(by_group[row.group_id] for row in rows if row.group_id in by_group)
 
-        def _export_scope(self, action_id: str = "export.review") -> None:
-            if isinstance(action_id, bool):
-                action_id = "export.review"  # QPushButton.clicked(bool)
-            from cws_convertor.bom.review_export import _export_review, _part_snapshot
-            if self._workspace is None or self._read_model is None:
+        def _export_scope(self, action_id: str | bool | None = None) -> None:
+            from cws_convertor.bom.review_export import _part_snapshot, _export_review
+            # Toolbar/QAction checked arguments select the explicit review package.
+            # Matrix actions retain their own output format and require a selection.
+            explicit = isinstance(action_id, str)
+            action = action_id if explicit else "export.review"
+            if action not in REVIEW_EXPORT_ACTIONS:
+                QtWidgets.QMessageBox.warning(self, "BOM-export geweigerd", "Onbekende reviewexport: " + str(action))
                 return
+            workspace, state = self._workspace, self._hub_state
+            if workspace is None or self._read_model is None or state is None:
+                return
+            rows = tuple(self._selected_rows())
+            if not rows and not explicit:
+                rows = tuple(self._visible_rows)  # Toolbar exports the displayed scope.
             try:
-                rows = self._exact_export_rows(self._selected_rows() or self._visible_rows)
+                rows = self._exact_export_rows(rows)
             except ValueError as exc:
                 QtWidgets.QMessageBox.warning(self, "BOM-export geblokkeerd", str(exc))
                 return
             if not rows:
-                QtWidgets.QMessageBox.information(self, "BOM-export", "De huidige scope bevat geen regels.")
+                QtWidgets.QMessageBox.information(self, "BOM-export", "De gevraagde selectie bevat geen regels.")
                 return
+            # Initialise audit storage before fingerprinting. Dialogs can allow
+            # project/selection changes; never re-read a different selection later.
+            state.data
+            source_hash = workspace.bom_snapshot.snapshot_sha256
+            project_hash = workspace.project.revision_content_sha256()
+            base_scope = self._scope()
+            def still_current() -> bool:
+                return (self._workspace is workspace and self._hub_state is state
+                        and workspace.bom_snapshot.snapshot_sha256 == source_hash
+                        and workspace.project.revision_content_sha256() == project_hash)
             preflight = self._confirm_preflight(
                 "review_export", rows, allow_blocked_review_export=True,
-                expected_outputs=(("XLSX", "CSV", "JSON", "PDF", "BOM-package")
-                                  if action_id == "export.review" else (action_id.split(".")[-1].upper(),)),
+                expected_outputs=REVIEW_EXPORT_ACTIONS[action],
             )
             if preflight is None:
                 return
-            bound_workspace = self._workspace
-            bound_revision = bound_workspace.project.revision_content_sha256()
-            directory = QtWidgets.QFileDialog.getExistingDirectory(self, "BOM-uitvoermap")
-            if not directory:
-                return
-            if self._workspace is not bound_workspace or self._workspace.project.revision_content_sha256() != bound_revision:
-                QtWidgets.QMessageBox.warning(self, "BOM-export", "Project gewijzigd tijdens mapkeuze; bevestig opnieuw.")
-                return
-            entity_ids = tuple(dict.fromkeys(
-                entity_id for row in rows for entity_id in row.entity_ids
-            ))
-            group_ids = tuple(dict.fromkeys(row.group_id for row in rows))
-            base_scope = self._scope()
-            scope = BOMScope.create(
-                family=base_scope.family,
-                entity_ids=entity_ids,
-                group_ids=group_ids,
-                query=base_scope.query,
-                status=base_scope.status,
-            )
-            snapshot = scoped_bom_snapshot(
-                self._workspace.bom_snapshot,
-                entity_ids=entity_ids,
-                group_ids=group_ids,
-                scope=scope,
-                project=self._workspace.project,
-            )
-            stem = re.sub(r"[^A-Za-z0-9._-]+", "_", snapshot.project_name).strip("_") or "CWS_BOM"
+            def record(status: str, message: str, outputs: tuple[str, ...] = ()) -> Any:
+                result = state.record_result(action, preflight, status=status, outputs=outputs, messages=(message,))
+                if getattr(workspace, "session", None) is not None:
+                    workspace.session.dirty = True
+                self._last_review_export_result = result
+                return result
             try:
-                if entity_ids and all(key in self._workspace.project.parts for key in entity_ids):
-                    snapshot = _part_snapshot(self._workspace.bom_snapshot, self._workspace.project, entity_ids)
-                outputs = _export_review(snapshot, directory, action=action_id,
-                                         name=f"{stem}_{base_scope.family}_scope")
+                if not still_current():
+                    raise ValueError("Project of BOM gewijzigd tijdens bevestiging; export opnieuw voorbereiden")
+                allowed = set(preflight.eligible_group_ids)
+                selected = tuple(row for row in rows if row.group_id in allowed)
+                if not selected:
+                    raise ValueError("Geen bevestigde regels; exportscope wordt niet verbreed")
+                entity_ids = tuple(dict.fromkeys(key for row in selected for key in row.entity_ids))
+                group_ids = tuple(dict.fromkeys(row.group_id for row in selected))
+                scope = BOMScope.create(family=base_scope.family, entity_ids=entity_ids,
+                    group_ids=group_ids, query=base_scope.query, status=base_scope.status)
+                if entity_ids and all(key in workspace.project.parts for key in entity_ids):
+                    snapshot = _part_snapshot(workspace.bom_snapshot, workspace.project, entity_ids)
+                else:
+                    snapshot = scoped_bom_snapshot(workspace.bom_snapshot, scope=scope,
+                        project=workspace.project, strict_entities=True)
+                directory = QtWidgets.QFileDialog.getExistingDirectory(self, "BOM-uitvoermap — " + action)
+                if not directory:
+                    record("cancelled", "Reviewexport geannuleerd; geen bestanden gemaakt")
+                    return
+                if not still_current():
+                    raise ValueError("Project of BOM gewijzigd tijdens mapkeuze; geen bestanden gemaakt")
+                outputs = _export_review(snapshot, Path(directory), action=action,
+                    name=f"{snapshot.project_name}_{base_scope.family}_scope",
+                    source_snapshot_sha256=source_hash, preflight_sha256=preflight.preflight_sha256,
+                    validate_before_publish=still_current)
             except Exception as exc:
-                if self._hub_state is not None:
-                    self._hub_state.record_result(action_id, preflight, status="failed", messages=(str(exc),))
-                    self._mark_project_dirty()
-                QtWidgets.QMessageBox.warning(self, "BOM-export", str(exc))
+                record("failed", f"{type(exc).__name__}: {exc}; geen reviewpakket gepubliceerd")
+                QtWidgets.QMessageBox.warning(self, "BOM-export niet uitgevoerd", str(exc))
                 return
-            result = self._hub_state.record_result(
-                action_id, preflight,
-                outputs=tuple(str(value) for value in outputs.values()),
-                messages=(f"{len(rows)} BOM-regels geëxporteerd",),
-            ) if self._hub_state is not None else None
-            self._mark_project_dirty()
-            QtWidgets.QMessageBox.information(
-                self,
-                "BOM-export",
-                f"{len(outputs)} bestanden gemaakt voor {len(rows)} BOM-regels in:\n{directory}",
-            )
-            if result is not None:
+            result = record("passed", f"{len(selected)} geselecteerde BOM-regels als {action} geëxporteerd; alleen review",
+                            tuple(str(path) for path in outputs.values()))
+            QtWidgets.QMessageBox.information(self, "BOM-reviewexport voltooid",
+                f"{len(outputs)} bestanden voor {len(selected)} BOM-regels in:\n"
+                f"{next(iter(outputs.values())).parent}\nGeen productie- of machinevrijgave verleend.")
+            if self._workspace is workspace:
                 self._show_batch_result(result)
 
         def _confirm_preflight(
@@ -2700,7 +2710,7 @@ if qt_available():
                 return None
             if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1":
                 return preflight
-            if preflight.blocked_group_ids or len(impact.machine_partitions) > 1:
+            if not allow_blocked_review_export and (preflight.blocked_group_ids or len(impact.machine_partitions) > 1):
                 dialog = QtWidgets.QMessageBox(self)
                 dialog.setWindowTitle("Gemengde BOM-selectie")
                 dialog.setIcon(QtWidgets.QMessageBox.Icon.Question)

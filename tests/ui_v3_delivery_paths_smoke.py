@@ -101,9 +101,27 @@ def fixture(base):
             'pdf12_interactive_dimensioning': {'passed': 35}})
     grouped = grouped_fixture(runtime / 'bom-actions' / 'exports')
     bom_path = runtime / 'installed-bom-actions.json'
+    review_exports = []
+    for action in delivery.BOM_REVIEW_ACTIONS:
+        folder = runtime / 'bom-actions' / action.replace('.', '-')
+        folder.mkdir(parents=True)
+        extensions = {'.xlsx'} if action == 'export.xlsx' else {'.csv'} if action == 'export.csv' else {'.json'} if action == 'export.json' else {'.xlsx', '.csv', '.json', '.pdf', '.zip'}
+        files = {}
+        for extension in extensions:
+            artifact = folder / ('UNIT-FIXTURE-NOT-REAL-OUTPUT' + extension)
+            artifact.write_bytes(b'Synthetic manifest unit fixture only')
+            files[artifact.name] = {'sha256': delivery.digest(artifact), 'bytes': artifact.stat().st_size}
+        manifest = folder / 'REVIEW_EXPORT.json'
+        write_json(manifest, {'action_id': action, 'review_only': True,
+            'production_release_allowed': False, 'machine_transfer_allowed': False,
+            'scope': {'entity_ids': ['A']}, 'files': files})
+        review_exports.append({'action_id': action,
+            'manifest': manifest.relative_to(runtime / 'bom-actions').as_posix(),
+            'manifest_sha256': delivery.digest(manifest)})
     write_json(bom_path, {'export_followup':grouped, 'status': 'PASS', 'frozen': True, 'source_dirty': False,
                          'source_commit': SHA, 'executable_sha256': 'c' * 64,
-                         'checks': [{'status': 'PASS'} for _ in range(40)],
+                         'checks': [{'status': 'PASS'} for _ in range(40)] + [{'name': name, 'status': 'PASS'} for name in sorted(delivery.BOM_REVIEW_CHECKS)],
+                         'review_exports': review_exports,
                          'machine_transfer_allowed': False, 'screenshots': {}})
     write_json(promoted / 'INSTALLER_ACCEPTANCE.json', {
         'installed_bom_actions': {'report_sha256': delivery.digest(bom_path), 'python_on_child_path': False},
@@ -118,6 +136,27 @@ class DeliveryPathTests(unittest.TestCase):
         with patch.object(sys, 'argv', ['finalize', '--root', str(root),
                                        '--runtime-root', str(runtime), '--sha', SHA]), contextlib.redirect_stdout(io.StringIO()):
             return delivery.main()
+
+    def test_missing_one_review_action_blocks_promotion(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            report = runtime / 'installed-bom-actions.json'
+            payload = delivery.load(report); payload['review_exports'].pop()
+            write_json(report, payload)
+            acceptance = root / 'promoted' / 'INSTALLER_ACCEPTANCE.json'
+            binding = delivery.load(acceptance)
+            binding['installed_bom_actions']['report_sha256'] = delivery.digest(report)
+            write_json(acceptance, binding)
+            with self.assertRaisesRegex(RuntimeError, 'Four installed BOM review actions'):
+                self.run_finalizer(root, runtime)
+
+    def test_review_artifact_tampering_blocks_promotion(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            artifact = next((runtime / 'bom-actions').rglob('*.xlsx'))
+            artifact.write_bytes(b'TAMPERED')
+            with self.assertRaisesRegex(RuntimeError, 'BOM review artifact hash'):
+                self.run_finalizer(root, runtime)
 
     def test_windows_manifest_paths_are_read_without_rewriting_signed_inputs(self):
         with TemporaryDirectory() as folder:

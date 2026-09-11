@@ -76,19 +76,103 @@ def _part_snapshot(snapshot: BOMSnapshot, project: Any, part_ids: Iterable[str])
     return result
 
 
-def _export_review(snapshot: BOMSnapshot, directory: str | Path, *, action: str, name: str) -> dict[str, Path]:
-    formats = {'export.xlsx': ('xlsx',), 'export.csv': ('csv',), 'export.json': ('json',),
-               'export.review': ('xlsx','csv','json','pdf')}
-    if action not in formats:
-        raise ValueError('Geen afzonderlijke BOM-reviewexport voor ' + action)
-    target = Path(directory).expanduser().resolve()
-    target.mkdir(parents=True, exist_ok=True)
-    final = target / safe_filename(f'{name}_{action.split(".")[-1]}_{uuid4().hex[:10]}')
-    with tempfile.TemporaryDirectory(prefix='.cws-bom-review-', dir=target) as folder:
-        stage = Path(folder) / 'payload'
-        outputs = export_bom_package(snapshot, stage, package_name=safe_filename(name),
-            formats=formats[action], create_zip=action=='export.review')
-        if any(not path.is_file() for path in outputs.values()):
-            raise RuntimeError('BOM-uitvoerder mist een opgegeven uitvoerbestand')
-        stage.rename(final)
-    return {key: final/path.name for key,path in outputs.items()}
+from copy import deepcopy
+import hashlib
+import json
+import re
+import shutil
+from typing import Callable
+
+REVIEW_EXPORT_ACTIONS = {
+    "export.xlsx": ("XLSX",),
+    "export.csv": ("CSV",),
+    "export.json": ("JSON",),
+    "export.review": ("XLSX", "CSV", "JSON", "PDF", "BOM-package"),
+}
+
+
+def _digest(path: Path) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def export_bom_review(
+    snapshot: BOMSnapshot,
+    output_dir: str | Path,
+    *,
+    action_id: str,
+    source_snapshot_sha256: str = "",
+    preflight_sha256: str = "",
+    validate_before_publish: Callable[[], bool] | None = None,
+    package_name: str | None = None,
+    require_existing_directory: bool = True,
+) -> dict[str, Path]:
+    """Export exactly one requested review representation (or the full review kit).
+
+    All data is frozen before writing. Returned paths are absolute and include
+    the manifest/checksum files. A new, distinct directory prevents stale mixed
+    formats and preserves previous exports. Any failure removes staging output.
+    """
+    if action_id not in REVIEW_EXPORT_ACTIONS:
+        raise ValueError("Onbekende reviewexportactie: " + str(action_id))
+    frozen = deepcopy(snapshot)
+    original_hash = frozen.snapshot_sha256
+    if not original_hash or frozen.refresh_hash() != original_hash:
+        raise ValueError("BOM-snapshot is gewijzigd of heeft geen geldige hash")
+    if validate_before_publish is not None and not validate_before_publish():
+        raise ValueError("Reviewexport heeft verouderde brongegevens")
+    json.dumps(frozen.to_dict(), allow_nan=False)  # Reject non-finite payload data.
+    target = Path(output_dir).expanduser().resolve(strict=require_existing_directory)
+    if not require_existing_directory:
+        target.mkdir(parents=True, exist_ok=True)
+    if not target.is_dir():
+        raise ValueError("De review-uitvoermap bestaat niet of is geen map")
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "_", (package_name or frozen.project_name)).strip("._-")[:64] or "CWS_BOM"
+    bundle = target / f"{stem}_{action_id.split('.')[-1]}_{original_hash[:12]}_{uuid4().hex[:12]}"
+    work = Path(tempfile.mkdtemp(prefix=".cws-review-", dir=target))
+    try:
+        formats = {"export.xlsx": ("xlsx",), "export.csv": ("csv",), "export.json": ("json",),
+                   "export.review": ("xlsx", "csv", "json", "pdf")}[action_id]
+        export_bom_package(frozen, work, package_name=stem, formats=formats,
+                           create_zip=action_id == "export.review")
+        files = sorted(path for path in work.iterdir() if path.is_file())
+        if not files or any(path.stat().st_size == 0 and path.suffix != ".csv" for path in files):
+            raise ValueError("Reviewexport mist een verplicht uitvoerbestand")
+        payload = {
+            "schema": "cws-bom-review-export-1.0", "action_id": action_id,
+            "project_id": frozen.project_id, "source_snapshot_sha256": source_snapshot_sha256,
+            "snapshot_sha256": original_hash, "preflight_sha256": preflight_sha256,
+            "scope": dict(frozen.summary.get("scope") or {}),
+            "review_only": True, "production_release_allowed": False,
+            "machine_transfer_allowed": False,
+            "files": {path.name: {"sha256": _digest(path), "bytes": path.stat().st_size} for path in files},
+        }
+        manifest = work / "REVIEW_EXPORT.json"
+        manifest.write_text(json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2), encoding="utf-8")
+        for name, binding in payload["files"].items():
+            if _digest(work / name) != binding["sha256"]:
+                raise ValueError("Reviewbestand gewijzigd voor publicatie: " + name)
+        checks = work / "REVIEW_SHA256SUMS.txt"
+        checks.write_text("".join(f"{_digest(path)}  {path.name}\n" for path in [*files, manifest]), encoding="utf-8")
+        if validate_before_publish is not None and not validate_before_publish():
+            raise ValueError("Project gewijzigd tijdens reviewexport; pakket niet gepubliceerd")
+        if bundle.exists() or bundle.is_symlink():
+            raise FileExistsError("Reviewexport overschrijft geen bestaande uitvoer: " + str(bundle))
+        names = [path.name for path in files] + [manifest.name, checks.name]
+        work.rename(bundle)
+        return {name: bundle / name for name in names}
+    finally:
+        if work.exists():
+            shutil.rmtree(work)
+
+
+__all__ = ["export_bom_review", "REVIEW_EXPORT_ACTIONS"]
+
+
+def _export_review(snapshot: BOMSnapshot, directory: str | Path, *, action: str, name: str,
+                   source_snapshot_sha256: str = "", preflight_sha256: str = "",
+                   validate_before_publish: Callable[[], bool] | None = None) -> dict[str, Path]:
+    """Preserve the existing concurrent API and its format-aware BOM writers."""
+    return export_bom_review(snapshot, directory, action_id=action, package_name=name,
+        source_snapshot_sha256=source_snapshot_sha256, preflight_sha256=preflight_sha256,
+        validate_before_publish=validate_before_publish, require_existing_directory=False)

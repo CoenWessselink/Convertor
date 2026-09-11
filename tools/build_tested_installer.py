@@ -215,7 +215,8 @@ def main() -> int:
                 or len(bom.get('checks', [])) < 40 or any(c.get('status') != 'PASS' for c in bom['checks'])
                 or bom.get('machine_transfer_allowed') is not False):
             raise RuntimeError('Installed BOM action proof lacks exact source/binary/selection binding')
-        from tools.finalize_ui_v3_delivery import _verify_bom_exports
+        from tools.finalize_ui_v3_delivery import _verify_bom_exports, _verify_bom_review_files
+        _verify_bom_review_files(bom_path, bom)
         grouped_bom = _verify_bom_exports(bom, OUT/'bom-actions', sha, binding['runtime_files']['CWS_Convertor.exe'])
         report['installed_bom_actions'] = {'exports': grouped_bom, 'status': 'PASS', 'checks': len(bom['checks']),
             'source_commit': sha, 'executable_sha256': bom['executable_sha256'],

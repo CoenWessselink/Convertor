@@ -84,7 +84,7 @@ def run_bom_action_evidence(output: Path) -> dict:
         warnings.append(str(args[2] if len(args)>2 else args));return QtWidgets.QMessageBox.StandardButton.Ok
     def check(name,ok):
         report['checks'].append({'name':name,'status':'PASS' if ok else 'FAIL'})
-        if not ok:raise AssertionError(name)
+        if not ok:raise AssertionError(name + ' | recent messages: ' + repr(warnings[-4:]))
     def process(seconds=.05):
         end=time.monotonic()+seconds
         while time.monotonic()<end:app.processEvents();time.sleep(.002)
@@ -155,10 +155,72 @@ def run_bom_action_evidence(output: Path) -> dict:
             # Existing explicit drawing batch limitation is never mislabeled as a produced batch.
             trigger('drawing.batch_pdf',('A',))
             check('Unimplemented batch drawing blocks explicitly',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and 'drawing.batch_pdf' in warnings[-1])
+            # Actual format-specific writers, invoked by the shipping BOM QActions.
+            # Only dialogs are driven by the harness; file production is not mocked.
+            review_root=output/'review-exports';review_root.mkdir(exist_ok=True)
+            review_bindings=[]
+            for action in ('export.xlsx','export.csv','export.json','export.review'):
+                destination=review_root/action.replace('.','-');destination.mkdir(exist_ok=True)
+                with patch.object(QtWidgets.QFileDialog,'getExistingDirectory',return_value=str(destination)), patch.object(QtWidgets.QMessageBox,'information',warning):
+                    trigger(action,('A',))
+                result=panel._hub_state.data['batch_results'][-1]
+                check(action+' records its own completed review action',result['action']==action and result['status']=='passed')
+                paths=[Path(name) for name in result['outputs']]
+                check(action+' records actual absolute output paths',bool(paths) and all(p.is_absolute() and p.is_file() for p in paths))
+                manifest_path=next(p for p in paths if p.name=='REVIEW_EXPORT.json')
+                manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
+                check(action+' review has exact A scope and no production permission',manifest['scope']['entity_ids']==['A'] and manifest['review_only'] and not manifest['production_release_allowed'] and not manifest['machine_transfer_allowed'])
+                suffixes={Path(name).suffix for name in manifest['files'] if name not in {'manifest.json','validation.json','SHA256SUMS.txt'}}
+                expected={'.xlsx'} if action=='export.xlsx' else {'.csv'} if action=='export.csv' else {'.json'} if action=='export.json' else {'.xlsx','.csv','.json','.pdf','.zip'}
+                check(action+' produces only requested representations',suffixes==expected)
+                check(action+' output hashes independently match',all(digest(manifest_path.parent/name)==item['sha256'] for name,item in manifest['files'].items()))
+                if action in {'export.json','export.review'}:
+                    data_path=next(manifest_path.parent/name for name in manifest['files'] if name.endswith('_BOM.json'))
+                    data=json.loads(data_path.read_text(encoding='utf-8'))
+                    check(action+' preserves five A instances and excludes three B instances',sum(r['quantity'] for r in data['part_bom'])==5 and {key for r in data['part_bom'] for key in r['part_ids']}=={'A'})
+                if action=='export.csv':
+                    import csv
+                    with (manifest_path.parent/'part_bom.csv').open(encoding='utf-8-sig',newline='') as stream:
+                        rows=list(csv.DictReader(stream))
+                    check('CSV re-read preserves five A instances',len(rows)==1 and rows[0]['quantity']=='5' and rows[0]['part_ids']=='A')
+                if action=='export.json': json_result=panel._last_review_export_result
+                review_bindings.append({'action_id':action,'manifest':manifest_path.relative_to(output).as_posix(),'manifest_sha256':digest(manifest_path)})
+            report['review_exports']=review_bindings
+            panel.detail_tabs.setCurrentIndex(7); panel.refresh(); process()
+            screenshot('BOM-04-review-export-exact-action-and-paths.png')
+            captured=[]
+            def close_review_result():
+                dialog=QtWidgets.QApplication.activeModalWidget()
+                if isinstance(dialog,QtWidgets.QMessageBox):
+                    name='BOM-05-json-result-real-dialog.png'
+                    if dialog.grab().save(str(output/name),'PNG'):
+                        report['screenshots'][name]=digest(output/name)
+                        captured.append(dialog.text())
+                    dialog.accept()
+            QtCore.QTimer.singleShot(150,close_review_result)
+            panel._show_batch_result(json_result)
+            check('Real review result dialog shows action status and absolute paths',bool(captured) and 'export.json' in captured[0] and 'passed' in captured[0] and str(review_root) in captured[0])
+            before_files={str(p) for p in review_root.rglob('*') if p.is_file()}
+            with patch.object(QtWidgets.QFileDialog,'getExistingDirectory',return_value=''),patch.object(QtWidgets.QMessageBox,'information',warning):
+                trigger('export.json',('A',))
+            check('Cancelled review creates no files and is not passed',panel._hub_state.data['batch_results'][-1]['status']=='cancelled' and before_files=={str(p) for p in review_root.rglob('*') if p.is_file()})
+            old_name=project.project_name
+            def changed_source(*args,**kwargs):
+                project.project_name='Changed during review dialog'
+                return str(review_root)
+            with patch.object(QtWidgets.QFileDialog,'getExistingDirectory',side_effect=changed_source),patch.object(QtWidgets.QMessageBox,'information',warning):
+                trigger('export.json',('A',))
+            check('Changed project during review dialog creates no files',panel._hub_state.data['batch_results'][-1]['status']=='failed' and before_files=={str(p) for p in review_root.rglob('*') if p.is_file()})
+            project.project_name=old_name
+            select(());process()
+            with patch.object(QtWidgets.QMessageBox,'information',warning),patch.object(QtWidgets.QFileDialog,'getExistingDirectory') as choose:
+                panel._export_scope('export.json')
+                check('Empty explicit review selection does not open output or widen scope',not choose.called and before_files=={str(p) for p in review_root.rglob('*') if p.is_file()})
             requests=deepcopy(panel._hub_state.data['scoped_requests'])
             reopened=ProjectModel.from_dict(json.loads(json.dumps(project.to_dict())))
             restored=BOMHubState(reopened)
             check('Scoped requests survive canonical save/reopen',restored.data['scoped_requests']==requests)
+            check('Review audit survives canonical save/reopen',restored.data['batch_results']==panel._hub_state.data['batch_results'])
             check('All persisted request hashes recompute',all(r['request_sha256']==stable_sha256({k:v for k,v in r.items() if k!='request_sha256'}) for r in requests))
             report['requests']=requests;report['machine_review']=review
             report['result_statuses']=[{'action':r['action'],'status':r['status']} for r in panel._hub_state.data['batch_results']]

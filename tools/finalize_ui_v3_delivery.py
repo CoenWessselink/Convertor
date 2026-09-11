@@ -53,6 +53,43 @@ def evidence_path(root: Path, reference: object) -> Path:
     require(candidate.resolve().is_relative_to(root.resolve()), 'Evidence path leaves artifact root')
     return candidate
 
+BOM_REVIEW_ACTIONS = ("export.xlsx", "export.csv", "export.json", "export.review")
+BOM_REVIEW_CHECKS = {
+    *(action + " records its own completed review action" for action in BOM_REVIEW_ACTIONS),
+    *(action + " review has exact A scope and no production permission" for action in BOM_REVIEW_ACTIONS),
+    *(action + " produces only requested representations" for action in BOM_REVIEW_ACTIONS),
+    "Cancelled review creates no files and is not passed",
+    "Changed project during review dialog creates no files",
+    "Empty explicit review selection does not open output or widen scope",
+}
+
+
+def _verify_bom_review_files(report_path: Path, report: dict) -> None:
+    """Verify real installed outputs as well as assertion names; no stub pass."""
+    records = report.get("review_exports", [])
+    require(len(records) == 4 and {r.get("action_id") for r in records} == set(BOM_REVIEW_ACTIONS),
+            "Four installed BOM review actions required")
+    passed = {c.get("name") for c in report.get("checks", []) if c.get("status") == "PASS"}
+    require(BOM_REVIEW_CHECKS.issubset(passed), "Installed BOM review action checks missing")
+    expected = {"export.xlsx": {".xlsx"}, "export.csv": {".csv"}, "export.json": {".json"},
+                "export.review": {".xlsx", ".csv", ".json", ".pdf", ".zip"}}
+    for record in records:
+        action = record["action_id"]
+        path = evidence_path(report_path.parent / "bom-actions", record.get("manifest"))
+        require(path.is_file() and digest(path) == record.get("manifest_sha256"), "BOM review manifest hash")
+        manifest = load(path)
+        require(manifest.get("action_id") == action and manifest.get("review_only") is True
+                and manifest.get("production_release_allowed") is False
+                and manifest.get("machine_transfer_allowed") is False, "BOM review intent or permissions")
+        require(manifest.get("scope", {}).get("entity_ids") == ["A"], "BOM review selection widened")
+        files = manifest.get("files", {})
+        require(bool(files) and {Path(name).suffix for name in files if name not in {"manifest.json", "validation.json", "SHA256SUMS.txt"}} == expected[action], "BOM review format mismatch")
+        for name, binding in files.items():
+            artifact = evidence_path(path.parent, name)
+            require(artifact.is_file() and artifact.stat().st_size == binding.get("bytes")
+                    and digest(artifact) == binding.get("sha256"), "BOM review artifact hash: " + name)
+
+
 def only(root: Path, name: str) -> Path:
     values = list(root.rglob(name))
     require(len(values) == 1, 'Expected exactly one ' + name)
@@ -165,6 +202,7 @@ def main() -> int:
             and bom.get('status') == 'PASS' and bom.get('executable_sha256') == records['installed']['executable_sha256'], 'Installed BOM source/binary binding')
     require(len(bom.get('checks', [])) >= 40 and all(c.get('status') == 'PASS' for c in bom['checks'])
             and bom.get('machine_transfer_allowed') is False and binding.get('python_on_child_path') is False, 'Installed BOM controls')
+    _verify_bom_review_files(bom_path, bom)
     for image, expected in bom.get('screenshots', {}).items():
         require(digest(evidence_path(bom_path.parent / 'bom-actions', image)) == expected, 'Installed BOM screenshot hash')
     grouped_bom = _verify_bom_exports(bom, bom_path.parent/'bom-actions', sha, records['installed']['executable_sha256'])
