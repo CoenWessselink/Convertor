@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 from typing import Any, Callable
 
@@ -158,19 +159,12 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
             result = compare()
             return _Outcome("passed" if result is not False else "blocked", "Plaatplanvergelijking uitgevoerd in de canonieke plaatnestingwerkruimte")
         page._phase3_action("compare")
-        return _Outcome("passed", "Bestaande profiel-scenariocompare uitgevoerd; resultaat staat in de runvalidatie")
+        status_widget = getattr(page, "phase3_nesting_status", None)
+        message = status_widget.text() if status_widget is not None and hasattr(status_widget, "text") else "Profiel-scenariocompare uitgevoerd"
+        blocked = str(message).strip().upper().startswith("BLOCKED") or str(message).strip().upper().startswith("ERROR")
+        return _Outcome("blocked" if blocked else "passed", str(message))
     if action == "optimize.alternatives":
-        if plate:
-            alternative = getattr(page, "_alternatives", None) or getattr(page, "show_alternatives", None)
-            if alternative is None:
-                raise ValueError("Alternatieve plaat/materialscenario's zijn nog niet canoniek beschikbaar; geen alternatief verzonnen")
-            result = alternative()
-            return _Outcome("passed" if result is not False else "blocked", "Canonieke plaat/materialalternatieven beoordeeld")
-        alternative = getattr(page, "_phase3_action", None)
-        if alternative is None:
-            raise ValueError("Alternatieve profiel/materialscenario's zijn nog niet aangesloten")
-        alternative("alternatives")
-        return _Outcome("passed", "Bestaande profiel/materialalternatieven geopend in de canonieke nestingwerkruimte")
+        raise ValueError("Alternatieve profielen/materialen hebben nog geen canonieke uitvoerder; geen alternatief verzonnen")
     if action not in {"optimize.plate", "optimize.profile", "optimize.trade_length", "optimize.stock", "optimize"}:
         raise ValueError(f"Geen nestinguitvoerder voor {action}")
     return _Outcome("prepared", f"{route}: berekening voorbereid voor uitsluitend {len(ids)} geselecteerde onderdeel-IDs",
@@ -276,12 +270,14 @@ def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = Non
     if not paths or any(not Path(value).is_file() for value in paths):
         raise ValueError("De tekenuitvoerder heeft geen bestaande uitvoerbestanden teruggegeven")
     if action == "drawing.print":
-        printer = getattr(page, "_print_pdf", None) or getattr(page, "print_pdf", None)
         pdfs = tuple(value for value in paths if value.lower().endswith(".pdf"))
-        if printer is None:
-            return _Outcome("prepared", "Printbestand is canoniek gegenereerd; native printerdialoog is niet beschikbaar in deze runtime", pdfs)
-        printed = printer(pdfs[0]) if pdfs else False
-        return _Outcome("passed" if printed is not False else "cancelled", page.status.text(), pdfs)
+        if not pdfs:
+            raise ValueError("Printactie heeft geen canoniek PDF-bestand opgeleverd")
+        if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1" or os.environ.get("QT_QPA_PLATFORM", "").casefold() == "offscreen":
+            return _Outcome("prepared", "Canonieke PDF gegenereerd; native printerdialoog vereist interactieve Windows-acceptatie", pdfs)
+        from cws_convertor.ui_qt.production_printing import print_pdf_file
+        printed = print_pdf_file(pdfs[0], parent=page)
+        return _Outcome("passed" if printed else "cancelled", "PDF naar de native Qt-printerroute gestuurd" if printed else "Printdialoog geannuleerd", pdfs)
     if action == "drawing.dimension_check":
         from cws_convertor.drawings import DrawingLinter
         lint = DrawingLinter.lint(result.document).to_dict()
