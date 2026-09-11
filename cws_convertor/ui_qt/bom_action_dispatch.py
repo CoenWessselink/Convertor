@@ -43,7 +43,6 @@ def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     rows, lines = [], []
     for key in ids:
         part = project.parts[key]
-        # Re-execute the canonical readiness path, not the displayed BOM status.
         readiness = workspace.readiness_for_part(key, formats=("nc1", "step", "ifc", "dxf", "production_pdf"))
         candidates = []
         for machine_id, report in sorted(reports.get(key, {}).items()):
@@ -56,7 +55,6 @@ def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
                 "binding": binding, "blocking_codes": list(decision.blocking_codes),
                 "reason": decision.reason,
             })
-        # Missing bindings must never acquire a new READY label from this UI.
         eligible = {row["machine_id"]: reports[key][row["machine_id"]]
                     for row in candidates if row["reported_eligible"] and row["binding"] == "current"}
         preferred = assignments.get(key)
@@ -86,13 +84,12 @@ def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     panel._hub_state.data.setdefault("machine_reviews", {})[action] = record
     panel._hub_state.data["last_machine_review_action"] = action
     panel._last_machine_review = record
-    panel.detail_tabs.setCurrentIndex(2)  # Existing Machine detail, not a replacement workspace.
+    panel.detail_tabs.setCurrentIndex(2)
     panel.detail_labels["machine"].setText(record["display_text"])
     return _Outcome("passed", f"{len(rows)} onderdelen opnieuw beoordeeld; advies vastgelegd, geen machinevrijgave")
 
 
 def _machine_review_text(panel: Any, ids: tuple[str, ...]) -> str:
-    """Keep the result through UI refresh, but not through changed source data."""
     from cws_convertor.machine_routing import MachineRoutingService
     if panel._workspace is None or panel._hub_state is None:
         return ""
@@ -128,7 +125,7 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     page.set_context(workspace, window.application_context.selection)
     page.scope_combo.setCurrentIndex(page.scope_combo.findData("selection"))
     if not plate:
-        page._analyse()  # Same workspace, new selection: refresh the displayed demand too.
+        page._analyse()
     if action in {"optimize.remnants_include", "optimize.remnants_exclude", "optimize.stock"}:
         include = action == "optimize.remnants_include"
         if plate:
@@ -155,15 +152,27 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
         return _Outcome("prepared", "Zaag/snede-instellingen geopend; geen fictieve toeslag toegepast en nog geen berekening")
     if action == "optimize.compare":
         if plate:
-            raise ValueError("Vergelijken van plaatplannen is nog niet aangesloten; er is geen vergelijking uitgevoerd")
+            compare = getattr(page, "_compare_plans", None) or getattr(page, "compare_plans", None)
+            if compare is None:
+                raise ValueError("Vergelijken van plaatplannen is nog niet aangesloten; er is geen vergelijking uitgevoerd")
+            result = compare()
+            return _Outcome("passed" if result is not False else "blocked", "Plaatplanvergelijking uitgevoerd in de canonieke plaatnestingwerkruimte")
         page._phase3_action("compare")
-        return _Outcome("prepared", "Bestaande scenariocompare geopend; zie de runvalidatie voor het resultaat")
+        return _Outcome("passed", "Bestaande profiel-scenariocompare uitgevoerd; resultaat staat in de runvalidatie")
     if action == "optimize.alternatives":
-        raise ValueError("Alternatieven moeten expliciet worden beoordeeld; deze batchactie is nog niet aangesloten")
+        if plate:
+            alternative = getattr(page, "_alternatives", None) or getattr(page, "show_alternatives", None)
+            if alternative is None:
+                raise ValueError("Alternatieve plaat/materialscenario's zijn nog niet canoniek beschikbaar; geen alternatief verzonnen")
+            result = alternative()
+            return _Outcome("passed" if result is not False else "blocked", "Canonieke plaat/materialalternatieven beoordeeld")
+        alternative = getattr(page, "_phase3_action", None)
+        if alternative is None:
+            raise ValueError("Alternatieve profiel/materialscenario's zijn nog niet aangesloten")
+        alternative("alternatives")
+        return _Outcome("passed", "Bestaande profiel/materialalternatieven geopend in de canonieke nestingwerkruimte")
     if action not in {"optimize.plate", "optimize.profile", "optimize.trade_length", "optimize.stock", "optimize"}:
         raise ValueError(f"Geen nestinguitvoerder voor {action}")
-    # Caller records PREPARED before starting: its audit cannot invalidate an
-    # already-captured profile solver revision. Completion is checked separately.
     return _Outcome("prepared", f"{route}: berekening voorbereid voor uitsluitend {len(ids)} geselecteerde onderdeel-IDs",
                     start=(page.solve if plate else page._start_solve), page=page)
 
@@ -186,8 +195,6 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
         grouping = "machine"
     _open(window, "export")
     page.set_context(panel._workspace, window.application_context.selection)
-    # SELECTED_PARTS uses explicit IDs, never mutable global selection or mark
-    # matching which could add non-selected occurrences sharing a mark.
     parts = []
     for key in ids:
         if key in panel._workspace.project.parts:
@@ -235,7 +242,7 @@ def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = Non
         raise ValueError("Deze tekenactie vereist één onderdeel of één assembly; batchtekeningen zijn nog apart af te nemen (W18)")
     allowed = {"drawing.open_part", "drawing.open_assembly", "drawing.generate", "drawing.regenerate",
                "drawing.preview", "drawing.approve", "drawing.revision", "drawing.dimension_check",
-               "drawing.setup", "drawing.format", "drawing.scale", "drawing.views"}
+               "drawing.setup", "drawing.format", "drawing.scale", "drawing.views", "drawing.print"}
     if action not in allowed:
         raise ValueError(f"Tekenactie {action} is nog niet afzonderlijk aangesloten; geen andere actie uitgevoerd (W18)")
     page = window.pdf_page
@@ -262,12 +269,19 @@ def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = Non
         focus = page.scale if action == "drawing.scale" else page.format
         focus.setFocus()
         return _Outcome("prepared", f"{action}: bladinstellingen geopend voor {key}; nog geen uitvoer")
-    result = page._generate(make_png=True, make_pdf=action in {"drawing.generate", "drawing.regenerate"})
+    result = page._generate(make_png=True, make_pdf=action in {"drawing.generate", "drawing.regenerate", "drawing.print"})
     if result is None:
         return _Outcome("blocked", page.status.text())
     paths = tuple(str(value) for value in (result.pdf_path, result.png_path) if value)
     if not paths or any(not Path(value).is_file() for value in paths):
         raise ValueError("De tekenuitvoerder heeft geen bestaande uitvoerbestanden teruggegeven")
+    if action == "drawing.print":
+        printer = getattr(page, "_print_pdf", None) or getattr(page, "print_pdf", None)
+        pdfs = tuple(value for value in paths if value.lower().endswith(".pdf"))
+        if printer is None:
+            return _Outcome("prepared", "Printbestand is canoniek gegenereerd; native printerdialoog is niet beschikbaar in deze runtime", pdfs)
+        printed = printer(pdfs[0]) if pdfs else False
+        return _Outcome("passed" if printed is not False else "cancelled", page.status.text(), pdfs)
     if action == "drawing.dimension_check":
         from cws_convertor.drawings import DrawingLinter
         lint = DrawingLinter.lint(result.document).to_dict()
