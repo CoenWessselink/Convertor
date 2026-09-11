@@ -173,6 +173,7 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
 
 def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _Outcome:
     from cws_convertor.project.manufacturing_contracts import ExportGrouping, ExportScopeKind
+    from cws_convertor.ui_qt.bom_export_completion import choose_and_start_bom_export
     window, page = panel.window, panel.window.export_page
     page._bom_export_binding = None
     formats = {"export.nc1": ("DSTV",), "export.step": ("STEP",), "export.ifc": ("IFC",),
@@ -221,8 +222,15 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
                                                       formats=tuple(page._formats()), preflight_hash=preflight.preflight_sha256)
     if prepared is None or prepared.blocking_codes or any(item.blocking_codes for item in prepared.items):
         return _Outcome("blocked", "Exacte exportselectie/format ingesteld maar preflight blokkeert; geen bestanden gemaakt")
-    return _Outcome("prepared", "Exacte exportselectie en formats ingesteld: " + ", ".join(page._formats())
-                    + ". Kies/controleer de uitvoermap en bevestig Generate; nog geen bestanden gemaakt")
+    started, message = choose_and_start_bom_export(page)
+    if not started:
+        status = "cancelled" if "geannuleerd" in message.casefold() else "blocked"
+        return _Outcome(status, message)
+    return _Outcome(
+        "prepared",
+        message + ". Definitieve PASS/FAIL volgt uitsluitend via de bestaande Export Center-verificatie",
+        page=page,
+    )
 
 
 def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = None) -> _Outcome:
