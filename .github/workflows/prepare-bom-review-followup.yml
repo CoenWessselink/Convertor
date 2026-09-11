@@ -35,7 +35,7 @@ jobs:
         run: |
           import gzip,hashlib,json,pathlib,py_compile,subprocess
           def git(*args):return subprocess.check_output(['git',*args],text=True).strip()
-          assert git('rev-parse','HEAD^')=='483fe1813967452dc7d83667150960e001adffda','Branch moved; review again, never overwrite'
+          assert git('rev-parse','HEAD^')=='61819aef157f2580ae4898521f1513ecb8bd60bd','Branch moved; review again, never overwrite'
           compressed=pathlib.Path('/tmp/review-base.gz').read_bytes()
           assert hashlib.sha256(compressed).hexdigest()=='344ac978a4b946cda0f550c7d9a7ba645c1ebbb702f12fe1cbb680268510ce15'
           original=gzip.decompress(compressed)
@@ -81,7 +81,7 @@ jobs:
               tree.push({path,mode:'100644',type:'blob',sha:blob.sha});
             }
             tree.push({path:'.github/workflows/prepare-bom-review-followup.yml',mode:'100644',type:'blob',sha:null});
-            const result={parent:context.sha,base_tree:parent.tree.sha,expected_final_tree:'9213600a34c240ec6d702f38b6a895346303ab05',tree,files:expected,branch_updated:false,release_tests_passed:false,scope:'Reviewed integrated source hashes/syntax only; full new Windows installed acceptance required.'};
+            const result={parent:context.sha,base_tree:parent.tree.sha,expected_final_tree:'5d993a41507b67b67b329127f0aa2e4ce5c349ba',tree,files:expected,branch_updated:false,release_tests_passed:false,scope:'Reviewed integrated source hashes/syntax only; full new Windows installed acceptance required.'};
             fs.mkdirSync('prepared',{recursive:true});fs.writeFileSync('prepared/PREPARED.json',JSON.stringify(result,null,2));
             console.log('REVIEWED_TREE='+JSON.stringify(result));
       - uses: actions/upload-artifact@v4
