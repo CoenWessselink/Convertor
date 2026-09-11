@@ -1,0 +1,85 @@
+name: Prepare corrected batch component evidence
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/prepare-batch-component-proof.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Apply reviewed bounded replacements and verify every resulting byte
+        shell: python
+        run: |
+          import hashlib,json,pathlib,py_compile,subprocess
+          def git(*a):return subprocess.check_output(['git',*a],text=True).strip()
+          assert git('rev-parse','HEAD^')=='464dbad1695fc263eed7ba9242b69ba114d9993d','Branch moved; review required'
+          def replace(name,old,new):
+              p=pathlib.Path(name);s=p.read_text(encoding='utf-8');assert s.count(old)==1,name
+              p.write_text(s.replace(old,new),encoding='utf-8')
+          replace('cws_convertor/ui_qt/bom_action_evidence.py',
+          "            # Existing explicit drawing batch limitation is never mislabeled as a produced batch.\n            trigger('drawing.batch_pdf',('A',))\n            check('Unimplemented batch drawing blocks explicitly',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and 'drawing.batch_pdf' in warnings[-1])\n",
+          "            # This component host has no exact viewer geometry. Drive the real\n            # directory dialog, then require a visible, clean preflight refusal.\n            # Positive part/subset/assembly batches run in CWSMainWindow proof.\n            host.pdf_page=SimpleNamespace(_default_sheet_settings={})\n            rejected_batch=output/'drawing-without-geometry';rejected_batch.mkdir(exist_ok=True)\n            with patch.object(QtWidgets.QFileDialog,'getExistingDirectory',return_value=str(rejected_batch)):\n                trigger('drawing.batch_pdf',('A',))\n            check('Batch without component geometry blocks explicitly',panel._hub_state.data['batch_results'][-1]['status']=='blocked' and any('componentgeometrie' in message for message in warnings))\n            check('Rejected batch publishes no files or running job',not list(rejected_batch.iterdir()) and not getattr(panel,'_drawing_batch_job',''))\n")
+          replace('tools/finalize_ui_v3_delivery.py',
+          '    "Empty explicit review selection does not open output or widen scope",\n}',
+          '    "Empty explicit review selection does not open output or widen scope",\n    "Batch without component geometry blocks explicitly",\n    "Rejected batch publishes no files or running job",\n}')
+          anchor='    def test_missing_one_review_action_blocks_promotion(self):\n'
+          test="""    def test_missing_component_batch_refusal_checks_blocks_promotion(self):
+                  with TemporaryDirectory() as folder:
+                      root, runtime = fixture(Path(folder))
+                      report = runtime / 'installed-bom-actions.json'
+                      payload = delivery.load(report)
+                      payload['checks'] = [row for row in payload['checks']
+                                           if row.get('name') != 'Rejected batch publishes no files or running job']
+                      write_json(report, payload)
+                      acceptance = root / 'promoted' / 'INSTALLER_ACCEPTANCE.json'
+                      binding = delivery.load(acceptance)
+                      binding['installed_bom_actions']['report_sha256'] = delivery.digest(report)
+                      write_json(acceptance, binding)
+                      with self.assertRaisesRegex(RuntimeError, 'BOM review action checks missing'):
+                          self.run_finalizer(root, runtime)
+          
+          """
+          # Align embedded source indentation with the reviewed local method.
+          lines=test.splitlines(True)
+          test=lines[0]+''.join(line[6:] if line.startswith('      ') else line for line in lines[1:])
+          replace('tests/ui_v3_delivery_paths_smoke.py',anchor,test+anchor)
+          p=pathlib.Path('docs/BOM_DRAWING_BATCH_REPAIR_20260911.md')
+          addition='\n## Gevonden Windows-regressie in het bestaande componentbewijs\n\nDe eerste Windows-run op `464dbad1` voerde 234 scripts uit waarvan één\noude BOM-componentproef na 300 seconden stopte: zij verwachtte nog dat\n`drawing.batch_pdf` niet bestond. Nu de functie is aangesloten, opende\ndie ongewijzigde test een native mapkeuze waarop niemand antwoordde.\n\nDe proef stuurt nu expliciet die echte mapkeuze aan. De eenvoudige\ncomponenthost heeft geen viewer-meshes en moet daarom correct weigeren:\ngeen PDF, geen tijdelijke bestanden en geen achterblijvende job.\nDe positieve deel-, subset- en assemblybatches blijven in de afzonderlijke\nechte CWSMainWindow-proef verplicht. Geen productielogica of timeout is\nversoepeld. De finalizer vereist beide nieuwe negatieve controlepunten;\neen eenheidstest bewijst dat het weglaten ervan promotie verhindert.\nDe aangepaste componentproef is lokaal werkelijk uitgevoerd, niet geskipt.\nDefinitief Windows-/installerbewijs vereist een nieuwe commitgebonden run.\n'
+          p.write_text(p.read_text(encoding='utf-8')+addition,encoding='utf-8')
+          expected={
+            'cws_convertor/ui_qt/bom_action_evidence.py':'0c349f7228160cb57aa4b1b6762ca84c9197d77f527dae13c89bcae4d2e2d7e9',
+            'docs/BOM_DRAWING_BATCH_REPAIR_20260911.md':'7c6faf94dd9e4d09c81235eea4e9a83ad3b4654d21051ce1c2a1b255e75e46c3',
+            'tests/ui_v3_delivery_paths_smoke.py':'b66c05c6290513c38bc4ff25ec6505664e604835f6d9bf556330f82aff354e61',
+            'tools/finalize_ui_v3_delivery.py':'4b4342409b37363de0f6231128ebda917f0b8f1d96d1c4a0c1d98276b6676198'
+          }
+          for name,expected_hash in expected.items():
+              p=pathlib.Path(name);assert hashlib.sha256(p.read_bytes()).hexdigest()==expected_hash,name
+              if p.suffix=='.py':py_compile.compile(str(p),doraise=True)
+          subprocess.run(['git','diff','--check'],check=True)
+          pathlib.Path('/tmp/batch-proof-files.json').write_text(json.dumps(expected))
+      - name: Store exact reviewed blobs without moving application refs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),repo={owner:context.repo.owner,repo:context.repo.repo};
+            const expected=JSON.parse(fs.readFileSync('/tmp/batch-proof-files.json','utf8'));
+            const parent=(await github.rest.git.getCommit({...repo,commit_sha:context.sha})).data,tree=[];
+            for(const path of Object.keys(expected)){
+              const b=(await github.rest.git.createBlob({...repo,content:fs.readFileSync(path).toString('base64'),encoding:'base64'})).data;
+              tree.push({path,mode:'100644',type:'blob',sha:b.sha});
+            }
+            tree.push({path:'.github/workflows/prepare-batch-component-proof.yml',mode:'100644',type:'blob',sha:null});
+            fs.mkdirSync('prepared');fs.writeFileSync('prepared/PREPARED.json',JSON.stringify({parent:context.sha,base_tree:parent.tree.sha,expected_final_tree:'251b53ee9b12ea86541f4b1e5ef6b3b5cbd08cb6',tree,files:expected,release_tests_passed:false},null,2));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Batch_Component_Reviewed_${{ github.sha }}
+          path: prepared/PREPARED.json
+          if-no-files-found: error
+          retention-days: 30
