@@ -1,0 +1,85 @@
+name: Prepare reviewed native navigation repair
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/prepare-navigation-repair.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Retrieve hash-verified reviewed patch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),crypto=require('crypto');
+            const ids=['a374b2b7f664eea0eed95c7c44b38213613f652a','fc3b4d34d98192f64605f3283d7ddb23ebb0d068','48bcb07562959e5eb301f50d80ef8ee61c599626'];
+            const chunks=[];
+            for(const sha of ids){
+              const blob=(await github.rest.git.getBlob({owner:context.repo.owner,repo:context.repo.repo,file_sha:sha})).data;
+              const data=Buffer.from(blob.content.replace(/\s/g,''),'base64');
+              const hash=crypto.createHash('sha1').update(Buffer.from('blob '+data.length+'\0')).update(data).digest('hex');
+              if(hash!==sha)throw new Error('Transport mismatch '+sha);
+              chunks.push(data);
+            }
+            const data=Buffer.concat(chunks);
+            if(data.length!==8739||crypto.createHash('sha256').update(data).digest('hex')!=='a5b0e997e689cbabed4681458838b37c50aadc1c7d45e55c3d9d622a1fd46c40')throw new Error('Compressed patch mismatch');
+            fs.writeFileSync('/tmp/navigation.patch.gz',data);
+      - name: Verify unchanged baseline and every patched source file
+        shell: python
+        run: |
+          import gzip,hashlib,json,pathlib,py_compile,subprocess
+          def git(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert git('rev-parse','HEAD^')=='c7724322ed46abafa18d584f378585de76efa85d','Branch moved; re-review required'
+          patch=gzip.decompress(pathlib.Path('/tmp/navigation.patch.gz').read_bytes())
+          assert hashlib.sha256(patch).hexdigest()=='41237ed2ddd1385c984db54799b98c692d658197d89b49c8212882fb1cd31608'
+          path=pathlib.Path('/tmp/navigation.patch');path.write_bytes(patch)
+          subprocess.run(['git','apply','--check',str(path)],check=True)
+          subprocess.run(['git','apply',str(path)],check=True)
+          expected={
+            'cws_convertor/ui_qt/design_system/stylesheet.py':'53ebd4ab8ae9328cd09de6f22ed2572e26392c76170f6d6b9c26fcad3351ebc1',
+            'cws_convertor/ui_qt/native_product_navigation.py':'044a77421fc3ffd957d4417041369068603030a9b85b5dfcac44910d30484213',
+            'cws_convertor/ui_qt/pdf_ui_v3_evidence.py':'623f170f72c01e78c06e635ec3e5babf81d1ce5eb3d1065246297b29419e5e60',
+            'cws_convertor/ui_qt/u4_shell.py':'4e30ba4ec9ec1fbb45b0aab34b2aed47df3f6e8fce922da0c8e535b655c2b885',
+            'cws_convertor/ui_qt/ui_v51_contract.py':'48c15a3592bcedd0804f86cb810c015a30f55913b09376f7f24bfedfdb06a5de',
+            'docs/PDF_UI_V3_NAVIGATION_REPAIR_20260911.md':'ecae4dbadb1b36db73349aba18a39e34c90b74982ea92a7669009838e0921866',
+            'tests/primary_navigation_layout_smoke.py':'17329bff2514db857095ea2e62eefdf25b83990ddc630e276d76ff94c106f400',
+            'tests/ui_v3_delivery_paths_smoke.py':'3e5c22838e16b85061da97f859cbf1556c495d7f90fc52f1ecf0886c7b6b8e73',
+            'tools/finalize_ui_v3_delivery.py':'668c3c6dfab8b8ec5de45f56b2bb5fb44f584743e56e80dc71dc6e1103107410'
+          }
+          for name,digest in expected.items():
+              p=pathlib.Path(name);assert hashlib.sha256(p.read_bytes()).hexdigest()==digest,name
+              if p.suffix=='.py':py_compile.compile(str(p),doraise=True)
+          subprocess.run(['git','diff','--check'],check=True)
+          pathlib.Path('/tmp/navigation-files.json').write_text(json.dumps(expected))
+      - name: Store reviewed source blobs for explicit connected commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),crypto=require('crypto');const repo={owner:context.repo.owner,repo:context.repo.repo};
+            const expected=JSON.parse(fs.readFileSync('/tmp/navigation-files.json','utf8'));
+            const parent=(await github.rest.git.getCommit({...repo,commit_sha:context.sha})).data;
+            const tree=[];
+            for(const [path,hash] of Object.entries(expected)){
+              const data=fs.readFileSync(path);
+              if(crypto.createHash('sha256').update(data).digest('hex')!==hash)throw new Error(path);
+              const blob=(await github.rest.git.createBlob({...repo,content:data.toString('base64'),encoding:'base64'})).data;
+              tree.push({path,mode:'100644',type:'blob',sha:blob.sha});
+            }
+            tree.push({path:'.github/workflows/prepare-navigation-repair.yml',mode:'100644',type:'blob',sha:null});
+            const result={parent:context.sha,base_tree:parent.tree.sha,expected_final_tree:'c9766a09b4ce709fc47535a081749d77a72738a6',tree,files:expected,branch_updated:false,release_tests_passed:false,scope:'Reviewed source hashes and syntax only. Final native Windows build and installation evidence still required.'};
+            fs.mkdirSync('prepared',{recursive:true});
+            fs.writeFileSync('prepared/PREPARED.json',JSON.stringify(result,null,2));
+            console.log('REVIEWED_NAVIGATION_TREE='+JSON.stringify(result));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Navigation_Reviewed_Tree_${{ github.sha }}
+          path: prepared/PREPARED.json
+          if-no-files-found: error
+          retention-days: 30
