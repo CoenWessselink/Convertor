@@ -1,0 +1,96 @@
+name: Prepare reviewed BOM export repair
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/prepare-bom-export-repair.yml']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Retrieve exact reviewed patch transport
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),crypto=require('crypto');
+            const ids=['73bb7cc2b8387b3e652d087a0411353ac8ed57a0','d2f74b8b3efd39864c7e4b970075bd9f72821aef','35fd5618ee530c14574fbc7724c51169470f18d0','6a30a54c7d27efab056b12ef7c884e0f8a0530b1','35ffb04d36d0f5f47241d6be03bf8831efb83416','7f5d5152f9b2316e633b5f0335f65d5bc9a10647','cc11b16b61f7ea83e66f2bfd79b9f4b8711e641b'];
+            const chunks=[];
+            for(const sha of ids){
+              const blob=(await github.rest.git.getBlob({owner:context.repo.owner,repo:context.repo.repo,file_sha:sha})).data;
+              const data=Buffer.from(blob.content.replace(/\s/g,''),'base64');
+              if(crypto.createHash('sha1').update(Buffer.from('blob '+data.length+'\0')).update(data).digest('hex')!==sha)throw new Error('Transport mismatch '+sha);
+              chunks.push(data);
+            }
+            const data=Buffer.concat(chunks);
+            if(data.length!==27348||crypto.createHash('sha256').update(data).digest('hex')!=='e2acd840a47095fcd5dacfaf2954c801da40730e4dbe09f6d3e1689c06621ed8')throw new Error('Reviewed patch transport mismatch');
+            fs.writeFileSync('/tmp/bom-export.patch.xz',data);
+      - name: Verify baseline, patch, syntax and every reviewed file
+        shell: python
+        run: |
+          import hashlib,json,lzma,pathlib,py_compile,subprocess
+          def git(*args):return subprocess.check_output(['git',*args],text=True).strip()
+          assert git('rev-parse','HEAD^')=='721b9b705fff5604c05c7237572b06b26e158c8a','Branch moved; review required'
+          patch=lzma.decompress(pathlib.Path('/tmp/bom-export.patch.xz').read_bytes())
+          assert hashlib.sha256(patch).hexdigest()=='40ec0c05fba69d5a331f7cb0b6a87e2ad6c73dd9617c350d11278a459ca92b09'
+          path=pathlib.Path('/tmp/bom-export.patch');path.write_bytes(patch)
+          subprocess.run(['git','apply','--check',str(path)],check=True)
+          subprocess.run(['git','apply',str(path)],check=True)
+          expected={
+            'cws_convertor/bom/export.py':'8c49f2f915fd9ab6463c83c585e600a6988ccdf65174cd3f211a83c4c1fca954',
+            'cws_convertor/production_export/engine.py':'b51f72ec6f313d785498ee6acab8b74c2991b549d259df3636dfcadfce6b7245',
+            'cws_convertor/production_export/release.py':'5567390d73e4ad59124701f26c5fe64fa70db007bc19ced06088cf7633c9c9a2',
+            'cws_convertor/project/manufacturing_contracts.py':'b1ce71d81f7a509cddd9647ab5fa2f67ef48a5ef623e8f2806f5be7971ceea71',
+            'cws_convertor/ui_qt/bom_action_dispatch.py':'81dd2b399fb70d259874e7fe2ccfa923f3bcfad0fefb60548ebe7e3713e3d1ca',
+            'cws_convertor/ui_qt/bom_action_evidence.py':'d737b3b2222019f7b0f92e970c88802d2129fda911c4c7079ebbc523c8803ad7',
+            'cws_convertor/ui_qt/bom_workspace.py':'57c2adc036aa310c9063ad9ea43fdbc7900f0de812ccc54807ac5a9c86c10947',
+            'cws_convertor/ui_qt/pdf_ui_v3_evidence.py':'cf957ca64720e3ea76d917c88e69ce3b767ef8f050689eab035ac100fd5ddb6a',
+            'cws_convertor/ui_qt/phase3_workspaces.py':'37c22a70c30f2a03da2b6a39ec47122fd5b609c1fc93cc0518f02062e719a658',
+            'cws_viewer/export_center/models.py':'ff3bae13c51bfcbbad4514f917829322c132a3ad8c5603bf593c4b1f14e566a0',
+            'cws_viewer/export_center/service.py':'1723b9388335bfc673b32dcbbd22e09f1a6a8f041d16678398b4dfab0b8f798e',
+            'tests/bom_scope_safety_smoke.py':'dcc22e71a0f82877cc60585dd87aa95584fbec9790267e147ce0e56802f095a6',
+            'tests/ui_v3_delivery_paths_smoke.py':'84285d8e71c1261b3faf059943fea1bdecaff70e7ae57407c4d489dd0f67b2e7',
+            'tests/viewer_v15_export_center_smoke.py':'41a6f7706651ce8b62852b0bd4aafb39d67148ede2af70a0e75a569769a86a9e',
+            'tools/build_tested_installer.py':'8b7db6761e7dc41aa9b6063133c95a90508620bf753ae9d157e376856176a74e',
+            'tools/finalize_ui_v3_delivery.py':'d00ce73170831d288a939d3cfe11aa3bdb19297df4a9d8eade01ab3aa06798ef',
+            'cws_convertor/bom/review_export.py':'fea23ab791c0c346c24269aa8697a10efc5cbfe9239d28bc2101ec7f75ebe5d1',
+            'cws_convertor/ui_qt/bom_export_evidence.py':'247d42c03f0400aaf6d8208020605eaaa4b6917b98d30242daa919384d3966a2',
+            'cws_viewer/export_center/grouped.py':'92db91443544e449d1c7aac426ff1e156ece3c096216df63f6633f6e155125d0',
+            'docs/BOM_EXPORT_GAP_REPAIR_20260911.md':'8db26c611ef224d2fea5cac2fee18ec3ae22047727da638314a07c12a58e1708',
+            'tests/bom_grouped_export_smoke.py':'f1205627ea766e1ae89104e5c86fc35371297c50dec1997eb7d0f0cde7c57f12'
+          }
+          for name,digest in expected.items():
+              p=pathlib.Path(name);assert hashlib.sha256(p.read_bytes()).hexdigest()==digest,name
+              if p.suffix=='.py':py_compile.compile(str(p),doraise=True)
+          subprocess.run(['git','diff','--check'],check=True)
+          pathlib.Path('/tmp/bom-export-files.json').write_text(json.dumps(expected))
+      - name: Store reviewed source blobs for explicit connected commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs'),crypto=require('crypto');const repo={owner:context.repo.owner,repo:context.repo.repo};
+            const expected=JSON.parse(fs.readFileSync('/tmp/bom-export-files.json','utf8'));
+            const parent=(await github.rest.git.getCommit({...repo,commit_sha:context.sha})).data;
+            const tree=[];
+            for(const [path,hash] of Object.entries(expected)){
+              const data=fs.readFileSync(path);
+              if(crypto.createHash('sha256').update(data).digest('hex')!==hash)throw new Error(path);
+              const blob=(await github.rest.git.createBlob({...repo,content:data.toString('base64'),encoding:'base64'})).data;
+              tree.push({path,mode:'100644',type:'blob',sha:blob.sha});
+            }
+            tree.push({path:'.github/workflows/prepare-bom-export-repair.yml',mode:'100644',type:'blob',sha:null});
+            const result={parent:context.sha,base_tree:parent.tree.sha,expected_final_tree:'d5899aa6e01802b726071a06fb03dc783ed11d32',tree,files:expected,branch_updated:false,release_tests_passed:false,scope:'Reviewed patch hashes and syntax only. New exact-commit native Windows and installed acceptance required.'};
+            fs.mkdirSync('prepared',{recursive:true});
+            fs.writeFileSync('prepared/PREPARED.json',JSON.stringify(result,null,2));
+            console.log('REVIEWED_BOM_EXPORT_TREE='+JSON.stringify(result));
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_BOM_Export_Reviewed_Tree_${{ github.sha }}
+          path: prepared/PREPARED.json
+          if-no-files-found: error
+          retention-days: 30
