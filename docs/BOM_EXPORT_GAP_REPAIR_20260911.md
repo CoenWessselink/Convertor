@@ -115,3 +115,17 @@ flenzen meer. Individueel passende nevenaanzichten worden NTS gemarkeerd.
 De schaal van het hoofdaanzicht wordt werkelijk toegepast, niet afgerond
 naar een andere opdruk; een niet-passende vaste schaal wordt geweigerd.
 Deze correctie verandert geen STEP/IFC/NC1-writer of materiaalautoriteit.
+
+
+## Botsing van onderdeel-ID-prefixen
+
+Een extra adversariele proef met twee geldige delen, dezelfde positie en dezelfde
+12-teken-ID-prefix reproduceerde een bestaande bestandsoverschrijving. De
+algemene checksumlijst kon toch kloppen, terwijl vier artefactverwijzingen van
+het eerste deel niet langer overeenkwamen. Onderdeelmappen gebruiken nu een
+hash van de volledige stabiele ID in plaats van alleen haar prefix. De bestaande
+map-/ZIP-verifier toetst ook elke geëxporteerde artefactverwijzing, bestandshash,
+omvang en objecteigenaar. Dubbele ZIP-namen worden geweigerd. Dit geldt ook voor
+de bestaande legacywriter; verschillende objecten krijgen geen gedeeld pad.
+De werkelijke CAD-regressie controleert beide identiteiten na gegroepeerde
+export. Synthetische negatieve manifestproeven zijn geen CAD/installerbewijs.

@@ -721,7 +721,7 @@ class ProjectProductionExportEngine:
         messages: list[GateMessage],
     ) -> ExportItemResult:
         marks = _part_marks(project, part)
-        part_dir = root / safe_relative_path("parts", marks[0] if marks else "ZONDER_MERK", f"{part.part_position or 'ONBEKEND'}__{part.internal_id[:12]}")
+        part_dir = root / safe_relative_path("parts", marks[0] if marks else "ZONDER_MERK", f"{safe_filename(part.part_position or 'ONBEKEND', max_length=48)}__{stable_hash(part.internal_id)[:24]}")
         part_dir.mkdir(parents=True, exist_ok=True)
         artifacts = [
             ArtifactResult(
@@ -780,7 +780,7 @@ class ProjectProductionExportEngine:
             return self._blocked_item(project, part, root, request, formats, [message]), None, None
 
         marks = _part_marks(project, part)
-        part_dir = root / safe_relative_path("parts", marks[0] if marks else "ZONDER_MERK", f"{part.part_position or 'ONBEKEND'}__{part.internal_id[:12]}")
+        part_dir = root / safe_relative_path("parts", marks[0] if marks else "ZONDER_MERK", f"{safe_filename(part.part_position or 'ONBEKEND', max_length=48)}__{stable_hash(part.internal_id)[:24]}")
         part_dir.mkdir(parents=True, exist_ok=True)
         base = _render_name(project, part, marks, request)
         artifacts: list[ArtifactResult] = []

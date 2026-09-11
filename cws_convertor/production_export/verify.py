@@ -2,14 +2,50 @@ from __future__ import annotations
 
 import json
 import zipfile
-from pathlib import Path
-from typing import Any
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any, Callable
 
 from .utils import canonical_json_bytes, sha256_bytes, sha256_file
 
 
 class ExportVerificationError(RuntimeError):
     pass
+
+
+def _artifact_references(manifest: dict[str, Any], read: Callable[[str], bytes]) -> int:
+    """Checksums of the final directory do not prove per-object identity.
+
+    Re-check every exported artifact against its own manifest hash and size;
+    two different objects may not silently share an overwritten pathname.
+    Group-level manifests have no items and are verified at their child gate.
+    """
+    seen: dict[str, str] = {}
+    checked = 0
+    for family in ("items", "assemblies"):
+        for index, item in enumerate(manifest.get(family, [])):
+            owner = str(item.get("part_id") or item.get("assembly_mark") or index)
+            for artifact in item.get("artifacts", []):
+                if artifact.get("status") != "exported":
+                    continue
+                relative = artifact.get("relative_path")
+                if not isinstance(relative, str) or not relative or "\\" in relative:
+                    raise ExportVerificationError("Exported artefact heeft geen veilig relatief pad")
+                path = PurePosixPath(relative)
+                if path.is_absolute() or PureWindowsPath(relative).drive or ".." in path.parts:
+                    raise ExportVerificationError("Onveilig artefactpad: " + relative)
+                normalized = str(path).casefold()
+                identity = family + ":" + owner
+                if normalized in seen and seen[normalized] != identity:
+                    raise ExportVerificationError("Artefactpad is gedeeld door verschillende objecten: " + relative)
+                seen[normalized] = identity
+                try:
+                    data = read(relative)
+                except (OSError, KeyError) as exc:
+                    raise ExportVerificationError("Artefact uit itemmanifest ontbreekt: " + relative) from exc
+                if sha256_bytes(data) != artifact.get("sha256") or len(data) != artifact.get("size_bytes"):
+                    raise ExportVerificationError("Artefactidentiteit/hash/omvang wijkt af: " + relative)
+                checked += 1
+    return checked
 
 
 def verify_export_directory(path: str | Path) -> dict[str, Any]:
@@ -40,7 +76,13 @@ def verify_export_directory(path: str | Path) -> dict[str, Any]:
         if sha256_file(target) != digest:
             raise ExportVerificationError(f"Checksum mismatch: {relative}")
         checked += 1
-    return {"valid": True, "checked_files": checked, "manifest_sha256": actual}
+    def read(relative: str) -> bytes:
+        target = (root / relative).resolve()
+        if not target.is_relative_to(root):
+            raise ExportVerificationError("Artefact verlaat uitvoermap: " + relative)
+        return target.read_bytes()
+    artifact_count = _artifact_references(manifest, read)
+    return {"valid": True, "checked_files": checked, "checked_artifacts": artifact_count, "manifest_sha256": actual}
 
 
 def verify_export_zip(path: str | Path) -> dict[str, Any]:
@@ -50,6 +92,8 @@ def verify_export_zip(path: str | Path) -> dict[str, Any]:
         if bad:
             raise ExportVerificationError(f"CRC-fout: {bad}")
         names = archive.namelist()
+        if len(names) != len(set(names)):
+            raise ExportVerificationError("Dubbele bestandsnamen in ZIP")
         for name in names:
             p = Path(name)
             if p.is_absolute() or ".." in p.parts:
@@ -73,4 +117,5 @@ def verify_export_zip(path: str | Path) -> dict[str, Any]:
             if sha256_bytes(archive.read(relative)) != digest:
                 raise ExportVerificationError(f"Checksum mismatch in ZIP: {relative}")
             checked += 1
-    return {"valid": True, "checked_files": checked, "zip_sha256": sha256_file(source)}
+        artifact_count = _artifact_references(manifest, archive.read)
+    return {"valid": True, "checked_files": checked, "checked_artifacts": artifact_count, "zip_sha256": sha256_file(source)}

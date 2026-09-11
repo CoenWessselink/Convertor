@@ -168,7 +168,7 @@ class ProductionExportEngine:
         source_entity = str(get_value(part, "source_entity_id", "ifc_entity_id", "step_entity_id", default="") or "")
         source_file_id = str(get_value(part, "source_file_id", "source_id", default="") or "")
         group = marks[0] if marks else "ZONDER_MERK"
-        part_dir = root / safe_relative_path("parts", group, f"{position or 'ONBEKEND'}__{part_id[:12] or 'geen-id'}")
+        part_dir = root / safe_relative_path("parts", group, f"{safe_filename(position or 'ONBEKEND', max_length=48)}__{stable_hash(part_id)[:24]}")
         part_dir.mkdir(parents=True, exist_ok=True)
         base = self._artifact_basename(part)
         artifacts: list[ArtifactResult] = []
