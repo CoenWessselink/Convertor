@@ -69,7 +69,7 @@ def main()->int:
             for image in child['screenshots']:combined['screenshots'].append({**image,'file':'reopen/'+image['file']})
             report=folder/'REPORT.json';report.write_text(json.dumps(combined,ensure_ascii=False,indent=2),encoding='utf-8')
             row.update(status='PASS',checks=len(combined['checks']),pid=primary['pid'],second_pid=child['pid'],
-                       report=str(report.relative_to(out)),sha256=digest(report),device_pixel_ratio=primary['device_pixel_ratio'])
+                       report=report.relative_to(out).as_posix(),sha256=digest(report),device_pixel_ratio=primary['device_pixel_ratio'])
         except Exception as exc:row['error']=str(exc)
         result['runs'].append(row)
         (out/'PDF_UI_V3_DPI_EVIDENCE.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import zipfile
 
 SPEC = 'f20b9597ee02eab1c45f06d85ae3d652d03eaeddb68614cc3bbcd15716a7f06e'
@@ -18,6 +18,17 @@ def load(path: Path) -> dict:
 def require(condition: bool, reason: str) -> None:
     if not condition: raise RuntimeError(reason)
 
+def evidence_path(root: Path, reference: object) -> Path:
+    """Read portable artifact references without rewriting any signed evidence."""
+    require(isinstance(reference, str) and bool(reference), 'Invalid evidence path')
+    normalized = reference.replace('\\', '/')
+    relative = PurePosixPath(normalized)
+    require(not relative.is_absolute() and not PureWindowsPath(reference).drive
+            and '..' not in relative.parts, 'Unsafe evidence path: ' + reference)
+    candidate = root.joinpath(*relative.parts)
+    require(candidate.resolve().is_relative_to(root.resolve()), 'Evidence path leaves artifact root')
+    return candidate
+
 def only(root: Path, name: str) -> Path:
     values = list(root.rglob(name))
     require(len(values) == 1, 'Expected exactly one ' + name)
@@ -29,7 +40,7 @@ def main() -> int:
     parser.add_argument('--runtime-root', type=Path, required=True)
     parser.add_argument('--sha', required=True)
     args = parser.parse_args()
-    root, runtime, sha = args.root, args.runtime_root, args.sha
+    root, runtime, sha = args.root.resolve(), args.runtime_root.resolve(), args.sha
     out = root / 'promoted'
     acceptance = load(out / 'INSTALLER_ACCEPTANCE.json')
     require(acceptance['status'] == 'PASS' and acceptance['source_commit'] == sha, 'Installer binding')
@@ -51,7 +62,7 @@ def main() -> int:
     source_dpi = load(source_dpi_path)
     require(source_dpi['status'] == 'PASS' and source_dpi['source_commit'] == sha, 'DPI source binding')
     require({r['scale'] for r in source_dpi['runs']} == {100,125,150,175,200}, 'Five DPI scales missing')
-    locations = [('source-' + str(r['scale']), source_dpi_path.parent / r['report'], r['sha256']) for r in source_dpi['runs']]
+    locations = [('source-' + str(r['scale']), evidence_path(source_dpi_path.parent, r['report']), r['sha256']) for r in source_dpi['runs']]
     for label, binding in acceptance['main_ui_runtimes'].items():
         directory = only(runtime, label + '-main-ui')
         locations.append((label, directory / 'dpi-100/REPORT.json', binding['report_sha256']))
@@ -62,25 +73,27 @@ def main() -> int:
         require(data['source_commit'] == sha and data['source_dirty'] is False and data['status'] == 'PASS', 'Native source: '+label)
         require(data['specification_sha256'] == SPEC and 'Headless' not in data['viewer_backend'], 'Native viewer/spec binding: '+label)
         require(len(data['checks']) >= 65 and all(c['status'] == 'PASS' for c in data['checks']), 'Native controls incomplete: '+label)
-        child_path = path.parent / data['second_process']['report']; child = load(child_path)
+        child_path = evidence_path(path.parent, data['second_process']['report']); child = load(child_path)
         require(digest(child_path) == data['second_process']['sha256'], 'Independent reopen hash: '+label)
         require(child['pid'] != data['pid'] and child['status'] == 'PASS' and child['executable_sha256'] == data['executable_sha256'], 'Independent reopen: '+label)
         images = []
         for image in data['screenshots']:
-            require(digest(path.parent / image['file']) == image['sha256'], 'Native screenshot hash: '+label)
+            require(digest(evidence_path(path.parent, image['file'])) == image['sha256'], 'Native screenshot hash: '+label)
             require(image['missing_glyphs'] == 0, 'Unrendered glyphs: '+label)
-            images.append({'file':str((path.parent / image['file']).relative_to(runtime if not label.startswith('source-') else root)), 'sha256':image['sha256']})
+            images.append({'file':str(evidence_path(path.parent, image['file']).relative_to(runtime if not label.startswith('source-') else root)), 'sha256':image['sha256']})
         records[label] = {'status':'PASS','source_commit':sha,'checks':len(data['checks']),'pid':data['pid'], 'second_pid':child['pid'],
                           'executable_sha256':data['executable_sha256'],'viewer_backend':data['viewer_backend'],'screenshots':images}
     require(len({records[label]['executable_sha256'] for label in ('onefolder','portable','installed')}) == 1, 'Different packaged binaries')
     for label in ('dist','portable','installed'):
         legacy = load(only(runtime, label + '-packaged-runtime.json'))
         require(legacy['status'] == 'passed' and legacy['python_on_child_path'] is False and legacy['pdf12_interactive_dimensioning']['passed'] == 35, 'PDF12 35 native controls: '+label)
-    runtime_manifest = {'schema':'cws-pdf-runtime-evidence-3.0','source_commit':sha,'specification_sha256':SPEC,'status':'PASS', 'runtimes':records,
+    runtime_manifest = {'schema':'cws-pdf-runtime-evidence-3.0','source_commit':sha,'specification_sha256':SPEC,'status':'PASS',
+                        'original_specification_file_reverified':False,'full_original_specification_acceptance':'UNVERIFIED', 'runtimes':records,
                         'pdf12_native_controls_per_packaged_runtime':35,'five_dpi_checked':[100,125,150,175,200], 'phase3_soak_seconds':soak['elapsed_seconds']}
     (out / 'PDF_RUNTIME_EVIDENCE.json').write_text(json.dumps(runtime_manifest, indent=2), encoding='utf-8')
     manifest = {'schema':'cws-native-ui-v3-release-manifest-1.0','source_commit':sha,'source_tree':acceptance['source_tree'], 'status':'PASS',
                 'version':acceptance['version'],'original_specification_sha256':SPEC,'pixel_identical_reference_claimed':False,
+                'original_specification_file_reverified':False,'full_original_specification_acceptance':'UNVERIFIED',
                 'qualification':'Tested software beta; no machine authorization, signature or target-hardware qualification',
                 'files':{p.name:digest(p) for p in sorted(out.iterdir()) if p.is_file() and p.name not in {'RELEASE_MANIFEST.json','SHA256SUMS.txt'}}}
     (out / 'RELEASE_MANIFEST.json').write_text(json.dumps(manifest, indent=2),encoding='utf-8')

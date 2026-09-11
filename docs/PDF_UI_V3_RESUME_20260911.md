@@ -41,11 +41,29 @@ Een oude installer van deze run mag niet als de herstelde build worden geleverd.
 Lokale voorcontroles hebben een gewijzigde werkboom en zijn daarom geen
 releasebewijs. Alleen nieuwe Windows-resultaten met de definitieve commit,
 clean-sourcecontrole, EXE-hashes en echte geïnstalleerde-app-tests gelden
-voor vrijgave. De bestaande gezamenlijke promotiegate blijft ongewijzigd;
-herhaalde oude artifacts tellen niet mee.
+voor vrijgave. De acceptatie-eisen van de gezamenlijke promotiegate blijven
+ongewijzigd; herhaalde oude artifacts tellen niet mee.
 
 De oorspronkelijke V3-ZIP en referentiebeelden konden in deze hervatting niet
 opnieuw worden gelezen. De historische specificatiehash wordt niet als een
 nieuwe inhouds- of visuele verificatie gepresenteerd. Zie
 `PDF_UI_V3_NATIVE_INTEGRATION.md` voor deze provenancebeperking en de reeds
 bestaande softwarebeta-/hardware-/machinekwalificatiegrenzen.
+
+## Aanvullend gevonden grens tussen Windows-build en Linux-vrijgave
+
+De verse Windows-run op `bdd0fa3c` slaagde voor de kern en vier
+regressiegroepen. Onafhankelijk uitlezen van zijn feitelijke DPI-manifest
+liet echter zien dat `report` Windows-backslashes bevatte. De Linux-finalizer
+behandelde die als onderdeel van een bestandsnaam. Dit is opnieuw aangetoond
+met het echte Windows-artifact en een afzonderlijke manifest-unitfixture.
+
+De rapportproducer schrijft nu platformneutrale POSIX-referenties. De finalizer
+kan ook reeds geschreven Windows-referenties veilig lezen, zonder rapporten,
+afbeeldingen of hun hashes te wijzigen. Absolute paden, drive-/UNC-paden en
+padtraversal worden geweigerd. De extra unitfixture test alle acht runtimegroepen
+en afwijzing van gemanipuleerde hashes; zij is nadrukkelijk geen UI-bewijs.
+De vrijgavemanifesten vermelden nu ook expliciet dat de originele specificatie
+niet opnieuw is gecontroleerd. Alle bestaande bron-/runtime-/hash-/soakgates
+blijven vereist. Installer en bewijzen moeten opnieuw op de definitieve
+commit worden gegenereerd, niet met de eerdere kandidaat worden gemengd.
