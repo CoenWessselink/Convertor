@@ -2423,7 +2423,8 @@ if qt_available():
             property_layout.addWidget(self.edit_properties_button)
             sheet_layout.addWidget(properties)
             root.addWidget(self.sheet_frame, 1)
-            self.status = QtWidgets.QLabel("Geen project geopend")
+            from .drawing_workspace_layout import _DrawingStatusLabel
+            self.status = _DrawingStatusLabel("Geen project geopend")
             self.status.setObjectName("mutedText")
             root.addWidget(self.status)
             self.preview_button.clicked.connect(self.refresh_preview)
@@ -3304,14 +3305,34 @@ if qt_available():
                 return
             if not self._ensure_dimension_editable():
                 return
-            if self._drawing_document is None:
-                self.refresh_preview()
-            if self._drawing_document is None:
-                self.status.setText("Vrijgave geblokkeerd: geen gevalideerde tekening beschikbaar")
+            # A preview is not a release authorization. Rebuild against the
+            # current entity and component geometry, even when a cached preview
+            # exists. An empty/mutated lint dictionary must never mean PASS.
+            self.refresh_preview()
+            drawing = self._drawing_document
+            if drawing is None:
+                self.status.setText("Vrijgave geblokkeerd: geen actuele gevalideerde tekening beschikbaar")
+                return
+            try:
+                from cws_convertor.drawings import DrawingLinter
+                if not drawing.document_sha256 or drawing.entity_id != self._entity_id:
+                    raise ValueError("Tekening mist een actuele document- of selectiebinding")
+                drawing.validate()
+                actual_lint = DrawingLinter.lint(drawing).to_dict()
+                # JSON normalization preserves list/tuple serialization across
+                # project reopen without treating missing fields as defaults.
+                if json.dumps(drawing.lint, sort_keys=True) != json.dumps(actual_lint, sort_keys=True):
+                    raise ValueError("Opgeslagen DrawingLinter-bewijs ontbreekt of is tegenstrijdig")
+                if actual_lint["checked_pages"] != len(drawing.pages) or not actual_lint["checked_primitives"]:
+                    raise ValueError("DrawingLinter heeft geen volledige tekeninhoud gecontroleerd")
+            except (AttributeError, TypeError, ValueError, KeyError) as exc:
+                message = f"Vrijgave geblokkeerd: {exc}"
+                self.status.setText(message)
+                QtWidgets.QMessageBox.warning(self, "Maatvoering vrijgeven", message)
                 return
             ignored = {"DRAWING_DIMENSION_EDITOR_NOT_RELEASED"}
             blocking = [
-                item for item in dict(getattr(self._drawing_document, "lint", {}) or {}).get("issues", ())
+                item for item in actual_lint["issues"]
                 if bool(item.get("blocking", True)) and str(item.get("code") or "") not in ignored
             ]
             if blocking:

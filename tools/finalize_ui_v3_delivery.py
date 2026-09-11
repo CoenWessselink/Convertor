@@ -5,8 +5,16 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import zipfile
+import shutil
+from tools.verify_original_pdf_ui_spec import verify_review, SPEC_ROOT
 
 SPEC = 'f20b9597ee02eab1c45f06d85ae3d652d03eaeddb68614cc3bbcd15716a7f06e'
+RELEASE_EVIDENCE_CHECKS = {
+    'Release recomputes missing cached linter evidence',
+    'Fresh actual geometry linter still blocks review release',
+    'Blocked release writes no release audit',
+    'Status line has full text access without vertical clipping',
+}
 
 def digest(path: Path) -> str:
     with path.open('rb') as stream:
@@ -42,6 +50,7 @@ def main() -> int:
     args = parser.parse_args()
     root, runtime, sha = args.root.resolve(), args.runtime_root.resolve(), args.sha
     out = root / 'promoted'
+    original_review = verify_review()
     acceptance = load(out / 'INSTALLER_ACCEPTANCE.json')
     require(acceptance['status'] == 'PASS' and acceptance['source_commit'] == sha, 'Installer binding')
     phase = load(only(root, 'PHASE_3_SOURCE_TEST_EVIDENCE.json'))
@@ -73,6 +82,7 @@ def main() -> int:
         require(data['source_commit'] == sha and data['source_dirty'] is False and data['status'] == 'PASS', 'Native source: '+label)
         require(data['specification_sha256'] == SPEC and 'Headless' not in data['viewer_backend'], 'Native viewer/spec binding: '+label)
         require(len(data['checks']) >= 65 and all(c['status'] == 'PASS' for c in data['checks']), 'Native controls incomplete: '+label)
+        require(RELEASE_EVIDENCE_CHECKS.issubset({c.get('name') for c in data['checks']}), 'Native release-evidence regression missing: '+label)
         child_path = evidence_path(path.parent, data['second_process']['report']); child = load(child_path)
         require(digest(child_path) == data['second_process']['sha256'], 'Independent reopen hash: '+label)
         require(child['pid'] != data['pid'] and child['status'] == 'PASS' and child['executable_sha256'] == data['executable_sha256'], 'Independent reopen: '+label)
@@ -87,13 +97,25 @@ def main() -> int:
     for label in ('dist','portable','installed'):
         legacy = load(only(runtime, label + '-packaged-runtime.json'))
         require(legacy['status'] == 'passed' and legacy['python_on_child_path'] is False and legacy['pdf12_interactive_dimensioning']['passed'] == 35, 'PDF12 35 native controls: '+label)
+    original_review['source_commit'] = sha
+    (out / 'ORIGINAL_SPECIFICATION_REVIEW.json').write_text(json.dumps(original_review, ensure_ascii=False, indent=2), encoding='utf-8')
+    for name in ('CODEX_INTEGRATIEPROMPT_PDF_UI_V3.md', 'REFERENCE_IMAGES.md'):
+        shutil.copyfile(SPEC_ROOT / name, out / ('ORIGINAL_' + name))
+    for name in ('PDF_UI_V3_SPEC_REVIEW_20260911.md', 'PDF_UI_V3_QUICK_GUIDE.md'):
+        shutil.copyfile(SPEC_ROOT.parent / name, out / name)
     runtime_manifest = {'schema':'cws-pdf-runtime-evidence-3.0','source_commit':sha,'specification_sha256':SPEC,'status':'PASS',
-                        'original_specification_file_reverified':False,'full_original_specification_acceptance':'UNVERIFIED', 'runtimes':records,
+                        'original_specification_file_reverified':True,
+                        'original_input_verification_scope':'Archive and PNGs verified before commit; CI verifies committed original text and review record',
+                        'original_archive_rehashed_in_ci':original_review['original_archive_rehashed_in_this_execution'],
+                        'full_original_specification_acceptance':'SOFTWARE_BETA_WITH_RECORDED_VISUAL_REVIEW', 'runtimes':records,
                         'pdf12_native_controls_per_packaged_runtime':35,'five_dpi_checked':[100,125,150,175,200], 'phase3_soak_seconds':soak['elapsed_seconds']}
     (out / 'PDF_RUNTIME_EVIDENCE.json').write_text(json.dumps(runtime_manifest, indent=2), encoding='utf-8')
     manifest = {'schema':'cws-native-ui-v3-release-manifest-1.0','source_commit':sha,'source_tree':acceptance['source_tree'], 'status':'PASS',
                 'version':acceptance['version'],'original_specification_sha256':SPEC,'pixel_identical_reference_claimed':False,
-                'original_specification_file_reverified':False,'full_original_specification_acceptance':'UNVERIFIED',
+                'original_specification_file_reverified':True,
+                        'original_input_verification_scope':'Archive and PNGs verified before commit; CI verifies committed original text and review record',
+                        'original_archive_rehashed_in_ci':original_review['original_archive_rehashed_in_this_execution'],
+                        'full_original_specification_acceptance':'SOFTWARE_BETA_WITH_RECORDED_VISUAL_REVIEW',
                 'qualification':'Tested software beta; no machine authorization, signature or target-hardware qualification',
                 'files':{p.name:digest(p) for p in sorted(out.iterdir()) if p.is_file() and p.name not in {'RELEASE_MANIFEST.json','SHA256SUMS.txt'}}}
     (out / 'RELEASE_MANIFEST.json').write_text(json.dumps(manifest, indent=2),encoding='utf-8')

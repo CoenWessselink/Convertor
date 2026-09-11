@@ -68,7 +68,7 @@ jobs:
         shell: python
         run: |
           import subprocess,sys
-          for name in ('drawing_v3_completion_smoke.py','drawing_v3_inspector_smoke.py','drawing_workspace_v3_smoke.py','interactive_dimension_v3_regression_smoke.py','drawing_ui_v3_presentation_smoke.py'):
+          for name in ('drawing_v3_completion_smoke.py','drawing_v3_inspector_smoke.py','drawing_workspace_v3_smoke.py','interactive_dimension_v3_regression_smoke.py','drawing_ui_v3_presentation_smoke.py','drawing_v3_release_evidence_smoke.py','drawing_canonical_chain_binding_smoke.py','ui_v3_original_input_smoke.py'):
               subprocess.run([sys.executable,'tests/'+name],check=True)
           subprocess.run([sys.executable,'CWS_Convertor_App.py','--pdf-v3-evidence','--evidence-dir','build/pdf-v3-source','--report','build/pdf-v3-source.json'],check=True)
       - name: Actual main application at five DPIs with independent reopen

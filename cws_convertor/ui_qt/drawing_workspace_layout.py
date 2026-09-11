@@ -54,6 +54,28 @@ QLabel#drawingStateBadge[state="empty"] { background: #e4ebf2; color: #324e68; }
 """
 
 
+
+class _DrawingStatusLabel(QtWidgets.QLabel):
+    """One readable status line; full diagnostics remain selectable/accesssible.
+
+    Keep QLabel.text() unchanged for accessibility and existing commands. Long
+    paths/linter lists are explicitly elided, never vertically clipped by layout.
+    The original message is available as tooltip; the linter tab has each issue.
+    """
+    def paintEvent(self, event: Any) -> None:
+        self.setToolTip(self.text())
+        self.setAccessibleDescription(self.text())
+        painter = QtWidgets.QStylePainter(self)
+        option = QtWidgets.QStyleOption()
+        option.initFrom(self)
+        painter.drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_Widget, option)
+        rect = self.contentsRect().adjusted(2, 2, -2, -2)
+        text = self.fontMetrics().elidedText(' '.join(self.text().split()),
+            QtCore.Qt.TextElideMode.ElideRight, max(0, rect.width()))
+        painter.drawItemText(rect, QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            self.palette(), self.isEnabled(), text, QtGui.QPalette.ColorRole.WindowText)
+
+
 def _empty(layout: Any, retained: list[Any]) -> None:
     """Retain detached QLayoutItems until reparenting completes (Qt ownership)."""
     while layout.count():
@@ -366,8 +388,10 @@ def install_layout(panel: Any) -> None:
     body.setStretchFactor(2, 0)
     body.setSizes([210, 900, 335])
     root.addWidget(body, 1)
-    panel.status.setWordWrap(True)
-    panel.status.setMaximumHeight(52)
+    panel.status.setWordWrap(False)
+    panel.status.setMinimumHeight(panel.status.fontMetrics().lineSpacing() + 8)
+    panel.status.setMaximumHeight(panel.status.minimumHeight())
+    panel.status.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Fixed)
     panel.status.setAccessibleName('Tekeningstatus en meldingen')
     root.addWidget(panel.status)
     panel.source_tree.itemActivated.connect(lambda item, _column: _open_source(panel, item))

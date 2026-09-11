@@ -47,7 +47,7 @@ def fixture(base):
         write_json(report, {
             'source_commit': SHA, 'source_dirty': False, 'status': 'PASS',
             'specification_sha256': delivery.SPEC, 'viewer_backend': 'VtkUnitFixture',
-            'checks': [{'status': 'PASS'} for _ in range(65)],
+            'checks': [{'status': 'PASS'} for _ in range(65)] + [{'name': name, 'status': 'PASS'} for name in sorted(delivery.RELEASE_EVIDENCE_CHECKS)],
             'pid': 1, 'executable_sha256': 'c' * 64,
             'second_process': {'report': r'reopen\REPORT.json', 'sha256': delivery.digest(child)},
             'screenshots': [{'file': r'images\unit-fixture.bin',
@@ -91,15 +91,29 @@ class DeliveryPathTests(unittest.TestCase):
                 self.assertEqual(delivery.digest(p), expected, str(p))
             payload = delivery.load(root / 'promoted' / 'PDF_RUNTIME_EVIDENCE.json')
             self.assertEqual(len(payload['runtimes']), 8)
-            self.assertFalse(payload['original_specification_file_reverified'])
+            self.assertTrue(payload['original_specification_file_reverified'])
+            self.assertFalse(payload['original_archive_rehashed_in_ci'])
             release = delivery.load(root / 'promoted' / 'RELEASE_MANIFEST.json')
-            self.assertEqual(release['full_original_specification_acceptance'], 'UNVERIFIED')
+            self.assertEqual(release['full_original_specification_acceptance'], 'SOFTWARE_BETA_WITH_RECORDED_VISUAL_REVIEW')
 
     def test_hash_tampering_still_blocks_promotion(self):
         with TemporaryDirectory() as folder:
             root, runtime = fixture(Path(folder))
             (root / 'dpi' / 'dpi-100' / 'images' / 'unit-fixture.bin').write_bytes(b'tampered')
             with self.assertRaisesRegex(RuntimeError, 'screenshot hash'):
+                self.run_finalizer(root, runtime)
+
+    def test_native_report_without_new_release_regression_is_rejected(self):
+        with TemporaryDirectory() as folder:
+            root, runtime = fixture(Path(folder))
+            report = root / 'dpi' / 'dpi-100' / 'REPORT.json'
+            value = delivery.load(report)
+            value['checks'] = [c for c in value['checks'] if c.get('name') not in delivery.RELEASE_EVIDENCE_CHECKS]
+            write_json(report, value)
+            index = root / 'dpi' / 'PDF_UI_V3_DPI_EVIDENCE.json'
+            manifest = delivery.load(index); manifest['runs'][0]['sha256'] = delivery.digest(report)
+            write_json(index, manifest)
+            with self.assertRaisesRegex(RuntimeError, 'release-evidence regression missing'):
                 self.run_finalizer(root, runtime)
 
     def test_relative_windows_and_posix_paths_resolve_to_same_file(self):

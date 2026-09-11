@@ -798,7 +798,8 @@ class EngineeringDrawingGenerator:
                 if not canonical_hash or canonical_hash != str(getattr(entity, "manufacturing_hash", "")):
                     warnings.append("DimensionGraph mist een actuele productierevisiebinding en is niet overgenomen")
                 else:
-                    canonical_current = True
+                    canonical_current = bool(graph.valid)
+                    warnings.extend(str(value) for value in graph.errors)
                     semantic_dimensions = [dict(value) for value in canonical.drawing.dimensions]
                     dimension_chains = [dict(value) for value in canonical.drawing.dimension_chains]
                     warnings.extend(str(value) for value in graph.warnings)

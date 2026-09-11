@@ -1,0 +1,31 @@
+{
+  "schema": "cws-codex-pdf-ui-integration-package-v3",
+  "status": "READY",
+  "purpose": "Codex implementation prompt with non-evidentiary UI reference images",
+  "files": [
+    {
+      "path": "CODEX_INTEGRATIEPROMPT_PDF_UI_V3.md",
+      "sha256": "58d083869b7038d970d79a5563680409625b777644ecb0a242eb0be51d021273"
+    },
+    {
+      "path": "README.md",
+      "sha256": "9ec12bd3a1798e05f89c4e88ecee111f72a5acea7c173bd4931f70ea983b1401"
+    },
+    {
+      "path": "REFERENCE_IMAGES.md",
+      "sha256": "86493aaac5fbf3eea73bfcec37b597e276638cc153ecb61408798b903d5ba9a8"
+    },
+    {
+      "path": "references/01_PDF_WERKRUIMTE_VOLLEDIG.png",
+      "sha256": "83ded2c061be6812252cbdc7461bcc89d93cf4f95e439ed8afcc4a3f990256c7"
+    },
+    {
+      "path": "references/02_MAAT_SELECTEREN_EN_BEWERKEN.png",
+      "sha256": "c55a6c31d0c448284276d8baad345fd5ecc12063f0cce055fad87a1beb1f46ad"
+    },
+    {
+      "path": "references/03_ASSEMBLY_PERSISTENTIE_EN_LINTER.png",
+      "sha256": "2d29eb08239007786e10c65b1f59cd66e5b00a2f9be258134182c06b510c2732"
+    }
+  ]
+}

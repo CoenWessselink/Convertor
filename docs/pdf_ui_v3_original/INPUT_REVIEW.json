@@ -1,0 +1,131 @@
+{
+  "schema": "cws-original-ui-v3-input-review-1.0",
+  "review_date": "2026-09-11",
+  "archive_name": "CWS_CODEX_PDF_UI_INTEGRATIE_V3_2026-09-06(2).zip",
+  "archive_sha256": "f20b9597ee02eab1c45f06d85ae3d652d03eaeddb68614cc3bbcd15716a7f06e",
+  "archive_size_bytes": 4022148,
+  "archive_byte_verification": "PERFORMED_FROM_USER_UPLOAD_BEFORE_COMMIT",
+  "full_prompt_read": true,
+  "original_images_visually_inspected": 3,
+  "input_not_application_evidence": true,
+  "archive_and_pngs_embedded_in_application": false,
+  "ci_rehashes_original_png_bytes": false,
+  "scope": "Recorded pre-commit archive verification and visual design review. CI verifies the verbatim prompt and this source-bound review; CI does not pretend to possess or rehash the original raster files. The supplied ZIP is retained with the final chat delivery.",
+  "files": [
+    {
+      "path": "CODEX_INTEGRATIEPROMPT_PDF_UI_V3.md",
+      "sha256": "58d083869b7038d970d79a5563680409625b777644ecb0a242eb0be51d021273",
+      "size_bytes": 13361,
+      "content_verified_from_uploaded_archive": true,
+      "stored_verbatim_in_repository": true
+    },
+    {
+      "path": "README.md",
+      "sha256": "9ec12bd3a1798e05f89c4e88ecee111f72a5acea7c173bd4931f70ea983b1401",
+      "size_bytes": 1033,
+      "content_verified_from_uploaded_archive": true,
+      "stored_verbatim_in_repository": true
+    },
+    {
+      "path": "REFERENCE_IMAGES.md",
+      "sha256": "86493aaac5fbf3eea73bfcec37b597e276638cc153ecb61408798b903d5ba9a8",
+      "size_bytes": 929,
+      "content_verified_from_uploaded_archive": true,
+      "stored_verbatim_in_repository": true
+    },
+    {
+      "path": "references/01_PDF_WERKRUIMTE_VOLLEDIG.png",
+      "sha256": "83ded2c061be6812252cbdc7461bcc89d93cf4f95e439ed8afcc4a3f990256c7",
+      "size_bytes": 1327314,
+      "content_verified_from_uploaded_archive": true,
+      "stored_verbatim_in_repository": false,
+      "pixel_size": [
+        1672,
+        941
+      ]
+    },
+    {
+      "path": "references/02_MAAT_SELECTEREN_EN_BEWERKEN.png",
+      "sha256": "c55a6c31d0c448284276d8baad345fd5ecc12063f0cce055fad87a1beb1f46ad",
+      "size_bytes": 1174974,
+      "content_verified_from_uploaded_archive": true,
+      "stored_verbatim_in_repository": false,
+      "pixel_size": [
+        1672,
+        941
+      ]
+    },
+    {
+      "path": "references/03_ASSEMBLY_PERSISTENTIE_EN_LINTER.png",
+      "sha256": "2d29eb08239007786e10c65b1f59cd66e5b00a2f9be258134182c06b510c2732",
+      "size_bytes": 1549633,
+      "content_verified_from_uploaded_archive": true,
+      "stored_verbatim_in_repository": false,
+      "pixel_size": [
+        1672,
+        941
+      ]
+    }
+  ],
+  "reference_comparison": [
+    {
+      "reference": "references/01_PDF_WERKRUIMTE_VOLLEDIG.png",
+      "implementation": [
+        "cws_convertor/ui_qt/drawing_workspace_layout.py",
+        "cws_convertor/ui_qt/functional_workspaces.py"
+      ],
+      "runtime_scenes": [
+        "UI3-01-native-workspace.png"
+      ],
+      "review": "Grouped vector/native tools, paper settings always visible, actual project tree, centered vector sheet and collapsible inspector match the reference hierarchy.",
+      "intentional_differences": [
+        "Existing CWS product navigation retained, not replaced by fictitious reference navigation.",
+        "Paper content comes from imported geometry and its actual scale, not the fictitious plate or dimensions.",
+        "Review/blocked state remains visibly amber; no fixed PASS badge.",
+        "Long status is explicitly elided with full tooltip/accessibility text; per-issue text remains in Linter."
+      ]
+    },
+    {
+      "reference": "references/02_MAAT_SELECTEREN_EN_BEWERKEN.png",
+      "implementation": [
+        "cws_convertor/ui_qt/drawing_property_editor.py",
+        "cws_convertor/ui_qt/drawing_dimension_canvas.py"
+      ],
+      "runtime_scenes": [
+        "UI3-02-native-selection-inspector.png",
+        "PDF-GUI-16",
+        "PDF-GUI-17",
+        "PDF-GUI-18",
+        "PDF-GUI-19",
+        "PDF-GUI-22"
+      ],
+      "review": "Real anchors and selection grips are rendered by the drawing canvas. Inline native fields edit persisted dimension transactions; nominal measurement and component IDs remain unchanged by formatting.",
+      "intentional_differences": [
+        "Properties use grouped tree sections with vertical scrolling rather than a second floating dialog.",
+        "Mixed selections retain each unrelated property.",
+        "No fictitious DWG or hardcoded 1250 mm text."
+      ]
+    },
+    {
+      "reference": "references/03_ASSEMBLY_PERSISTENTIE_EN_LINTER.png",
+      "implementation": [
+        "cws_convertor/ui_qt/engineering_drawing.py",
+        "cws_convertor/drawings/linter.py",
+        "cws_convertor/ui_qt/pdf_ui_v3_evidence.py"
+      ],
+      "runtime_scenes": [
+        "UI3-04-actual-linter.png",
+        "UI3-07-second-process-reopen.png",
+        "UI3-08-release-evidence-revalidated.png",
+        "PDF-GUI-28",
+        "PDF-GUI-35"
+      ],
+      "review": "Actual STEP component identities are retained in assembly dimensions. Model tree, BOM, revision and linter projections use the active project. Saved dimensions are compared in an independent process.",
+      "intentional_differences": [
+        "BOM/Linter/Revisions are context tabs to preserve drawing space.",
+        "Independent process success is evidence, not an unconditional in-app banner.",
+        "A mesh-based assembly remains review-only where exact assembly BREP/Trusted authority is unavailable; it never falls back to a single part."
+      ]
+    }
+  ]
+}

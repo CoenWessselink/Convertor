@@ -199,6 +199,32 @@ def run_pdf_ui_v3_evidence(output: Path, *, reopen: bool=False, project: Path | 
                               'project_sha256_after':digest(path),'dimension_ids':sorted(raw_dimensions())}
             snap('UI3-07-second-process-reopen.png')
         else:
+            # Adversarial release check in the real main window and in every
+            # packaged executable. Only the disposable project's cached report
+            # is damaged; no generator, renderer, linter or handler is replaced.
+            from copy import deepcopy
+            from cws_convertor.drawings import DrawingRole
+            roles=deepcopy(window.workspace.project.settings.get('drawing_user_roles',{}))
+            window.workspace.project.settings['drawing_user_roles']={**roles,panel._current_user():DrawingRole.RELEASER.value}
+            panel._drawing_document.lint.clear()
+            panel._drawing_document.seal()
+            dismissed=[]
+            def close_warning() -> None:
+                for dialog in app.topLevelWidgets():
+                    if isinstance(dialog,QtWidgets.QMessageBox) and dialog.isVisible():
+                        dismissed.append(dialog.text());dialog.accept()
+            dialog_timer=QtCore.QTimer();dialog_timer.timeout.connect(close_warning);dialog_timer.start(10)
+            try:
+                click(panel.dimension_action_buttons['Conceptmaatvoering vrijgeven (rol: vrijgever)'])
+            finally:
+                dialog_timer.stop();window.workspace.project.settings['drawing_user_roles']=roles
+            check('Release recomputes missing cached linter evidence',panel._dimension_document.status!='released' and bool(dismissed))
+            check('Fresh actual geometry linter still blocks review release',panel._drawing_document.lint.get('release_ready') is False and 'DrawingLinter' in panel.status.text())
+            check('Blocked release writes no release audit',not any(row.get('action')=='drawing.dimension_revision_released' for row in panel._dimension_document.audit))
+            check('Status line has full text access without vertical clipping',
+                  panel.status.height() >= panel.status.fontMetrics().lineSpacing()+4
+                  and panel.status.toolTip()==panel.status.text())
+            snap('UI3-08-release-evidence-revalidated.png')
             stable_workspace=window.workspace;stable_viewer=window.viewer_page;central=window.centralWidget()
             for route in ('bom','converter','control','profile_nesting','plate_nesting','export','pdf_review','pdf'):
                 click(window.native_workspace_buttons[route])

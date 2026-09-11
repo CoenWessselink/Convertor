@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import math
 from typing import Iterable, Mapping
 
 from .document import DrawingDocument, DrawingPrimitive
@@ -53,6 +54,66 @@ def _ids(values: Iterable[dict], *names: str) -> set[str]:
 def _valid_sha256(value: str) -> bool:
     text = str(value or "")
     return len(text) == 64 and all(character in "0123456789abcdefABCDEF" for character in text)
+
+
+
+def _chain_conflict(chain: Mapping, dimensions: Mapping[str, Mapping]) -> bool:
+    """Validate legacy members and the actual canonical DimensionGraph schema.
+
+    A canonical ordinate may contain one station: datum and total explicitly
+    bound it. Never interpret missing legacy 'members' as an invalid canonical
+    chain, or skip unknown/duplicate/range-inconsistent canonical references.
+    """
+    if not str(chain.get('id') or ''):
+        return True
+    if 'dimension_ids' not in chain:
+        members = [str(value) for value in chain.get('members') or () if str(value)]
+        return (len(members) < 2 or len(set(members)) != len(members)
+                or any(value not in dimensions for value in members))
+    try:
+        kind = chain.get('kind')
+        if (kind not in {'ordinate_chain', 'combined_incremental_absolute_chain'}
+                or 'members' in chain or not chain.get('datum') or chain.get('axis') not in {'x', 'y'}):
+            return True
+        def ids(key: str, required: bool = True) -> list[str]:
+            values = chain.get(key, [])
+            if not isinstance(values, (list, tuple)) or (required and not values):
+                raise ValueError('Missing dimension references')
+            if any(not isinstance(value, str) or value not in dimensions for value in values):
+                raise ValueError('Unknown dimension reference')
+            if len(values) != len(set(values)):
+                raise ValueError('Duplicate dimension reference')
+            return list(values)
+        def values(keys: list[str]) -> list[float]:
+            result = [float(dimensions[key]['value_mm']) for key in keys]
+            if any(not math.isfinite(value) or value < 0 for value in result):
+                raise ValueError('Invalid chain value')
+            return result
+        stations = ids('dimension_ids')
+        total_id = chain.get('total_dimension_id')
+        if not isinstance(total_id, str) or total_id not in dimensions or total_id in stations:
+            return True
+        total = values([total_id])[0]
+        distances = values(stations)
+        # This is the existing canonical graph tolerance, not a relaxed gate.
+        from dimension_graph import DEFAULT_TOLERANCE_MM
+        tolerance = DEFAULT_TOLERANCE_MM
+        if kind == 'ordinate_chain':
+            return distances != sorted(distances) or max(distances) > total + tolerance
+        absolute_ids = ids('absolute_dimension_ids')
+        if total_id in absolute_ids or set(stations) & set(absolute_ids):
+            return True
+        absolute = values(absolute_ids)
+        if absolute != sorted(absolute) or len(absolute) != len(distances):
+            return True
+        running = 0.0
+        for step, position in zip(distances, absolute):
+            running += step
+            if abs(running - position) > tolerance:
+                return True
+        return running > total + tolerance or max(absolute) > total + tolerance
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return True
 
 
 class DrawingLinter:
@@ -461,8 +522,7 @@ class DrawingLinter:
             )
         for chain in document.dimension_chains:
             chain_id = str(chain.get("id") or "")
-            members = [str(value) for value in chain.get("members") or () if str(value)]
-            if not chain_id or len(members) < 2 or len(set(members)) != len(members) or any(value not in semantic_ids for value in members):
+            if _chain_conflict(chain, {str(item.get("id") or ""): item for item in document.dimensions}):
                 issues.append(
                     DrawingLintIssue(
                         "DRAWING_DIMENSION_CHAIN_CONFLICT",

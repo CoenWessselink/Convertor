@@ -67,3 +67,12 @@ De vrijgavemanifesten vermelden nu ook expliciet dat de originele specificatie
 niet opnieuw is gecontroleerd. Alle bestaande bron-/runtime-/hash-/soakgates
 blijven vereist. Installer en bewijzen moeten opnieuw op de definitieve
 commit worden gegenereerd, niet met de eerdere kandidaat worden gemengd.
+
+## Aanvulling na ontvangst van de oorspronkelijke ZIP
+
+De bovenstaande beperking inzake de ontbrekende ZIP is historisch. De gebruiker
+heeft later op 11 september de oorspronkelijke bytes opnieuw aangeleverd. De
+archiefhash en alle zes manifestbestanden zijn geverifieerd; de volledige prompt
+en drie referentiebeelden zijn gelezen. Zie `PDF_UI_V3_SPEC_REVIEW_20260911.md`
+voor invoercontrole, vergelijking en herstel van vrijgavebewijs/canonieke ketens.
+Alleen manifesten van de nieuwe definitieve commit gelden voor die herstelbuild.
