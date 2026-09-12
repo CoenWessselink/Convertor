@@ -19,3 +19,6 @@
 *.yaml text eol=lf
 *.toml text eol=lf
 *.txt text eol=lf
+
+# Acceptance reports hash their raw output logs; never rewrite those bytes.
+validation/product_integration/** -text whitespace=cr-at-eol
