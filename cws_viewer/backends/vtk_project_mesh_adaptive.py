@@ -7,11 +7,12 @@ use a VTK spatial locator instead of scanning every instance in Python.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from cws_viewer.backends.vtk_project_mesh_feel_v2 import VtkProjectMeshFeelV2Backend
 from cws_viewer.math3d import Matrix4, Vector3
+from cws_viewer.performance.runtime_profiler import ViewerProfiler
 
 
 @dataclass(slots=True)
@@ -34,6 +35,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     # geometry group; a capped nearest-centre list can omit a clicked long beam.
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.profiler = ViewerProfiler()
         super().__init__(*args, **kwargs)
         self._interaction_quality_active = False
         self._idle_multisamples = 8
@@ -48,6 +50,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
 
     def initialize(self, *, width: int, height: int) -> None:
         super().initialize(width=width, height=height)
+        self.profiler.attach(self._render_window)
         window = self._render_window
         if window is None:
             return
@@ -110,7 +113,11 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         self._pick_locator_cache.clear()
         self._surface_distance_cache.clear()
         self._pick_explode_signature = None
-        super().load_scene(scene, index)
+        with self.profiler.span("scene_creation"):
+            super().load_scene(scene, index)
+        self.profiler.gauge("physical_objects", len(index.renderable_node_ids))
+        self.profiler.gauge("geometry_resources", len(scene.geometry))
+        self.profiler.gauge("reused_instances", max(0, len(index.renderable_node_ids) - len(scene.geometry)))
 
     def _surface_distance(
         self,
@@ -143,7 +150,11 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         if explode_signature != self._pick_explode_signature:
             self._pick_locator_cache.clear()
             self._pick_explode_signature = explode_signature
-        super().apply_state(state, index)
+        with self.profiler.span("state_synchronization"):
+            super().apply_state(state, index)
+        self.profiler.gauge("visible_objects", len(state.visible_node_ids))
+        self.profiler.gauge("base_actor_count", len(self._mesh_groups))
+        self.profiler.gauge("selection_actor_count", len(self._selection_groups) + len(self._selection_fill_groups))
 
     def _pick_locator(self, group: Any, index: Any) -> _PickLocatorEntry | None:
         key = id(group)
@@ -261,6 +272,31 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
                 best_key = candidate_key
                 best_id = node_id
         return best_id
+
+    def set_camera(self, camera: Any) -> None:
+        with self.profiler.span("camera_update"):
+            super().set_camera(camera)
+
+    def render(self) -> None:
+        self.profiler.count("render_requests")
+        super().render()
+
+    def pick_at(self, x: int, y: int, index: Any) -> Any:
+        with self.profiler.span("selection"):
+            return super().pick_at(x, y, index)
+
+    def _update_instance_state(self, state: Any, index: Any) -> None:
+        with self.profiler.span("mapper_property_updates"):
+            super()._update_instance_state(state, index)
+
+    def performance_snapshot(self, *, include_raw: bool = False) -> dict[str, Any]:
+        """Developer evidence; renderer CPU completion is not display scan-out."""
+        self.profiler.gauge("shared_cache", asdict(self.shared_render_cache_stats))
+        return self.profiler.snapshot(include_raw=include_raw)
+
+    def shutdown(self) -> None:
+        self.profiler.detach()
+        super().shutdown()
 
     def clear_scene(self) -> None:
         self._surface_distance_cache.clear()

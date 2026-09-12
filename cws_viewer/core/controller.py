@@ -5,6 +5,8 @@ project geometry and never decides production readiness.
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
+
 from dataclasses import dataclass, replace
 import copy
 import math
@@ -150,18 +152,20 @@ class ViewerCoreController(ViewerController):
         return result
 
     def _emit_selection(self) -> None:
-        index = self._ensure_index()
-        entity_ids = tuple(index.node(node_id).entity_id for node_id in self._session.selection)
-        self._event_bus.emit(
-            SelectionChanged(
-                selection=SelectionSet(
-                    node_ids=self._session.selection,
-                    entity_ids=entity_ids,
-                    primary_node_id=(self._session.selection[-1] if self._session.selection else None),
-                    level=self._session.selection_level,
+        profiler = getattr(self._backend, "profiler", None)
+        with profiler.span("selection_observers") if profiler else nullcontext():
+            index = self._ensure_index()
+            entity_ids = tuple(index.node(node_id).entity_id for node_id in self._session.selection)
+            self._event_bus.emit(
+                SelectionChanged(
+                    selection=SelectionSet(
+                        node_ids=self._session.selection,
+                        entity_ids=entity_ids,
+                        primary_node_id=(self._session.selection[-1] if self._session.selection else None),
+                        level=self._session.selection_level,
+                    )
                 )
             )
-        )
 
     def _sync_display(self, *, render: bool = True) -> None:
         index = self._ensure_index()
@@ -237,7 +241,9 @@ class ViewerCoreController(ViewerController):
         self._ensure_alive()
         self._event_bus.emit(SceneLoadStarted(project_id=scene.project_id))
         try:
-            index = SceneIndex.build(scene)
+            profiler = getattr(self._backend, "profiler", None)
+            with profiler.span("scene_index") if profiler else nullcontext():
+                index = SceneIndex.build(scene)
             self._index = index
             self._session.reset_for_scene(index)
             self._undo_stack.clear()

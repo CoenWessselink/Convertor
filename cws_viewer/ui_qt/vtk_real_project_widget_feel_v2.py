@@ -16,6 +16,7 @@ from cws_viewer.core.viewer_interaction_profile import (
     TRIMBLE_STYLE_INTERACTION_PROFILE,
 )
 from cws_viewer.performance import FrameTimeRecorder
+from cws_viewer.ui_qt.performance_overlay import ViewerPerformanceOverlay
 from cws_viewer.ui_qt import vtk_real_project_widget_feel as _feel_module
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
@@ -68,6 +69,7 @@ if qt_available():
             self._interaction_idle_timer.timeout.connect(self._restore_idle_quality)
             self._navigation_frame_metrics = FrameTimeRecorder()
             self._install_viewport_controls()
+            self._performance_overlay = ViewerPerformanceOverlay(self)
 
         RAL_COLOURS = (
             ("IFC / originele kleuren", None),
@@ -274,6 +276,7 @@ if qt_available():
         def performance_diagnostics(self) -> dict[str, Any]:
             return {
                 "schema": "cws-viewer-interaction-performance-2.0",
+                "runtime": self.backend.performance_snapshot(),
                 "navigation": self._navigation_frame_metrics.to_dict(),
                 "interaction_quality_active": self.interaction_quality_active,
                 "navigation_frame_ms": self.NAVIGATION_FRAME_MS,
@@ -355,6 +358,7 @@ if qt_available():
                 self._interaction_idle_timer.start()
 
         def closeEvent(self, event: Any) -> None:
+            self._performance_overlay.set_enabled(False)
             self._measure_preview_timer.stop()
             self._interaction_idle_timer.stop()
             self.backend.set_interaction_quality(False)
