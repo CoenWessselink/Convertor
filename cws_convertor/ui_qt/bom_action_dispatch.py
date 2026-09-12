@@ -111,10 +111,130 @@ def _machine_review_text(panel: Any, ids: tuple[str, ...]) -> str:
     return str(record.get("display_text", ""))
 
 
+def _values(value: Any) -> tuple[str, ...]:
+    if value in (None, ""):
+        return ()
+    if isinstance(value, str):
+        return (value.strip(),) if value.strip() else ()
+    if isinstance(value, (tuple, list, set)):
+        return tuple(dict.fromkeys(str(item).strip() for item in value if str(item).strip()))
+    return (str(value).strip(),) if str(value).strip() else ()
+
+
+def _alternatives_review(panel: Any, ids: tuple[str, ...]) -> _Outcome:
+    """Review only explicitly declared substitutions; never infer structural equivalence."""
+    project = panel._workspace.project
+    _parts(project, ids)
+    row_by_entity = {
+        entity_id: row
+        for row in panel._selected_rows()
+        for entity_id in tuple(getattr(row, "entity_ids", ()) or ())
+        if entity_id in ids
+    }
+    rows = []
+    candidate_count = 0
+    for key in ids:
+        part = project.parts[key]
+        properties = getattr(part, "properties", {}) or {}
+        profile_values = []
+        material_values = []
+        for name in ("alternative_profile", "alternative_profiles", "substitute_profile", "substitute_profiles"):
+            profile_values.extend(_values(properties.get(name)))
+        for name in ("alternative_material", "alternative_materials", "substitute_material", "substitute_materials"):
+            material_values.extend(_values(properties.get(name)))
+        row = row_by_entity.get(key)
+        if row is not None:
+            material_values.extend(_values(getattr(row, "alternative_material", "")))
+        profile_values = list(dict.fromkeys(profile_values))
+        material_values = list(dict.fromkeys(material_values))
+        candidate_count += len(profile_values) + len(material_values)
+        rows.append({
+            "part_id": key,
+            "manufacturing_hash": getattr(part, "manufacturing_hash", ""),
+            "current_profile": getattr(part, "normalized_profile", "") or getattr(part, "profile", ""),
+            "current_material": getattr(part, "normalized_material", "") or getattr(part, "material", ""),
+            "declared_profile_alternatives": profile_values,
+            "declared_material_alternatives": material_values,
+        })
+    record = {
+        "schema": "cws-bom-alternative-review-1",
+        "action_id": "optimize.alternatives",
+        "project_id": project.project_id,
+        "entity_ids": list(ids),
+        "rows": rows,
+        "candidate_count": candidate_count,
+        "substitution_applied": False,
+        "production_release_allowed": False,
+    }
+    record["sha256"] = stable_sha256(record)
+    panel._hub_state.data.setdefault("optimization_reviews", {})["alternatives"] = record
+    message = (f"{candidate_count} expliciet vastgelegde profiel/materiaalalternatieven beoordeeld; niets automatisch vervangen"
+               if candidate_count else
+               "Alternatieven beoordeeld: geen expliciet vastgelegde profiel/materiaalalternatieven; niets verzonnen of vervangen")
+    return _Outcome("passed", message)
+
+
+def _compare_plate_runs(panel: Any, ids: tuple[str, ...]) -> _Outcome:
+    """Compare two persisted, integrity-bound plate runs for the exact BOM scope."""
+    from cws_convertor.optimization.plate_nesting.project_service import _record_digest
+    project = panel._workspace.project
+    runs = project.settings.get("plate_nesting_runs", {}) if isinstance(project.settings, dict) else {}
+    matching = []
+    for record in runs.values() if isinstance(runs, dict) else ():
+        if not isinstance(record, dict) or record.get("schema") != "cws-project-plate-run-2":
+            continue
+        if record.get("record_sha256") != _record_digest(record):
+            continue
+        scope = tuple(str(value) for value in record.get("inputs", {}).get("entity_ids", ()))
+        if set(scope) != set(ids):
+            continue
+        plan = record.get("plan", {})
+        if isinstance(plan, dict) and plan.get("plan_sha256"):
+            matching.append(record)
+    if len(matching) < 2:
+        return _Outcome("blocked", "Geen twee integere plaatoptimalisaties voor exact deze selectie; niets fictief vergeleken")
+    previous, current = matching[-2], matching[-1]
+    old, new = previous["plan"], current["plan"]
+    metric_names = ("utilization", "scrap_area_mm2", "cut_length_mm", "pierce_count")
+    metrics = {
+        name: {
+            "previous": float(old.get(name, 0.0)),
+            "current": float(new.get(name, 0.0)),
+            "delta": float(new.get(name, 0.0)) - float(old.get(name, 0.0)),
+        }
+        for name in metric_names
+    }
+    comparison = {
+        "schema": "cws-bom-plate-comparison-1",
+        "action_id": "optimize.compare",
+        "project_id": project.project_id,
+        "entity_ids": list(ids),
+        "previous_run_id": old.get("run_id", ""),
+        "current_run_id": new.get("run_id", ""),
+        "previous_plan_sha256": old.get("plan_sha256", ""),
+        "current_plan_sha256": new.get("plan_sha256", ""),
+        "metrics": metrics,
+        "selection_widened": False,
+        "production_release_allowed": False,
+    }
+    comparison["sha256"] = stable_sha256(comparison)
+    panel._hub_state.data.setdefault("optimization_reviews", {})["plate_compare"] = comparison
+    return _Outcome(
+        "passed",
+        "Plaatoptimalisaties vergeleken voor exact dezelfde selectie · "
+        f"benutting Δ {metrics['utilization']['delta']:+.4f} · "
+        f"restoppervlak Δ {metrics['scrap_area_mm2']['delta']:+.1f} mm² · "
+        f"snijlengte Δ {metrics['cut_length_mm']['delta']:+.1f} mm · "
+        f"pierces Δ {metrics['pierce_count']['delta']:+.0f}",
+    )
+
+
 def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     from cws_convertor.optimization.plate_nesting.project_service import is_plate
     window, workspace = panel.window, panel._workspace
     _parts(workspace.project, ids)
+    if action == "optimize.alternatives":
+        return _alternatives_review(panel, ids)
     types = {is_plate(workspace.project.parts[key]) for key in ids}
     requested = True if action == "optimize.plate" else False if action in {"optimize.profile", "optimize.trade_length"} else None
     if len(types) != 1 or (requested is not None and types != {requested}):
@@ -155,11 +275,9 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
         return _Outcome("prepared", "Zaag/snede-instellingen geopend; geen fictieve toeslag toegepast en nog geen berekening")
     if action == "optimize.compare":
         if plate:
-            raise ValueError("Vergelijken van plaatplannen is nog niet aangesloten; er is geen vergelijking uitgevoerd")
+            return _compare_plate_runs(panel, ids)
         page._phase3_action("compare")
         return _Outcome("prepared", "Bestaande scenariocompare geopend; zie de runvalidatie voor het resultaat")
-    if action == "optimize.alternatives":
-        raise ValueError("Alternatieven moeten expliciet worden beoordeeld; deze batchactie is nog niet aangesloten")
     if action not in {"optimize.plate", "optimize.profile", "optimize.trade_length", "optimize.stock", "optimize"}:
         raise ValueError(f"Geen nestinguitvoerder voor {action}")
     # Caller records PREPARED before starting: its audit cannot invalidate an
