@@ -221,16 +221,34 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         entry: _PickLocatorEntry,
         point: Vector3,
     ) -> tuple[int, ...]:
+        """Return spatially local occurrence indexes without scanning a whole group.
+
+        Every occurrence in a glyph group shares the same source geometry.  The
+        locator radius is based on the largest world AABB half diagonal in that
+        group, so an occurrence whose bounds can contain the picked surface is
+        guaranteed to be in the radius result.  Only when the radius produces no
+        candidates do we fall back to the bounded nearest-centre set.
+        """
         vtk = self._vtk
         if vtk is None:
             return ()
+        nearby = vtk.vtkIdList()
+        entry.locator.FindPointsWithinRadius(
+            float(entry.search_radius), point.to_tuple(), nearby
+        )
+        if nearby.GetNumberOfIds():
+            return tuple(
+                int(nearby.GetId(candidate))
+                for candidate in range(nearby.GetNumberOfIds())
+            )
         nearest = vtk.vtkIdList()
         count = min(len(entry.node_ids), self.MAX_PICK_CANDIDATES)
         if count <= 0:
             return ()
         entry.locator.FindClosestNPoints(count, point.to_tuple(), nearest)
         return tuple(
-            int(nearest.GetId(index)) for index in range(nearest.GetNumberOfIds())
+            int(nearest.GetId(candidate))
+            for candidate in range(nearest.GetNumberOfIds())
         )
 
     def _node_nearest_surface_pick(
@@ -248,7 +266,11 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         # Long members must remain selectable near either end. Ranking only by
         # instance centre can discard the clicked beam before surface testing.
         bounded_candidates: list[tuple[float, float, str]] = []
-        for node_id in entry.node_ids:
+        candidate_indexes = self._candidate_instance_indexes(entry, world_point)
+        for candidate_index in candidate_indexes:
+            if candidate_index < 0 or candidate_index >= len(entry.node_ids):
+                continue
+            node_id = entry.node_ids[candidate_index]
             bounds = index.world_bounds_by_node.get(node_id)
             if bounds is None:
                 continue

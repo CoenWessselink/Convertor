@@ -24,6 +24,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         super().__init__(*args, **kwargs)
         self._highlighted_nodes: set[str] = set()
         self._selection_fill_groups: list[Any] = []
+        self._selection_fill_signature = ""
         self._measurement_label_bindings: list[tuple[Any, Vector3, tuple[int, int]]] = []
         self._measurement_preview_actors: list[Any] = []
         self._measurement_preview_labels: list[tuple[Any, Vector3, tuple[int, int]]] = []
@@ -257,15 +258,25 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
                 group.mapper.Update()
         self._highlighted_nodes = selected
         self._ral_refresh_all = False
-        self._rebuild_selection_fill(state, index)
+        fill_signature = self._signature(
+            tuple(sorted(selected)),
+            state.visible_node_ids,
+            state.explode_offsets_by_node,
+            state.display_preferences.selection_color,
+            state.display_preferences.render_mode,
+        )
+        if fill_signature != self._selection_fill_signature:
+            self._rebuild_selection_fill(state, index)
+            self._selection_fill_signature = fill_signature
 
     def _rebuild_selection_fill(self, state: Any, index: Any) -> None:
         if self._selection_fill_groups:
             self._remove_groups(self._selection_fill_groups)
             self._selection_fill_groups = []
-        # A selected production object must always remain visibly selected.
-        # Legacy projects may persist show_selection_outline=False; that flag
-        # may suppress the optional old wire outline, never the V2 yellow fill.
+        # Batch selected occurrences by shared source geometry/render mode.
+        # This preserves canonical node identity in the overlay group while
+        # avoiding one actor/mapper/VBO allocation per selected occurrence.
+        grouped: dict[tuple[str, Any], list[tuple[str, Matrix4, Rgba]]] = {}
         for node_id in sorted(self._renderable_selection(state, index)):
             if node_id not in state.visible_set or node_id not in index.nodes_by_id:
                 continue
@@ -276,11 +287,17 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
             base_group, _instance_index = base_entry
             offset = state.explode_offsets.get(node_id, Vector3.zero())
             matrix = Matrix4.translation(offset) @ index.world_transform_by_node[node_id]
+            grouped.setdefault((node.geometry_id, base_group.mode), []).append(
+                (node_id, matrix, state.display_preferences.selection_color)
+            )
+
+        for geometry_mode in sorted(grouped, key=lambda value: (value[0], str(value[1]))):
+            geometry_id, mode = geometry_mode
             fill_group = VtkProjectMeshBackend._build_mesh_group(
                 self,
-                node.geometry_id,
-                base_group.mode,
-                [(node_id, matrix, state.display_preferences.selection_color)],
+                geometry_id,
+                mode,
+                grouped[geometry_mode],
                 selection=True,
             )
             mapper = fill_group.actor.GetMapper()
@@ -299,6 +316,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
             self._selection_fill_groups.append(fill_group)
 
     def refresh_geometry(self, geometry_ids: tuple[str, ...] | None = None) -> None:
+        self._selection_fill_signature = ""
         if self._selection_fill_groups:
             self._remove_groups(self._selection_fill_groups)
             self._selection_fill_groups = []
@@ -586,6 +604,7 @@ class VtkProjectMeshFeelV2Backend(VtkProjectMeshFeelBackend):
         super().render()
 
     def clear_scene(self) -> None:
+        self._selection_fill_signature = ""
         if self._selection_fill_groups:
             self._remove_groups(self._selection_fill_groups)
             self._selection_fill_groups = []
