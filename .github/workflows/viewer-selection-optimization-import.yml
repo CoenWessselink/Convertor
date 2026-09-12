@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       BRANCH: agent/cws-pdf-ui-v3-complete-20260909
-      PATCH_SHA256: f8a172c3ce846f0b1dd1585ddc8547d44b4170a6b9c34e217a9f3a2b67ad7f09
+      PATCH_SHA256: 97bd0934bf20b70551cea098c85c5ee132bb95347113c024eba6cd925c137017
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,9 +31,9 @@ jobs:
             const fs = require('fs');
             const crypto = require('crypto');
             const parts = [
-              ['762a9222f4e8f43c755197596a8fd5bf0db3d175', '199b19fa632ab9970806ca6ac89c103c53bdc11ed99752a9bc63c7c04dd33ebe'],
-              ['18665fc884dd7f329ae8d54318b6717fd2c15cc0', 'e52c79375b9307342612944eadb382b441383d25dab807ff9f41cb08a42d764d'],
-              ['502324edbb277b0a8361cd7b7a8d7f7bc5d9d7e8', 'bd55471298ba7a7ec84d63f39225718a82ca366ce360ad0a8ce81a9959bdf2fa'],
+              ['d46e10fc9896a75981e1d8a06d00c2d3f37ff24f', '96bfe8798c5ff575945b0cfcc4e12f896d32fac9d6bc5fcb0ea7e7154232135a'],
+              ['9aa457433fdff4d17f8158db1e5318882d4a4845', '79ddf741c6007d9a09f9c5855f5a6854736f9cfc39548e843203e2c505df3962'],
+              ['37cff5a8486abeaa8c5a21046d9e4c34241a3237', '91de79e5d444d577979cc85a207ad19c55a8008a9fd4ebe883fdd57c75eb21e1'],
             ];
             const buffers = [];
             for (let i = 0; i < parts.length; i++) {
