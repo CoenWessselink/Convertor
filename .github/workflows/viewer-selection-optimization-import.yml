@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       BRANCH: agent/cws-pdf-ui-v3-complete-20260909
-      PATCH_SHA256: 97bd0934bf20b70551cea098c85c5ee132bb95347113c024eba6cd925c137017
+      PATCH_SHA256: 2df8dd67a59b39be43c9f77f9cdf06cc4694cfe41568b44797f140901222085f
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,31 +24,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Retrieve and verify immutable tested box lasso patch parts
+      - name: Retrieve and verify immutable IFC mirror optimization patch
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const crypto = require('crypto');
-            const parts = [
-              ['d46e10fc9896a75981e1d8a06d00c2d3f37ff24f', '96bfe8798c5ff575945b0cfcc4e12f896d32fac9d6bc5fcb0ea7e7154232135a'],
-              ['9aa457433fdff4d17f8158db1e5318882d4a4845', '79ddf741c6007d9a09f9c5855f5a6854736f9cfc39548e843203e2c505df3962'],
-              ['37cff5a8486abeaa8c5a21046d9e4c34241a3237', '91de79e5d444d577979cc85a207ad19c55a8008a9fd4ebe883fdd57c75eb21e1'],
-            ];
-            const buffers = [];
-            for (let i = 0; i < parts.length; i++) {
-              const [sha, expected] = parts[i];
-              const response = await github.rest.git.getBlob({...context.repo, file_sha: sha});
-              const data = Buffer.from(response.data.content.replace(/\s/g, ''), 'base64');
-              const digest = crypto.createHash('sha256').update(data).digest('hex');
-              if (digest !== expected) throw new Error(`Patch part ${i} mismatch: ${digest}`);
-              buffers.push(data);
-            }
-            const patch = Buffer.concat(buffers);
-            const fullDigest = crypto.createHash('sha256').update(patch).digest('hex');
-            if (fullDigest !== process.env.PATCH_SHA256) throw new Error(`Full patch mismatch: ${fullDigest}`);
-            fs.writeFileSync('/tmp/phase_boxlasso.patch', patch);
-      - name: Apply box lasso source patch to latest coordinated branch
+            const sha = 'ebd27728effc7a632ad8e27af5882bdfe1e62fff';
+            const response = await github.rest.git.getBlob({...context.repo, file_sha: sha});
+            const patch = Buffer.from(response.data.content.replace(/\s/g, ''), 'base64');
+            const digest = crypto.createHash('sha256').update(patch).digest('hex');
+            if (digest !== process.env.PATCH_SHA256) throw new Error(`Patch mismatch: ${digest}`);
+            fs.writeFileSync('/tmp/ifc_mirror_cache.patch', patch);
+      - name: Apply IFC mirror source patch to latest coordinated branch
         shell: bash
         run: |
           set -euo pipefail
@@ -56,12 +44,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/$BRANCH)"
           git config user.name 'CWS Viewer Optimization Build'
           git config user.email 'cws-viewer-build@users.noreply.github.com'
-          git am --3way /tmp/phase_boxlasso.patch
+          git am --3way /tmp/ifc_mirror_cache.patch
           git diff HEAD^ --check
           mkdir -p evidence
           git rev-parse HEAD > evidence/source_commit.txt
           git diff --stat HEAD^ > evidence/change_stat.txt
-          sha256sum /tmp/phase_boxlasso.patch > evidence/PATCH_SHA256
+          sha256sum /tmp/ifc_mirror_cache.patch > evidence/PATCH_SHA256
       - name: Install locked native runtime
         shell: bash
         run: |
@@ -72,7 +60,7 @@ jobs:
             libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
           python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > evidence/runtime.txt
-      - name: Run native scheduler selection identity and bulk projection regressions
+      - name: Run native selection load and mirror regressions
         shell: bash
         run: |
           set -euo pipefail
@@ -89,6 +77,8 @@ jobs:
             tests/viewer_indexed_picking_smoke.py \
             tests/viewer_persistent_selection_overlay_smoke.py \
             tests/viewer_screen_selection_bulk_projection_smoke.py \
+            tests/viewer_source_mirror_smoke.py \
+            tests/performance_loading_v2_smoke.py \
             --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
           sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
       - name: Fast-forward publish exact tested source commit
@@ -101,7 +91,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: CWS_Viewer_Selection_Optimization_${{ github.run_id }}
+          name: CWS_Viewer_Load_Optimization_${{ github.run_id }}
           path: evidence/*
           if-no-files-found: warn
           retention-days: 30
