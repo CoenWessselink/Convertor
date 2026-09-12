@@ -65,11 +65,12 @@ jobs:
           sudo apt-get install -y xvfb libegl1 libopengl0 libgl1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-shape0 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
           python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > evidence/runtime.txt
-      - name: Native regression gate
+      - name: Native combined regression gate
         shell: bash
         run: |
           set -euo pipefail
           xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb python -m pytest -q \
+            tests/viewer_incremental_instance_state_smoke.py \
             tests/viewer_render_scheduler_smoke.py tests/viewer_runtime_profiler_smoke.py \
             tests/viewer_scheduler_native_smoke.py tests/viewer_native_initialization_smoke.py \
             tests/viewer_v15_selection_pivot_parity_smoke.py tests/viewer_v15_trimble_feel_v2_smoke.py \
