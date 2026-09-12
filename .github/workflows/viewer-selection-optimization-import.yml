@@ -1,0 +1,93 @@
+name: Viewer selection optimization import
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths:
+      - '.github/workflows/viewer-selection-optimization-import.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: viewer-selection-optimization-import
+  cancel-in-progress: false
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BRANCH: agent/cws-pdf-ui-v3-complete-20260909
+      PATCH_BLOB: 62c6b182c66d14eca360486a5e76577a6af51578
+      PATCH_SHA256: 63ef4c95a1f2be225587e710ed3f851158be98c7d15b85cef68e75ab94f833ea
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Retrieve immutable tested patch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const response = await github.rest.git.getBlob({...context.repo, file_sha: process.env.PATCH_BLOB});
+            const data = Buffer.from(response.data.content.replace(/\s/g, ''), 'base64');
+            const digest = crypto.createHash('sha256').update(data).digest('hex');
+            if (digest !== process.env.PATCH_SHA256) throw new Error(`Patch digest mismatch: ${digest}`);
+            fs.writeFileSync('/tmp/phase_cd.patch', data);
+      - name: Apply patch to latest coordinated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "$BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/$BRANCH)"
+          git config user.name 'CWS Viewer Optimization Build'
+          git config user.email 'cws-viewer-build@users.noreply.github.com'
+          git am --3way /tmp/phase_cd.patch
+          git diff HEAD^ --check
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/source_commit.txt
+          git diff --stat HEAD^ > evidence/change_stat.txt
+      - name: Install locked native runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libegl1 libopengl0 libgl1 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-shape0 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
+          python -m pip install -r requirements-runtime.lock.txt pytest
+          python -m pip freeze > evidence/runtime.txt
+      - name: Run native scheduler selection and identity regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb python -m pytest -q \
+            tests/viewer_render_scheduler_smoke.py \
+            tests/viewer_runtime_profiler_smoke.py \
+            tests/viewer_scheduler_native_smoke.py \
+            tests/viewer_native_initialization_smoke.py \
+            tests/viewer_v15_selection_pivot_parity_smoke.py \
+            tests/viewer_v15_trimble_feel_v2_smoke.py \
+            tests/viewer_v15_feel_fix_smoke.py \
+            tests/viewer_v2_core_controller_smoke.py \
+            tests/bom_selection_identity_smoke.py \
+            tests/viewer_indexed_picking_smoke.py \
+            tests/viewer_persistent_selection_overlay_smoke.py \
+            --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
+          sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
+      - name: Fast-forward publish exact tested commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(cat evidence/source_commit.txt)"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git push origin HEAD:"$BRANCH"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Viewer_Selection_Optimization_${{ github.run_id }}
+          path: evidence/*
+          if-no-files-found: error
+          retention-days: 30
