@@ -19,6 +19,7 @@ _production_review = _base._production_review
 _nesting = _base._nesting
 _export = _base._export
 _drawing = _base._drawing
+_resolve_part_ids = _base._resolve_part_ids
 
 
 def _validate_request(panel: Any, ids: tuple[str, ...], preflight: Any) -> Any:
@@ -142,7 +143,7 @@ def _viewer_intent(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
                 "Afstandsmeting vereist exact twee geselecteerde viewerobjecten; selectie is niet aangepast"
             )
         from cws_viewer.core.v15_selection_measurement import V15SelectionMeasurementService
-        from cws_viewer.measurements import ExactMeasurementAnchor, SnapType
+        from cws_viewer.measurements import ExactMeasurementAnchor, MeasurementSettings, SnapType
 
         service = V15SelectionMeasurementService(
             controller,
@@ -162,7 +163,10 @@ def _viewer_intent(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
                 proof=service._proof_for_node(node_id),
             )
 
-        measurement = service.add_distance(anchor(selected[0]), anchor(selected[1]))
+        settings = controller.get_measurement_settings() or MeasurementSettings()
+        measurement = service.add_distance(
+            anchor(selected[0]), anchor(selected[1]), settings=settings
+        )
         payload = measurement.to_dict() if hasattr(measurement, "to_dict") else {
             "measurement_id": str(getattr(measurement, "measurement_id", "")),
             "value": getattr(measurement, "value", None),
