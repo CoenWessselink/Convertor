@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       BRANCH: agent/cws-pdf-ui-v3-complete-20260909
-      PATCH_SHA256: 63ef4c95a1f2be225587e710ed3f851158be98c7d15b85cef68e75ab94f833ea
+      PATCH_SHA256: 5f69601522c573a0a6815dbc733a6296ecac3700500867818e60580667276dd7
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,18 +24,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Retrieve and verify immutable tested patch parts
+      - name: Retrieve and verify immutable tested source patch parts
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const crypto = require('crypto');
             const parts = [
-              ['fda6d5b3be78e7d0213e651088368c4996ade6cc', '17afb1d24647adf9883066629672894fdad2e89a10419142015523a1581914a4'],
-              ['77bdc2d0c44f1295f1be678c0a376397125c3ffd', '02ade07d0bad58ac49ed1b1cfb00a0d3260e4a2c9f0fb243cfa0ee95680cb8c7'],
-              ['5013fe423cd72218eb4f0556dea407ccf8bc839c', '5d1e8e260dcc38c3874bdd2e9a42882bc1bc903f639c974055923b6ca3dd8ad6'],
-              ['99a8812b2a0c9aa450c310bbf82fade1974305f7', '890060b7942c15f4b1ca18a0f8892d5c84989438050007fdf38cfe1777b4bd86'],
-              ['76182521c7d9547ddffae1bb8baf4f18939b899f', '045cbdcc57c2f6a8a1a0644413dd474c7eb3d1ad555bc44e65e70348a9476710'],
+              ['446d0a90120b1d337aab2df301baecadb6197d39', '9bb72ea609f9e93512d36de0c81a97b176f0c2e5d8caef42ef75bb0dfa549a30'],
+              ['9d7111082f604198f8959f9c9a9c4d081c564d1e', 'f7bc4f117bff1e44de8ae8deb19731d72b22cdfaf06ed8dcef8f8c7dc293c0b2'],
+              ['7a856c92effdb5896afd25628c6c0740053d0c51', '3e2b6c0434c4574ba07b2e6850d9651e7f36f7fe13424651e42cd540da75b5a8'],
+              ['5b082d195ae65fd82844e5d2b8612b622bded137', 'bd17ca859ebd63acb091ed72b5de7128115ffc6f3a5e327dbcd4ed7c71c78bd4'],
             ];
             const buffers = [];
             for (let i = 0; i < parts.length; i++) {
@@ -50,7 +49,7 @@ jobs:
             const fullDigest = crypto.createHash('sha256').update(patch).digest('hex');
             if (fullDigest !== process.env.PATCH_SHA256) throw new Error(`Full patch mismatch: ${fullDigest}`);
             fs.writeFileSync('/tmp/phase_cd.patch', patch);
-      - name: Apply patch to latest coordinated branch
+      - name: Apply source patch to latest coordinated branch
         shell: bash
         run: |
           set -euo pipefail
@@ -92,7 +91,7 @@ jobs:
             tests/viewer_persistent_selection_overlay_smoke.py \
             --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
           sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
-      - name: Fast-forward publish exact tested commit
+      - name: Fast-forward publish exact tested source commit
         shell: bash
         run: |
           set -euo pipefail
