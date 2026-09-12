@@ -1,0 +1,32 @@
+
+--- stderr ---
+test_changed_snapshot_is_rejected (__main__.ReviewExports.test_changed_snapshot_is_rejected) ... ok
+test_changed_source_during_write_cleans_staging_and_does_not_publish (__main__.ReviewExports.test_changed_source_during_write_cleans_staging_and_does_not_publish) ... ok
+test_collision_does_not_overwrite_existing_review (__main__.ReviewExports.test_collision_does_not_overwrite_existing_review) ... ok
+test_complete_review_kit_still_contains_original_formats (__main__.ReviewExports.test_complete_review_kit_still_contains_original_formats) ... ok
+test_csv_has_eight_datasets_no_unrequested_pdf_or_xlsx (__main__.ReviewExports.test_csv_has_eight_datasets_no_unrequested_pdf_or_xlsx) ... ok
+test_empty_strict_scope_is_rejected (__main__.ReviewExports.test_empty_strict_scope_is_rejected) ... ok
+test_explicit_assembly_keeps_its_children (__main__.ReviewExports.test_explicit_assembly_keeps_its_children) ... ok
+test_group_only_scope_requires_explicit_entities (__main__.ReviewExports.test_group_only_scope_requires_explicit_entities) ... ok
+test_invalid_quantity_is_rejected_not_truncated (__main__.ReviewExports.test_invalid_quantity_is_rejected_not_truncated) ... ok
+test_json_is_only_json_and_preserves_raw_data (__main__.ReviewExports.test_json_is_only_json_and_preserves_raw_data) ... ok
+test_legacy_scope_behavior_is_not_silently_changed (__main__.ReviewExports.test_legacy_scope_behavior_is_not_silently_changed) ... ok
+test_missing_output_directory_is_not_created (__main__.ReviewExports.test_missing_output_directory_is_not_created) ... ok
+test_nested_shared_assembly_group_is_rejected (__main__.ReviewExports.test_nested_shared_assembly_group_is_rejected) ... ok
+test_repeated_export_does_not_mix_formats_or_modify_project (__main__.ReviewExports.test_repeated_export_does_not_mix_formats_or_modify_project) ... ok
+test_selected_part_keeps_assembly_mark_as_context_not_sibling_rows (__main__.ReviewExports.test_selected_part_keeps_assembly_mark_as_context_not_sibling_rows) ... ok
+test_stale_before_start_writes_nothing (__main__.ReviewExports.test_stale_before_start_writes_nothing) ... ok
+test_strict_scope_requires_project (__main__.ReviewExports.test_strict_scope_requires_project) ... ok
+test_strict_selection_does_not_expand_to_shared_mark_or_parent_siblings (__main__.ReviewExports.test_strict_selection_does_not_expand_to_shared_mark_or_parent_siblings) ... ok
+test_two_selected_parts_preserve_full_actual_quantity (__main__.ReviewExports.test_two_selected_parts_preserve_full_actual_quantity) ... ok
+test_unknown_action_writes_nothing (__main__.ReviewExports.test_unknown_action_writes_nothing) ... ok
+test_unknown_group_does_not_silently_export_empty_scope (__main__.ReviewExports.test_unknown_group_does_not_silently_export_empty_scope) ... ok
+test_unknown_strict_entity_is_rejected (__main__.ReviewExports.test_unknown_strict_entity_is_rejected) ... ok
+test_writer_failure_cleans_partial_files (__main__.ReviewExports.test_writer_failure_cleans_partial_files) ... ok
+test_xlsx_has_only_workbook_and_no_formula_or_external_link_injection (__main__.ReviewExports.test_xlsx_has_only_workbook_and_no_formula_or_external_link_injection) ... ok
+test_zero_quantity_is_not_invented_as_one (__main__.ReviewExports.test_zero_quantity_is_not_invented_as_one) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 0.652s
+
+OK

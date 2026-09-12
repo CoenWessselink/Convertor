@@ -830,9 +830,14 @@ class Phase3ExportCenterPanel(QWidget):
         project_id = str(getattr(self.project, "project_id", getattr(self.project, "id", "")))
         self._active_export_service = self.service
         binding = getattr(self, "_bom_export_binding", None)
+        chosen_grouping = ExportGrouping(self.grouping.currentData()).value
+        if binding and binding.get("action") == "export.grouping" and binding.get("grouping") == "choose_explicit_grouping":
+            # Generate confirms the user's current grouping for this exact job;
+            # later control changes cannot change its completion identity.
+            binding = {**binding, "grouping": chosen_grouping}
         self._active_bom_binding = (binding if binding and binding["ids"] == tuple(planned.preflight.resolution.selected_part_ids)
                                    and binding["formats"] == self._formats()
-                                   and binding["grouping"] == ExportGrouping(self.grouping.currentData()).value else None)
+                                   and binding["grouping"] == chosen_grouping else None)
         self._bom_result_recorded = False
         self.current_background_job_id = self.job_manager.submit(
             "phase3-export",

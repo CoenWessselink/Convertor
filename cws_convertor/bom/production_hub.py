@@ -1193,7 +1193,7 @@ ACTION_DEFINITIONS = (
     BOMActionDefinition("production.operations", "Bewerkingen bekijken", "Machine en productie", ("parts",), "production"),
     BOMActionDefinition("production.nc_preview", "NC1/DSTV-preview", "Machine en productie", ("parts",), "export"),
     BOMActionDefinition("production.release", "Vrijgeven voor productie", "Machine en productie", ("parts", "assemblies"), "production", True, False, True),
-    BOMActionDefinition("production.withdraw", "Productievrijgave intrekken", "Machine en productie", ("parts", "assemblies"), "production", True),
+    BOMActionDefinition("production.withdraw", "Productievrijgave intrekken", "Machine en productie", ("parts", "assemblies"), "production", True, True),
     # Optimalisatie en voorraad
     BOMActionDefinition("optimize.profile", "Profielnesting starten", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
     BOMActionDefinition("optimize.plate", "Plaatnesting starten", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
@@ -1311,7 +1311,7 @@ class BOMActionMatrix:
         ):
             return "Niet alle geselecteerde onderdelen hebben een machinekeuze"
         if action_id == "machine.auto_accept" and any(
-            row.machine_status.casefold() not in {"gereed", "ready", "eligible", "assigned"}
+            row.machine_status.casefold() not in {"gereed", "ready", "eligible", "assigned", "voorstel gereed"}
             for row in rows
         ):
             return "Niet alle automatische machinekeuzes zijn capability-gevalideerd"

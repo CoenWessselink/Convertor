@@ -406,6 +406,9 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
     page._bom_unsupported_grouping = ""
     page.generate_button.setEnabled(True)
     if grouping == "choose_explicit_grouping":
+        page._bom_export_binding = {"panel": panel, "workspace": panel._workspace, "preflight": preflight,
+                                    "ids": tuple(sorted(set(parts))), "grouping": grouping,
+                                    "formats": tuple(page._formats()), "action": action}
         page.grouping.setFocus()
         return _Outcome("prepared", "Kies en controleer de groepering en uitvoermap; nog geen bestanden gemaakt")
     if grouping == "part_mark" and all(key in panel._workspace.project.assemblies for key in ids):

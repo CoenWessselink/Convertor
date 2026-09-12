@@ -33,6 +33,8 @@ class MachineAssignment:
     assigned_by: str = ""
     assigned_at: str = ""
     blocking_codes: tuple[str, ...] = ()
+    manufacturing_hash: str = ""
+    capability_report_sha256: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -44,6 +46,8 @@ class MachineAssignment:
         source = dict(payload or {})
         return cls(
             part_id=str(source.get("part_id") or ""),
+            manufacturing_hash=str(source.get("manufacturing_hash") or ""),
+            capability_report_sha256=str(source.get("capability_report_sha256") or ""),
             recommended_machine_id=str(source.get("recommended_machine_id") or ""),
             assigned_machine_id=str(source.get("assigned_machine_id") or ""),
             assignment_source=str(source.get("assignment_source") or "AUTO").upper(),
@@ -179,6 +183,11 @@ class MachineRoutingService:
         def add(report: Any, *, fallback_part: str = "", fallback_machine: str = "") -> None:
             part_id = str(MachineRoutingService._value(report, "part_id", fallback_part) or fallback_part)
             machine_id = str(MachineRoutingService._value(report, "machine_id", fallback_machine) or fallback_machine)
+            # A report embedded in a canonical entity/machine bucket may not
+            # silently migrate to another entity through its payload identity.
+            if ((fallback_part in getattr(project, "parts", {}) and part_id != fallback_part)
+                    or (fallback_machine and machine_id != fallback_machine)):
+                return
             if not part_id or not machine_id or (requested and part_id not in requested):
                 return
             result.setdefault(part_id, {})[machine_id] = report
@@ -207,13 +216,61 @@ class MachineRoutingService:
         return result
 
     @staticmethod
-    def assignments(project: Any) -> dict[str, MachineAssignment]:
+    def _stored_assignments(project: Any) -> dict[str, MachineAssignment]:
         routing = dict((getattr(project, "settings", {}) or {}).get("machine_routing", {}) or {})
         return {
             str(part_id): MachineAssignment.from_dict(value)
             for part_id, value in dict(routing.get("assignments", {}) or {}).items()
             if isinstance(value, Mapping)
         }
+
+    @staticmethod
+    def _capability_digest(report: Any) -> str:
+        payload = report.to_dict() if hasattr(report, "to_dict") else report
+        return stable_sha256(payload) if isinstance(payload, Mapping) else ""
+
+    @classmethod
+    def _current_machine_profile(cls, project: Any, report: Any) -> bool:
+        profile_id = str(cls._value(report, "machine_profile_id", "") or "")
+        profile_hash = str(cls._value(report, "machine_profile_sha256", "") or "")
+        if not profile_id and not profile_hash:
+            return True  # Legacy capability shapes have no machine-profile binding.
+        profile = getattr(project, "machine_profiles", {}).get(profile_id)
+        return bool(profile is not None and getattr(profile, "enabled", False)
+                    and profile.machine_id == cls._value(report, "machine_id", "")
+                    and profile_hash == stable_sha256(profile.base_to_dict()))
+
+    @classmethod
+    def current_capabilities(cls, project: Any, part_id: str) -> dict[str, Any]:
+        part = project.parts.get(part_id)
+        current_hash = str(getattr(part, "manufacturing_hash", "") or "")
+        if not current_hash:
+            return {}
+        return {machine: report for machine, report in cls.project_capabilities(project, (part_id,)).get(part_id, {}).items()
+                if cls._value(report, "manufacturing_hash", "") == current_hash
+                and str(cls._value(report, "part_id", part_id)) == part_id
+                and str(cls._value(report, "machine_id", machine)) == machine
+                and str(cls._value(report, "status", "")).casefold() not in {"stale", "invalid", "failed", "blocked", "review_required"}
+                and cls._value(report, "review_required", False) is not True
+                and cls._current_machine_profile(project, report)
+                and cls._capability_digest(report)}
+
+    @classmethod
+    def assignments(cls, project: Any) -> dict[str, MachineAssignment]:
+        """Project stored choices with current evidence, without mutating them."""
+        result = cls._stored_assignments(project)
+        for part_id, assignment in tuple(result.items()):
+            if assignment.assignment_source != "AUTO" or assignment.routing_status != "ready":
+                continue
+            report = cls.current_capabilities(project, part_id).get(assignment.assigned_machine_id)
+            if (report is None or not assignment.manufacturing_hash
+                    or assignment.manufacturing_hash != project.parts[part_id].manufacturing_hash
+                    or assignment.capability_report_sha256 != cls._capability_digest(report)
+                    or not cls().route(part_id, {assignment.assigned_machine_id: report}).eligible):
+                result[part_id] = replace(assignment, routing_status="blocked", capability_status="stale",
+                    blocking_codes=("CWS.ROUTING.STALE_CAPABILITY",),
+                    reason="Machinebewijs ontbreekt, is gewijzigd of hoort bij een eerdere onderdeelrevisie")
+        return result
 
     def assign(
         self,
@@ -237,7 +294,7 @@ class MachineRoutingService:
         explanation = str(reason or "").strip()
         if not explanation:
             raise ValueError("Een reden is verplicht voor handmatige machine-indeling")
-        existing = self.assignments(project)
+        existing = self._stored_assignments(project)
         now = utc_now_iso()
         changed: list[MachineAssignment] = []
         for part_id in ids:
@@ -287,8 +344,8 @@ class MachineRoutingService:
         unknown = tuple(value for value in ids if value not in project.parts)
         if unknown:
             raise KeyError("Onbekende onderdeel-ID(s): " + ", ".join(unknown))
-        capabilities = self.project_capabilities(project, ids)
-        existing = self.assignments(project)
+        capabilities = {part_id: self.current_capabilities(project, part_id) for part_id in ids}
+        existing = self._stored_assignments(project)
         now = utc_now_iso()
         changed: list[MachineAssignment] = []
         for part_id in ids:
@@ -308,6 +365,8 @@ class MachineRoutingService:
             )
             assignment = MachineAssignment(
                 part_id=part_id,
+                manufacturing_hash=project.parts[part_id].manufacturing_hash if decision.eligible else "",
+                capability_report_sha256=self._capability_digest(capabilities[part_id][decision.machine_id]) if decision.eligible else "",
                 recommended_machine_id=decision.machine_id,
                 assigned_machine_id=decision.machine_id if decision.eligible else "",
                 assignment_source="AUTO",
@@ -352,7 +411,7 @@ class MachineRoutingService:
         explanation = str(reason or "").strip()
         if not explanation:
             raise ValueError("Een reden is verplicht voor wijziging van de machinevergrendeling")
-        existing = self.assignments(project)
+        existing = self._stored_assignments(project)
         changed: list[MachineAssignment] = []
         for part_id in ids:
             assignment = existing.get(part_id)
@@ -390,7 +449,7 @@ class MachineRoutingService:
         explanation = str(reason or "").strip()
         if not explanation:
             raise ValueError("Een reden is verplicht voor het resetten van machine-indeling")
-        existing = self.assignments(project)
+        existing = self._stored_assignments(project)
         for part_id in ids:
             existing.pop(part_id, None)
         snapshot = self._persist(project, existing)

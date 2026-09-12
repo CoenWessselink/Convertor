@@ -745,6 +745,23 @@ if qt_available():
                 self._route_scoped_action(action_id, "viewer")
                 return
             if action_id.startswith("inspect."):
+                if action_id in {"inspect.source", "inspect.assembly", "inspect.hashes"}:
+                    from .bom_inspection import inspect_entities
+                    try:
+                        self._validate_action_binding(self._matrix_action_binding)
+                        ids = tuple(dict.fromkeys(key for row in self._action_rows() for key in row.entity_ids))
+                        report = inspect_entities(self._workspace, action_id, ids)
+                    except (ValueError, OSError) as exc:
+                        QtWidgets.QMessageBox.warning(self, "BOM-inspectie geweigerd", str(exc))
+                        return
+                    key = "traceability" if action_id == "inspect.hashes" else "properties"
+                    label = self.detail_labels[key]
+                    label.setTextFormat(QtCore.Qt.TextFormat.PlainText)
+                    label.setText(report["text"])
+                    self.detail_tabs.setCurrentIndex(4 if action_id == "inspect.hashes" else 0)
+                    self._last_bom_inspection = report
+                    self._record_routed_result(action_id, report["text"])
+                    return
                 tab = {
                     "inspect.properties": 0, "inspect.source": 0,
                     "inspect.assembly": 0, "inspect.traceability": 4,
@@ -787,7 +804,7 @@ if qt_available():
                 self._open_production_workflow()
                 return
             if action_id == "production.withdraw":
-                self._set_workflow_status("production.withdraw", "release_status", "withdrawn")
+                self._withdraw_production()
                 return
             if action_id.startswith("production."):
                 route = "export" if action_id == "production.nc_preview" else "production_workflow"
@@ -928,7 +945,11 @@ if qt_available():
                 page_layout.addWidget(value)
                 page_layout.addStretch(1)
                 self.detail_labels[key] = value
-                self.detail_tabs.addTab(page, label)
+                scroll = QtWidgets.QScrollArea()
+                scroll.setWidgetResizable(True)
+                scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+                scroll.setWidget(page)
+                self.detail_tabs.addTab(scroll, label)
             self.detail = self.detail_labels["properties"]
             self.detail_tabs.setMaximumHeight(190)
             layout.addWidget(self.detail_tabs)
@@ -2015,11 +2036,16 @@ if qt_available():
                 if entity_id in self._workspace.project.parts
             )
             try:
+                def accept_current() -> Any:
+                    assigned = MachineRoutingService().assign_automatic(
+                        self._workspace.project, part_ids, user="bom-operator"
+                    )
+                    if not assigned or any(item.routing_status != "ready" or item.assignment_source != "AUTO" for item in assigned):
+                        raise ValueError("Niet alle geselecteerde onderdelen hebben een actuele, geldige automatische machinekeuze")
+                    return assigned
                 execution = self._execute_bom_transaction(
                     "machine.auto_accept", preflight,
-                    lambda: MachineRoutingService().assign_automatic(
-                        self._workspace.project, part_ids, user="bom-operator"
-                    ),
+                    accept_current,
                     entity_ids=part_ids,
                     messages=("Automatische toewijzing op bewezen capaciteit geaccepteerd",),
                 )
@@ -2518,6 +2544,42 @@ if qt_available():
         def _set_workflow_status(self, action: str, field_name: str, value: str) -> None:
             self._execute_field_transaction(action, field_name, value)
 
+        def _withdraw_production(self) -> None:
+            if self._workspace is None or self._hub_state is None:
+                return
+            rows = self._action_rows()
+            preflight = self._confirm_preflight("inspect", rows, allow_blocked_review_export=True)
+            if preflight is None:
+                return
+            source_ids = self._eligible_entity_ids(rows, preflight)
+            from .bom_action_dispatch import _resolve_part_ids
+            try:
+                part_ids = _resolve_part_ids(self._workspace.project, source_ids)
+                session = self._workspace.session
+                if session.project is not self._workspace.project:
+                    raise ValueError("Workbench en BOM gebruiken niet hetzelfde project")
+                def mutate() -> None:
+                    for key in part_ids:
+                        part = self._workspace.project.parts[key]
+                        if part.workbench:
+                            session.update_part_workbench(key, {}, user="bom-operator",
+                                reason="Productievrijgave ingetrokken via BOM")
+                            current = part.workbench.get("current_revision", {})
+                            if current.get("review_status") == "released" or part.nc1_eligible:
+                                raise ValueError("Canonieke productievrijgave kon niet worden ingetrokken")
+                        part.properties["release_status"] = "withdrawn"
+                    for key in source_ids:
+                        if key in self._workspace.project.assemblies:
+                            self._workspace.project.assemblies[key].properties["release_status"] = "withdrawn"
+                execution = self._execute_bom_transaction("production.withdraw", preflight, mutate,
+                    entity_ids=tuple(dict.fromkeys((*source_ids, *part_ids))),
+                    messages=("Canonieke Workbench-vrijgave ingetrokken; nieuwe productie-export blijft geblokkeerd",))
+                self._mark_project_dirty()
+                self._rebuild_bom_snapshot()
+                self._show_batch_result(execution.result)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Productievrijgave intrekken geblokkeerd", str(exc))
+
         def _edit_selection(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
@@ -2907,6 +2969,12 @@ if qt_available():
                                               outputs=outcome.outputs,
                                               messages=(outcome.message, request["request_sha256"]))
                 self._mark_project_dirty()
+            if action in {"edit.profile", "edit.material", "edit.length"} and outcome.page is not None:
+                outcome.page._bom_edit_binding = {
+                    "panel": self, "workspace": workspace, "state": state,
+                    "action": action, "preflight": preflight, "entity_ids": entity_ids,
+                    "source_binding": self._capture_action_binding(),
+                }
             if outcome.start is not None:
                 if action == "drawing.batch_pdf":
                     try:

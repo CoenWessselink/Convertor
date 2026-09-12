@@ -95,6 +95,8 @@ def main() -> int:
         combined = (stdout + b"\n" + stderr).decode("utf-8", errors="replace")
         status = _result_status(returncode, timed_out, combined).upper()
         status = {"PASSED": "PASS", "FAILED": "FAIL", "SKIPPED": "PARTIAL", "TIMEOUT": "FAIL"}[status]
+        if status == "PASS" and not combined.strip():
+            status = "PARTIAL"  # Importing an execution helper is not a test run.
         log_name = Path(script).stem + ".txt"
         log_bytes = stdout + b"\n--- stderr ---\n" + stderr
         (output / log_name).write_bytes(log_bytes)

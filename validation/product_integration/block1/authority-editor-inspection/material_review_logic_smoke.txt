@@ -1,0 +1,22 @@
+
+--- stderr ---
+test_bulk_scope_is_exact_and_confirmed_parts_are_fail_closed (__main__.MaterialReviewLogicTests.test_bulk_scope_is_exact_and_confirmed_parts_are_fail_closed) ... ok
+test_bulk_transaction_rolls_back_all_parts_on_save_failure (__main__.MaterialReviewLogicTests.test_bulk_transaction_rolls_back_all_parts_on_save_failure) ... ok
+test_candidates_separate_catalog_match_from_source_confidence (__main__.MaterialReviewLogicTests.test_candidates_separate_catalog_match_from_source_confidence) ... ok
+test_classification_snapshot_restores_undo_metadata (__main__.MaterialReviewLogicTests.test_classification_snapshot_restores_undo_metadata) ... ok
+test_confirmation_failure_rolls_back_workbench_and_other_part_changes (__main__.MaterialReviewLogicTests.test_confirmation_failure_rolls_back_workbench_and_other_part_changes) ... ok
+test_confirmation_survives_save_reopen_then_undo_redo (__main__.MaterialReviewLogicTests.test_confirmation_survives_save_reopen_then_undo_redo) ... ok
+test_fingerprint_detects_non_material_evidence_changes (__main__.MaterialReviewLogicTests.test_fingerprint_detects_non_material_evidence_changes) ... ok
+test_generic_entity_confidence_is_never_used_as_material_evidence (__main__.MaterialReviewLogicTests.test_generic_entity_confidence_is_never_used_as_material_evidence) ... ok
+test_invalid_material_cannot_partially_start_workbench (__main__.MaterialReviewLogicTests.test_invalid_material_cannot_partially_start_workbench) ... ok
+test_real_session_confirmation_undo_redo_keeps_material_and_grade_atomic (__main__.MaterialReviewLogicTests.test_real_session_confirmation_undo_redo_keeps_material_and_grade_atomic) ... ok
+test_real_session_rejection_persists_reason_without_overwriting_source (__main__.MaterialReviewLogicTests.test_real_session_rejection_persists_reason_without_overwriting_source) ... ok
+test_review_reasons_detect_conflicts_and_missing_confirmation (__main__.MaterialReviewLogicTests.test_review_reasons_detect_conflicts_and_missing_confirmation) ... ok
+test_selection_ids_supports_snapshot_and_mapping_shapes (__main__.MaterialReviewLogicTests.test_selection_ids_supports_snapshot_and_mapping_shapes) ... ok
+test_step_worker_rejects_wrong_format_and_read_only_session (__main__.MaterialReviewLogicTests.test_step_worker_rejects_wrong_format_and_read_only_session) ... ok
+test_step_worker_snapshot_is_scoped_detached_and_preserves_live_references (__main__.MaterialReviewLogicTests.test_step_worker_snapshot_is_scoped_detached_and_preserves_live_references) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.286s
+
+OK

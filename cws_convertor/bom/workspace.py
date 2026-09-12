@@ -233,13 +233,9 @@ class BOMWorkspaceReadModel:
     def __init__(self, snapshot: BOMSnapshot, project: Any | None = None) -> None:
         self.snapshot = snapshot
         self.project = project
-        self._routing = dict(
-            ((getattr(project, "settings", {}) or {}).get("machine_routing", {}) or {}).get(
-                "assignments", {}
-            )
-            if project is not None
-            else {}
-        )
+        from cws_convertor.machine_routing import MachineRoutingService
+        self._routing = ({key: value.to_dict() for key, value in MachineRoutingService.assignments(project).items()}
+                         if project is not None else {})
         self._rows = {family: self._build_family(family) for family in BOM_FAMILIES}
 
     def family_count(self, family: str) -> int:
@@ -461,6 +457,13 @@ class BOMWorkspaceReadModel:
         machine_ready = bool(machine and machine != "-") and bool(routing_states) and all(
             value.casefold() in {"ready", "eligible", "assigned"} for value in routing_states
         )
+        from cws_convertor.machine_routing import MachineRoutingService
+        machine_proposal_ready = bool(parts) and all(
+            not self._routing.get(part.internal_id, {}).get("manual_lock", False)
+            and MachineRoutingService().route(part.internal_id,
+                MachineRoutingService.current_capabilities(self.project, part.internal_id)).eligible
+            for part in parts
+        )
         nc_ready = bool(parts) and all(
             bool(getattr(part, "nc1_eligible", False))
             and str(getattr(part, "export_status", "")).casefold() in {"ready", "released", "valid", "ok"}
@@ -530,7 +533,30 @@ class BOMWorkspaceReadModel:
         # Release authority is an explicit per-entity state. Generic readiness
         # and review approval must not become a released BOM group, and missing
         # occurrence states must not disappear from an aggregate.
-        release_values = [self._entity_field((key,), "release_status").strip().casefold() for key in ids]
+        def release_value(key: str, visiting: frozenset[str] = frozenset()) -> str:
+            if key in visiting:
+                return "invalid"
+            entity = self.project.get_entity(key) if self.project is not None else None
+            if entity is None:
+                return "invalid"
+            raw = self._entity_field((key,), "release_status").strip().casefold()
+            workbench = getattr(entity, "workbench", {}) or {}
+            if workbench:
+                current = workbench.get("current_revision", {})
+                status = str(current.get("review_status") or "").casefold()
+                if status == "released":
+                    return status
+                return "withdrawn" if raw == "withdrawn" else status
+            if getattr(entity, "entity_type", "") == "assembly":
+                children = (*getattr(entity, "part_ids", ()), *getattr(entity, "child_assembly_ids", ()))
+                states = [release_value(child, visiting | {key}) for child in children]
+                if states and all(value == "released" for value in states):
+                    return "released"
+                if states and all(value == "withdrawn" for value in states):
+                    return "withdrawn"
+                return "review_required" if states else raw
+            return raw
+        release_values = [release_value(key) for key in ids]
         if release_values and all(value in {"released", "approved", "vrijgegeven"} for value in release_values):
             release_status = "Vrijgegeven"
         elif release_values and all(value in {"withdrawn", "ingetrokken"} for value in release_values):
@@ -547,7 +573,8 @@ class BOMWorkspaceReadModel:
             "material_status": (
                 "Gereed" if known_material else "Niet van toepassing" if not material_relevant else "Geblokkeerd"
             ),
-            "machine_status": "Gereed" if machine_ready else ("Niet van toepassing" if not parts else "Review"),
+            "machine_status": "Gereed" if machine_ready else ("Voorstel gereed" if machine_proposal_ready
+                                else "Niet van toepassing" if not parts else "Review"),
             "document_status": readiness(document_status, relevant=drawing_relevant, empty="Ontbreekt"),
             "nesting_status": readiness(nesting_raw, relevant=bool(parts)),
             "nc_status": "Gereed" if nc_ready else ("Niet van toepassing" if not parts else "Geblokkeerd"),

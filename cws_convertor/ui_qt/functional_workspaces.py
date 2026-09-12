@@ -975,6 +975,8 @@ if qt_available():
             workspace, entity, entity_id = _workspace_entity(context, selection)
             if workspace is None and type(context).__name__ == "UnifiedUiContextSnapshot":
                 return
+            if workspace is not self._workspace or entity_id != self._entity_id:
+                self._bom_edit_binding = None
             if entity_id == self._entity_id and entity is self._entity and self._dirty:
                 self._workspace = workspace
                 self._selection = selection
@@ -990,6 +992,8 @@ if qt_available():
                 self.profile.setCurrentText(_value(entity, "normalized_profile", "profile", "profile_name"))
                 self.material.setCurrentText(_value(entity, "normalized_material", "material_grade", "material"))
                 self.length.setValue(self._number(_value(entity, "length_mm", "length")))
+                if getattr(entity, "entity_type", "") == "purchased_item":
+                    self.length.setValue(self._number((entity.dimensions or {}).get("length_mm")))
                 self.description.setText(_value(entity, "description", "name"))
                 self.coating.setText(_value(entity, "coating"))
                 self.mark_code.setText(_value(entity, "mark", "name", default=self.part_id.text()))
@@ -1889,6 +1893,12 @@ if qt_available():
             self._populate_subset(self.hole_table, {"hole", "countersunk_hole", "slot"})
 
         def validate_draft(self) -> bool:
+            if getattr(self._entity, "entity_type", "") == "purchased_item":
+                requires_length = (getattr(self, "_bom_edit_binding", None) or {}).get("action") == "edit.length"
+                requires_length = requires_length or self._number((self._entity.dimensions or {}).get("length_mm")) > 0
+                valid = not requires_length or self.length.value() > 0
+                self.status.setText("Inkoopvelden gevalideerd" if valid else "Inkooplengte moet positief zijn")
+                return valid
             _session, part = self._selected_project_part()
             state = getattr(part, "workbench", {}) if part is not None else {}
             revision = state.get("current_revision") if isinstance(state, dict) else None
@@ -1905,6 +1915,7 @@ if qt_available():
                 properties.update({
                     "profile": self.profile.currentText().strip(),
                     "material": self.material.currentText().strip(),
+                    "material_grade": self.material.currentText().strip(),
                     "part_position": self.part_id.text().strip(),
                 })
                 candidate.update({
@@ -1996,6 +2007,64 @@ if qt_available():
             self.status.setText("Niet-opgeslagen wijzigingen geannuleerd")
 
         def save_changes(self) -> bool:
+            binding = getattr(self, "_bom_edit_binding", None)
+            if not binding:
+                return self._save_changes_impl()
+            panel = binding["panel"]
+            execution, persisted = None, False
+            try:
+                if self._workspace is not binding["workspace"] or tuple(binding["entity_ids"]) != (self._entity_id,):
+                    raise ValueError("BOM-editselectie is gewijzigd; open de gewenste actie opnieuw")
+                panel._validate_action_binding(binding["source_binding"])
+                if self._workspace.session.path is None:
+                    raise ValueError("Sla het project eerst op voordat de BOM-bewerking wordt uitgevoerd")
+                def requested_value() -> Any:
+                    entity = self._workspace.project.get_entity(self._entity_id)
+                    if binding["action"] == "edit.length":
+                        return entity.dimensions.get("length_mm") if entity.entity_type == "purchased_item" else entity.length_mm
+                    return getattr(entity, binding["action"].split(".", 1)[1])
+                before_value = requested_value()
+                def mutate() -> None:
+                    if not self._save_changes_impl(persist=False):
+                        raise ValueError("Editorvalidatie blokkeert de BOM-bewerking")
+                    if requested_value() == before_value:
+                        raise ValueError("Het veld van de gevraagde BOM-actie is niet gewijzigd")
+                    intent = binding["state"].data.get("edit_intents", {}).get(binding["action"])
+                    if isinstance(intent, dict):
+                        from cws_convertor.project.model import stable_sha256
+                        intent["mutation_applied"] = True
+                        intent.pop("sha256", None)
+                        intent["sha256"] = stable_sha256(intent)
+                execution = binding["state"].execute_transaction(
+                    binding["action"], binding["preflight"], mutate,
+                    entity_ids=binding["entity_ids"], user="qt-gui",
+                    messages=("Geselecteerd onderdeel opgeslagen via de bestaande Production Editor",),
+                )
+                panel._mark_project_dirty()
+                panel._rebuild_bom_snapshot()
+                self._workspace.session.save(user="qt-gui", revision_message=binding["action"])
+                persisted = True
+                self._bom_edit_binding = None
+                self.set_dirty(False)
+                self.status.setText("BOM-bewerking opgeslagen; resultaat en undo zijn aan de geselecteerde ID gekoppeld")
+                panel._show_batch_result(execution.result)
+                return True
+            except Exception as exc:
+                # Keep the edited draft visible after validation or persistence
+                # failure; a failed Save is never a completed BOM action.
+                if execution is not None and not persisted:
+                    try:
+                        binding["state"].undo_last(user="qt-gui-save-rollback")
+                        panel._rebuild_bom_snapshot()
+                    except Exception as rollback_error:
+                        exc = RuntimeError(f"{exc}; herstel niet voltooid: {rollback_error}")
+                binding["state"].record_result(binding["action"], binding["preflight"], status="failed", messages=(str(exc),))
+                self._entity = self._workspace.project.get_entity(self._entity_id) if self._workspace is not None else None
+                self.status.setText(f"BOM-bewerking niet opgeslagen: {exc}")
+                QtWidgets.QMessageBox.critical(self, "BOM-bewerking", str(exc))
+                return False
+
+        def _save_changes_impl(self, *, persist: bool = True) -> bool:
             if self._workspace is None or self._entity is None:
                 self.status.setText("Selecteer eerst een maakdeel")
                 return False
@@ -2003,6 +2072,13 @@ if qt_available():
                 self.status.setText("Opslaan geblokkeerd: corrigeer eerst de gemarkeerde bewerkingen")
                 return False
             try:
+                session = self._workspace.session
+                if session.project is not self._workspace.project:
+                    raise ValueError("Editor en projectopslag gebruiken niet hetzelfde project")
+                if session.read_only:
+                    raise ValueError("Dit project is alleen-lezen")
+                if persist and session.path is None:
+                    raise ValueError("Sla het project eerst op voordat de editorbewerking wordt uitgevoerd")
                 profile_value = self.profile.currentText().strip()
                 material_value = self.material.currentText().strip()
                 profile_match = self._profile_database.find(profile_value) if self._profile_database and profile_value else None
@@ -2054,6 +2130,24 @@ if qt_available():
                             reason="Production Editor fase 2 bijgewerkt",
                         )
                     self._entity = part
+                elif getattr(self._entity, "entity_type", "") == "purchased_item":
+                    from cws_convertor.project.model import FieldProvenance, utc_now_iso
+                    changed_fields = []
+                    if self._entity.material != material_value:
+                        changed_fields.append("material")
+                    if self._entity.grade != material_value:
+                        changed_fields.append("grade")
+                    self._entity.material = material_value
+                    self._entity.grade = material_value
+                    if self.length.value() > 0 and self._entity.dimensions.get("length_mm") != self.length.value():
+                        self._entity.dimensions["length_mm"] = self.length.value()
+                        changed_fields.append("dimensions.length_mm")
+                    for field_name in changed_fields:
+                        self._entity.field_provenance[field_name] = FieldProvenance(
+                            method="user", source_path="qt_part_workbench." + field_name,
+                            confidence=1.0, status="corrected", confirmed_by="qt-gui",
+                            confirmed_at=utc_now_iso(), notes=["Expliciete invoer in de Production Editor"],
+                        )
                 properties = copy.deepcopy(getattr(self._entity, "properties", {}) or {})
                 properties["ui_editor"] = {
                     "description": self.description.text().strip(),
@@ -2078,13 +2172,16 @@ if qt_available():
                     self._entity.coating = self.coating.text().strip()
                 if hasattr(self._entity, "revision"):
                     self._entity.revision = self.revision.text().strip()
-                self._workspace.session.save(user="qt-gui", revision_message=f"Onderdeel {self.part_id.text()} bijgewerkt")
-                self.set_dirty(False)
+                if persist:
+                    self._workspace.session.save(user="qt-gui", revision_message=f"Onderdeel {self.part_id.text()} bijgewerkt")
+                    self.set_dirty(False)
                 self.status.setText("Workbench-revisie en metadata opgeslagen in het centrale Project Model")
                 self._update_recognition_state(self._entity)
                 self._refresh_workbench_controls()
                 return True
             except Exception as exc:
+                if not persist:
+                    raise
                 self.status.setText(f"Opslaan mislukt: {type(exc).__name__}: {exc}")
                 QtWidgets.QMessageBox.critical(self, "Bewerken", f"{type(exc).__name__}: {exc}")
                 return False

@@ -68,13 +68,12 @@ class EditWorkspaceSmoke(unittest.TestCase):
             user="tester",
             reason="Prepare canonical profile fixture",
         )
-        self.saved_messages: list[str] = []
-        save_proxy = SimpleNamespace(
-            start_part_workbench=self.session.start_part_workbench,
-            update_part_workbench=self.session.update_part_workbench,
-            save=lambda **kwargs: self.saved_messages.append(str(kwargs.get("revision_message") or "saved")),
-        )
-        self.workspace = SimpleNamespace(project=self.session.project, session=save_proxy)
+        self.directory = tempfile.TemporaryDirectory(prefix="cws_edit_ui_")
+        project_path = self.session.save(Path(self.directory.name) / "editor.cwscproj", embed_sources=False, user="tester")
+        self.session.close()
+        self.session = ProjectSession.open(project_path)
+        self.part = self.session.project.parts["edit-part-1"]
+        self.workspace = SimpleNamespace(project=self.session.project, session=self.session)
         self.panel = EditWorkspacePanel()
         self.panel.set_context(self.workspace, {"primary_entity_id": self.part.internal_id})
         self.panel.show()
@@ -86,6 +85,7 @@ class EditWorkspaceSmoke(unittest.TestCase):
         self.panel.deleteLater()
         self.application.processEvents()
         self.session.close()
+        self.directory.cleanup()
 
     def test_complete_edit_tab_and_ribbon_workflow(self) -> None:
         labels = [self.panel.tabs.tabText(index) for index in range(self.panel.tabs.count())]
@@ -140,7 +140,12 @@ class EditWorkspaceSmoke(unittest.TestCase):
         self.assertGreater(self.panel.total_minutes.value(), 10.0)
         self.assertGreater(self.panel.total_cost.value(), 0.0)
         self.assertTrue(self.panel.save_changes(), self.panel.status.text())
-        self.assertTrue(self.saved_messages)
+        self.assertTrue(self.session.path.is_file())
+        with ProjectSession.open(self.session.path, read_only=True) as reopened:
+            saved = reopened.project.parts[self.part.internal_id]
+            self.assertEqual(saved.manufacturing_hash, self.part.manufacturing_hash)
+            self.assertEqual(len(saved.workbench["current_revision"]["features"]), 4)
+            self.assertEqual(saved.properties, self.part.properties)
         revision = self.part.workbench["current_revision"]
         self.assertEqual(len(revision["features"]), 4)
         self.assertTrue(all(feature["status"] == "confirmed" for feature in revision["features"]))

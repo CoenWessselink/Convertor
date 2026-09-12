@@ -1,0 +1,14 @@
+
+--- stderr ---
+test_external_release_still_blocks_undo (__main__.BomUndoRefreshTests.test_external_release_still_blocks_undo) ... ok
+test_later_business_edit_still_blocks_undo (__main__.BomUndoRefreshTests.test_later_business_edit_still_blocks_undo) ... ok
+test_legacy_undo_record_retains_its_original_strict_hash (__main__.BomUndoRefreshTests.test_legacy_undo_record_retains_its_original_strict_hash) ... ok
+test_repeated_undo_after_refresh_does_not_restore_stale_cache (__main__.BomUndoRefreshTests.test_repeated_undo_after_refresh_does_not_restore_stale_cache) ... ok
+test_undo_after_refresh_at_a_different_second (__main__.BomUndoRefreshTests.test_undo_after_refresh_at_a_different_second) ... ok
+test_undo_survives_refresh_and_persistent_reload (__main__.BomUndoRefreshTests.test_undo_survives_refresh_and_persistent_reload) ... ok
+test_unknown_bom_setting_is_not_hidden_by_cache_exclusion (__main__.BomUndoRefreshTests.test_unknown_bom_setting_is_not_hidden_by_cache_exclusion) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.264s
+
+OK

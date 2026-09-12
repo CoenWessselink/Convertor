@@ -1,0 +1,22 @@
+
+--- stderr ---
+test_checkbox_after_sort_only_changes_clicked_group (__main__.BomSelectionIdentityTests.test_checkbox_after_sort_only_changes_clicked_group) ... ok
+test_click_after_sort_targets_the_visible_part (__main__.BomSelectionIdentityTests.test_click_after_sort_targets_the_visible_part) ... ok
+test_context_menu_after_sort_selects_clicked_identity (__main__.BomSelectionIdentityTests.test_context_menu_after_sort_selects_clicked_identity) ... ok
+test_external_selection_survives_column_reorder_and_hidden_checkbox (__main__.BomSelectionIdentityTests.test_external_selection_survives_column_reorder_and_hidden_checkbox) ... ok
+test_filter_and_refresh_preserve_visible_ids_not_row_numbers (__main__.BomSelectionIdentityTests.test_filter_and_refresh_preserve_visible_ids_not_row_numbers) ... ok
+test_group_header_expands_members_without_duplicates (__main__.BomSelectionIdentityTests.test_group_header_expands_members_without_duplicates) ... ok
+test_machine_reset_after_sort_changes_only_selected_parts (__main__.BomSelectionIdentityTests.test_machine_reset_after_sort_changes_only_selected_parts) ... ok
+test_missing_or_unknown_item_id_never_falls_back_to_a_neighbor (__main__.BomSelectionIdentityTests.test_missing_or_unknown_item_id_never_falls_back_to_a_neighbor) ... ok
+test_nested_synchronisation_guard_is_preserved (__main__.BomSelectionIdentityTests.test_nested_synchronisation_guard_is_preserved) ... ok
+test_programmatic_multiselect_preserves_all_group_occurrences (__main__.BomSelectionIdentityTests.test_programmatic_multiselect_preserves_all_group_occurrences) ... ok
+test_real_control_capture_records_sorted_ids (__main__.BomSelectionIdentityTests.test_real_control_capture_records_sorted_ids) ... ok
+test_select_all_after_grouping_and_sorting_contains_only_visible_ids (__main__.BomSelectionIdentityTests.test_select_all_after_grouping_and_sorting_contains_only_visible_ids) ... ok
+test_select_then_sort_preserves_identity (__main__.BomSelectionIdentityTests.test_select_then_sort_preserves_identity) ... ok
+test_sorted_action_preflight_routes_the_same_ids (__main__.BomSelectionIdentityTests.test_sorted_action_preflight_routes_the_same_ids) ... ok
+test_visible_position_map_follows_both_sort_directions (__main__.BomSelectionIdentityTests.test_visible_position_map_follows_both_sort_directions) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 2.248s
+
+OK

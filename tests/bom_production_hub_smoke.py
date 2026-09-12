@@ -262,6 +262,7 @@ class BomProductionHubTests(unittest.TestCase):
                 "V550": {
                     "part_id": "P1",
                     "machine_id": "V550",
+                    "manufacturing_hash": project.parts["P1"].manufacturing_hash,
                     "ready_for_neutral_job": True,
                     "blocking_codes": [],
                     "decisions": [{"feature_id": "F1"}],

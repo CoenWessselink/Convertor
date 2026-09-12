@@ -1,0 +1,15 @@
+
+--- stderr ---
+test_duplicate_zip_entry_is_refused (__main__.ArtifactIdentityTests.test_duplicate_zip_entry_is_refused) ... ok
+test_identical_bytes_do_not_allow_two_owners_one_path (__main__.ArtifactIdentityTests.test_identical_bytes_do_not_allow_two_owners_one_path) ... ok
+test_missing_referenced_artifact_is_not_just_unlisted (__main__.ArtifactIdentityTests.test_missing_referenced_artifact_is_not_just_unlisted) ... ok
+test_real_grouped_same_prefix_ids_keep_both_complete_artifacts (__main__.ArtifactIdentityTests.test_real_grouped_same_prefix_ids_keep_both_complete_artifacts) ... ok
+test_rewritten_checksums_do_not_hide_wrong_object_bytes (__main__.ArtifactIdentityTests.test_rewritten_checksums_do_not_hide_wrong_object_bytes) ... ok
+test_valid_artifact_is_independently_counted (__main__.ArtifactIdentityTests.test_valid_artifact_is_independently_counted) ... ok
+test_valid_hash_does_not_hide_wrong_size (__main__.ArtifactIdentityTests.test_valid_hash_does_not_hide_wrong_size) ... ok
+test_windows_and_traversal_artifact_paths_refused (__main__.ArtifactIdentityTests.test_windows_and_traversal_artifact_paths_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 2.771s
+
+OK
