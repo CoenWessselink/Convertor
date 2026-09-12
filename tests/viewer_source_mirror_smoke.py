@@ -33,8 +33,15 @@ class ViewerSourceMirrorSmoke(unittest.TestCase):
                 self.assertEqual(first.name, f"{source_hash}.ifc")
                 self.assertEqual(first.read_bytes(), payload)
 
-                first.write_bytes(b"corrupt")
-                repaired = _stage_ifc_source(str(source), source_hash)
+                from cws_viewer.geometry import worker_pool
+                with patch.object(worker_pool, "_sha256_file", wraps=worker_pool._sha256_file) as hash_file:
+                    unchanged = _stage_ifc_source(str(source), source_hash)
+                    self.assertEqual(unchanged, first)
+                    hash_file.assert_not_called()
+
+                    first.write_bytes(b"corrupt")
+                    repaired = _stage_ifc_source(str(source), source_hash)
+                    self.assertEqual(hash_file.call_count, 1)
                 self.assertEqual(repaired, first)
                 self.assertEqual(repaired.read_bytes(), payload)
 

@@ -24,6 +24,7 @@ from cws_viewer.geometry.isolated import IsolatedIfcMeshProvider
 _SOURCE_MIRROR_LOCK = threading.RLock()
 _SOURCE_MIRROR_MAX_FILES = 32
 _SOURCE_MIRROR_MAX_BYTES = 4 * 1024**3
+_SOURCE_MIRROR_VERIFIED: dict[tuple[str, str], tuple[int, int, int, int]] = {}
 
 
 def _source_mirror_root() -> Path:
@@ -33,6 +34,16 @@ def _source_mirror_root() -> Path:
     local_data = str(os.environ.get("LOCALAPPDATA", "")).strip()
     base = Path(local_data) if local_data else Path(tempfile.gettempdir())
     return (base / "CWS Convertor" / "ViewerSourceMirrorV2").resolve()
+
+
+def _source_mirror_signature(path: Path) -> tuple[int, int, int, int]:
+    stat = path.stat()
+    return (
+        int(stat.st_size),
+        int(stat.st_mtime_ns),
+        int(getattr(stat, "st_ctime_ns", 0)),
+        int(getattr(stat, "st_ino", 0)),
+    )
 
 
 def _sha256_file(path: Path) -> str:
@@ -79,9 +90,19 @@ def _stage_ifc_source(source_path: str, source_sha256: str) -> Path:
 
     with _SOURCE_MIRROR_LOCK:
         root.mkdir(parents=True, exist_ok=True)
-        if target.is_file() and _sha256_file(target) == source_sha256.lower():
-            os.utime(target, None)
-            return target
+        expected_hash = source_sha256.lower()
+        cache_key = (str(target), expected_hash)
+        if target.is_file():
+            signature = _source_mirror_signature(target)
+            if _SOURCE_MIRROR_VERIFIED.get(cache_key) == signature:
+                os.utime(target, None)
+                _SOURCE_MIRROR_VERIFIED[cache_key] = _source_mirror_signature(target)
+                return target
+            if _sha256_file(target) == expected_hash:
+                os.utime(target, None)
+                _SOURCE_MIRROR_VERIFIED[cache_key] = _source_mirror_signature(target)
+                return target
+        _SOURCE_MIRROR_VERIFIED.pop(cache_key, None)
         target.unlink(missing_ok=True)
         descriptor, temp_name = tempfile.mkstemp(prefix=f".{target.stem}.", suffix=".tmp", dir=root)
         temp_path = Path(temp_name)
@@ -97,11 +118,12 @@ def _stage_ifc_source(source_path: str, source_sha256: str) -> Path:
                 output_stream.flush()
                 os.fsync(output_stream.fileno())
             actual = digest.hexdigest()
-            if actual != source_sha256.lower():
+            if actual != expected_hash:
                 raise RuntimeError(
                     f"IFC-source mirror hash wijkt af: verwacht {source_sha256}, ontvangen {actual}"
                 )
             os.replace(temp_path, target)
+            _SOURCE_MIRROR_VERIFIED[cache_key] = _source_mirror_signature(target)
         finally:
             temp_path.unlink(missing_ok=True)
         _prune_source_mirror(root, target)
