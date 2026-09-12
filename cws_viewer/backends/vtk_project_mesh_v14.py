@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+import numpy as np
+
 from cws_viewer.backends.vtk_project_mesh import VtkProjectMeshBackend
 from cws_viewer.contracts.enums import MeasurementKind, NodeKind
 from cws_viewer.contracts.state import PickResult, ViewerCapabilities
@@ -198,6 +200,65 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
 
         return super().pick_at(x, y, index)
 
+    def _visible_screen_bounds(self, index: SceneIndex) -> tuple[tuple[str, float, float, float, float], ...]:
+        """Project all visible world AABBs in one matrix operation.
+
+        The legacy path invoked ``WorldToDisplay`` eight times per visible node.
+        For HVPC-sized scenes that means tens of thousands of Python/VTK
+        crossings for one box/lasso gesture.  VTK's composite camera matrix is
+        mathematically the same transform, so we collect the canonical AABB
+        corners once, transform them in NumPy, and retain the legacy integer
+        rounding semantics before computing screen-space rectangles.
+        """
+        state = self._state
+        renderer = self._renderer
+        render_window = self._render_window
+        if state is None or renderer is None or render_window is None:
+            return ()
+        visible = state.visible_set
+        offsets = state.explode_offsets
+        node_ids = tuple(node_id for node_id in index.renderable_node_ids if node_id in visible)
+        if not node_ids:
+            return ()
+
+        camera = renderer.GetActiveCamera()
+        aspect = float(renderer.GetTiledAspectRatio())
+        matrix = camera.GetCompositeProjectionTransformMatrix(aspect, -1.0, 1.0)
+        transform = np.asarray(
+            [[matrix.GetElement(row, column) for column in range(4)] for row in range(4)],
+            dtype=np.float64,
+        )
+        corners = np.empty((len(node_ids), 8, 4), dtype=np.float64)
+        for row, node_id in enumerate(node_ids):
+            bounds = index.world_bounds_by_node[node_id]
+            offset = offsets.get(node_id, Vector3.zero())
+            x0, x1 = bounds.minimum.x + offset.x, bounds.maximum.x + offset.x
+            y0, y1 = bounds.minimum.y + offset.y, bounds.maximum.y + offset.y
+            z0, z1 = bounds.minimum.z + offset.z, bounds.maximum.z + offset.z
+            corners[row] = (
+                (x0, y0, z0, 1.0), (x0, y0, z1, 1.0),
+                (x0, y1, z0, 1.0), (x0, y1, z1, 1.0),
+                (x1, y0, z0, 1.0), (x1, y0, z1, 1.0),
+                (x1, y1, z0, 1.0), (x1, y1, z1, 1.0),
+            )
+        clip = corners @ transform.T
+        w = clip[:, :, 3]
+        safe_w = np.where(np.abs(w) > 1e-12, w, np.where(w < 0.0, -1e-12, 1e-12))
+        ndc = clip[:, :, :2] / safe_w[:, :, None]
+        width, height = render_window.GetSize()
+        vx0, vy0, vx1, vy1 = renderer.GetViewport()
+        display = np.empty_like(ndc)
+        display[:, :, 0] = (vx0 + (ndc[:, :, 0] + 1.0) * 0.5 * (vx1 - vx0)) * float(width)
+        display[:, :, 1] = (vy0 + (ndc[:, :, 1] + 1.0) * 0.5 * (vy1 - vy0)) * float(height)
+        # Match ``world_to_display`` exactly: Python round -> integer pixel.
+        display = np.rint(display)
+        minimum = display.min(axis=1)
+        maximum = display.max(axis=1)
+        return tuple(
+            (node_id, float(minimum[row, 0]), float(minimum[row, 1]), float(maximum[row, 0]), float(maximum[row, 1]))
+            for row, node_id in enumerate(node_ids)
+        )
+
     def nodes_in_screen_rect(
         self,
         x0: int,
@@ -216,16 +277,7 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
         lo_x, hi_x = sorted((int(x0), int(x1)))
         lo_y, hi_y = sorted((int(y0), int(y1)))
         hits: list[str] = []
-        for node_id in index.renderable_node_ids:
-            if node_id not in state.visible_set:
-                continue
-            bounds = index.world_bounds_by_node[node_id]
-            offset = state.explode_offsets.get(node_id, Vector3.zero())
-            screen = [self.world_to_display(corner + offset) for corner in bounds.corners()]
-            bx0 = min(value[0] for value in screen)
-            bx1 = max(value[0] for value in screen)
-            by0 = min(value[1] for value in screen)
-            by1 = max(value[1] for value in screen)
+        for node_id, bx0, by0, bx1, by1 in self._visible_screen_bounds(index):
             if crossing:
                 selected = not (bx1 < lo_x or bx0 > hi_x or by1 < lo_y or by0 > hi_y)
             else:
@@ -311,17 +363,15 @@ class VtkProjectMeshV14Backend(VtkProjectMeshBackend):
         if state is None:
             return ()
         hits: list[str] = []
-        for node_id in index.renderable_node_ids:
-            if node_id not in state.visible_set:
+        poly_x = tuple(point[0] for point in polygon)
+        poly_y = tuple(point[1] for point in polygon)
+        polygon_bounds = (min(poly_x), min(poly_y), max(poly_x), max(poly_y))
+        px0, py0, px1, py1 = polygon_bounds
+        for node_id, bx0, by0, bx1, by1 in self._visible_screen_bounds(index):
+            # Cheap broad phase before the exact legacy polygon/rectangle test.
+            if bx1 < px0 or bx0 > px1 or by1 < py0 or by0 > py1:
                 continue
-            bounds = index.world_bounds_by_node[node_id]
-            offset = state.explode_offsets.get(node_id, Vector3.zero())
-            screen = tuple(self.world_to_display(corner + offset)[:2] for corner in bounds.corners())
-            rect = (
-                min(value[0] for value in screen), min(value[1] for value in screen),
-                max(value[0] for value in screen), max(value[1] for value in screen),
-            )
-            if self._polygon_intersects_rect(polygon, rect):
+            if self._polygon_intersects_rect(polygon, (bx0, by0, bx1, by1)):
                 hits.append(node_id)
         return tuple(hits)
 
