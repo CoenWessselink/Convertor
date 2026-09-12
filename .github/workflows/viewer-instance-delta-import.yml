@@ -40,10 +40,12 @@ jobs:
             n=$((10#$i))
             tr -d '[:space:]' < ".github/viewer-instance-delta.part${i}.b64" | base64 -d > "/tmp/part.${i}"
             actual=$(sha256sum "/tmp/part.${i}" | awk '{print $1}')
+            echo "chunk ${i}: ${actual} expected ${expected[$n]}"
             test "$actual" = "${expected[$n]}"
             cat "/tmp/part.${i}" >> /tmp/instance_delta.patch
           done
           actual_full=$(sha256sum /tmp/instance_delta.patch | awk '{print $1}')
+          echo "full: ${actual_full} expected ${PATCH_SHA256}"
           test "$actual_full" = "$PATCH_SHA256"
           test "$(wc -c < /tmp/instance_delta.patch)" -eq 16640
       - name: Apply only to latest coordinated branch
