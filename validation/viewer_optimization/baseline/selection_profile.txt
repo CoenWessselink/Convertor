@@ -1,0 +1,73 @@
+         219527 function calls (219526 primitive calls) in 0.602 seconds
+
+   Ordered by: cumulative time
+   List reduced from 191 to 65 due to restriction <65>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.612    0.612 v14_controller.py:160(set_selection)
+        1    0.000    0.000    0.611    0.611 controller.py:317(set_selection)
+        1    0.000    0.000    0.610    0.610 controller.py:166(_sync_display)
+        1    0.000    0.000    0.500    0.500 vtk_project_mesh_feel_v2.py:632(_cws_render_with_safe_clipping)
+        1    0.000    0.000    0.500    0.500 vtk_project_mesh_feel_v2.py:575(render)
+        1    0.000    0.000    0.492    0.492 vtk_project.py:558(render)
+        1    0.492    0.492    0.492    0.492 {method 'Render' of 'vtkmodules.vtkRenderingOpenGL2.vtkEGLRenderWindow' objects}
+        1    0.000    0.000    0.109    0.109 vtk_project_mesh_adaptive.py:141(apply_state)
+        1    0.000    0.000    0.109    0.109 vtk_project_mesh_feel_v2.py:320(apply_state)
+        1    0.000    0.000    0.044    0.044 vtk_project_mesh_feel_v2.py:307(_update_contact_shadow_scale)
+        1    0.000    0.000    0.044    0.044 vtk_project_mesh_v14.py:328(_scene_diagonal)
+        1    0.000    0.000    0.044    0.044 scene_index.py:235(scene_bounds)
+        1    0.002    0.002    0.044    0.044 scene_index.py:212(bounds_for)
+     5823    0.012    0.000    0.040    0.000 math3d.py:335(union)
+        1    0.000    0.000    0.033    0.033 vtk_project_mesh_feel_v2.py:223(_sync_selection_fill)
+        1    0.004    0.004    0.033    0.033 vtk_project_mesh_feel_v2.py:262(_rebuild_selection_fill)
+        1    0.000    0.000    0.031    0.031 vtk_project.py:487(apply_state)
+        1    0.004    0.004    0.029    0.029 vtk_project_mesh.py:784(_rebuild_selection)
+    12050    0.009    0.000    0.018    0.000 math3d.py:34(__post_init__)
+      200    0.017    0.000    0.017    0.000 contracts.py:43(visible_set)
+      100    0.005    0.000    0.011    0.000 vtk_project_mesh.py:624(_build_mesh_group)
+       87    0.005    0.000    0.010    0.000 vtk_project_mesh_feel.py:250(_build_mesh_group)
+      200    0.000    0.000    0.010    0.000 math3d.py:202(__matmul__)
+    42902    0.008    0.000    0.010    0.000 math3d.py:17(_finite)
+      400    0.001    0.000    0.007    0.000 math3d.py:171(from_rows)
+        1    0.007    0.007    0.007    0.007 {method 'ResetCameraClippingRange' of 'vtkmodules.vtkRenderingCore.vtkRenderer' objects}
+     1000    0.001    0.000    0.005    0.000 math3d.py:205(<genexpr>)
+     4000    0.001    0.000    0.005    0.000 math3d.py:206(<genexpr>)
+      400    0.001    0.000    0.005    0.000 math3d.py:114(__post_init__)
+      200    0.000    0.000    0.004    0.000 math3d.py:160(translation)
+     3200    0.002    0.000    0.004    0.000 {built-in method builtins.sum}
+     6800    0.001    0.000    0.003    0.000 math3d.py:115(<genexpr>)
+    42905    0.002    0.000    0.002    0.000 {built-in method math.isfinite}
+      187    0.002    0.000    0.002    0.000 {method 'SetInputData' of 'vtkmodules.vtkRenderingCore.vtkGlyph3DMapper' objects}
+     5726    0.001    0.000    0.002    0.000 scene_index.py:223(<genexpr>)
+        3    0.000    0.000    0.002    0.001 vtk_project.py:340(_signature)
+    17470    0.002    0.000    0.002    0.000 {built-in method builtins.min}
+        1    0.000    0.000    0.001    0.001 session.py:160(render_state)
+      187    0.000    0.000    0.001    0.000 vtk_project_mesh_feel.py:86(_mesh_polydata)
+    17477    0.001    0.000    0.001    0.000 {built-in method builtins.max}
+        7    0.001    0.000    0.001    0.000 {built-in method fromkeys}
+      600    0.001    0.000    0.001    0.000 math3d.py:179(to_rows)
+        1    0.000    0.000    0.001    0.001 v14_controller.py:152(focus_orbit_on_selection)
+        1    0.000    0.000    0.001    0.001 v14_controller.py:107(display_bounds_for)
+        1    0.001    0.001    0.001    0.001 session.py:111(visible_and_ghosted)
+       14    0.001    0.000    0.001    0.000 {built-in method builtins.repr}
+      187    0.001    0.000    0.001    0.000 {method 'SetSourceData' of 'vtkmodules.vtkRenderingCore.vtkGlyph3DMapper' objects}
+      274    0.000    0.000    0.001    0.000 render_resource_cache.py:50(get_or_create)
+      200    0.000    0.000    0.001    0.000 vtk_project_mesh.py:32(_quaternion)
+     6800    0.001    0.000    0.001    0.000 math3d.py:177(<genexpr>)
+      200    0.000    0.000    0.001    0.000 math3d.py:39(zero)
+      400    0.000    0.000    0.001    0.000 {built-in method builtins.any}
+        3    0.000    0.000    0.001    0.000 scene_index.py:159(descendants)
+     5823    0.001    0.000    0.001    0.000 math3d.py:273(__post_init__)
+      200    0.000    0.000    0.001    0.000 math3d.py:255(translation_vector)
+     3000    0.001    0.000    0.001    0.000 math3d.py:180(<genexpr>)
+     6325    0.001    0.000    0.001    0.000 scene_index.py:149(node)
+      187    0.000    0.000    0.001    0.000 data_model.py:547(__init__)
+      187    0.001    0.000    0.001    0.000 {method 'AddActor' of 'vtkmodules.vtkRenderingCore.vtkRenderer' objects}
+      374    0.000    0.000    0.001    0.000 loader.py:33(get)
+      287    0.001    0.000    0.001    0.000 {method 'GetProperty' of 'vtkmodules.vtkRenderingCore.vtkActor' objects}
+     5726    0.001    0.000    0.001    0.000 scene_index.py:219(<genexpr>)
+     1322    0.001    0.000    0.001    0.000 {method 'get' of 'dict' objects}
+      287    0.000    0.000    0.001    0.000 {method 'GetPointData' of 'vtkmodules.vtkCommonDataModel.vtkDataSet' objects}
+      274    0.000    0.000    0.000    0.000 loader.py:35(require)
+
+

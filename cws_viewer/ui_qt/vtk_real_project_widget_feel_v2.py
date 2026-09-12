@@ -16,6 +16,8 @@ from cws_viewer.core.viewer_interaction_profile import (
     TRIMBLE_STYLE_INTERACTION_PROFILE,
 )
 from cws_viewer.performance import FrameTimeRecorder
+from cws_viewer.ui_qt.performance_overlay import ViewerPerformanceOverlay
+from cws_viewer.ui_qt.render_scheduler import QtRenderScheduler
 from cws_viewer.ui_qt import vtk_real_project_widget_feel as _feel_module
 from cws_viewer.ui_qt.qt_compat import qt_available, require_qt
 from cws_viewer.ui_qt.vtk_real_project_widget import NavigationMode
@@ -68,6 +70,9 @@ if qt_available():
             self._interaction_idle_timer.timeout.connect(self._restore_idle_quality)
             self._navigation_frame_metrics = FrameTimeRecorder()
             self._install_viewport_controls()
+            self._render_scheduler = QtRenderScheduler(self)
+            self.backend.attach_render_scheduler(self._render_scheduler)
+            self._performance_overlay = ViewerPerformanceOverlay(self)
 
         RAL_COLOURS = (
             ("IFC / originele kleuren", None),
@@ -186,6 +191,14 @@ if qt_available():
             except Exception as exc:
                 self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
 
+        def paintEvent(self, event: Any) -> None:
+            if self.__dict__.get("_render_scheduler") is None:
+                # Construction can deliver native events before backend setup.
+                if self.__dict__.get("_Iren") is not None:
+                    super().paintEvent(event)
+                return
+            self.backend.render()
+
         def resizeEvent(self, event: Any) -> None:
             super().resizeEvent(event)
             controls = self.__dict__.get("_viewport_controls")
@@ -229,10 +242,7 @@ if qt_available():
             super()._schedule_navigation_motion(dx, dy)
 
         def _flush_navigation_motion(self) -> None:
-            dx = self._feel_pending_dx
-            dy = self._feel_pending_dy
-            self._feel_pending_dx = 0.0
-            self._feel_pending_dy = 0.0
+            dx, dy = self._take_navigation_motion()
             if abs(dx) <= 1e-12 and abs(dy) <= 1e-12:
                 return
             button = self._pressed_button
@@ -274,6 +284,7 @@ if qt_available():
         def performance_diagnostics(self) -> dict[str, Any]:
             return {
                 "schema": "cws-viewer-interaction-performance-2.0",
+                "runtime": self.backend.performance_snapshot(),
                 "navigation": self._navigation_frame_metrics.to_dict(),
                 "interaction_quality_active": self.interaction_quality_active,
                 "navigation_frame_ms": self.NAVIGATION_FRAME_MS,
@@ -355,6 +366,9 @@ if qt_available():
                 self._interaction_idle_timer.start()
 
         def closeEvent(self, event: Any) -> None:
+            self._render_scheduler.close()
+            self.backend.attach_render_scheduler(None)
+            self._performance_overlay.set_enabled(False)
             self._measure_preview_timer.stop()
             self._interaction_idle_timer.stop()
             self.backend.set_interaction_quality(False)

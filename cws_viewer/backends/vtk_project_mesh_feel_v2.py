@@ -623,7 +623,7 @@ def _cws_set_global_opacity(self, opacity):
             prop.SetOpacity(opacity)
     renderer = getattr(self, "_renderer", None)
     if renderer is not None and renderer.GetRenderWindow() is not None:
-        renderer.GetRenderWindow().Render()
+        self.render()
 
 
 _ORIGINAL_CWS_V2_RENDER = VtkProjectMeshFeelV2Backend.render
