@@ -33,6 +33,42 @@ def _parts(project: Any, ids: tuple[str, ...]) -> tuple[str, ...]:
     return ids
 
 
+def _resolve_part_ids(project: Any, ids: tuple[str, ...]) -> tuple[str, ...]:
+    """Resolve parts and assemblies without widening outside the requested hierarchy."""
+    resolved: list[str] = []
+    visiting: set[str] = set()
+
+    def add(value: str) -> None:
+        if value not in resolved:
+            resolved.append(value)
+
+    def visit_assembly(assembly_id: str) -> None:
+        if assembly_id in visiting:
+            raise ValueError(f"Cyclische assemblystructuur bij {assembly_id}")
+        assembly = project.assemblies.get(assembly_id)
+        if assembly is None:
+            raise ValueError(f"Onbekende assembly {assembly_id}")
+        visiting.add(assembly_id)
+        for part_id in tuple(getattr(assembly, "part_ids", ()) or ()):
+            if part_id not in project.parts:
+                raise ValueError(f"Assembly {assembly_id} verwijst naar onbekend onderdeel {part_id}")
+            add(str(part_id))
+        for child_id in tuple(getattr(assembly, "child_assembly_ids", ()) or ()):
+            visit_assembly(str(child_id))
+        visiting.remove(assembly_id)
+
+    for key in ids:
+        if key in project.parts:
+            add(key)
+        elif key in project.assemblies:
+            visit_assembly(key)
+        else:
+            raise ValueError(f"Productiescope bevat onbekend object {key}")
+    if not resolved:
+        raise ValueError("Productiescope bevat geen maakdelen")
+    return tuple(resolved)
+
+
 def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     from cws_convertor.machine_routing import MachineRoutingService
     project, workspace = panel._workspace.project, panel._workspace
@@ -43,7 +79,6 @@ def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     rows, lines = [], []
     for key in ids:
         part = project.parts[key]
-        # Re-execute the canonical readiness path, not the displayed BOM status.
         readiness = workspace.readiness_for_part(key, formats=("nc1", "step", "ifc", "dxf", "production_pdf"))
         candidates = []
         for machine_id, report in sorted(reports.get(key, {}).items()):
@@ -56,7 +91,6 @@ def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
                 "binding": binding, "blocking_codes": list(decision.blocking_codes),
                 "reason": decision.reason,
             })
-        # Missing bindings must never acquire a new READY label from this UI.
         eligible = {row["machine_id"]: reports[key][row["machine_id"]]
                     for row in candidates if row["reported_eligible"] and row["binding"] == "current"}
         preferred = assignments.get(key)
@@ -86,13 +120,12 @@ def _machine_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     panel._hub_state.data.setdefault("machine_reviews", {})[action] = record
     panel._hub_state.data["last_machine_review_action"] = action
     panel._last_machine_review = record
-    panel.detail_tabs.setCurrentIndex(2)  # Existing Machine detail, not a replacement workspace.
+    panel.detail_tabs.setCurrentIndex(2)
     panel.detail_labels["machine"].setText(record["display_text"])
     return _Outcome("passed", f"{len(rows)} onderdelen opnieuw beoordeeld; advies vastgelegd, geen machinevrijgave")
 
 
 def _machine_review_text(panel: Any, ids: tuple[str, ...]) -> str:
-    """Keep the result through UI refresh, but not through changed source data."""
     from cws_convertor.machine_routing import MachineRoutingService
     if panel._workspace is None or panel._hub_state is None:
         return ""
@@ -122,7 +155,6 @@ def _values(value: Any) -> tuple[str, ...]:
 
 
 def _alternatives_review(panel: Any, ids: tuple[str, ...]) -> _Outcome:
-    """Review only explicitly declared substitutions; never infer structural equivalence."""
     project = panel._workspace.project
     _parts(project, ids)
     row_by_entity = {
@@ -175,7 +207,6 @@ def _alternatives_review(panel: Any, ids: tuple[str, ...]) -> _Outcome:
 
 
 def _compare_plate_runs(panel: Any, ids: tuple[str, ...]) -> _Outcome:
-    """Compare two persisted, integrity-bound plate runs for the exact BOM scope."""
     from cws_convertor.optimization.plate_nesting.project_service import _record_digest
     project = panel._workspace.project
     runs = project.settings.get("plate_nesting_runs", {}) if isinstance(project.settings, dict) else {}
@@ -229,6 +260,60 @@ def _compare_plate_runs(panel: Any, ids: tuple[str, ...]) -> _Outcome:
     )
 
 
+def _production_review(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
+    from cws_convertor.integration.production_workflow import build_production_workflow_snapshot
+    project, workspace = panel._workspace.project, panel._workspace
+    part_ids = _resolve_part_ids(project, ids)
+    if action == "production.route":
+        snapshot = build_production_workflow_snapshot(workspace, part_ids).to_dict()
+        record = {
+            "schema": "cws-bom-production-route-review-1",
+            "action_id": action,
+            "project_id": project.project_id,
+            "source_entity_ids": list(ids),
+            "resolved_part_ids": list(part_ids),
+            "workflow": snapshot,
+            "selection_widened": False,
+            "production_release_allowed": False,
+        }
+        record["sha256"] = stable_sha256(record)
+        panel._hub_state.data.setdefault("production_reviews", {})["route"] = record
+        panel.action_requested.emit("production_workflow")
+        return _Outcome(
+            "passed",
+            f"Productieroute beoordeeld voor {len(part_ids)} maakdelen · klaar {snapshot['ready_part_count']} · geblokkeerd {snapshot['blocked_part_count']} · volgende stap {snapshot['next_action']}",
+        )
+    if action == "production.operations":
+        rows = []
+        operation_count = 0
+        for key in part_ids:
+            part = project.parts[key]
+            features = [dict(value) for value in tuple(getattr(part, "production_features", ()) or ()) if isinstance(value, dict)]
+            operation_count += len(features)
+            rows.append({
+                "part_id": key,
+                "manufacturing_hash": getattr(part, "manufacturing_hash", ""),
+                "operations": features,
+                "operation_count": len(features),
+            })
+        record = {
+            "schema": "cws-bom-production-operations-review-1",
+            "action_id": action,
+            "project_id": project.project_id,
+            "source_entity_ids": list(ids),
+            "resolved_part_ids": list(part_ids),
+            "rows": rows,
+            "operation_count": operation_count,
+            "selection_widened": False,
+            "production_release_allowed": False,
+        }
+        record["sha256"] = stable_sha256(record)
+        panel._hub_state.data.setdefault("production_reviews", {})["operations"] = record
+        panel.action_requested.emit("production_workflow")
+        return _Outcome("passed", f"{operation_count} canonieke productiebewerkingen beoordeeld voor {len(part_ids)} maakdelen; niets gewijzigd")
+    raise ValueError(f"Productieactie {action} is niet aangesloten")
+
+
 def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     from cws_convertor.optimization.plate_nesting.project_service import is_plate
     window, workspace = panel.window, panel._workspace
@@ -248,7 +333,7 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
     page.set_context(workspace, window.application_context.selection)
     page.scope_combo.setCurrentIndex(page.scope_combo.findData("selection"))
     if not plate:
-        page._analyse()  # Same workspace, new selection: refresh the displayed demand too.
+        page._analyse()
     if action in {"optimize.remnants_include", "optimize.remnants_exclude", "optimize.stock"}:
         include = action == "optimize.remnants_include"
         if plate:
@@ -280,8 +365,6 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
         return _Outcome("prepared", "Bestaande scenariocompare geopend; zie de runvalidatie voor het resultaat")
     if action not in {"optimize.plate", "optimize.profile", "optimize.trade_length", "optimize.stock", "optimize"}:
         raise ValueError(f"Geen nestinguitvoerder voor {action}")
-    # Caller records PREPARED before starting: its audit cannot invalidate an
-    # already-captured profile solver revision. Completion is checked separately.
     return _Outcome("prepared", f"{route}: berekening voorbereid voor uitsluitend {len(ids)} geselecteerde onderdeel-IDs",
                     start=(page.solve if plate else page._start_solve), page=page)
 
@@ -290,7 +373,8 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
     from cws_convertor.project.manufacturing_contracts import ExportGrouping, ExportScopeKind
     window, page = panel.window, panel.window.export_page
     page._bom_export_binding = None
-    formats = {"export.nc1": ("DSTV",), "export.step": ("STEP",), "export.ifc": ("IFC",),
+    formats = {"export.nc1": ("DSTV",), "production.nc_preview": ("DSTV",),
+               "export.step": ("STEP",), "export.ifc": ("IFC",),
                "export.dxf": ("DXF",), "export.pdf": ("PDF",),
                "export.production": ("DSTV", "STEP", "IFC", "DXF", "PDF"),
                "production_export": ("DSTV", "STEP", "IFC", "DXF", "PDF"),
@@ -304,8 +388,6 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
         grouping = "machine"
     _open(window, "export")
     page.set_context(panel._workspace, window.application_context.selection)
-    # SELECTED_PARTS uses explicit IDs, never mutable global selection or mark
-    # matching which could add non-selected occurrences sharing a mark.
     parts = []
     for key in ids:
         if key in panel._workspace.project.parts:
@@ -338,6 +420,8 @@ def _export(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _O
                                                       formats=tuple(page._formats()), preflight_hash=preflight.preflight_sha256)
     if prepared is None or prepared.blocking_codes or any(item.blocking_codes for item in prepared.items):
         return _Outcome("blocked", "Exacte exportselectie/format ingesteld maar preflight blokkeert; geen bestanden gemaakt")
+    if action == "production.nc_preview":
+        return _Outcome("prepared", f"DSTV/NC1-preview voorbereid voor exact {len(tuple(dict.fromkeys(parts)))} maakdelen; preflight akkoord, geen bestand of vrijgave gemaakt")
     return _Outcome("prepared", "Exacte exportselectie en formats ingesteld: " + ", ".join(page._formats())
                     + ". Kies/controleer de uitvoermap en bevestig Generate; nog geen bestanden gemaakt")
 
@@ -411,6 +495,10 @@ def _dispatch(panel: Any, action: str, route: str, ids: tuple[str, ...], preflig
             raise ValueError("De volledige BOM is niet productiegereed; productie-export blijft geblokkeerd")
     if action in {"machine.recommend", "machine.validate", "machine.alternatives", "machine.explain"}:
         return _machine_review(panel, action, ids)
+    if action in {"production.route", "production.operations"}:
+        return _production_review(panel, action, ids)
+    if action == "production.nc_preview":
+        return _export(panel, action, ids, preflight)
     if (action.startswith("optimize.") or action.startswith("drawing.")) and getattr(panel, "_preflight_partition_mode", "eligible") == "machine":
         raise ValueError("Uitvoeren per machine is voor deze batchactie nog niet aangesloten; geen gecombineerde vervangende actie uitgevoerd")
     if action.startswith("optimize.") or action == "optimize":
