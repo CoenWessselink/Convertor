@@ -1,0 +1,9 @@
+{
+  "action_id": "inspect.hashes",
+  "selected_ids": [
+    "P1"
+  ],
+  "displayed_text": "Geometrie- en productiehashes\n\nObject: P1 \u00b7 P1 unique name\nGeometrie-SHA256: 2c5c035eea2ed4abfedcc7787f11f4a207716281199eaff5db7be30cb83472dc\nProductie-SHA256: 5393cb0632fcb7dd1009fe15a66676f1a6a8f5929e2372130a9c0cb02fc65ec4\nBron-SHA256: 36bbb90516fdd1f19ed404a1163bc4607b1d5f5e230c56d4b876f5368f52399f\nCanonieke objecthashes; geen bewijs van machinekwalificatie of productievrijgave.",
+  "source_sha256": "36bbb90516fdd1f19ed404a1163bc4607b1d5f5e230c56d4b876f5368f52399f",
+  "entity_hash": "7bd1d77e6a0a52a89cb1723afcf532f3e200146e00b2cf371ceddb49f03ab442"
+}

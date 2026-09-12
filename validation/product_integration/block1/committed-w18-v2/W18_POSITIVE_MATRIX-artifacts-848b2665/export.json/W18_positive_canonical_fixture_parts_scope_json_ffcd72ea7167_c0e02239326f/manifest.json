@@ -1,0 +1,32 @@
+{
+  "format": "CWS_BOM_PACKAGE_V1",
+  "selected_formats": [
+    "json"
+  ],
+  "review_only": true,
+  "machine_transfer_allowed": false,
+  "app": "CWS Convertor",
+  "app_version": "0.10.19-beta-dev",
+  "project_id": "8e376d8a-2577-4e69-87ac-0e34b18bb6e7",
+  "snapshot_sha256": "ffcd72ea716712b4b383ce4b2900acfb1618dfcb55713f8d1d1c2f0d57da16ef",
+  "scope": {
+    "family": "parts",
+    "entity_ids": [
+      "P1"
+    ],
+    "group_ids": [
+      "PART-4b454320dcf0efe6"
+    ],
+    "exact_part_selection": true
+  },
+  "files": {
+    "validation.json": {
+      "sha256": "1e319ec2bba85b37e6880427453f37340ee0bc63562656900bf3219996ec25a2",
+      "size": 980
+    },
+    "W18_positive_canonical_fixture_parts_scope_BOM.json": {
+      "sha256": "8ae001b85ceb2d931efb6d1c6c9e576c134cbe2af02cdeffd825f4aeecdf8bcc",
+      "size": 4540
+    }
+  }
+}

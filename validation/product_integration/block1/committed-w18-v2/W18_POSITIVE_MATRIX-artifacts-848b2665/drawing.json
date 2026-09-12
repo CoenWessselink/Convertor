@@ -1,0 +1,1000 @@
+{
+  "schema": "cws-bom-w18-drawing-execution-1.0",
+  "commit": "2a93b0b306cf0ade9c10e182363f57a532b85c66",
+  "source_unchanged_during_run": true,
+  "tracked_dirty": false,
+  "app_version": "0.10.19-beta-dev",
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "qt_platform": "offscreen",
+    "geometry": "declared synthetic assembly and independently roundtripped canonical plate"
+  },
+  "input_hash": "879c5531679a690698f4ace6e90e2d2217f6a72c848527828531f393d5c443d8",
+  "source_hashes": {
+    "cws_convertor/bom/engine.py": "96dad9c45a078924a281faecb1a0e76b613c722ce7918d68708f15b12c9150f3",
+    "cws_convertor/bom/production_hub.py": "dff319540e80f56dfec8775262271f5d9309efe7fe159ec8e079d06f8199baca",
+    "cws_convertor/drawings/__init__.py": "c06801e7e471658ce0bbb75827d4591170819017b42e8905c3d9e5a194201d32",
+    "cws_convertor/drawings/batch.py": "582915b63c81ffc1ea1b38af34e5e9dee1318a1869d88ece6de52482d9f2ff2f",
+    "cws_convertor/drawings/document.py": "37e77beeed6d8f1d4c4e0f4d46fcc1496ace45d2c7dfb864e94e7a6dd8d88f11",
+    "cws_convertor/drawings/engine.py": "f327eecc7dba7e97a7c32ac19124d9eb66d7185c76b34d07d88136442f0f46e5",
+    "cws_convertor/drawings/interactive.py": "a614445b37dfa72ad527ce36e07f68cf4ed99995b68e69cdbd1bf2976d7d9960",
+    "cws_convertor/drawings/linter.py": "ca9988ae1b1a4869891b8f613667ea553a7a51768cb57510e96c3ae605db2d21",
+    "cws_convertor/drawings/projection.py": "8cff5b62d524d72c90882019b2167eb10777b5c800a09c76a8b8413b95fd64f2",
+    "cws_convertor/drawings/renderer.py": "4fd1af1ddbee689d2fad66a1de2e1bd78f6c15a2994ec1468bdfc28eec7f0e39",
+    "cws_convertor/project/jobs.py": "b3af356f8f8ec4edbc5376f3a7bcb518bdd0c2116adf68d506d1674d8af37b31",
+    "cws_convertor/project/model.py": "d82554bee8e583811cd6a2df54cc8e8c06ce1499150bf45d4b76e5417e75ab24",
+    "cws_convertor/project/service.py": "1fc3398310e38d00b69132422cc3ef854d73a8396658f996a2bcc2690b3cfa14",
+    "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+    "cws_convertor/ui_qt/bom_action_dispatch.py": "463915f554ec7042056d420c2b640959a9cdba048efcb6732dbebf2bc6c721cd",
+    "cws_convertor/ui_qt/bom_action_dispatch_base.py": "44e7497f75c952f10b1b6a01cb506ae899d20ff8fcb737afa91062e2c884da74",
+    "cws_convertor/ui_qt/bom_drawing_batch.py": "1c30fb6646afffd542ed75f1a3a2043408117d225a8212309e98105fa31f3442",
+    "cws_convertor/ui_qt/engineering_drawing.py": "8d8ceb29836534e9c8476772b4f7a592ab44428470aed59cd152d3f0c9b91234",
+    "cws_convertor/ui_qt/functional_workspaces.py": "61fc34f5c28dec3580d7811c9cae05c0fa26a6d2bcaaa8c1ab656ced22d6dcb8",
+    "cws_convertor/ui_qt/pdf_v3_completion_evidence.py": "65315d165583e5085c6e2effb035e5e194027f036a26e0e6986d9a9570bfdb93",
+    "tests/bom_w18_drawing_execution_smoke.py": "a25cb20555fbf8768da0b0a6e4efcdd509a131760ed27c03132b25b56811bcfb",
+    "tests/part_workbench_roundtrip_smoke.py": "1f7b58862459f800e083e57d934bbd7bf190faed4b7119a5082275f08de38db4"
+  },
+  "scenario": "W18 downstream drawing execution and native edit persistence",
+  "result": "PASS",
+  "status": "PASS",
+  "tests_run": 9,
+  "failures": 0,
+  "errors": 0,
+  "actions": [
+    {
+      "action_id": "drawing.open_assembly",
+      "result": "PASS",
+      "entity_ids": [
+        "A1"
+      ],
+      "selected_ids": [
+        "A1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_assembly_open_retains_both_components_without_parent_fallback\\observed\\000-drawing.open_assembly\\0-A1_tekening.png",
+          "sha256": "15c764f53b3de1df2727608a571eccfb58d6db6abc5761e7c14bf1e12d72a62e"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.batch_pdf",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_batch_runs_real_job_for_single_multiple_and_assembly\\observed\\001-drawing.batch_pdf\\0-Tekeningen.pdf",
+          "sha256": "9579b890e02c59742e3bfaf13108304cc938a687c2e5487b36105dfafa4e51e6"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_batch_runs_real_job_for_single_multiple_and_assembly\\observed\\001-drawing.batch_pdf\\1-BATCH_MANIFEST.json",
+          "sha256": "95dc75e0c9d40813b9caf59715b9b1e18283230dceeccc34e0314400c3ddb4bf"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.batch_pdf",
+      "result": "PASS",
+      "entity_ids": [
+        "P1",
+        "P2"
+      ],
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "scenarios": [
+        "valid_multiple",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_multiple",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_batch_runs_real_job_for_single_multiple_and_assembly\\observed\\002-drawing.batch_pdf\\0-Tekeningen.pdf",
+          "sha256": "d082d2f6aaf72cd57341367bfc1a794fefc4df45a96f0ee1c9b94eae4ed1b718"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_batch_runs_real_job_for_single_multiple_and_assembly\\observed\\002-drawing.batch_pdf\\1-BATCH_MANIFEST.json",
+          "sha256": "47db748122a80cd1d1c320627d8595bd4efc3783a63c4f5b421c2a7ecf04bd56"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.batch_pdf",
+      "result": "PASS",
+      "entity_ids": [
+        "A1"
+      ],
+      "selected_ids": [
+        "A1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_batch_runs_real_job_for_single_multiple_and_assembly\\observed\\003-drawing.batch_pdf\\0-Tekeningen.pdf",
+          "sha256": "80a3a5e4a1953657ff096d3fac8039c0fc265018f5be8f3aa816c129838b2852"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_batch_runs_real_job_for_single_multiple_and_assembly\\observed\\003-drawing.batch_pdf\\1-BATCH_MANIFEST.json",
+          "sha256": "f7883ee59d51c414874705c710ac6f506a7b94986b03926e1d4d5c7bd698c9c4"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.dimension_check",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_canonical_dimension_check_approve_and_new_revision_reopen\\observed\\004-drawing.dimension_check\\0-P1_tekening.png",
+          "sha256": "cd44ee43f390defa64b98b211bb7a24b41ab254867c708a9c32045d86bc34742"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.approve",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_canonical_dimension_check_approve_and_new_revision_reopen\\observed\\005-drawing.approve\\0-w18-drawing.cwscproj",
+          "sha256": "8a7e860e00a693803728da09faa25f47649d275955e5e03212bfc6f653aac9c9"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.revision",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "save_reopen",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_canonical_dimension_check_approve_and_new_revision_reopen\\observed\\006-drawing.revision\\0-w18-drawing.cwscproj",
+          "sha256": "cc6b4692685e10a8848c4cfe4ce814733667acd1e0c03c6c1eaa5c361bc033d7"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.open_part",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_open_preview_generate_regenerate_render_real_exact_documents\\observed\\007-drawing.open_part\\0-P1_tekening.png",
+          "sha256": "845c66fa521b777bccb677aad7afc5b0390ca6520630c2dc8d53ee396479b3c2"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.preview",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_open_preview_generate_regenerate_render_real_exact_documents\\observed\\008-drawing.preview\\0-P1_tekening.png",
+          "sha256": "845c66fa521b777bccb677aad7afc5b0390ca6520630c2dc8d53ee396479b3c2"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.generate",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_open_preview_generate_regenerate_render_real_exact_documents\\observed\\009-drawing.generate\\0-P1_tekening.pdf",
+          "sha256": "6c8e9056ea6094a02d7b0e4ef720375d5087a97b8a39bbc5085c426f2451aefb"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_open_preview_generate_regenerate_render_real_exact_documents\\observed\\009-drawing.generate\\1-P1_tekening.png",
+          "sha256": "845c66fa521b777bccb677aad7afc5b0390ca6520630c2dc8d53ee396479b3c2"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.print",
+      "result": "BLOCKED_EXTERNAL",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "exact_selected_ids",
+        "non_selected_unchanged",
+        "actual_pdf_prepared"
+      ],
+      "positive_postcondition": false,
+      "selection_widened": null,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "actual_pdf_prepared",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_print_prepares_actual_pdf_without_claiming_physical_acceptance\\observed\\010-drawing.print\\0-P1_tekening.pdf",
+          "sha256": "76a0b60dd9fec41a40b38c029e32781eeddd5b192337f14df919f6d3a286f5b7"
+        }
+      ],
+      "external_acceptance": "Physical printer/operator acceptance is not executed",
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.regenerate",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen",
+        "release_invalidation"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": false,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        },
+        {
+          "name": "release_invalidation",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_regenerate_binds_changed_canonical_geometry_and_persists_exact_draft\\observed\\011-drawing.regenerate\\0-P1_tekening.pdf",
+          "sha256": "b3bde2d354d81f6d3c5e03445819481de0bd2106da5e9cb48f92090497dee6a1"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_regenerate_binds_changed_canonical_geometry_and_persists_exact_draft\\observed\\011-drawing.regenerate\\1-P1_tekening.png",
+          "sha256": "8b57e5ef2c96a22e50cf612ed26845388a99e0beb8863ff3f1347759c0260135"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_regenerate_binds_changed_canonical_geometry_and_persists_exact_draft\\observed\\011-drawing.regenerate\\2-w18-drawing.cwscproj",
+          "sha256": "72603da984105cf495579da223de1a7c56b15b6a61713a7d97777b88b23641f8"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.setup",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen",
+        "undo"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        },
+        {
+          "name": "undo",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_settings_require_real_edit_persistence_and_native_undo\\observed\\012-drawing.setup\\0-w18-drawing.cwscproj",
+          "sha256": "f68c2c4cf9e9fc4f9f1975018b08ef88031f1fd90cb352b5f735285b61ef30d2"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.format",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen",
+        "undo"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        },
+        {
+          "name": "undo",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_settings_require_real_edit_persistence_and_native_undo\\observed\\013-drawing.format\\0-w18-drawing.cwscproj",
+          "sha256": "feb87ec4a65222e7f25d75bd18baa4dfffa325790277787272ed995a2243f13c"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.scale",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen",
+        "undo"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        },
+        {
+          "name": "undo",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_settings_require_real_edit_persistence_and_native_undo\\observed\\014-drawing.scale\\0-w18-drawing.cwscproj",
+          "sha256": "d3e90865b3de0de5d99e44e2c8faa496bb34c608a92f5a0bfa955ca0da7de430"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    },
+    {
+      "action_id": "drawing.views",
+      "result": "PASS",
+      "entity_ids": [
+        "P1"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen",
+        "undo"
+      ],
+      "positive_postcondition": true,
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "valid_single",
+          "status": "PASS"
+        },
+        {
+          "name": "positive_postcondition",
+          "status": "PASS"
+        },
+        {
+          "name": "exact_selected_ids",
+          "status": "PASS"
+        },
+        {
+          "name": "no_unintended_widening",
+          "status": "PASS"
+        },
+        {
+          "name": "non_selected_unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "save_reopen",
+          "status": "PASS"
+        },
+        {
+          "name": "undo",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\drawing\\test_settings_require_real_edit_persistence_and_native_undo\\observed\\015-drawing.views\\0-w18-drawing.cwscproj",
+          "sha256": "6b50ac7e276acdd34036c5c4566a91ecb4d1a19b12d465142bd817d2d418399d"
+        }
+      ],
+      "external_acceptance": null,
+      "execution_layer": "real downstream dispatcher and native drawing panel; shell adapter only",
+      "shipping_qaction_executed": false,
+      "installed_tested": false
+    }
+  ],
+  "output_hash": "10ddbb40d16355bdff1b6dfddb5cd2823f2314da6c421a6c46c5191a379c967c",
+  "artifacts_retained": true,
+  "artifacts_verified": true,
+  "limits": [
+    "No shipping BOM QAction claim",
+    "No installed EXE claim",
+    "No physical printer acceptance",
+    "Release/revision boundaries deliberately reject undo; no undo PASS is inferred. Regenerate invalidation covers the changed canonical source fixture."
+  ]
+}

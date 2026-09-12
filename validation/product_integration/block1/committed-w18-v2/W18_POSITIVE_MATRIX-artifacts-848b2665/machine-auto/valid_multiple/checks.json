@@ -1,0 +1,57 @@
+{
+  "action_id": "machine.auto_accept",
+  "scenario": "valid_multiple",
+  "status": "PASS",
+  "executed": true,
+  "positive_postcondition": true,
+  "qt_action_executed": true,
+  "selected_ids": [
+    "P-MAIN",
+    "P-OTHER"
+  ],
+  "selection_widened": false,
+  "nonselected_stable": true,
+  "restart": true,
+  "undo": true,
+  "input_hash": "5bc1b292dcc8e304ec632f90035d00e52b214ef45863992b4b6558aeb245f0f0",
+  "checks": [
+    {
+      "name": "Shipping automatic-routing QAction enabled",
+      "status": "PASS"
+    },
+    {
+      "name": "Canonical entities including non-selected part and machine unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "Exactly selected parts assigned from current M5 report",
+      "status": "PASS"
+    },
+    {
+      "name": "Assignments bind actual evaluated reports",
+      "status": "PASS"
+    },
+    {
+      "name": "Canonical successful action result matches exact scope",
+      "status": "PASS"
+    },
+    {
+      "name": "Actual project package reopen preserves current assignments",
+      "status": "PASS"
+    },
+    {
+      "name": "Undo after actual reopen restores assignment state",
+      "status": "PASS"
+    },
+    {
+      "name": "Undo preserves all original canonical entities",
+      "status": "PASS"
+    },
+    {
+      "name": "M5 computed evidence grants no physical transfer",
+      "status": "PASS"
+    }
+  ],
+  "reason": "M5 software evidence from explicit synthetic machine/geometry facts; physical acceptance remains external.",
+  "output_hash": "a960664bc202ee44f1f99b6f3031e897caffc706c52dd05a1ff1536ca00362da"
+}

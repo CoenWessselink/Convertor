@@ -1,0 +1,10 @@
+{
+  "action_id": "inspect.assembly",
+  "selected_ids": [
+    "P1",
+    "P2"
+  ],
+  "displayed_text": "Assemblycontext\n\nObject: P2 \u00b7 P2 unique name\nVastgelegde assemblies: A2\nOuderassemblies: A2\nDirecte onderdelen: geen\nSubassemblies: geen\nWederkerige koppelingen: A2=correct\nContext getoond; de selectie is niet uitgebreid naar assemblyleden.\n\nObject: P1 \u00b7 P1 unique name\nVastgelegde assemblies: A1\nOuderassemblies: A1\nDirecte onderdelen: geen\nSubassemblies: geen\nWederkerige koppelingen: A1=correct\nContext getoond; de selectie is niet uitgebreid naar assemblyleden.",
+  "source_sha256": "2919cfe5224009aef84018b29171c4521e6ffdb7951569a9cd8592be15eee6a2",
+  "entity_hash": "5a64fabdfddc131a2715ea741d14af52f7fc1cfc9bdb15b3dda8fff39e29fc28"
+}

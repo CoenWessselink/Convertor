@@ -1,0 +1,83 @@
+{
+  "action_id": "export.review",
+  "files": {
+    "SHA256SUMS.txt": {
+      "bytes": 1181,
+      "sha256": "ca3e09a4f99aa76cb5d57094b4f4b9d73efbd8669a3fe3505dd86a6e252edefc"
+    },
+    "W18_positive_canonical_fixture_parts_scope_BOM.json": {
+      "bytes": 4540,
+      "sha256": "704376dd2e7bb7c9fae4aebed66f146c4dddf6a95ad910b298276919857158fc"
+    },
+    "W18_positive_canonical_fixture_parts_scope_BOM.pdf": {
+      "bytes": 8379,
+      "sha256": "dd14295b2b287b71e219f7e023b95eacb4f730bfb216549bd9eaba69aec8aac4"
+    },
+    "W18_positive_canonical_fixture_parts_scope_BOM.xlsx": {
+      "bytes": 16896,
+      "sha256": "22a09f6d7fa8cfad58feb0b7c40d1c56bb0943b354b3807cb7807727cb9231a0"
+    },
+    "W18_positive_canonical_fixture_parts_scope_BOM_PACKAGE.zip": {
+      "bytes": 23908,
+      "sha256": "5ab78ea0a0369e166c4ae0047a8c2120ce402e151a994edf34ffd043e5caf93c"
+    },
+    "assembly_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "conflicts.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "fastener_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "manifest.json": {
+      "bytes": 2343,
+      "sha256": "6379771ad0e3b4b051e4a658959c2bfac94474aedf6b6879f2bc67a62fba7505"
+    },
+    "material_bom.csv": {
+      "bytes": 213,
+      "sha256": "9077ece7a4300f143b4370d25c79df0e3e9195b211077fe1ed201bd641f713f0"
+    },
+    "part_bom.csv": {
+      "bytes": 693,
+      "sha256": "387e37c3681e57de29579642f21050be3328f7b2a01e27efbae39a37f0ef03d4"
+    },
+    "purchase_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "traceability.csv": {
+      "bytes": 361,
+      "sha256": "5ee7d49cf87238deec251709b43c49862defcd2b0a88bdcf7db9a16d5ece557f"
+    },
+    "validation.json": {
+      "bytes": 980,
+      "sha256": "1e319ec2bba85b37e6880427453f37340ee0bc63562656900bf3219996ec25a2"
+    },
+    "weld_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "machine_transfer_allowed": false,
+  "preflight_sha256": "273c56b584c93e9bfd09e939ea66335f815574a028e3c95aa3372c9adf92fe68",
+  "production_release_allowed": false,
+  "project_id": "a1c07b78-3848-4881-99c3-a4358f817707",
+  "review_only": true,
+  "schema": "cws-bom-review-export-1.0",
+  "scope": {
+    "entity_ids": [
+      "P1"
+    ],
+    "exact_part_selection": true,
+    "family": "parts",
+    "group_ids": [
+      "PART-4b454320dcf0efe6"
+    ]
+  },
+  "snapshot_sha256": "de17e50db821ee1dab18549b92a356bc21905b534e2d566a16402cc6d2c8c951",
+  "source_snapshot_sha256": "660cf83f6f9571231d1c1505dd81d489987207ed398f8505bfe3b6df9913775a"
+}

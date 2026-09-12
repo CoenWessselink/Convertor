@@ -1,0 +1,114 @@
+{
+  "status": "PASS",
+  "claim": "register structure and source coverage only; not product acceptance",
+  "summary": {
+    "total": 3856,
+    "applicable": 3843,
+    "status_counts": {
+      "BLOCKED_EXTERNAL": 8,
+      "OUT_OF_SCOPE_APPROVED": 13,
+      "PARTIAL": 3835
+    },
+    "category_counts": {
+      "bom": 777,
+      "bom_w18": 87,
+      "drawings_change_impact": 56,
+      "historical": 344,
+      "historical_superseded": 4,
+      "installer_release_e2e": 79,
+      "manufacturing_machines": 129,
+      "nesting_stock_purchase": 73,
+      "pdf_ui_v3": 259,
+      "product_integration": 191,
+      "production_shopfloor": 52,
+      "quality_planning_delivery": 70,
+      "recognition_conversion": 199,
+      "requirements_bom": 71,
+      "ui_performance_reporting": 416,
+      "viewer_openbim": 1049
+    },
+    "historical_pass_requiring_revalidation": 355,
+    "mapped_implementation_candidates": 468,
+    "mapped_test_candidates": 468,
+    "dimensions": {
+      "functional_built": {
+        "proven": 0,
+        "required": 3843,
+        "unknown": 3843,
+        "applicability_unknown": 0,
+        "evidence_coverage_percent": 0.0,
+        "product_completion_percent": null
+      },
+      "integration_tested": {
+        "proven": 0,
+        "required": 3843,
+        "unknown": 3843,
+        "applicability_unknown": 0,
+        "evidence_coverage_percent": 0.0,
+        "product_completion_percent": null
+      },
+      "installed_tested": {
+        "proven": 0,
+        "required": 734,
+        "unknown": 734,
+        "applicability_unknown": 3109,
+        "evidence_coverage_percent": 0.0,
+        "product_completion_percent": null
+      },
+      "real_world_tested": {
+        "proven": 0,
+        "required": 121,
+        "unknown": 121,
+        "applicability_unknown": 3722,
+        "evidence_coverage_percent": 0.0,
+        "product_completion_percent": null
+      },
+      "release_ready": {
+        "proven": 0,
+        "required": 79,
+        "unknown": 79,
+        "applicability_unknown": 3764,
+        "evidence_coverage_percent": 0.0,
+        "product_completion_percent": null
+      }
+    },
+    "gaps": {
+      "implemented": 0,
+      "partial": 3835,
+      "missing_mapping": 3375,
+      "tested": 0,
+      "installed": 0,
+      "real_file": 0,
+      "external": 8,
+      "blockers": {
+        "CURRENT_SOURCE_ACCEPTANCE_NOT_PROVEN": 3835,
+        "Historical external acceptance still requires independent current evidence": 3,
+        "Independent application, physical machine or physical GPU acceptance is required": 4,
+        "Physical printer acceptance requires actual printed output and operator validation": 1
+      }
+    },
+    "w18": {
+      "total": 87,
+      "unique": 87,
+      "scenario_proven": {
+        "empty_selection": 87,
+        "valid_single": 79,
+        "valid_multiple": 19,
+        "mixed_selection": 78,
+        "wrong_family": 78,
+        "blocked": 64,
+        "stale": 87,
+        "invalid": 87,
+        "positive_postcondition": 80,
+        "exact_selected_ids": 82,
+        "no_unintended_widening": 81,
+        "non_selected_unchanged": 82,
+        "save_reopen": 65,
+        "undo": 26,
+        "release_invalidation": 6
+      }
+    }
+  }
+}
+
+--- stderr ---

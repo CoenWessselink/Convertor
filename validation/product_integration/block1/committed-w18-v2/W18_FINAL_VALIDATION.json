@@ -1,0 +1,38 @@
+{
+  "commit": "2a93b0b306cf0ade9c10e182363f57a532b85c66",
+  "app_version": "0.10.19-beta-dev",
+  "environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "scenario": "Standalone current W18 evidence verification; not product acceptance",
+  "input_hash": "09de9fb46a3570c17c7015856cbd455662683df28072b49edd3481a3de6cbcd1",
+  "result": "PASS",
+  "output_hash": "5f165a3f300f96477fc7a4ca177c83a846fdfe29401dd56a21fdb89f3bba6691",
+  "checks": [
+    {
+      "command": [
+        "tools/master_requirements_v2.py",
+        "--check"
+      ],
+      "returncode": 0,
+      "result": "PASS",
+      "log": "validation/product_integration/block1/committed-w18-v2/final-check-1.txt",
+      "output_hash": "61a13505612fba0531116f820effcb3349bb7625fe45ddcea19c733875408b40"
+    },
+    {
+      "command": [
+        "tools/bind_w18_requirements_v2.py",
+        "--check-evidence",
+        "validation\\product_integration\\block1\\committed-w18-v2\\W18_REQUIREMENTS_BINDING.json"
+      ],
+      "returncode": 0,
+      "result": "PASS",
+      "log": "validation/product_integration/block1/committed-w18-v2/final-check-2.txt",
+      "output_hash": "436acdbf15ab1f4bc3d3de1d53da4c5d1d7a3bb205b05887e29fcab7e9dee3be"
+    }
+  ],
+  "verified_runtime_sources": 495,
+  "verified_artifacts": 291,
+  "installed_commit": null
+}

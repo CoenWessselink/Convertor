@@ -1,0 +1,364 @@
+{
+  "schema": "cws-bom-editor-execution-1",
+  "status": "PASS",
+  "cases": [
+    {
+      "action_id": "edit.profile",
+      "family": "part",
+      "scenario": "change",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Real Save completes canonical action",
+        "Result mutation IDs remain exact",
+        "Intent proves actual Save mutation",
+        "Requested field actually changed",
+        "Unselected canonical entities unchanged",
+        "Manufacturing edits invalidate prior local review and roundtrip",
+        "Actual cwscproj reopen preserves canonical mutation",
+        "Undo after reopen restores selected canonical entity",
+        "Undo after reopen preserves all nonselected entities"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "2cb12902abf4996e01d085ac5afabcc9d359a653339ff4dccca01b45fdb88c02",
+      "output_sha256": "b2f5b26e16f022a2c7f950e5a5adfb887b8346eb9a100e809567bcae4ee07e02",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": true,
+      "undo": true
+    },
+    {
+      "action_id": "edit.material",
+      "family": "part",
+      "scenario": "change",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Real Save completes canonical action",
+        "Result mutation IDs remain exact",
+        "Intent proves actual Save mutation",
+        "Requested field actually changed",
+        "Unselected canonical entities unchanged",
+        "Manufacturing edits invalidate prior local review and roundtrip",
+        "Actual cwscproj reopen preserves canonical mutation",
+        "Undo after reopen restores selected canonical entity",
+        "Undo after reopen preserves all nonselected entities"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "d92ee58fa38b2662419b035f7e474e5a4de0cc410b7cf158e671172c3a3186e5",
+      "output_sha256": "8cb03ee726028de942c91d2722119e114d4cf4380d89632971a2e16e21bdc8bb",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": true,
+      "undo": true
+    },
+    {
+      "action_id": "edit.length",
+      "family": "part",
+      "scenario": "change",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Real Save completes canonical action",
+        "Result mutation IDs remain exact",
+        "Intent proves actual Save mutation",
+        "Requested field actually changed",
+        "Unselected canonical entities unchanged",
+        "Manufacturing edits invalidate prior local review and roundtrip",
+        "Actual cwscproj reopen preserves canonical mutation",
+        "Undo after reopen restores selected canonical entity",
+        "Undo after reopen preserves all nonselected entities"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "b259d0e780e5480f8aa29f16216a8c25080157227f851c97740983046e14cc07",
+      "output_sha256": "e257467ae4c5613b4be3734b25c528e4eb4741aafb6ca0ad62391e2f1206bfca",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": true,
+      "undo": true
+    },
+    {
+      "action_id": "edit.material",
+      "family": "purchase",
+      "scenario": "change",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Purchase length loaded from canonical dimensions",
+        "Real Save completes canonical action",
+        "Result mutation IDs remain exact",
+        "Intent proves actual Save mutation",
+        "Requested field actually changed",
+        "Unselected canonical entities unchanged",
+        "Actual cwscproj reopen preserves canonical mutation",
+        "Undo after reopen restores selected canonical entity",
+        "Undo after reopen preserves all nonselected entities"
+      ],
+      "selected_ids": [
+        "BUY1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "310f0849f71f1914ee5c124b1b808adbb0ae67f26c8cf7cba2a6b76eb1397179",
+      "output_sha256": "79938860d61a17439ed244d2ba4bdb62b7dd0dd1f449ee57255a78a8eee7bf50",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": true,
+      "undo": true
+    },
+    {
+      "action_id": "edit.length",
+      "family": "purchase",
+      "scenario": "change",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Purchase length loaded from canonical dimensions",
+        "Real Save completes canonical action",
+        "Result mutation IDs remain exact",
+        "Intent proves actual Save mutation",
+        "Requested field actually changed",
+        "Unselected canonical entities unchanged",
+        "Actual cwscproj reopen preserves canonical mutation",
+        "Undo after reopen restores selected canonical entity",
+        "Undo after reopen preserves all nonselected entities"
+      ],
+      "selected_ids": [
+        "BUY1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "93bc6557f07e9019b9b12f3c25657896d92baa333be64778394aeb434d89d10e",
+      "output_sha256": "f5bb3d457cad4f8c88eed338f324f51972baec6d3c28e9af40def376d8fe1f78",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": true,
+      "undo": true
+    },
+    {
+      "action_id": "edit.material",
+      "family": "purchase",
+      "scenario": "no_initial_length",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Purchase length loaded from canonical dimensions",
+        "Real Save completes canonical action",
+        "Result mutation IDs remain exact",
+        "Intent proves actual Save mutation",
+        "Requested field actually changed",
+        "Unselected canonical entities unchanged",
+        "Material Save preserves absent purchase length",
+        "Actual cwscproj reopen preserves canonical mutation",
+        "Undo after reopen restores selected canonical entity",
+        "Undo after reopen preserves all nonselected entities"
+      ],
+      "selected_ids": [
+        "BUY1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "d236f1df80d8bf0e1b9ad0a4d7557c2536af74e0bfdb394724d4f1bbe6b332de",
+      "output_sha256": "54159ff6a835f96f280667fe5edb2c745cc07e2b5e09a00074e39771841965f7",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": true,
+      "undo": true
+    },
+    {
+      "action_id": "edit.length",
+      "family": "part",
+      "scenario": "stale_source",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Unsafe or no-op Save never passes",
+        "Failed Save restores selected canonical entity",
+        "Failed Save never adds undo success"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "813526c55c4a92f397d999fa02c489f824e342b191c3df5ac305c8e676dd7e31",
+      "output_sha256": "e2da3c47e0acea1177d5cd1607a8618763d48cd78ea10d8e0ce1bd936cc2f8ba",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": false,
+      "undo": false
+    },
+    {
+      "action_id": "edit.length",
+      "family": "part",
+      "scenario": "stale_selection",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Unsafe or no-op Save never passes",
+        "Failed Save restores selected canonical entity",
+        "Failed Save never adds undo success"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "5da86c8818925b58235cce4e9a47ccda0fbf4e25ea4a02a16961a97e9bb3e20e",
+      "output_sha256": "6591899dc3a6d57c0cffbd62b90a1636c6a4d30a0faa22b3a1e99d1a8b2e046b",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": false,
+      "undo": false
+    },
+    {
+      "action_id": "edit.length",
+      "family": "part",
+      "scenario": "unchanged",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Unsafe or no-op Save never passes",
+        "Failed Save restores selected canonical entity",
+        "Failed Save never adds undo success"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "4d72183468b97974d16f2522f9724a74c14bb3239ebf216add811bb5bc5097fc",
+      "output_sha256": "6544144b03e05bca4f59e180b0f0b5daa418a6585bcc870acbc187eed125ba76",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": false,
+      "undo": false
+    },
+    {
+      "action_id": "edit.length",
+      "family": "purchase",
+      "scenario": "readonly",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Purchase length loaded from canonical dimensions",
+        "Unsafe or no-op Save never passes",
+        "Failed Save restores selected canonical entity",
+        "Failed Save never adds undo success"
+      ],
+      "selected_ids": [
+        "BUY1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "8ed1aa47c5a8c72ccd429464f28c885b783197ec4f59acc188b3c9e5184a86f1",
+      "output_sha256": "3689c05fcd2860b678535ca29d2702c59000a37b2a4f0188cb5334f2a14ce35f",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": false,
+      "undo": false
+    },
+    {
+      "action_id": "edit.length",
+      "family": "purchase",
+      "scenario": "no_project_path",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Purchase length loaded from canonical dimensions",
+        "Unsafe or no-op Save never passes",
+        "Failed Save restores selected canonical entity",
+        "Failed Save never adds undo success"
+      ],
+      "selected_ids": [
+        "BUY1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "63661d82230b608fe09f6ee8f5b9589c6b0fbc6871efbcf205529e56fd8c699e",
+      "output_sha256": "3718d87128e70936397a6f1e4ddb0abd8f02790cfb963676766230609f0f93b2",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": false,
+      "undo": false
+    },
+    {
+      "action_id": "edit.length",
+      "family": "part",
+      "scenario": "save_io_failure",
+      "status": "PASS",
+      "checks": [
+        "Shipping QAction enabled",
+        "Exact requested editor target and deferred result",
+        "Unsafe or no-op Save never passes",
+        "Failed Save restores selected canonical entity",
+        "Failed Save never adds undo success",
+        "Failed disk write preserves previously saved entity"
+      ],
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "input_sha256": "a4489f4d59f1fe344df092277cbeebb754ae14c8e5f21bcc6eef7217e75ade3a",
+      "output_sha256": "e706cc38b4c066007239593d3db364962b98b82f38eb6508ae38f43eb6c40a0c",
+      "qt_action_executed": true,
+      "save_button_executed": true,
+      "restart": false,
+      "undo": false
+    }
+  ],
+  "commit": "2a93b0b306cf0ade9c10e182363f57a532b85c66",
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "synthetic_input": true,
+  "scope": "Local canonical software edit execution; no source/machine production release asserted",
+  "source_hashes_before": {
+    "tests/bom_w18_edit_execution_smoke.py": "f5735076dfe698cdb51774968f42da88e49bb6a994226c6b898800bb6419f9ef",
+    "cws_convertor/ui_qt/functional_workspaces.py": "61fc34f5c28dec3580d7811c9cae05c0fa26a6d2bcaaa8c1ab656ced22d6dcb8",
+    "cws_convertor/ui_qt/bom_workspace.py": "e519c779b37c6396ab55bf9589140136b457c3e2211a1f909a086937cdf5bd00",
+    "cws_convertor/ui_qt/bom_action_dispatch.py": "463915f554ec7042056d420c2b640959a9cdba048efcb6732dbebf2bc6c721cd",
+    "cws_convertor/bom/production_hub.py": "dff319540e80f56dfec8775262271f5d9309efe7fe159ec8e079d06f8199baca",
+    "cws_convertor/bom/workspace.py": "c1858f6c4fe20ede0919dbc42998edceb8651825f2da89ac4ef91d0f6208bf83",
+    "cws_convertor/project/workbench.py": "5a8a6df6989b764045bb88c1ac76033f6c9c5caca492bce93252442aa4a2e6db",
+    "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+    "cws_convertor/project/service.py": "1fc3398310e38d00b69132422cc3ef854d73a8396658f996a2bcc2690b3cfa14",
+    "cws_convertor/ui_qt/bom_export_evidence.py": "247d42c03f0400aaf6d8208020605eaaa4b6917b98d30242daa919384d3966a2"
+  },
+  "source_hashes_after": {
+    "tests/bom_w18_edit_execution_smoke.py": "f5735076dfe698cdb51774968f42da88e49bb6a994226c6b898800bb6419f9ef",
+    "cws_convertor/ui_qt/functional_workspaces.py": "61fc34f5c28dec3580d7811c9cae05c0fa26a6d2bcaaa8c1ab656ced22d6dcb8",
+    "cws_convertor/ui_qt/bom_workspace.py": "e519c779b37c6396ab55bf9589140136b457c3e2211a1f909a086937cdf5bd00",
+    "cws_convertor/ui_qt/bom_action_dispatch.py": "463915f554ec7042056d420c2b640959a9cdba048efcb6732dbebf2bc6c721cd",
+    "cws_convertor/bom/production_hub.py": "dff319540e80f56dfec8775262271f5d9309efe7fe159ec8e079d06f8199baca",
+    "cws_convertor/bom/workspace.py": "c1858f6c4fe20ede0919dbc42998edceb8651825f2da89ac4ef91d0f6208bf83",
+    "cws_convertor/project/workbench.py": "5a8a6df6989b764045bb88c1ac76033f6c9c5caca492bce93252442aa4a2e6db",
+    "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+    "cws_convertor/project/service.py": "1fc3398310e38d00b69132422cc3ef854d73a8396658f996a2bcc2690b3cfa14",
+    "cws_convertor/ui_qt/bom_export_evidence.py": "247d42c03f0400aaf6d8208020605eaaa4b6917b98d30242daa919384d3966a2"
+  },
+  "source_hashes_unchanged": true,
+  "source_hashes": {
+    "tests/bom_w18_edit_execution_smoke.py": "f5735076dfe698cdb51774968f42da88e49bb6a994226c6b898800bb6419f9ef",
+    "cws_convertor/ui_qt/functional_workspaces.py": "61fc34f5c28dec3580d7811c9cae05c0fa26a6d2bcaaa8c1ab656ced22d6dcb8",
+    "cws_convertor/ui_qt/bom_workspace.py": "e519c779b37c6396ab55bf9589140136b457c3e2211a1f909a086937cdf5bd00",
+    "cws_convertor/ui_qt/bom_action_dispatch.py": "463915f554ec7042056d420c2b640959a9cdba048efcb6732dbebf2bc6c721cd",
+    "cws_convertor/bom/production_hub.py": "dff319540e80f56dfec8775262271f5d9309efe7fe159ec8e079d06f8199baca",
+    "cws_convertor/bom/workspace.py": "c1858f6c4fe20ede0919dbc42998edceb8651825f2da89ac4ef91d0f6208bf83",
+    "cws_convertor/project/workbench.py": "5a8a6df6989b764045bb88c1ac76033f6c9c5caca492bce93252442aa4a2e6db",
+    "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+    "cws_convertor/project/service.py": "1fc3398310e38d00b69132422cc3ef854d73a8396658f996a2bcc2690b3cfa14",
+    "cws_convertor/ui_qt/bom_export_evidence.py": "247d42c03f0400aaf6d8208020605eaaa4b6917b98d30242daa919384d3966a2"
+  }
+}

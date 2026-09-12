@@ -1,0 +1,67 @@
+{
+  "action_id": "export.csv",
+  "files": {
+    "SHA256SUMS.txt": {
+      "bytes": 825,
+      "sha256": "b0950f5367e27dc7d99973a3fb319838ae42c46a80af62c4e3eaff87b6baf814"
+    },
+    "assembly_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "conflicts.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "fastener_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "manifest.json": {
+      "bytes": 1780,
+      "sha256": "98f2834e8c60532d72b085597eb0f9783558fc14815d5f820df932eefb773f55"
+    },
+    "material_bom.csv": {
+      "bytes": 213,
+      "sha256": "9077ece7a4300f143b4370d25c79df0e3e9195b211077fe1ed201bd641f713f0"
+    },
+    "part_bom.csv": {
+      "bytes": 693,
+      "sha256": "387e37c3681e57de29579642f21050be3328f7b2a01e27efbae39a37f0ef03d4"
+    },
+    "purchase_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "traceability.csv": {
+      "bytes": 361,
+      "sha256": "5ee7d49cf87238deec251709b43c49862defcd2b0a88bdcf7db9a16d5ece557f"
+    },
+    "validation.json": {
+      "bytes": 980,
+      "sha256": "1e319ec2bba85b37e6880427453f37340ee0bc63562656900bf3219996ec25a2"
+    },
+    "weld_bom.csv": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "machine_transfer_allowed": false,
+  "preflight_sha256": "649408823c8c249c4e283c41ceeda2b5e68fee99657dc1fd085622a3d1013db4",
+  "production_release_allowed": false,
+  "project_id": "690725a6-01e9-4d24-9205-9331e5436372",
+  "review_only": true,
+  "schema": "cws-bom-review-export-1.0",
+  "scope": {
+    "entity_ids": [
+      "P1"
+    ],
+    "exact_part_selection": true,
+    "family": "parts",
+    "group_ids": [
+      "PART-4b454320dcf0efe6"
+    ]
+  },
+  "snapshot_sha256": "1e67d480f876e83df42a6dbab9f3486e710e58634c78186338cdb8c052b64388",
+  "source_snapshot_sha256": "8938b7ee3ebdf53642ebf23d31d82faf863a97a3d41d64f22750d19c16305e9d"
+}

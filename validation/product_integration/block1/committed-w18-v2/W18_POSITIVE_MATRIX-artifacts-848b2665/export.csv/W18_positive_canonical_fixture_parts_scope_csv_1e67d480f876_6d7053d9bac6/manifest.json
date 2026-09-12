@@ -1,0 +1,60 @@
+{
+  "format": "CWS_BOM_PACKAGE_V1",
+  "selected_formats": [
+    "csv"
+  ],
+  "review_only": true,
+  "machine_transfer_allowed": false,
+  "app": "CWS Convertor",
+  "app_version": "0.10.19-beta-dev",
+  "project_id": "690725a6-01e9-4d24-9205-9331e5436372",
+  "snapshot_sha256": "1e67d480f876e83df42a6dbab9f3486e710e58634c78186338cdb8c052b64388",
+  "scope": {
+    "family": "parts",
+    "entity_ids": [
+      "P1"
+    ],
+    "group_ids": [
+      "PART-4b454320dcf0efe6"
+    ],
+    "exact_part_selection": true
+  },
+  "files": {
+    "assembly_bom.csv": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "conflicts.csv": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "fastener_bom.csv": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "material_bom.csv": {
+      "sha256": "9077ece7a4300f143b4370d25c79df0e3e9195b211077fe1ed201bd641f713f0",
+      "size": 213
+    },
+    "part_bom.csv": {
+      "sha256": "387e37c3681e57de29579642f21050be3328f7b2a01e27efbae39a37f0ef03d4",
+      "size": 693
+    },
+    "purchase_bom.csv": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "traceability.csv": {
+      "sha256": "5ee7d49cf87238deec251709b43c49862defcd2b0a88bdcf7db9a16d5ece557f",
+      "size": 361
+    },
+    "validation.json": {
+      "sha256": "1e319ec2bba85b37e6880427453f37340ee0bc63562656900bf3219996ec25a2",
+      "size": 980
+    },
+    "weld_bom.csv": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    }
+  }
+}

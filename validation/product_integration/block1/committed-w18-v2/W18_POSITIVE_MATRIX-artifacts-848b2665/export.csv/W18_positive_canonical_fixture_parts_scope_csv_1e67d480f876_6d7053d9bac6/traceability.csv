@@ -1,0 +1,2 @@
+﻿entity_type,internal_id,group_id,name,category,source_file_id,source_entity_id,global_id,part_position,assembly_mark,geometry_hash,manufacturing_hash,production_identity_hash
+part,P1,PART-4b454320dcf0efe6,P1,make_part,,,,P1,,9c45143f8a3cb77234ae9bc6bcea4c3d2fd000373763af9bbc36f674338b8d6f,4b454320dcf0efe6597e41bdee862eccc5d5ca9876eb2c3d03c0889f38bbf3a4,

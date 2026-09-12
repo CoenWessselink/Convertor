@@ -1,0 +1,2 @@
+﻿group_id,category,material,profile,quantity,net_length_mm,total_mass_kg,total_surface_area_m2,part_group_count,blocked,blocking_reasons
+MAT-23070e2f5c5b4202,make_part,S355J2,HEA200,1,3000.0,80.0,1.5,1,False,

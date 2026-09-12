@@ -1,0 +1,99 @@
+{
+  "schema": "cws-w18-kerf-execution-1",
+  "commit": "2a93b0b306cf0ade9c10e182363f57a532b85c66",
+  "app_version": "0.10.19-beta-dev",
+  "environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "os": "Windows-11-10.0.26200-SP0",
+    "qt": "offscreen",
+    "synthetic": true
+  },
+  "source_hashes": {
+    "tests/bom_w18_kerf_execution_smoke.py": "076f64f731656bace386b3d8a5f1a16c3c8db188da2861319183df4959696f13",
+    "cws_convertor/ui_qt/machine_settings_panel.py": "d72e828f0ff678db1a9d588927ed19e7917235a59ed6ff356ae4b7a9ca65b35d",
+    "cws_convertor/manufacturing/machine_settings.py": "165532e3318aa364965b88605752b8ee57215d20dcd44d3c374dee816ede273d",
+    "cws_convertor/ui_qt/bom_workspace.py": "e519c779b37c6396ab55bf9589140136b457c3e2211a1f909a086937cdf5bd00",
+    "cws_convertor/ui_qt/bom_action_dispatch_base.py": "44e7497f75c952f10b1b6a01cb506ae899d20ff8fcb737afa91062e2c884da74",
+    "cws_convertor/optimization/profile_nesting/configuration.py": "ae3bf8f5469f90493edfa4146f183f3b9ec836404e67ffc674e4fb8880746a02",
+    "cws_convertor/optimization/profile_nesting/benchmark.py": "cc74989982fa88b7d4c78f5e01af1916a25edc869712bb4050430f5ead1241c4",
+    "cws_convertor/bom/freshness.py": "c795a74381fe627035d5688204134f038cafa67f0ee6bc0e8df9469445e1f6e3"
+  },
+  "source_unchanged_during_run": true,
+  "input_hash": "24d1f20d3fb9a3776d6c3bfb7f0cd706803bbabf03f5a8d7e12bf367b45b09c6",
+  "scenario": "BOM kerf setting and authority invalidation",
+  "result": "PASS",
+  "output_hash": "606d289b61371a95cf76f77b45a51dc04e388c8e844be4f84b919534a2f6494b",
+  "actions": [
+    {
+      "action_id": "optimize.kerf",
+      "status": "PARTIAL",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "bench-part-000"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "positive_postcondition": false,
+      "restart": true,
+      "undo": true,
+      "proven_scenarios": [
+        "stale",
+        "invalid",
+        "save_reopen",
+        "undo",
+        "release_invalidation"
+      ],
+      "checks": [
+        {
+          "name": "Invalid/missing/no-op/unexplained kerf leaves model unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Conflicting profile/machine identities never mutate",
+          "status": "PASS"
+        },
+        {
+          "name": "Stale source is rejected before apply",
+          "status": "PASS"
+        },
+        {
+          "name": "Failed disk write restores original model and file",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual machine configuration Save/reopen/undo",
+          "status": "PASS"
+        },
+        {
+          "name": "Changed kerf revokes previous machine validation",
+          "status": "PASS"
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\kerf\\test_conflicting_profile_and_machine_identities_never_mutate\\project.cwscproj",
+          "sha256": "49c590e21e753934861754a7d9c5fe8f61fb636099d7415bea83451fb5cbf99e"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\kerf\\test_invalid_missing_noop_and_unexplained_configuration_never_mutate\\project.cwscproj",
+          "sha256": "c4d19a992e90a19c05e102eb0278055302cd90da9a7cb4e6d7565efb753680a2"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\kerf\\test_shipping_action_rejects_stale_source_before_save\\project.cwscproj",
+          "sha256": "5a698a22603e43d3e22bd2609275191b7336f0a35b819d022b0866db58921cf7"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\kerf\\test_shipping_action_rolls_back_failed_disk_write\\project.cwscproj",
+          "sha256": "3f178bd31d520a2436ad95977e5abb7c6f50fe7851ecce3233b44c237dbc59af"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\kerf\\test_shipping_action_saves_exact_machine_and_undo_after_reopen\\project.cwscproj",
+          "sha256": "d13b4c2f0a6e0082c8a1c73067a37c576706cb9b890d347953336aa02b2a392b"
+        }
+      ],
+      "reason": "Actual settings edit is proven. A new qualified cutting plan after the change is not proven; machine revalidation is required."
+    }
+  ],
+  "artifacts_retained": true
+}

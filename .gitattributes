@@ -22,3 +22,7 @@
 
 # Acceptance reports hash their raw output logs; never rewrite those bytes.
 validation/product_integration/** -text whitespace=cr-at-eol
+
+# Generated CAD/PDF/package evidence contains format-significant whitespace.
+# Keep its byte hashes intact and review it through the readable matrix index.
+validation/product_integration/**/W18_POSITIVE_MATRIX-artifacts-*/** -diff

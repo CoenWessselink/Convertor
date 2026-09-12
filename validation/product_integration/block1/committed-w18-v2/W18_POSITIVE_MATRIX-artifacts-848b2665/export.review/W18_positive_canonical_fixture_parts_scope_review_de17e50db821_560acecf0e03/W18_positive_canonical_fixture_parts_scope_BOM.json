@@ -1,0 +1,138 @@
+{
+  "project_id": "a1c07b78-3848-4881-99c3-a4358f817707",
+  "project_name": "W18 positive canonical fixture",
+  "generated_at": "2026-09-12T11:44:03+00:00",
+  "schema_version": "1.2",
+  "classification_report_sha256": "",
+  "part_bom": [
+    {
+      "group_id": "PART-4b454320dcf0efe6",
+      "status": "ready",
+      "category": "make_part",
+      "part_position": "P1",
+      "name": "P1",
+      "profile": "HEA200",
+      "material": "S355J2",
+      "length_mm": 3000.0,
+      "quantity": 1,
+      "mass_each_kg": 80.0,
+      "total_mass_kg": 80.0,
+      "surface_area_each_m2": 1.5,
+      "total_surface_area_m2": 1.5,
+      "assembly_marks": [],
+      "mirrored": false,
+      "nc1_eligible": false,
+      "classification_confidence": 1.0,
+      "profile_confidence": 1.0,
+      "material_confidence": 1.0,
+      "blocked": false,
+      "blocking_reasons": [],
+      "warnings": [],
+      "geometry_hash": "9c45143f8a3cb77234ae9bc6bcea4c3d2fd000373763af9bbc36f674338b8d6f",
+      "manufacturing_hash": "4b454320dcf0efe6597e41bdee862eccc5d5ca9876eb2c3d03c0889f38bbf3a4",
+      "production_identity_hash": "4b454320dcf0efe6597e41bdee862eccc5d5ca9876eb2c3d03c0889f38bbf3a4",
+      "source_entity_ids": [],
+      "part_ids": [
+        "P1"
+      ]
+    }
+  ],
+  "assembly_bom": [],
+  "purchase_bom": [],
+  "fastener_bom": [],
+  "weld_bom": [],
+  "material_bom": [
+    {
+      "group_id": "MAT-23070e2f5c5b4202",
+      "category": "make_part",
+      "material": "S355J2",
+      "profile": "HEA200",
+      "quantity": 1,
+      "net_length_mm": 3000.0,
+      "total_mass_kg": 80.0,
+      "total_surface_area_m2": 1.5,
+      "part_group_count": 1,
+      "blocked": false,
+      "blocking_reasons": []
+    }
+  ],
+  "conflicts": [],
+  "traceability": [
+    {
+      "entity_type": "part",
+      "internal_id": "P1",
+      "group_id": "PART-4b454320dcf0efe6",
+      "name": "P1",
+      "category": "make_part",
+      "source_file_id": "",
+      "source_entity_id": "",
+      "global_id": "",
+      "part_position": "P1",
+      "assembly_mark": "",
+      "geometry_hash": "9c45143f8a3cb77234ae9bc6bcea4c3d2fd000373763af9bbc36f674338b8d6f",
+      "manufacturing_hash": "4b454320dcf0efe6597e41bdee862eccc5d5ca9876eb2c3d03c0889f38bbf3a4",
+      "production_identity_hash": ""
+    }
+  ],
+  "summary": {
+    "source_content_sha256": "a4382f96160b9099574835dc5540f8a77a8a6ce83ec8af2d7adb7779a119af35",
+    "stock_state_sha256": "5d41379c10d0fc308bad08dae95ded1c24be92770ceec8c7ed76851b772a7bd8",
+    "part_group_count": 1,
+    "assembly_group_count": 0,
+    "purchase_group_count": 0,
+    "fastener_group_count": 0,
+    "weld_group_count": 0,
+    "material_group_count": 1,
+    "traceability_record_count": 1,
+    "blocking_conflict_count": 0,
+    "warning_conflict_count": 0,
+    "total_part_mass_kg": 80.0,
+    "total_part_surface_m2": 1.5,
+    "total_part_length_mm": 3000.0,
+    "purchase_quantity": 0,
+    "fastener_quantity": 0,
+    "weld_object_count": 0,
+    "generated_at": "2026-09-12T11:44:03+00:00",
+    "full_project_bom_sha256": "660cf83f6f9571231d1c1505dd81d489987207ed398f8505bfe3b6df9913775a",
+    "scope": {
+      "family": "parts",
+      "entity_ids": [
+        "P1"
+      ],
+      "group_ids": [
+        "PART-4b454320dcf0efe6"
+      ],
+      "exact_part_selection": true
+    }
+  },
+  "validation": {
+    "passed": true,
+    "production_ready": false,
+    "checks": {
+      "part_coverage": true,
+      "part_unique_membership": true,
+      "purchase_coverage": true,
+      "purchase_unique_membership": true,
+      "assembly_coverage": true,
+      "assembly_unique_membership": true,
+      "fastener_coverage": true,
+      "fastener_unique_membership": true,
+      "weld_coverage": true,
+      "weld_unique_membership": true,
+      "traceability_coverage": true,
+      "traceability_unique_membership": true,
+      "mass_balance": true,
+      "surface_balance": true,
+      "length_balance": true
+    },
+    "blocking_conflict_count": 0,
+    "warning_conflict_count": 0,
+    "traceability_coverage": 1.0,
+    "messages": [
+      "Bronbewijs ontbreekt of externe IFC/STEP-bronnen zijn nog niet productie-vrijgegeven",
+      "Actueel materiaal- en vrijgavebewijs voor maakdelen ontbreekt of is geblokkeerd",
+      "Exacte partselectie; assembly-, inkoop-, las- en boutregels niet meegeëxporteerd."
+    ]
+  },
+  "snapshot_sha256": "de17e50db821ee1dab18549b92a356bc21905b534e2d566a16402cc6d2c8c951"
+}

@@ -1,0 +1,36 @@
+{
+  "action_id": "machine.auto_accept",
+  "scenario": "blocked",
+  "status": "PASS",
+  "executed": true,
+  "positive_postcondition": false,
+  "qt_action_executed": true,
+  "selected_ids": [
+    "P-MAIN"
+  ],
+  "selection_widened": false,
+  "nonselected_stable": true,
+  "restart": false,
+  "undo": false,
+  "input_hash": "0cd21e0d56b72d0fa98a79b32fcb5db32cd5cf7e143942a3b2becc884d76ff07",
+  "checks": [
+    {
+      "name": "Canonical entities including non-selected part and machine unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "No partial or invalid automatic assignment is persisted",
+      "status": "PASS"
+    },
+    {
+      "name": "Rejected acceptance cannot record success",
+      "status": "PASS"
+    },
+    {
+      "name": "M5 computed evidence grants no physical transfer",
+      "status": "PASS"
+    }
+  ],
+  "reason": "M5 software evidence from explicit synthetic machine/geometry facts; physical acceptance remains external.",
+  "output_hash": "62fb9b9d4b1e7135a2d790d029c712df2eb376cca649b765cbbdbca30f75990e"
+}

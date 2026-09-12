@@ -1,0 +1,39 @@
+{
+  "action_id": "export.xlsx",
+  "files": {
+    "SHA256SUMS.txt": {
+      "bytes": 283,
+      "sha256": "9f09c89aab981041a4a5f79aa7c2f8d3d6a9c280b8549e0de3bb4844941165ea"
+    },
+    "W18_positive_canonical_fixture_parts_scope_BOM.xlsx": {
+      "bytes": 16898,
+      "sha256": "2b7507095e56d08aa663090d984f9c72af303ea8c6ccd199ba8a7e91c7eb9dd2"
+    },
+    "manifest.json": {
+      "bytes": 866,
+      "sha256": "67002f2ca9a13acc4a00463d0c4bed512f1cae2d44b4ef4d61396525918f563a"
+    },
+    "validation.json": {
+      "bytes": 980,
+      "sha256": "1e319ec2bba85b37e6880427453f37340ee0bc63562656900bf3219996ec25a2"
+    }
+  },
+  "machine_transfer_allowed": false,
+  "preflight_sha256": "f36dd89dbd0aa6890bce4a8bf021f1b8b1215a07ef84813540843874343ce119",
+  "production_release_allowed": false,
+  "project_id": "1aa64f0f-5c89-45f7-997e-09ae2ee97a75",
+  "review_only": true,
+  "schema": "cws-bom-review-export-1.0",
+  "scope": {
+    "entity_ids": [
+      "P1"
+    ],
+    "exact_part_selection": true,
+    "family": "parts",
+    "group_ids": [
+      "PART-4b454320dcf0efe6"
+    ]
+  },
+  "snapshot_sha256": "027642db52a92629a2b013c05490c652821173ac30b58f35b6ad14136a7959a7",
+  "source_snapshot_sha256": "d647f9622b2d8df03a0f5da865313e51a505bc75aca8c77a76e81bc3a99bd7d7"
+}

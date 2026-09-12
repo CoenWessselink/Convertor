@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.1",
+  "project_id": "3b1cb593-9350-4fb8-843b-f0c43cac2a8c",
+  "scene_hash": "809fac516dda7664a3739e8cf1d61dbc6d83d10d03fe14a3ac4eddbf4cf6b024",
+  "camera": {
+    "position": {
+      "x": 11574.259657187682,
+      "y": -5074.259657187683,
+      "z": 5269.259657187683
+    },
+    "target": {
+      "x": 6400.0,
+      "y": 100.0,
+      "z": 95.0
+    },
+    "up": {
+      "x": -0.408248290463863,
+      "y": 0.408248290463863,
+      "z": 0.816496580927726
+    },
+    "projection": "perspective",
+    "field_of_view_deg": 45.0,
+    "ortho_scale": 6117.845581575266,
+    "near_plane": 0.1,
+    "far_plane": 34568.02524009724,
+    "coordinate_system": "world",
+    "version": 1
+  },
+  "selection_level": "part",
+  "selected_node_ids": [
+    "entity:P1"
+  ],
+  "hidden_node_ids": [],
+  "isolation_node_ids": [
+    "entity:P1"
+  ],
+  "ghost_context": true,
+  "transparency_by_node": [],
+  "color_by_node": [],
+  "display_preferences": {
+    "render_mode": "shaded_edges",
+    "color_scheme": "original",
+    "background_theme": "light",
+    "ghost_opacity": 0.12,
+    "selection_color": {
+      "red": 1.0,
+      "green": 0.82,
+      "blue": 0.0,
+      "alpha": 1.0
+    },
+    "edge_width": 0.65,
+    "show_selection_outline": true,
+    "version": 1
+  },
+  "section_planes": [],
+  "clipping_box": null,
+  "viewpoints": [],
+  "visibility_sets": [],
+  "explode_offsets": [],
+  "measurements": [],
+  "measurement_settings": {
+    "length_unit": "mm",
+    "area_unit": "mm2",
+    "volume_unit": "mm3",
+    "angle_unit": "deg",
+    "mass_unit": "kg",
+    "precision": 3,
+    "trailing_zeroes": false
+  },
+  "accuracy_mode": false,
+  "active_viewpoint_id": null,
+  "created_at": "2026-09-12T11:43:55+00:00",
+  "updated_at": "2026-09-12T11:43:55+00:00",
+  "state_hash": "f184f1b83c9da1b48f7b5925b9226ca56ea1a2f3df312a1af293b23396b38870"
+}

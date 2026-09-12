@@ -144,3 +144,34 @@ has now been downgraded to PARTIAL: its metadata mutation still has exact-scope,
 persistence and undo evidence, but proves no production transformation. The
 earlier 81-positive diagnostic therefore does not represent the current stricter
 orientation contract.
+
+## Current retained W18 baseline
+
+The current retained matrix is in
+`validation/product_integration/block1/committed-w18-v2/`, bound to exact source
+commit `2a93b0b306cf0ade9c10e182363f57a532b85c66`. It verifies 495 source files and
+retains 291 independently hashed output artifacts with repository-relative paths.
+
+| Current measurement | Result |
+|---|---|
+| Canonical actions | 87 unique |
+| Positive postconditions | 80 |
+| Remaining partial positive paths | 6 |
+| Physical printer | 1 BLOCKED_EXTERNAL |
+| Empty, stale and invalid snapshot rejection | 87 each |
+| Individual scenario outcomes | 1,001 PASS; 303 PARTIAL; 1 BLOCKED_EXTERNAL |
+| Completely accepted actions | 0 |
+| Installed, physical-machine/GPU, real-world and release acceptance | Not established |
+
+Both the standalone register check and binding revalidation passed; their raw
+logs and the seven-field verification envelope are retained alongside the
+matrix, audit and binding. `MASTER_REQUIREMENTS_V2.json` now references verified
+individual scenarios. All five overall acceptance dimensions remain unpromoted.
+The six partial positive paths are orientation, production release, changed-kerf
+qualified output, and production/NC1/package export. The source-approval business
+decision remains pending. Later building blocks remain unstarted.
+
+On Windows, Git needs `-c core.longpaths=true` when checking out or staging the
+deep generated drawing paths. The retained artifact files are byte-exact; their
+format-significant whitespace is not normalized as source code. Read access was
+granted to the requesting user's account for sandbox-created artifact files.

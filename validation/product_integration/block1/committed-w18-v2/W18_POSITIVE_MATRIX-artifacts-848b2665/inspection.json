@@ -1,0 +1,245 @@
+{
+  "schema": "cws-bom-w18-inspection-execution-1.0",
+  "commit": "2a93b0b306cf0ade9c10e182363f57a532b85c66",
+  "app_version": "0.10.19-beta-dev",
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "qt_platform": "offscreen",
+    "fixture": "Synthetic canonical objects with actual parsed DXF source handles"
+  },
+  "input_hash": "85a3001cdf44ab566d60bd3eeee07b569a1393de8f289b6a69bac05762cf593e",
+  "source_hashes": {
+    "tests/bom_w18_inspection_execution_smoke.py": "1886ad037e040eafb04021b5e550c062cc2b22aea1cbec3a7138c1ff3a69f12e",
+    "cws_convertor/ui_qt/bom_inspection.py": "5c1cb5a14fa301df37906c496d1997a736be8cc8d693fc9b4d1f4bc0aa16763d",
+    "cws_convertor/ui_qt/bom_workspace.py": "e519c779b37c6396ab55bf9589140136b457c3e2211a1f909a086937cdf5bd00",
+    "cws_convertor/bom/production_hub.py": "dff319540e80f56dfec8775262271f5d9309efe7fe159ec8e079d06f8199baca",
+    "cws_convertor/bom/workspace.py": "c1858f6c4fe20ede0919dbc42998edceb8651825f2da89ac4ef91d0f6208bf83",
+    "cws_convertor/bom/engine.py": "96dad9c45a078924a281faecb1a0e76b613c722ce7918d68708f15b12c9150f3",
+    "cws_convertor/project/model.py": "d82554bee8e583811cd6a2df54cc8e8c06ce1499150bf45d4b76e5417e75ab24",
+    "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+    "cws_convertor/project/service.py": "1fc3398310e38d00b69132422cc3ef854d73a8396658f996a2bcc2690b3cfa14"
+  },
+  "source_unchanged_during_run": true,
+  "scenario": "Shipping BOM inspector source/assembly/hash QActions",
+  "result": "PASS",
+  "status": "PASS",
+  "tests_run": 5,
+  "failures": 0,
+  "errors": 0,
+  "actions": [
+    {
+      "action_id": "inspect.assembly",
+      "result": "PASS",
+      "positive_postcondition": true,
+      "qt_action_executed": true,
+      "shipping_qaction_executed": true,
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "checks": [
+        {
+          "name": "Shipping QAction displays independently checked current canonical details",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_assembly_action_displays_exact_reciprocal_membership\\inspect.assembly-P1.json",
+          "sha256": "ced063171c7f2691918a564e8308284763494773d0719e17dc2dfa64939a5190"
+        }
+      ],
+      "installed_tested": false
+    },
+    {
+      "action_id": "inspect.assembly",
+      "result": "PASS",
+      "positive_postcondition": true,
+      "qt_action_executed": true,
+      "shipping_qaction_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "scenarios": [
+        "valid_multiple",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "checks": [
+        {
+          "name": "Shipping QAction displays independently checked current canonical details",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_assembly_action_displays_exact_reciprocal_membership\\inspect.assembly-P1-P2.json",
+          "sha256": "cfb779aaa63540f6b814fe0de1c0a9e49ada26a52bca05377b1b3c5f1c6d2766"
+        }
+      ],
+      "installed_tested": false
+    },
+    {
+      "action_id": "inspect.hashes",
+      "result": "PASS",
+      "positive_postcondition": true,
+      "qt_action_executed": true,
+      "shipping_qaction_executed": true,
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "checks": [
+        {
+          "name": "Shipping QAction displays independently checked current canonical details",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_hash_action_displays_each_actual_entity_hash\\inspect.hashes-P1.json",
+          "sha256": "a112a1de5b1890e3c13fea73b6114988d1a86b47fcc9ec1c02cedbbae87162fa"
+        }
+      ],
+      "installed_tested": false
+    },
+    {
+      "action_id": "inspect.hashes",
+      "result": "PASS",
+      "positive_postcondition": true,
+      "qt_action_executed": true,
+      "shipping_qaction_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "scenarios": [
+        "valid_multiple",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "checks": [
+        {
+          "name": "Shipping QAction displays independently checked current canonical details",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_hash_action_displays_each_actual_entity_hash\\inspect.hashes-P1-P2.json",
+          "sha256": "68a87db90d9858649b229802491854d37657695fc17a83c3e6531e471a27fa27"
+        }
+      ],
+      "installed_tested": false
+    },
+    {
+      "action_id": "inspect.source",
+      "result": "PASS",
+      "positive_postcondition": true,
+      "qt_action_executed": true,
+      "shipping_qaction_executed": true,
+      "selected_ids": [
+        "P1"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "scenarios": [
+        "valid_single",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "checks": [
+        {
+          "name": "Shipping QAction displays independently checked current canonical details",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_source_action_displays_real_file_and_actual_object_handles\\inspect.source-P1.json",
+          "sha256": "008946cd1054eba2931b8846dea21291d812cd314b04e089c4280c1ebb3bdb62"
+        }
+      ],
+      "installed_tested": false
+    },
+    {
+      "action_id": "inspect.source",
+      "result": "PASS",
+      "positive_postcondition": true,
+      "qt_action_executed": true,
+      "shipping_qaction_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "restart": false,
+      "undo": false,
+      "scenarios": [
+        "valid_multiple",
+        "positive_postcondition",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged"
+      ],
+      "checks": [
+        {
+          "name": "Shipping QAction displays independently checked current canonical details",
+          "status": "PASS"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_source_action_displays_real_file_and_actual_object_handles\\inspect.source-P1-P2.json",
+          "sha256": "7d43f59f741737e18d779fed35cef3a046c523ba290ce53a7e5706e8aa5f3db6"
+        }
+      ],
+      "installed_tested": false
+    }
+  ],
+  "output_hash": "79c66a0d7c80fb23a336a4002d2012ae87bdfabec0590986e99f31abeec62e70",
+  "artifacts_retained": true,
+  "limits": [
+    "Native BOM panel only; no installed EXE claim",
+    "Read-only canonical inspection; audit metadata may be recorded"
+  ]
+}

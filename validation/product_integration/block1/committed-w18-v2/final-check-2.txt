@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "claim": "scenario binding verified; product acceptance remains partial",
+  "scenarios": {
+    "BLOCKED_EXTERNAL": 1,
+    "PARTIAL": 303,
+    "PASS": 1001
+  }
+}
+
+--- stderr ---

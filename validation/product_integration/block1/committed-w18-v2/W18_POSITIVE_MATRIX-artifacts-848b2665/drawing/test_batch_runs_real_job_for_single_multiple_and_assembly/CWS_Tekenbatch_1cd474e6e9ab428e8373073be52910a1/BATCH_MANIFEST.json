@@ -1,0 +1,103 @@
+{
+  "schema": "cws-drawing-review-batch-1",
+  "project_id": "05e85a92-fbd1-4d17-81a6-bac599682d44",
+  "source_revision": "24e116f326a28c2ce875ff2c4b0358f4797a2cfc515361239dda084e19fdf86b",
+  "geometry_sha256": "1016b4289dff044fb398f8dd8943872f4d48c5e05dbd5e8b66d619a688eb3d83",
+  "entity_ids": [
+    "P1"
+  ],
+  "status": "verified_review",
+  "production_release_granted": false,
+  "documents": [
+    {
+      "entity_id": "P1",
+      "file": "0001-fbeae7c18667/P1_tekening.pdf",
+      "sha256": "ddec7dfefc65f7331c7e7068df4f4e3343542888b98fe18b6e2c4bae7060724b",
+      "document_sha256": "9303fb0a2d293c062968f5fee2e71b33e1efb7cd82222b3ed96907d74e4e3b04",
+      "first_page": 1,
+      "page_count": 2,
+      "scale": "1:2",
+      "sheet_format": "A3",
+      "orientation": "landscape",
+      "document_type": "part",
+      "lint": {
+        "release_ready": false,
+        "issues": [
+          {
+            "code": "DRAWING_GEOMETRY_NOT_CANONICAL",
+            "message": "Review gebruikt geen canonical rebuilt BREP; productie-vrijgave blijft geblokkeerd.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_EXACT_HLR_MISSING",
+            "message": "Exacte OCCT hidden-line removal is voor deze geometrie niet bewezen.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_EXACT_SECTION_MISSING",
+            "message": "De gevraagde doorsnede is niet als exacte OCCT BREP-vlakdoorsnede bewezen.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_GEOMETRY_STALE",
+            "message": "De tekening is niet aan een actuele, opgeslagen canonical rebuild gebonden.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_CANONICAL_PAYLOAD_MISSING",
+            "message": "De zichtbare tekening mist een actuele canonical payload voor Trusted PDF.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_ROUNDTRIP_NOT_CURRENT",
+            "message": "NC1/STEP/IFC/PDF-roundtrip is niet actueel en groen.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_SOURCE_NOT_RELEASED",
+            "message": "De Workbench-revisie is nog niet vrijgegeven.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          },
+          {
+            "code": "DRAWING_DIMENSION_MODE_REVIEW_ONLY",
+            "message": "Productie-vrijgave vereist de maatmodus Productiematen.",
+            "severity": "error",
+            "blocking": true,
+            "page": null,
+            "semantic_id": ""
+          }
+        ],
+        "checked_primitives": 153,
+        "checked_pages": 2,
+        "dimension_coverage_percent": 100.0,
+        "feature_coverage_percent": 100.0
+      }
+    }
+  ],
+  "files": {
+    "0001-fbeae7c18667/P1_tekening.pdf": "ddec7dfefc65f7331c7e7068df4f4e3343542888b98fe18b6e2c4bae7060724b",
+    "Tekeningen.pdf": "9579b890e02c59742e3bfaf13108304cc938a687c2e5487b36105dfafa4e51e6"
+  },
+  "page_count": 2
+}

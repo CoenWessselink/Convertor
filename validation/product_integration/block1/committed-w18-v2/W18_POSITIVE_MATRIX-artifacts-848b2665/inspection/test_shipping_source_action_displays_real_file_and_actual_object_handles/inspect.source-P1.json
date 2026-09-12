@@ -1,0 +1,9 @@
+{
+  "action_id": "inspect.source",
+  "selected_ids": [
+    "P1"
+  ],
+  "displayed_text": "Bronobjecten\n\nObject: P1 \u00b7 P1 unique name\nBronformaat: DXF\nBronbestand-ID: d4a80377-76f0-58c8-9ed2-b2334b56b7dc\nBronobject-ID: 2F\nGUID: - \u00b7 Occurrence: occ-P1\nBronbestand: C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\inspection\\test_shipping_source_action_displays_real_file_and_actual_object_handles\\two_actual_source_objects.dxf\nVastgelegde bron-SHA256: 5dfc9405a179f96c7588816417837cb58b47e9dee7f2b912fad8228dd0c2687a\nGelezen bron-SHA256: 5dfc9405a179f96c7588816417837cb58b47e9dee7f2b912fad8228dd0c2687a\nBronbinding: MATCH \u00b7 inspectie verleent geen productieautoriteit",
+  "source_sha256": "5dfc9405a179f96c7588816417837cb58b47e9dee7f2b912fad8228dd0c2687a",
+  "entity_hash": "6056a2f59ac04fd6bf07c9f4f8ddd206ad9d71d91536c6de64b70d34e38fc27f"
+}

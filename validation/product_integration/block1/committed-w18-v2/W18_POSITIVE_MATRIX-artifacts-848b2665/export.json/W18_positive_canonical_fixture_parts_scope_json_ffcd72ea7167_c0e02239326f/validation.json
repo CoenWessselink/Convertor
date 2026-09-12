@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "production_ready": false,
+  "checks": {
+    "part_coverage": true,
+    "part_unique_membership": true,
+    "purchase_coverage": true,
+    "purchase_unique_membership": true,
+    "assembly_coverage": true,
+    "assembly_unique_membership": true,
+    "fastener_coverage": true,
+    "fastener_unique_membership": true,
+    "weld_coverage": true,
+    "weld_unique_membership": true,
+    "traceability_coverage": true,
+    "traceability_unique_membership": true,
+    "mass_balance": true,
+    "surface_balance": true,
+    "length_balance": true
+  },
+  "blocking_conflict_count": 0,
+  "warning_conflict_count": 0,
+  "traceability_coverage": 1.0,
+  "messages": [
+    "Bronbewijs ontbreekt of externe IFC/STEP-bronnen zijn nog niet productie-vrijgegeven",
+    "Actueel materiaal- en vrijgavebewijs voor maakdelen ontbreekt of is geblokkeerd",
+    "Exacte partselectie; assembly-, inkoop-, las- en boutregels niet meegeëxporteerd."
+  ]
+}

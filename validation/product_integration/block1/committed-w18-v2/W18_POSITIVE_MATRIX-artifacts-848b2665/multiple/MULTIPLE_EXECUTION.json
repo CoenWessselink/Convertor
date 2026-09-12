@@ -1,0 +1,939 @@
+{
+  "schema": "cws-w18-multiple-execution-1",
+  "commit": "2a93b0b306cf0ade9c10e182363f57a532b85c66",
+  "app_version": "0.10.19-beta-dev",
+  "environment": {
+    "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+    "os": "Windows-11-10.0.26200-SP0",
+    "qt": "offscreen",
+    "synthetic": true
+  },
+  "sources": {
+    "tests/bom_w18_multi_execution_smoke.py": "e90ec79ac5a4e624ac3876d3f4fa1c1177315ca37c27e68518d5671c1ab0d9ac",
+    "tests/bom_w18_positive_matrix_smoke.py": "ec6ad35a4a20fd013455fcc3e59a3c58bdb6c4d08dc1ce6b85ad748a351b1c66",
+    "cws_convertor/ui_qt/bom_workspace.py": "e519c779b37c6396ab55bf9589140136b457c3e2211a1f909a086937cdf5bd00",
+    "cws_convertor/bom/production_hub.py": "dff319540e80f56dfec8775262271f5d9309efe7fe159ec8e079d06f8199baca",
+    "cws_convertor/bom/freshness.py": "c795a74381fe627035d5688204134f038cafa67f0ee6bc0e8df9469445e1f6e3",
+    "cws_convertor/bom/engine.py": "96dad9c45a078924a281faecb1a0e76b613c722ce7918d68708f15b12c9150f3",
+    "cws_convertor/bom/workspace.py": "c1858f6c4fe20ede0919dbc42998edceb8651825f2da89ac4ef91d0f6208bf83",
+    "cws_convertor/project/model.py": "d82554bee8e583811cd6a2df54cc8e8c06ce1499150bf45d4b76e5417e75ab24",
+    "cws_convertor/project/storage.py": "ec5d49683b1d43a25bcc556b5dbdb4085953e858df26175dc6d93f6e3b50b354",
+    "cws_convertor/machine_routing.py": "bb921ca4d439e31e0095ae9fa6e07998aa5ae2551afe86ae71c025bf0b7ffcc9"
+  },
+  "source_unchanged_during_run": true,
+  "input_hash": "26a44b5d17dfffc516bada2e05d9dbad99c301a87d6198f4f4e19437cc9a602b",
+  "scenario": "Shipping multiple-selection mutation outcomes",
+  "result": "PASS",
+  "output_hash": "6634f4cb82d78bc8f98d69fe24cd3226b228e077548aca5c2bd81b215f152ffa",
+  "actions": [
+    {
+      "action_id": "edit.mark",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected fields have requested value",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "504beef1941411d04ed824eca31be595380878478666c5f6f14ab802d2a42a4c",
+      "output_hash": "553c726fade3b6d6fc7e66e151a3fecb98b555358dd3c063490fc6b476077d46",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.mark\\after.cwscproj",
+          "sha256": "553c726fade3b6d6fc7e66e151a3fecb98b555358dd3c063490fc6b476077d46"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.mark\\input.cwscproj",
+          "sha256": "7cd3491ed46ebf90be3d297d6b03b986c5318f7027db35e41102883c531131dc"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.phase",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected fields have requested value",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "92f0a3c5c6a31c7eae54e78755ed2bea3879d3ae0223d0310ec51c5cbc126ac7",
+      "output_hash": "bb8794db0de38298e0e91d7c88cc770992a9fd65f8032239d59f827c268f5daf",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.phase\\after.cwscproj",
+          "sha256": "bb8794db0de38298e0e91d7c88cc770992a9fd65f8032239d59f827c268f5daf"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.phase\\input.cwscproj",
+          "sha256": "3d26d281776e50efd72151d024103a7402d6d4431655ff05a42b9e7a55db009d"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.classification",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected fields have requested value",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "ee88bb17fe8133ba5af7c20653a15d5f36e3bec5cfbc59f4797023bb5f4fbc87",
+      "output_hash": "1be20d3911d21f138f43495739a05298b788fb94272e4daf6df361bdbdc505d6",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.classification\\after.cwscproj",
+          "sha256": "1be20d3911d21f138f43495739a05298b788fb94272e4daf6df361bdbdc505d6"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.classification\\input.cwscproj",
+          "sha256": "dda3de695984d6f7a99a461501fd3766518ddf4ae754a8dfb2272788e36ffe85"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.orientation",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected fields have requested value",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "e87e950f867e95690e29e0299cf2a6e1dc980f2a6623a07f57a2900412ee8abb",
+      "output_hash": "691e513e8a736413d5a6eb8ffb9f942b71ecd57a12797995e3c02d92b31aa77e",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.orientation\\after.cwscproj",
+          "sha256": "691e513e8a736413d5a6eb8ffb9f942b71ecd57a12797995e3c02d92b31aa77e"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.orientation\\input.cwscproj",
+          "sha256": "6944bc66cab8038815cd4a00bf3360905724aeea75bd5289f78806bafe50927c"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.revision",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected fields have requested value",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "1fb4f6256c81e0a5175a522bfafe722bb2c1c13a4dd573ab998e21a0b2323bae",
+      "output_hash": "5573e1effeb19306f7dd8512f39382e4d549bcbf79ee8baabc2eb5ef6efd8889",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.revision\\after.cwscproj",
+          "sha256": "5573e1effeb19306f7dd8512f39382e4d549bcbf79ee8baabc2eb5ef6efd8889"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.revision\\input.cwscproj",
+          "sha256": "98573a3a28650da29c57058c7b79582f0f29af4dc6642111cadc2949c166a562"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.comment",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected fields have requested value",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "ffa45d5c0899433343f314e9982bb9866322be1aec65c92b3ccf2aa445743b95",
+      "output_hash": "c0dc2d7c4cb2fc624e94c5cde92b49bd4665c3efa084c88e32094acd44f22fe2",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.comment\\after.cwscproj",
+          "sha256": "c0dc2d7c4cb2fc624e94c5cde92b49bd4665c3efa084c88e32094acd44f22fe2"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.comment\\input.cwscproj",
+          "sha256": "68f404080ca457f1ef2e8b4565ce48272bdc1aa5b305880873a3691d7ece26d1"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.assembly_add",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected reciprocal memberships reflect intent",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "787884757cac00efd887e472bc57de41ce440f8db98cddce0bf23ce9586eee27",
+      "output_hash": "7160f04fdbb31501f4403ca520788aa06fa55e5129cb6638ab9c3b3c26575d34",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.assembly_add\\after.cwscproj",
+          "sha256": "7160f04fdbb31501f4403ca520788aa06fa55e5129cb6638ab9c3b3c26575d34"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.assembly_add\\input.cwscproj",
+          "sha256": "d8cf4e9e3e2f1667261029b416efafa690f7df0c1187f8a8d551a22f5e074467"
+        }
+      ]
+    },
+    {
+      "action_id": "edit.assembly_remove",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected reciprocal memberships reflect intent",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "a06f58287a53ca99404fa832bc621e81dcc97e547f7581952d7cfb763fd61b63",
+      "output_hash": "b47e6a92e8096ee80cf215024f560c25a95d87054c58c79569173d150a119606",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.assembly_remove\\after.cwscproj",
+          "sha256": "b47e6a92e8096ee80cf215024f560c25a95d87054c58c79569173d150a119606"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\edit.assembly_remove\\input.cwscproj",
+          "sha256": "a2d1420fe315d1c8024eb4112c2f250a8f39447ce4f12e26e5b728fee336398c"
+        }
+      ]
+    },
+    {
+      "action_id": "purchase.edit",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "BUY1",
+        "BUY2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected suppliers changed",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "0ed8d3040ff1ced78db39d0675201cd496cd2cf589183a80e03bf302b8470cbf",
+      "output_hash": "4e39ec807f6ec667ac95725b679fa2caafef6c4d7d489da3a7ae3bce79dc0eaa",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\purchase.edit\\after.cwscproj",
+          "sha256": "4e39ec807f6ec667ac95725b679fa2caafef6c4d7d489da3a7ae3bce79dc0eaa"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\purchase.edit\\input.cwscproj",
+          "sha256": "676a6d1124ad45fbfb152fa371414a48c149ba0142dd5aadf67e3c49bc6c858b"
+        }
+      ]
+    },
+    {
+      "action_id": "purchase.release",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "BUY1",
+        "BUY2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": false,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected purchase statuses changed",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Released purchase cannot silently undo supplier commitment",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "dbe741e83d4e93878f980ff8d613b68aaf94989c87742a005b4b4900dfbf98cc",
+      "output_hash": "4d5213615a928e608d3405b65782dd149d4258cf8246984d5a217abaf2ded020",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\purchase.release\\after.cwscproj",
+          "sha256": "4d5213615a928e608d3405b65782dd149d4258cf8246984d5a217abaf2ded020"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\purchase.release\\input.cwscproj",
+          "sha256": "b017cdb35e79814cc897ac85da8188896187fa5eddd4680453b8224a352e21a5"
+        }
+      ]
+    },
+    {
+      "action_id": "purchase.cancel",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "BUY1",
+        "BUY2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected purchase statuses changed",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "79ed967bb52649d15b8364d72365355619277e25f7e30fb9f2612f69faff9685",
+      "output_hash": "7a4a4d5970f807b9ec89fa18a14467b524223a84883b1af186f9512c0d37af78",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\purchase.cancel\\after.cwscproj",
+          "sha256": "7a4a4d5970f807b9ec89fa18a14467b524223a84883b1af186f9512c0d37af78"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\purchase.cancel\\input.cwscproj",
+          "sha256": "04c5269acce85c598a7364462c09320e606dfe9eb79231bdba0c4aebe276c49d"
+        }
+      ]
+    },
+    {
+      "action_id": "machine.assign",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected assignments use actual chosen machine and require review",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo restores complete routing state",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "f7e4cc8913bdfa05198bcccbc612741ecc3bfe15184edfef5d65aa6f544a73f6",
+      "output_hash": "cb7ec9f9b3407e266d6f48d8662f77acf5f2b778b9641837e28bd764488c3bd7",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\machine.assign\\after.cwscproj",
+          "sha256": "cb7ec9f9b3407e266d6f48d8662f77acf5f2b778b9641837e28bd764488c3bd7"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\machine.assign\\input.cwscproj",
+          "sha256": "729874b7bb6fe60b66b864344c8063784495d551e60eeddfe61a10bd2a235909"
+        }
+      ]
+    },
+    {
+      "action_id": "machine.manual_lock",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected existing manual assignments locked",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo restores complete routing state",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "9e51f28ea14c737d4ced932c2a917f5fc7cb02906c87393283d72b1687e6ec90",
+      "output_hash": "60af1e6cddfb42563558de865b97261bccf7fe2b7928690e8879af4a9860d1ae",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\machine.manual_lock\\after.cwscproj",
+          "sha256": "60af1e6cddfb42563558de865b97261bccf7fe2b7928690e8879af4a9860d1ae"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\machine.manual_lock\\input.cwscproj",
+          "sha256": "57285f89068447a2687651f5959d3d21958f66fee5eb59284e357d886f7eb51c"
+        }
+      ]
+    },
+    {
+      "action_id": "machine.reset",
+      "scenario": "valid_multiple",
+      "status": "PASS",
+      "executed": true,
+      "qt_action_executed": true,
+      "selected_ids": [
+        "P1",
+        "P2"
+      ],
+      "selection_widened": false,
+      "nonselected_stable": true,
+      "proven_scenarios": [
+        "valid_multiple",
+        "exact_selected_ids",
+        "no_unintended_widening",
+        "non_selected_unchanged",
+        "save_reopen"
+      ],
+      "restart": true,
+      "undo": true,
+      "checks": [
+        {
+          "name": "Multiple-selection shipping QAction enabled",
+          "status": "PASS"
+        },
+        {
+          "name": "Actual requested action completes",
+          "status": "PASS"
+        },
+        {
+          "name": "Exact selected mutation IDs plus explicit relationship target",
+          "status": "PASS"
+        },
+        {
+          "name": "Every unselected unrelated canonical entity stays unchanged",
+          "status": "PASS"
+        },
+        {
+          "name": "Both selected assignments removed",
+          "status": "PASS"
+        },
+        {
+          "name": "Real project package preserves actual result",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo after reopen restores selected and unrelated canonical entities",
+          "status": "PASS"
+        },
+        {
+          "name": "Undo restores complete routing state",
+          "status": "PASS"
+        }
+      ],
+      "input_hash": "ca9d083cfba954cb96d366a3bbffe97295356cb2388ba6bb507eb2f562d8fd45",
+      "output_hash": "c5032efe4690fef1613d3116d08447e1a066fe4935a875d3c0195d60be9d8e45",
+      "artifacts": [
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\machine.reset\\after.cwscproj",
+          "sha256": "c5032efe4690fef1613d3116d08447e1a066fe4935a875d3c0195d60be9d8e45"
+        },
+        {
+          "path": "C:\\CONVERTOR\\worktrees\\product-integration\\validation\\product_integration\\block1\\committed-w18-v2\\W18_POSITIVE_MATRIX-artifacts-848b2665\\multiple\\machine.reset\\input.cwscproj",
+          "sha256": "8c4552f4f459e534d10de0b06e2de31273226f22b70ecc23491580d8cfdc947f"
+        }
+      ]
+    }
+  ],
+  "artifacts_retained": true
+}
