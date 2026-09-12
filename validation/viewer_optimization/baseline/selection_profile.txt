@@ -69,5 +69,3 @@
      1322    0.001    0.000    0.001    0.000 {method 'get' of 'dict' objects}
       287    0.000    0.000    0.001    0.000 {method 'GetPointData' of 'vtkmodules.vtkCommonDataModel.vtkDataSet' objects}
       274    0.000    0.000    0.000    0.000 loader.py:35(require)
-
-
