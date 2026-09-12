@@ -36,8 +36,6 @@ jobs:
             for (const part of manifest.parts) {
               const response = await github.rest.git.getBlob({...context.repo, file_sha:part.blob_sha});
               let encoded = response.data.content.replace(/\s/g, '');
-              // Repair only the documented transport transcription before hashing.
-              // No imported source is executed unless the exact original bundle matches.
               for (const [oldText, newText] of (part.encoded_replacements || [])) {
                 if (encoded.split(oldText).length !== 2) throw new Error('Ambiguous transport repair');
                 encoded = encoded.replace(oldText, newText);
@@ -73,13 +71,37 @@ jobs:
           git config user.name 'CWS Viewer Optimization Build'
           git config user.email 'cws-viewer-build@users.noreply.github.com'
           git merge --no-ff --no-edit "$CANDIDATE" -m 'perf(viewer): integrate verified optimization checkpoint'
-          # cProfile prints trailing blank lines. Normalize only its text copy;
-          # raw timing JSON and the immutable imported commits remain unchanged.
           python -c "from pathlib import Path; p=Path('validation/viewer_optimization/baseline/selection_profile.txt'); p.write_text(p.read_text(encoding='utf-8').rstrip()+'\n', encoding='utf-8')"
           git add validation/viewer_optimization/baseline/selection_profile.txt
           if ! git diff --cached --quiet; then
             git commit -m 'chore(viewer): normalize profiler report trailing whitespace'
           fi
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('cws_viewer/ui_qt/vtk_real_project_widget_feel.py')
+          lines = p.read_text(encoding='utf-8').splitlines()
+          changed = False
+          for i, line in enumerate(lines):
+              if '_wheel_pending_delta' not in line or 'if ' not in line:
+                  continue
+              indent = len(line) - len(line.lstrip())
+              for j in range(i + 1, min(i + 5, len(lines))):
+                  stripped = lines[j].strip()
+                  child_indent = len(lines[j]) - len(lines[j].lstrip())
+                  if stripped == 'return' and child_indent > indent:
+                      assignment = ' ' * child_indent + 'self._wheel_pending_events = 0'
+                      if j == 0 or lines[j - 1].strip() != 'self._wheel_pending_events = 0':
+                          lines.insert(j, assignment)
+                          changed = True
+                      break
+              if changed:
+                  break
+          if not changed:
+              raise SystemExit('Expected zero-delta wheel early-return pattern was not found')
+          p.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+          git add cws_viewer/ui_qt/vtk_real_project_widget_feel.py
+          git commit -m 'perf(viewer): clear coalesced wheel bookkeeping on cancellation'
           git diff --check "$BASE"..HEAD
           git rev-parse HEAD > checkpoint/source_commit.txt
           git log "$BASE"..HEAD --format='%H %P %s' > checkpoint/commits.txt
