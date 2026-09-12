@@ -84,7 +84,9 @@ def run():
     purchase_actions={definition.action_id for definition,enabled,_reason in matrix.available(model.family_rows('purchase'),production_ready=False) if enabled}
     weld_actions={definition.action_id for definition,enabled,_reason in matrix.available(model.family_rows('welds'),production_ready=False) if enabled}
     assert {'purchase.edit','purchase.release','purchase.cancel','export.review'} <= purchase_actions
-    assert {'inspect.properties','inspect.traceability','export.review'} <= weld_actions
+    assert {
+        'inspect.properties','inspect.source','inspect.assembly','inspect.hashes','inspect.blockers','export.review'
+    } <= weld_actions
 
     parts=model.family_rows('parts')
     part_row=next(row for row in parts if 'P1' in row.entity_ids)
