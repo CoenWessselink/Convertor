@@ -2,8 +2,7 @@ name: Viewer incremental instance-state import
 on:
   push:
     branches: [agent/cws-pdf-ui-v3-complete-20260909]
-    paths:
-      - '.github/workflows/viewer-instance-delta-import.yml'
+    paths: ['.github/workflows/viewer-instance-delta-import.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -19,30 +18,30 @@ jobs:
       PATCH_SHA256: 5f7aa7a3f81d50d9c2eee8f478916bd81da8a7c45753523b27bd68c3b9a657fe
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        with: {fetch-depth: 0}
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+        with: {python-version: '3.12'}
       - name: Verify and assemble immutable patch chunks
         shell: bash
         run: |
           set -euo pipefail
+          files=(part00a part00b part01 part02 part03 part04)
           expected=(
-            48299ca3d820ace8dd8875f6fd6f910abad0cc607c174ef27d465cb8c71ee4bb
+            3526cb79825ee73a8542c092f902fa604c39be9a2508b7ea3717f59c2212f7c2
+            3b3bc4de2268ee47f45b6b99b4c69f30931468a497c704c60f6d57ea79efce92
             d6e7cdab019a2eccc361a5a4483877b965f749289cd6f20c7d6ce99da46b4494
             96f4672ccc33723e02ce6da6ea2359882c0613a7a1a34fd5896ad5d15f497078
             37a58dd0e4ae9a36e5c8e450c04fbe54ba7516779a9de331eb89a0073fd17207
             297d54d428eb2a2aaa51b234aabaa6c89bcd3eab30e4c873ea4e3a2151806c3e
           )
           : > /tmp/instance_delta.patch
-          for i in 00 01 02 03 04; do
-            n=$((10#$i))
-            tr -d '[:space:]' < ".github/viewer-instance-delta.part${i}.b64" | base64 -d > "/tmp/part.${i}"
-            actual=$(sha256sum "/tmp/part.${i}" | awk '{print $1}')
-            echo "chunk ${i}: ${actual} expected ${expected[$n]}"
+          for n in 0 1 2 3 4 5; do
+            name=${files[$n]}
+            tr -d '[:space:]' < ".github/viewer-instance-delta.${name}.b64" | base64 -d > "/tmp/${name}"
+            actual=$(sha256sum "/tmp/${name}" | awk '{print $1}')
+            echo "${name}: ${actual} expected ${expected[$n]}"
             test "$actual" = "${expected[$n]}"
-            cat "/tmp/part.${i}" >> /tmp/instance_delta.patch
+            cat "/tmp/${name}" >> /tmp/instance_delta.patch
           done
           actual_full=$(sha256sum /tmp/instance_delta.patch | awk '{print $1}')
           echo "full: ${actual_full} expected ${PATCH_SHA256}"
@@ -67,9 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y xvfb libegl1 libopengl0 libgl1 \
-            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-shape0 \
-            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
+          sudo apt-get install -y xvfb libegl1 libopengl0 libgl1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-shape0 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
           python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > evidence/runtime.txt
       - name: Run native instance-state and viewer regressions
@@ -78,20 +75,13 @@ jobs:
           set -euo pipefail
           xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb python -m pytest -q \
             tests/viewer_incremental_instance_state_smoke.py \
-            tests/viewer_render_scheduler_smoke.py \
-            tests/viewer_runtime_profiler_smoke.py \
-            tests/viewer_scheduler_native_smoke.py \
-            tests/viewer_native_initialization_smoke.py \
-            tests/viewer_v15_selection_pivot_parity_smoke.py \
-            tests/viewer_v15_trimble_feel_v2_smoke.py \
-            tests/viewer_v15_feel_fix_smoke.py \
-            tests/viewer_v2_core_controller_smoke.py \
-            tests/bom_selection_identity_smoke.py \
-            tests/viewer_indexed_picking_smoke.py \
-            tests/viewer_persistent_selection_overlay_smoke.py \
-            tests/viewer_screen_selection_bulk_projection_smoke.py \
-            tests/viewer_source_mirror_smoke.py \
-            tests/performance_loading_v2_smoke.py \
+            tests/viewer_render_scheduler_smoke.py tests/viewer_runtime_profiler_smoke.py \
+            tests/viewer_scheduler_native_smoke.py tests/viewer_native_initialization_smoke.py \
+            tests/viewer_v15_selection_pivot_parity_smoke.py tests/viewer_v15_trimble_feel_v2_smoke.py \
+            tests/viewer_v15_feel_fix_smoke.py tests/viewer_v2_core_controller_smoke.py \
+            tests/bom_selection_identity_smoke.py tests/viewer_indexed_picking_smoke.py \
+            tests/viewer_persistent_selection_overlay_smoke.py tests/viewer_screen_selection_bulk_projection_smoke.py \
+            tests/viewer_source_mirror_smoke.py tests/performance_loading_v2_smoke.py \
             --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
           sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
       - name: Publish exact tested source commit without force
