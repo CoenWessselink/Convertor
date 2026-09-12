@@ -22,6 +22,12 @@ from cws_viewer.contracts.geometry import GeometryRequest, MeshData, Tessellatio
 _CACHE_FORMAT = "cws-viewer-mesh-cache-v2"
 _LEGACY_FORMATS = {_CACHE_FORMAT, "cws-viewer-mesh-cache-v1"}
 
+_BUNDLE_VERIFICATION_LOCK = threading.RLock()
+_BUNDLE_VERIFIED: dict[
+    tuple[str, str, str],
+    tuple[tuple[int, int, int, int], tuple[int, int, int, int]],
+] = {}
+
 
 @dataclass(slots=True)
 class MeshCacheStats:
@@ -53,6 +59,16 @@ class MeshCacheStats:
         requests = self.memory_hits + self.disk_hits + self.misses
         result["hit_ratio"] = (self.memory_hits + self.disk_hits) / requests if requests else 0.0
         return result
+
+
+def _file_signature(path: Path) -> tuple[int, int, int, int]:
+    stat = path.stat()
+    return (
+        int(stat.st_size),
+        int(stat.st_mtime_ns),
+        int(getattr(stat, "st_ctime_ns", 0)),
+        int(getattr(stat, "st_ino", 0)),
+    )
 
 
 class MeshCache:
@@ -644,10 +660,19 @@ class MeshCache:
             triangles_path = target / "triangles.npy"
             if self.integrity_mode == "full":
                 files = manifest.get("files") or {}
-                if self._sha(vertices_path) != files.get("vertices.npy", {}).get("sha256"):
-                    raise ValueError("bundle vertices checksum")
-                if self._sha(triangles_path) != files.get("triangles.npy", {}).get("sha256"):
-                    raise ValueError("bundle triangles checksum")
+                vertices_hash = str(files.get("vertices.npy", {}).get("sha256", ""))
+                triangles_hash = str(files.get("triangles.npy", {}).get("sha256", ""))
+                verification_key = (str(target), vertices_hash, triangles_hash)
+                signatures = (_file_signature(vertices_path), _file_signature(triangles_path))
+                with _BUNDLE_VERIFICATION_LOCK:
+                    verified = _BUNDLE_VERIFIED.get(verification_key) == signatures
+                if not verified:
+                    if self._sha(vertices_path) != vertices_hash:
+                        raise ValueError("bundle vertices checksum")
+                    if self._sha(triangles_path) != triangles_hash:
+                        raise ValueError("bundle triangles checksum")
+                    with _BUNDLE_VERIFICATION_LOCK:
+                        _BUNDLE_VERIFIED[verification_key] = signatures
             vertices = np.load(vertices_path, allow_pickle=False)
             triangles = np.load(triangles_path, allow_pickle=False)
             output: dict[str, MeshData] = {}

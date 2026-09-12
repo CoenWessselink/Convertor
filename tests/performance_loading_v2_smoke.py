@@ -134,6 +134,36 @@ class PerformanceLoadingV2Smoke(unittest.TestCase):
             del loaded
             gc.collect()
 
+    def test_full_bundle_integrity_is_reused_but_rechecks_changed_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            settings = TessellationSettings()
+            entries = []
+            for identity in ("bundle-a", "bundle-b"):
+                value = request(identity)
+                key = value.cache_key(settings, FakeProvider.provider_version)
+                entries.append((key, mesh(identity), FakeProvider.provider_version, settings))
+            writer = MeshCache(directory, max_memory_items=0, storage_mode="mmap", integrity_mode="full")
+            writer._write_bundle(tuple(entries))
+            keys = tuple(item[0] for item in entries)
+
+            first = MeshCache(directory, max_memory_items=0, storage_mode="mmap", integrity_mode="full")
+            self.assertEqual(set(first.get_bundle(keys) or {}), set(keys))
+
+            second = MeshCache(directory, max_memory_items=0, storage_mode="mmap", integrity_mode="full")
+            with patch.object(second, "_sha", wraps=second._sha) as sha:
+                self.assertEqual(set(second.get_bundle(keys) or {}), set(keys))
+                hashed_names = [call.args[0].name for call in sha.call_args_list]
+                self.assertEqual(hashed_names, ["manifest.json"])
+
+            bundle = second._bundle_dir_for(keys)
+            vertices_path = bundle / "vertices.npy"
+            payload = bytearray(vertices_path.read_bytes())
+            payload[-1] ^= 0x01
+            vertices_path.write_bytes(payload)
+            corrupted = MeshCache(directory, max_memory_items=0, storage_mode="mmap", integrity_mode="full")
+            self.assertIsNone(corrupted.get_bundle(keys))
+            self.assertEqual(corrupted.stats.corrupt_entries, 1)
+
     def test_persistent_pool_and_profiled_batch(self):
         pool = PersistentGeometryWorkerPool(2, provider_factory=FakeProvider)
         profiler = LoadProfileSession("fixture")
