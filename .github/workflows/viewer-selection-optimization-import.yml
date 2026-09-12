@@ -24,17 +24,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Retrieve and verify immutable mesh bundle load patch
+      - name: Retrieve and verify split immutable mesh bundle patch
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const crypto = require('crypto');
-            const sha = '2d7de0e87b06c660246cdb3f94e4e285805cbd41';
-            const response = await github.rest.git.getBlob({...context.repo, file_sha: sha});
-            const patch = Buffer.from(response.data.content.replace(/\s/g, ''), 'base64');
+            const parts = [
+              ['6955ddb8fd90af3ae359357d6eed01c69249929f', '2be96df4a480b021964cfc3b2a35a6936f4b185f665f581e293ddddb692246ae'],
+              ['c5ac7922dbc6946fe2b6b71a9ac56b314d93dc2e', '205f8b3b54493bdf0d4439bea39c796577a5830e20e3ee655738b1801ebbf373'],
+              ['5682cd05f02f0ca1ee10ef875795efee518e36aa', '96c985f21e64e6252b0493ad558acd103175b025331b90eb78ba233bee8a464d'],
+              ['d9b081bce945e7b5f1f0a1fcf8c2fcb74631ea12', '2234228da688daabdac0062f68a76b609f0d15d3fa42103073d14dc05977dfce'],
+            ];
+            const buffers = [];
+            for (let i = 0; i < parts.length; i++) {
+              const [sha, expected] = parts[i];
+              const response = await github.rest.git.getBlob({...context.repo, file_sha: sha});
+              const data = Buffer.from(response.data.content.replace(/\s/g, ''), 'base64');
+              const digest = crypto.createHash('sha256').update(data).digest('hex');
+              if (digest !== expected) throw new Error(`Patch part ${i} mismatch: ${digest}`);
+              buffers.push(data);
+            }
+            const patch = Buffer.concat(buffers);
             const digest = crypto.createHash('sha256').update(patch).digest('hex');
-            if (digest !== process.env.PATCH_SHA256) throw new Error(`Patch mismatch: ${digest}`);
+            if (digest !== process.env.PATCH_SHA256) throw new Error(`Full patch mismatch: ${digest}`);
             fs.writeFileSync('/tmp/mesh_bundle_load.mbox', patch);
       - name: Apply mesh bundle load patch to latest coordinated branch
         shell: bash
