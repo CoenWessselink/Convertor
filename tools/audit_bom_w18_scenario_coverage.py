@@ -39,12 +39,11 @@ INTEGRATION_EXECUTED = {
     "purchase.edit", "purchase.release", "purchase.cancel",
 }
 
-# Negative/fail-closed paths proven by current focused tests/evidence.
-NEGATIVE_PROVEN = {
-    "drawing.batch_pdf", "optimize.compare", "edit.profile", "edit.material", "edit.length",
-    "production.route", "production.operations", "viewer.measure", "export.occurrences",
-    "stock.assign", "stock.release",
-}
+# tests/bom_w18_negative_matrix_smoke.py proves that every canonical action fails
+# closed on an explicit empty selection. It additionally verifies wrong-family,
+# blocked-row and production-authority rejection where those constraints apply.
+# This closes only W18's negative-selection dimension; it is not positive execution.
+NEGATIVE_PROVEN = {item.action_id for item in ACTION_DEFINITIONS}
 
 # Persistence/restart evidence currently exists for project-owned stock allocation
 # and canonical non-empty family state. Do not widen this set without a test.
@@ -64,6 +63,7 @@ EVIDENCE_FILES = {
     "final_routes": "tests/bom_w03_w18_final_routes_smoke.py",
     "families": "tests/bom_w18_nonempty_families_smoke.py",
     "exports": "tests/bom_w20_export_nonempty_smoke.py",
+    "negative_matrix": "tests/bom_w18_negative_matrix_smoke.py",
 }
 
 
