@@ -673,8 +673,9 @@ class MeshCache:
                         raise ValueError("bundle triangles checksum")
                     with _BUNDLE_VERIFICATION_LOCK:
                         _BUNDLE_VERIFIED[verification_key] = signatures
-            vertices = np.load(vertices_path, allow_pickle=False)
-            triangles = np.load(triangles_path, allow_pickle=False)
+            mmap_mode = "r" if self.storage_mode == "mmap" else None
+            vertices = np.load(vertices_path, mmap_mode=mmap_mode, allow_pickle=False)
+            triangles = np.load(triangles_path, mmap_mode=mmap_mode, allow_pickle=False)
             output: dict[str, MeshData] = {}
             for item in manifest["items"]:
                 key = str(item["key"])

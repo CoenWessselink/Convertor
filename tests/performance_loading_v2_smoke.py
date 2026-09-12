@@ -151,7 +151,10 @@ class PerformanceLoadingV2Smoke(unittest.TestCase):
 
             second = MeshCache(directory, max_memory_items=0, storage_mode="mmap", integrity_mode="full")
             with patch.object(second, "_sha", wraps=second._sha) as sha:
-                self.assertEqual(set(second.get_bundle(keys) or {}), set(keys))
+                reopened = second.get_bundle(keys) or {}
+                self.assertEqual(set(reopened), set(keys))
+                self.assertTrue(all(isinstance(value.vertices, np.memmap) for value in reopened.values()))
+                self.assertTrue(all(isinstance(value.triangles, np.memmap) for value in reopened.values()))
                 hashed_names = [call.args[0].name for call in sha.call_args_list]
                 self.assertEqual(hashed_names, ["manifest.json"])
 
