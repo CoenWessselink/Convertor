@@ -227,7 +227,16 @@ if qt_available():
             self._wheel_pending_steps += max(-12.0, min(12.0, delta / 120.0))
             self._wheel_pending_pos = QtCore.QPointF(event.position())
             self._wheel_pending_events += 1
-            if not self._wheel_motion_timer.isActive():
+            if abs(self._wheel_pending_steps) <= 1e-12 and self._wheel_pending_events > 1:
+                count = self._wheel_pending_events
+                self._wheel_motion_timer.stop()
+                self._wheel_pending_pos = None
+                self._wheel_pending_events = 0
+                profiler = getattr(self.backend, "profiler", None)
+                if profiler is not None:
+                    profiler.input_processed("wheel", count)
+                    profiler.input_cancelled("wheel", count)
+            elif not self._wheel_motion_timer.isActive():
                 self._wheel_motion_timer.start()
             event.accept()
 
