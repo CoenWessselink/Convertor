@@ -136,6 +136,7 @@ class W18RequirementsBindingTests(unittest.TestCase):
         bound = binder.write_binding(self.path, output, markdown_output=output.with_suffix(".md"), root=self.root)
         self.assertEqual(master.validate_register(bound, self.root), [])
         self.assertEqual(master.read_json(output), bound)
+        self.assertEqual(output.read_bytes(), (json.dumps(bound, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
         proof = self.root / bound["w18_evidence_binding"]["path"]
         self.assertEqual(binder.verify_evidence(proof, self.root)["scenario_counts"]["PASS"], 2)
         self.assertTrue(output.with_suffix(".md").is_file())
@@ -153,6 +154,35 @@ class W18RequirementsBindingTests(unittest.TestCase):
             self.assertEqual(verify.call_count, 1)
             self.assertTrue(any("Bound positive input is missing or changed" in error for error in errors))
             self.assertTrue(any("references unverified evidence" in error for error in errors))
+
+    def test_standalone_cli_reaudits_bound_register_without_pythonpath(self):
+        self.path.write_bytes(binder._json_bytes(self.report))
+        output = self.root / "validation/standalone-register.json"
+        binder.write_binding(self.path, output, root=self.root)
+        tool_directory = self.root / "tools"
+        tool_directory.mkdir(exist_ok=True)
+        (tool_directory / "__init__.py").write_bytes(b"")
+        for name in ("master_requirements_v2.py", "bind_w18_requirements_v2.py"):
+            shutil.copyfile(ROOT / "tools" / name, tool_directory / name)
+        # The subprocess uses the actual CLI and binder in an isolated working
+        # directory. Only the audit catalog is a declared fixture, just as at
+        # this test class's normal audit boundary; no product acceptance runs.
+        (self.root / "audit-catalog.json").write_bytes(binder._json_bytes(self.catalog))
+        (tool_directory / "audit_bom_w18_scenario_coverage.py").write_bytes(
+            b"import json\nfrom pathlib import Path\n"
+            b"def build_catalog(path):\n"
+            b"    return json.loads((Path(__file__).resolve().parents[1] / 'audit-catalog.json').read_text(encoding='utf-8'))\n")
+        command = [sys.executable, "-I", str(tool_directory / "master_requirements_v2.py"),
+                   "--check", "--output", str(output)]
+        result = subprocess.run(command, cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(result.stdout)["status"], "PASS")
+        self.path.unlink()
+        result = subprocess.run(command, cwd=self.root, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertTrue(any("Bound positive input is missing or changed" in error
+                            for error in json.loads(result.stdout)["errors"]))
+        self.assertNotIn("Traceback", result.stderr)
 
     def test_ordinary_register_check_rejects_changed_transitive_source(self):
         self.path.write_bytes(binder._json_bytes(self.report))

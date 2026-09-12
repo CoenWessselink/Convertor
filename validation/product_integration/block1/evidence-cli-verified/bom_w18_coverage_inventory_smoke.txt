@@ -1,0 +1,4 @@
+BOM_W18_COVERAGE_INVENTORY = PASS
+{'total': 87, 'complete': 0, 'partial': 0, 'open': 86, 'blocked_external': 1, 'qt_action_executed': 0, 'positive_postcondition': 0, 'negative_postcondition': 0, 'restart': 0, 'undo': 0, 'scenario_proven': {'empty_selection': 0, 'valid_single': 0, 'valid_multiple': 0, 'mixed_selection': 0, 'wrong_family': 0, 'blocked': 0, 'stale': 0, 'invalid': 0, 'positive_postcondition': 0, 'exact_selected_ids': 0, 'no_unintended_widening': 0, 'non_selected_unchanged': 0, 'save_reopen': 0, 'undo': 0, 'release_invalidation': 0}}
+
+--- stderr ---

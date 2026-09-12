@@ -57,7 +57,7 @@ POSTCONDITIONS = {
     "edit.classification": "Only selected entity classification changes to reference.",
     "edit.assembly_add": "Selected parts and chosen assembly both gain reciprocal membership.",
     "edit.assembly_remove": "Selected parts and chosen assembly both lose reciprocal membership.",
-    "edit.orientation": "Only selected production orientation changes to rotated_90.",
+    "edit.orientation": "The selected production orientation is applied to actual geometry and feature coordinates by a production consumer, with no unselected changes.",
     "edit.revision": "Only selected entity revision and revision status change to W18-new.",
     "edit.comment": "Only selected entity BOM comment changes to W18-new.",
     "drawing.open_part": "An actual selected-part drawing is rendered with its canonical identity.",
@@ -320,6 +320,26 @@ def _fixture(action):
     # Materialize schema defaults before comparing persisted entities; this is
     # the same canonical load normalization as a project entering the product.
     return ProjectModel.from_dict(project.to_dict())
+
+
+def semantic_result(action, result):
+    """Retain metadata regression evidence without claiming a production transform."""
+    if action != "edit.orientation" or result.get("status") == "FAIL":
+        return result
+    result = dict(result)
+    proven = set(result.get("proven_scenarios", ())) - {"valid_single", "valid_multiple", "positive_postcondition", "release_invalidation"}
+    if result.get("executed") and result.get("checks") and all(check["status"] == "PASS" for check in result["checks"]):
+        for name, asserted in (("exact_selected_ids", bool(result.get("selected_ids"))),
+                ("no_unintended_widening", result.get("selection_widened") is False),
+                ("non_selected_unchanged", result.get("nonselected_stable")),
+                ("save_reopen", result.get("restart")), ("undo", result.get("undo"))):
+            if asserted:
+                proven.add(name)
+    if result.get("scenario") in {"valid_single", "valid_multiple"}:
+        result["scenario"] = "orientation_metadata_regression"
+    result.update(status="PARTIAL", positive_postcondition=False, proven_scenarios=sorted(proven),
+        reason="The actual QAction stores production_orientation metadata only. No production consumer applying the orientation to geometry and feature coordinates is proved; scope, persistence and undo checks cover that metadata transaction.")
+    return result
 
 
 def _execute_case(action, folder, app):
@@ -672,14 +692,14 @@ def _execute_case(action, folder, app):
                     check("Released purchase rejects undo after reopen", "vrijgave" in str(exc).casefold())
                 else:
                     raise AssertionError("Externally released purchase unexpectedly allowed undo")
-            return {"status": "PASS", "executed": True, "qt_action_executed": True,
+            return semantic_result(action, {"status": "PASS", "executed": True, "qt_action_executed": True,
                     "positive_postcondition": True, "selected_ids": list(ids), "selection_widened": False,
                     "nonselected_stable": True, "restart": not action.startswith("viewer."), "undo": undo,
                     "input_hash": input_hash, "output_hash": digest(saved),
                     "artifacts": [{"path": str(path.resolve()), "sha256": digest(path)} for path in folder.rglob("*") if path.is_file()],
                     "renderer": "memory-v2 controller state; native GPU not proved" if controller else None,
                     "proven_scenarios": ["release_invalidation"] if action == "production.withdraw" else [],
-                    "checks": [{"name": name, "status": "PASS"} for name in check_names], "reason": ""}
+                    "checks": [{"name": name, "status": "PASS"} for name in check_names], "reason": ""})
         finally:
             host.close()
             host.deleteLater()
@@ -784,6 +804,7 @@ def run(output=None):
                     cases=cases, proven_scenarios=proven,
                     artifacts=[{"path": str(path.resolve()), "sha256": digest(path)} for path in (Path(temp)/"editor").rglob("*") if path.is_file()], reason="")
         for case in multiple["actions"]:
+            case = semantic_result(case["action_id"], case)
             row = next(row for row in actions if row["action_id"] == case["action_id"])
             implicit = ["valid_single" if len(row["selected_ids"]) == 1 else "valid_multiple"] if row["positive_postcondition"] and not row.get("cases") else []
             row["cases"] = [*row.get("cases", ()), case]

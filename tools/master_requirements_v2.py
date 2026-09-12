@@ -14,9 +14,12 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 SCHEMA = "cws-master-requirements-v2.0"
 PROMPT = "requirements/sources/CWS_PRODUCT_INTEGRATION_RELEASE_20260912.md"
 HISTORY = "requirements/MASTER_REQUIREMENT_TRACEABILITY.json"

@@ -267,7 +267,9 @@ def write_binding(positive_results: Path | str, output: Path | str, *,
     if errors:
         raise ValueError("Bound register failed validation: " + "; ".join(errors[:8]))
     output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_bytes(_json_bytes(register))
+    # Preserve the generator's field order, so binding a few scenario results
+    # does not rewrite every requirement row in the review diff.
+    output.write_bytes((json.dumps(register, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     if markdown_output is not None:
         markdown_path = paths[-1]
         markdown_path.parent.mkdir(parents=True, exist_ok=True)

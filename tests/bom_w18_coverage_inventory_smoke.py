@@ -78,6 +78,21 @@ def run():
         assert first["scenarios"]["valid_single"]["status"] == "PASS"
         assert all(first["scenarios"][name]["status"] == "PARTIAL" for name in ("valid_multiple", "stale", "invalid", "blocked", "release_invalidation"))
         assert all(first["scenarios"][name]["evidence"] for name in ("positive_postcondition", "exact_selected_ids", "save_reopen", "undo"))
+        metadata = deepcopy(report)
+        metadata["source_unchanged_during_run"] = True
+        orientation = next(row for row in metadata["actions"] if row["action_id"] == "edit.orientation")
+        fixture = {**one_path["actions"][0], "scenario": "valid_multiple", "selected_ids": ["P1", "P2"],
+            "proven_scenarios": ["valid_single", "valid_multiple", "positive_postcondition", "release_invalidation"]}
+        limited = matrix.semantic_result("edit.orientation", fixture)
+        orientation.update({key: value for key, value in limited.items() if key not in {"action_id", "expected_postcondition"}})
+        assert limited["status"] == "PARTIAL" and not limited["positive_postcondition"]
+        assert limited["scenario"] == "orientation_metadata_regression"
+        assert not {"valid_single", "valid_multiple", "positive_postcondition", "release_invalidation"} & set(limited["proven_scenarios"])
+        metadata["output_hash"] = hashlib.sha256(json.dumps(metadata["actions"], sort_keys=True).encode()).hexdigest()
+        path.write_text(json.dumps(metadata), encoding="utf-8")
+        orientation_proof = next(row for row in build_catalog(path)["actions"] if row["action_id"] == "edit.orientation")
+        assert all(orientation_proof["scenarios"][name]["status"] == "PARTIAL" for name in ("valid_single", "valid_multiple", "positive_postcondition", "release_invalidation"))
+        assert all(orientation_proof["scenarios"][name]["status"] == "PASS" for name in ("exact_selected_ids", "no_unintended_widening", "non_selected_unchanged", "save_reopen", "undo"))
         failed_scenario = deepcopy(one_path)
         failed_scenario["actions"][0].update(status="PARTIAL", positive_postcondition=False,
             proven_scenarios=["stale"], checks=[{"name": "Failed stale proof must not bind", "status": "FAIL"}])

@@ -1,6 +1,6 @@
 # Master Requirements Register V2
 
-Source baseline: `a67102384dd5ae0d99651f738074334ce37115be`. Installed commit: **not proven**.
+Source baseline: `e6c92d7bbd2a1b02e618b573d9ba39a72fee0e0c`. Installed commit: **not proven**.
 
 Historical PASS results are not inherited. PARTIAL means current acceptance remains unverified. Existing paths are mapping candidates, not proof of behavior. Requirements from later blocks are registered now; their implementation remains subject to the mandatory block sequence.
 

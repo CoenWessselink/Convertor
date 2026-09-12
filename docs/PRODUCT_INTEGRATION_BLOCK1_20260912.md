@@ -124,3 +124,23 @@ acceptance dimensions. Ordinary register validation also rechecks upstream
 artifacts and source blobs. Relative evidence paths survive checkout relocation;
 an artifact missing in the new checkout cannot fall back to the old copy.
 Final committed-source evidence binding is still pending.
+
+The diagnostic run against `e6c92d7bbd2a1b02e618b573d9ba39a72fee0e0c` retained
+291 hashed artifacts and bound 495 source files. Its 15-scenario audit contained
+1,004 PASS scenarios, 300 PARTIAL scenarios and one external print scenario.
+The library binder succeeded, but the final standalone register-check command
+exposed a missing module search path. The repaired standalone CLI and evidence
+checks pass all three scripts in
+`validation/product_integration/block1/evidence-cli-verified/`, including 16
+binder tests and an isolated subprocess check. The register keeps the existing
+field order when adding evidence. A fresh committed-source matrix is required.
+
+Separate released-input diagnostics identified further block-1 gaps: part-mark
+edits can diverge from Workbench properties, revision edits can retain an old
+local review, and the orientation action currently stores an unused property.
+These cases are not covered by the earlier happy-path fixtures. They remain
+explicit software gaps; no full W18 or release acceptance is claimed. Orientation
+has now been downgraded to PARTIAL: its metadata mutation still has exact-scope,
+persistence and undo evidence, but proves no production transformation. The
+earlier 81-positive diagnostic therefore does not represent the current stricter
+orientation contract.
