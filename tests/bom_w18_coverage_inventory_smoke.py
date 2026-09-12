@@ -13,6 +13,8 @@ def run():
     assert summary['total']==87
     assert summary['complete']+summary['partial']+summary['open']==87
     assert len({row['action_id'] for row in catalog['actions']})==87
+    assert summary['negative_postcondition']==87, 'all 87 canonical actions must retain fail-closed negative selection evidence'
+    assert all(row['evidence']['negative_postcondition'] for row in catalog['actions'])
     assert summary['complete']<87, 'W18 must not be cosmetically marked complete without full installed evidence'
     by_id={row['action_id']:row for row in catalog['actions']}
     for action in ('viewer.section','viewer.measure','edit.profile','edit.material','edit.length',
