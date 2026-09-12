@@ -67,8 +67,65 @@ def _w18_optimization_review_smoke():
     assert outcome.status=='blocked'
 
 
+def _w03_production_intent_smoke():
+    from cws_convertor.ui_qt.bom_action_dispatch import _production_review, _resolve_part_ids
+
+    p1=SimpleNamespace(
+        part_position='P1', manufacturing_hash='mh-P1',
+        production_features=[{'kind':'hole','diameter':18.0},{'kind':'contour','face':'top'}],
+    )
+    p2=SimpleNamespace(
+        part_position='P2', manufacturing_hash='mh-P2',
+        production_features=[{'kind':'hole','diameter':22.0}],
+    )
+    assemblies={
+        'A1':SimpleNamespace(part_ids=['P1'],child_assembly_ids=['A2']),
+        'A2':SimpleNamespace(part_ids=['P2'],child_assembly_ids=[]),
+    }
+    project=SimpleNamespace(
+        project_id='P-W03', project_name='W03 smoke', parts={'P1':p1,'P2':p2}, assemblies=assemblies,
+    )
+    assert _resolve_part_ids(project,('A1',))==('P1','P2')
+    try:
+        _resolve_part_ids(project,('MISSING',))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError('unknown production scope must fail closed')
+
+    def readiness(part_id,formats=()):
+        allowed={name:True for name in formats}
+        return {'allowed':allowed,'production_ready':True,'blocking_codes':()}
+
+    emitted=[]
+    workspace=SimpleNamespace(project=project,readiness_for_part=readiness)
+    panel=SimpleNamespace(
+        _workspace=workspace,
+        _hub_state=SimpleNamespace(data={}),
+        action_requested=SimpleNamespace(emit=lambda route:emitted.append(route)),
+    )
+    outcome=_production_review(panel,'production.route',('A1',))
+    assert outcome.status=='passed' and emitted[-1]=='production_workflow'
+    route=panel._hub_state.data['production_reviews']['route']
+    assert route['source_entity_ids']==['A1']
+    assert route['resolved_part_ids']==['P1','P2']
+    assert route['selection_widened'] is False
+    assert route['production_release_allowed'] is False
+    assert route['workflow']['ready_part_count']==2
+
+    outcome=_production_review(panel,'production.operations',('A1',))
+    assert outcome.status=='passed'
+    operations=panel._hub_state.data['production_reviews']['operations']
+    assert operations['source_entity_ids']==['A1']
+    assert operations['resolved_part_ids']==['P1','P2']
+    assert operations['operation_count']==3
+    assert operations['selection_widened'] is False
+    assert operations['production_release_allowed'] is False
+
+
 if __name__=='__main__':
     _w18_optimization_review_smoke()
+    _w03_production_intent_smoke()
     from cws_convertor.ui_qt.bom_action_evidence import run_bom_action_evidence
     with tempfile.TemporaryDirectory(prefix='cws-bom-actions-') as folder:
         proof=run_bom_action_evidence(Path(folder))
