@@ -99,6 +99,20 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._geometry_filter: frozenset[str] | None = None
         self._interaction_actor: Any | None = None
         self._source_table_groups = True
+        self._instance_visible_cache: frozenset[str] | None = None
+        self._instance_ghosted_cache: frozenset[str] | None = None
+        self._instance_colors_cache: dict[str, Rgba] | None = None
+        self._instance_transparency_cache: dict[str, float] | None = None
+        self._instance_explode_cache: dict[str, Vector3] | None = None
+        self._instance_preferences_cache: Any | None = None
+
+    def _reset_instance_state_cache(self) -> None:
+        self._instance_visible_cache = None
+        self._instance_ghosted_cache = None
+        self._instance_colors_cache = None
+        self._instance_transparency_cache = None
+        self._instance_explode_cache = None
+        self._instance_preferences_cache = None
 
     def set_geometry_filter(self, geometry_ids: tuple[str, ...] | None) -> None:
         """Temporarily bound first-frame actor construction for huge scenes."""
@@ -141,6 +155,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._mesh_groups = []
         self._node_instance = {}
         self._point_picker = None
+        self._reset_instance_state_cache()
 
     def clear_scene(self) -> None:
         self._discard_interaction_actor()
@@ -149,6 +164,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._mesh_groups = []
         self._node_instance = {}
         self._point_picker = None
+        self._reset_instance_state_cache()
 
     def refresh_geometry(self, geometry_ids: tuple[str, ...] | None = None) -> None:
         """Invalidate mesh actors after progressive repository replacement.
@@ -208,6 +224,7 @@ class VtkProjectMeshBackend(VtkProjectBackend):
         self._static_groups_ready = False
         self._base_signature = ""
         self._selection_signature = ""
+        self._reset_instance_state_cache()
         self._remove_pick_actor()
 
     def rebind_scene_index(self, scene: ProjectScene, index: SceneIndex) -> None:
@@ -574,52 +591,134 @@ class VtkProjectMeshBackend(VtkProjectBackend):
             prop.LightingOn()
 
     def _update_instance_state(self, state: RenderState, index: SceneIndex) -> None:
+        """Apply only instance deltas after the initial scene-state upload.
+
+        The previous implementation revisited every occurrence whenever any
+        visibility, ghost, colour or explode value changed.  Large scenes pay
+        heavily for those Python/VTK crossings even when a command changes one
+        or a handful of nodes.  Stable ``_node_instance`` mappings let us update
+        only the affected occurrences while retaining a full fail-safe refresh
+        for the initial state and global display-preference changes.
+        """
         self._ensure_static_groups(index)
         visible = state.visible_set
         ghosted = state.ghosted_set
         colors = state.colors
         transparency = state.transparency
-        for group in self._mesh_groups:
-            effective_mode = state.display_preferences.render_mode or group.mode
-            self._configure_group_mode(
-                group, effective_mode, state.display_preferences.edge_width
+        explode = state.explode_offsets
+        preferences = state.display_preferences
+
+        previous_visible = self._instance_visible_cache
+        previous_ghosted = self._instance_ghosted_cache
+        previous_colors = self._instance_colors_cache
+        previous_transparency = self._instance_transparency_cache
+        previous_explode = self._instance_explode_cache
+        previous_preferences = self._instance_preferences_cache
+        initial = previous_visible is None
+
+        mode_changed = initial or previous_preferences is None or (
+            preferences.render_mode != previous_preferences.render_mode
+            or preferences.edge_width != previous_preferences.edge_width
+        )
+        if mode_changed:
+            for group in self._mesh_groups:
+                effective_mode = preferences.render_mode or group.mode
+                self._configure_group_mode(group, effective_mode, preferences.edge_width)
+
+        all_node_ids = set(self._node_instance)
+        if initial:
+            position_nodes = set(all_node_ids)
+            visibility_nodes = set(all_node_ids)
+            color_nodes = set(all_node_ids)
+        else:
+            assert previous_visible is not None
+            assert previous_ghosted is not None
+            assert previous_colors is not None
+            assert previous_transparency is not None
+            assert previous_explode is not None
+            visibility_nodes = set(previous_visible.symmetric_difference(visible))
+            position_nodes = {
+                node_id
+                for node_id in set(previous_explode) | set(explode)
+                if previous_explode.get(node_id, Vector3.zero())
+                != explode.get(node_id, Vector3.zero())
+            }
+            if previous_preferences != preferences:
+                color_nodes = set(all_node_ids)
+            else:
+                color_nodes = set(previous_ghosted.symmetric_difference(ghosted))
+                for node_id in set(previous_colors) | set(colors):
+                    if previous_colors.get(node_id) != colors.get(node_id):
+                        color_nodes.add(node_id)
+                for node_id in set(previous_transparency) | set(transparency):
+                    if previous_transparency.get(node_id) != transparency.get(node_id):
+                        color_nodes.add(node_id)
+
+        changed_groups: dict[int, tuple[_MeshActorGroup, list[bool]]] = {}
+
+        def flags_for(group: _MeshActorGroup) -> list[bool]:
+            key = id(group)
+            entry = changed_groups.get(key)
+            if entry is None:
+                entry = (group, [False, False, False])
+                changed_groups[key] = entry
+            return entry[1]
+
+        for node_id in position_nodes:
+            entry = self._node_instance.get(node_id)
+            if entry is None:
+                continue
+            group, instance_index = entry
+            base_position = index.world_transform_by_node[node_id].translation_vector
+            desired_position = base_position + explode.get(node_id, Vector3.zero())
+            current_position = Vector3(*group.points.GetPoint(instance_index))
+            if not current_position.almost_equal(desired_position, tolerance=1e-9):
+                group.points.SetPoint(instance_index, *desired_position.to_tuple())
+                flags_for(group)[0] = True
+
+        for node_id in visibility_nodes:
+            entry = self._node_instance.get(node_id)
+            if entry is None:
+                continue
+            group, instance_index = entry
+            desired_mask = 1 if node_id in visible else 0
+            if int(group.mask.GetValue(instance_index)) != desired_mask:
+                group.mask.SetValue(instance_index, desired_mask)
+                flags_for(group)[1] = True
+
+        for node_id in color_nodes:
+            entry = self._node_instance.get(node_id)
+            if entry is None:
+                continue
+            group, instance_index = entry
+            node = index.node(node_id)
+            _, color = self._style_for_node(
+                node,
+                colors=colors,
+                transparency=transparency,
+                ghosted=ghosted,
+                preferences=preferences,
             )
-            points_changed = False
-            mask_changed = False
-            colors_changed = False
-            for instance_index, node_id in enumerate(group.node_ids):
-                node = index.node(node_id)
-                base_position = index.world_transform_by_node[node_id].translation_vector
-                desired_position = base_position + state.explode_offsets.get(node_id, Vector3.zero())
-                current_position = Vector3(*group.points.GetPoint(instance_index))
-                if not current_position.almost_equal(desired_position, tolerance=1e-9):
-                    group.points.SetPoint(instance_index, *desired_position.to_tuple())
-                    points_changed = True
-                show = node_id in visible
-                desired_mask = 1 if show else 0
-                if int(group.mask.GetValue(instance_index)) != desired_mask:
-                    group.mask.SetValue(instance_index, desired_mask)
-                    mask_changed = True
-                _, color = self._style_for_node(
-                    node,
-                    colors=colors,
-                    transparency=transparency,
-                    ghosted=ghosted,
-                    preferences=state.display_preferences,
-                )
-                desired_color = self._rgba_bytes(color)
-                current_color = tuple(
-                    int(v) for v in group.colors.GetTuple(instance_index)
-                )
-                if current_color != desired_color:
-                    group.colors.SetTypedTuple(instance_index, desired_color)
-                    colors_changed = True
-            if points_changed:
+            desired_color = self._rgba_bytes(color)
+            current_color = tuple(int(v) for v in group.colors.GetTuple(instance_index))
+            if current_color != desired_color:
+                group.colors.SetTypedTuple(instance_index, desired_color)
+                flags_for(group)[2] = True
+
+        for group, flags in changed_groups.values():
+            if flags[0]:
                 group.points.Modified()
-            if mask_changed:
+            if flags[1]:
                 group.mask.Modified()
-            if colors_changed:
+            if flags[2]:
                 group.colors.Modified()
+
+        self._instance_visible_cache = visible
+        self._instance_ghosted_cache = ghosted
+        self._instance_colors_cache = colors
+        self._instance_transparency_cache = transparency
+        self._instance_explode_cache = explode
+        self._instance_preferences_cache = preferences
 
     def _build_mesh_group(
         self,
