@@ -1,0 +1,103 @@
+name: Viewer native frustum culling import
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths: ['.github/workflows/viewer-native-culling-import.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: viewer-native-culling-import
+  cancel-in-progress: false
+jobs:
+  verify-test-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      BRANCH: agent/cws-pdf-ui-v3-complete-20260909
+      PATCH_SHA256: d2ecf0d8ebdad2505d337dc32336b479407c003544984c7eb53fa4ca7c725041
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify and assemble culling patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(part00 part01x part02 part03)
+          expected=(
+            446b360485c74499b5bf35a4169ee122ae3061e150506d60ceecbe638253b052
+            243a4c7f4d07194b24605d38846ce0bd03c6944ec0e06b48c3015aaef7d2eacc
+            f12b0e160eb251a51b58dd51942050b8ee3c8e39576383b3953e9eb4d7043f29
+            7129dad3bff6540ac349d59d2c12619fe03b0465542cfa3626aeb64c11a913c7
+          )
+          : > /tmp/culling.patch
+          for n in 0 1 2 3; do
+            name=${files[$n]}
+            tr -d '[:space:]' < ".github/viewer-culling.${name}.b64" | base64 -d > "/tmp/${name}"
+            actual=$(sha256sum "/tmp/${name}" | awk '{print $1}')
+            echo "${name}: ${actual} expected ${expected[$n]}"
+            test "$actual" = "${expected[$n]}"
+            cat "/tmp/${name}" >> /tmp/culling.patch
+          done
+          actual_full=$(sha256sum /tmp/culling.patch | awk '{print $1}')
+          echo "full: ${actual_full} expected ${PATCH_SHA256}"
+          test "$actual_full" = "$PATCH_SHA256"
+          test "$(wc -c < /tmp/culling.patch)" -eq 6057
+      - name: Apply to current coordinated HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "$BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/$BRANCH)"
+          git config user.name 'CWS Viewer Optimization Build'
+          git config user.email 'cws-viewer-build@users.noreply.github.com'
+          git am --3way /tmp/culling.patch
+          git diff HEAD^ --check
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/source_commit.txt
+          git diff --stat HEAD^ > evidence/change_stat.txt
+          sha256sum /tmp/culling.patch > evidence/PATCH_SHA256
+      - name: Install locked native runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libegl1 libopengl0 libgl1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-shape0 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
+          python -m pip install -r requirements-runtime.lock.txt pytest
+          python -m pip freeze > evidence/runtime.txt
+      - name: Run native culling and viewer regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb python -m pytest -q \
+            tests/viewer_native_instance_culling_smoke.py \
+            tests/viewer_incremental_instance_state_smoke.py \
+            tests/viewer_screen_selection_bulk_projection_smoke.py \
+            tests/viewer_indexed_picking_smoke.py \
+            tests/viewer_persistent_selection_overlay_smoke.py \
+            tests/viewer_render_scheduler_smoke.py tests/viewer_runtime_profiler_smoke.py \
+            tests/viewer_scheduler_native_smoke.py tests/viewer_native_initialization_smoke.py \
+            tests/viewer_v15_selection_pivot_parity_smoke.py tests/viewer_v15_trimble_feel_v2_smoke.py \
+            tests/viewer_v15_feel_fix_smoke.py tests/viewer_v2_core_controller_smoke.py \
+            tests/bom_selection_identity_smoke.py tests/viewer_source_mirror_smoke.py \
+            tests/performance_loading_v2_smoke.py \
+            --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
+          sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
+      - name: Publish exact tested source commit without force
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$(cat evidence/source_commit.txt)"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git fetch origin "$BRANCH"
+          git merge-base --is-ancestor "origin/$BRANCH" HEAD
+          git push origin HEAD:"$BRANCH"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Viewer_Native_Culling_${{ github.run_id }}
+          path: evidence/*
+          if-no-files-found: warn
+          retention-days: 30
