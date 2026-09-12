@@ -73,36 +73,8 @@ jobs:
           git merge --no-ff --no-edit "$CANDIDATE" -m 'perf(viewer): integrate verified optimization checkpoint'
           python -c "from pathlib import Path; p=Path('validation/viewer_optimization/baseline/selection_profile.txt'); p.write_text(p.read_text(encoding='utf-8').rstrip()+'\n', encoding='utf-8')"
           git add validation/viewer_optimization/baseline/selection_profile.txt
-          if ! git diff --cached --quiet; then
-            git commit -m 'chore(viewer): normalize profiler report trailing whitespace'
-          fi
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('cws_viewer/ui_qt/vtk_real_project_widget_feel.py')
-          text = p.read_text(encoding='utf-8')
-          old = '''            self._wheel_pending_events += 1
-            if not self._wheel_motion_timer.isActive():
-                self._wheel_motion_timer.start()
-            event.accept()
-'''
-          new = '''            self._wheel_pending_events += 1
-            if abs(self._wheel_pending_steps) <= 1e-12 and self._wheel_pending_events > 1:
-                count = self._wheel_pending_events
-                self._wheel_motion_timer.stop()
-                self._wheel_pending_pos = None
-                self._wheel_pending_events = 0
-                profiler = getattr(self.backend, "profiler", None)
-                if profiler is not None:
-                    profiler.input_processed("wheel", count)
-                    profiler.input_cancelled("wheel", count)
-            elif not self._wheel_motion_timer.isActive():
-                self._wheel_motion_timer.start()
-            event.accept()
-'''
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected wheel coalescing block exactly once, found {text.count(old)}')
-          p.write_text(text.replace(old, new, 1), encoding='utf-8')
-          PY
+          if ! git diff --cached --quiet; then git commit -m 'chore(viewer): normalize profiler report trailing whitespace'; fi
+          python -c 'from pathlib import Path; p=Path("cws_viewer/ui_qt/vtk_real_project_widget_feel.py"); t=p.read_text(encoding="utf-8"); old="            self._wheel_pending_events += 1\n            if not self._wheel_motion_timer.isActive():\n                self._wheel_motion_timer.start()\n            event.accept()\n"; new="            self._wheel_pending_events += 1\n            if abs(self._wheel_pending_steps) <= 1e-12 and self._wheel_pending_events > 1:\n                count = self._wheel_pending_events\n                self._wheel_motion_timer.stop()\n                self._wheel_pending_pos = None\n                self._wheel_pending_events = 0\n                profiler = getattr(self.backend, \"profiler\", None)\n                if profiler is not None:\n                    profiler.input_processed(\"wheel\", count)\n                    profiler.input_cancelled(\"wheel\", count)\n            elif not self._wheel_motion_timer.isActive():\n                self._wheel_motion_timer.start()\n            event.accept()\n"; assert t.count(old)==1, t.count(old); p.write_text(t.replace(old,new,1),encoding="utf-8")'
           git add cws_viewer/ui_qt/vtk_real_project_widget_feel.py
           git commit -m 'perf(viewer): cancel neutral wheel bursts without queued backlog'
           git diff --check "$BASE"..HEAD
