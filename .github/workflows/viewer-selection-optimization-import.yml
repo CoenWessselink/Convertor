@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       BRANCH: agent/cws-pdf-ui-v3-complete-20260909
-      PATCH_SHA256: 5f7aa7a3f81d50d9c2eee8f478916bd81da8a7c45753523b27bd68c3b9a657fe
+      PATCH_SHA256: 91f8b95b0c9038cff317379fbf01e9b8d9890d2356db36d9af3d563739a48321
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,15 +24,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Decode and verify staged incremental instance patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          base64 -d .github/viewer-instance-delta.patch.b64 > /tmp/instance_delta.patch
-          ACTUAL=$(sha256sum /tmp/instance_delta.patch | awk '{print $1}')
-          test "$ACTUAL" = "$PATCH_SHA256"
-          grep -F "$PATCH_SHA256" .github/viewer-instance-delta-patch.sha256
-      - name: Apply patch to latest coordinated branch
+      - name: Retrieve and verify immutable mesh bundle load patch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const crypto = require('crypto');
+            const sha = '2d7de0e87b06c660246cdb3f94e4e285805cbd41';
+            const response = await github.rest.git.getBlob({...context.repo, file_sha: sha});
+            const patch = Buffer.from(response.data.content.replace(/\s/g, ''), 'base64');
+            const digest = crypto.createHash('sha256').update(patch).digest('hex');
+            if (digest !== process.env.PATCH_SHA256) throw new Error(`Patch mismatch: ${digest}`);
+            fs.writeFileSync('/tmp/mesh_bundle_load.mbox', patch);
+      - name: Apply mesh bundle load patch to latest coordinated branch
         shell: bash
         run: |
           set -euo pipefail
@@ -40,12 +44,13 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/$BRANCH)"
           git config user.name 'CWS Viewer Optimization Build'
           git config user.email 'cws-viewer-build@users.noreply.github.com'
-          git am --3way /tmp/instance_delta.patch
-          git diff HEAD^ --check
+          git am --3way /tmp/mesh_bundle_load.mbox
+          git diff HEAD~2 --check
           mkdir -p evidence
           git rev-parse HEAD > evidence/source_commit.txt
-          git diff --stat HEAD^ > evidence/change_stat.txt
-          sha256sum /tmp/instance_delta.patch > evidence/PATCH_SHA256
+          git log -2 --format='%H %P %s' > evidence/commits.txt
+          git diff --stat HEAD~2 > evidence/change_stat.txt
+          sha256sum /tmp/mesh_bundle_load.mbox > evidence/PATCH_SHA256
       - name: Install locked native runtime
         shell: bash
         run: |
@@ -56,12 +61,11 @@ jobs:
             libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
           python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > evidence/runtime.txt
-      - name: Run native incremental-state selection and identity regressions
+      - name: Run native selection and exact-bundle load regressions
         shell: bash
         run: |
           set -euo pipefail
           xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb python -m pytest -q \
-            tests/viewer_incremental_instance_state_smoke.py \
             tests/viewer_render_scheduler_smoke.py \
             tests/viewer_runtime_profiler_smoke.py \
             tests/viewer_scheduler_native_smoke.py \
@@ -78,7 +82,7 @@ jobs:
             tests/performance_loading_v2_smoke.py \
             --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
           sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
-      - name: Fast-forward publish exact tested source commit
+      - name: Fast-forward publish exact tested source commits
         shell: bash
         run: |
           set -euo pipefail
@@ -88,7 +92,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: CWS_Viewer_Instance_Delta_Optimization_${{ github.run_id }}
+          name: CWS_Viewer_Exact_Bundle_Load_${{ github.run_id }}
           path: evidence/*
           if-no-files-found: warn
           retention-days: 30
