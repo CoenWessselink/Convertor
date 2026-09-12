@@ -1,0 +1,14 @@
+{
+  "schema": "cws.viewer.verified-bundle-import.v1",
+  "base_commit": "32dd57b33dbeec4b9c3bb7b65f17e03db1dc16b9",
+  "candidate_commit": "b9d84cca1031d8aef170ee1a6a781c9efa3cd4d5",
+  "bundle_sha256": "f48c756fb0c078f45ad8b70fbb30a598e60ba90b1c2a52bf5447c54870319914",
+  "purpose": "Import the two locally tested, recoverable profiler and render/input scheduler commits, preserving concurrent work. Not performance acceptance or Windows/GPU proof.",
+  "parts": [
+    {"blob_sha":"a8a95d04f68a60c150ade347b154f6cf7ad1a687", "decoded_git_blob_sha":"a6a6dfb5ade408fb7839b45582f71143e3ec276d", "encoded_replacements":[["+YxLKinP","+YxLdKinP"],["Nl+5WRg","Nl+XRg"]]},
+    {"blob_sha":"de952b09238635480fc7116049567c5997f16b9e", "decoded_git_blob_sha":"de952b09238635480fc7116049567c5997f16b9e"},
+    {"blob_sha":"9078ab021df92fa826966b21e71e08aa1f8d9af6", "decoded_git_blob_sha":"ef0546ed4de930e46a98a1f396f35e41609af2f4", "encoded_replacements":[["5SiEGS5SiZz3Wp","5SiEGS5z3Wp"]], "encoded_last_character":"a"},
+    {"blob_sha":"774fc9923acb224688fe356be76f4f71fe4e5c13", "decoded_git_blob_sha":"774fc9923acb224688fe356be76f4f71fe4e5c13"},
+    {"blob_sha":"5098ed759dcc785a38a71087bc8752c35a9d07d3", "decoded_git_blob_sha":"5098ed759dcc785a38a71087bc8752c35a9d07d3"}
+  ]
+}
