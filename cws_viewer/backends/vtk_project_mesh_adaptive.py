@@ -30,10 +30,6 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
     INTERACTIVE_MULTISAMPLES = 0
     MIN_IDLE_MULTISAMPLES = 8
     MAX_PICK_CANDIDATES = 64
-    # A cell pick identifies the shared mesh actor, not the concrete instance.
-    # Dense IFC models can contain hundreds of copies of the same profile. The
-    # final surface-distance check must therefore see every instance in that
-    # geometry group; a capped nearest-centre list can omit a clicked long beam.
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.profiler = ViewerProfiler()
@@ -46,10 +42,42 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         self._pick_locator_cache: dict[int, _PickLocatorEntry] = {}
         self._surface_distance_cache: dict[str, Any] = {}
         self._pick_explode_signature: Any = None
+        self._native_culling_mapper_count = 0
+        self._native_culling_fallback_count = 0
 
     @property
     def interaction_quality_active(self) -> bool:
         return bool(self._interaction_quality_active)
+
+    def _configure_native_instance_culling(self, mapper: Any, *, instance_count: int) -> bool:
+        """Enable native GPU frustum culling for large exact-mesh instance groups."""
+        if int(instance_count) < 256:
+            return False
+        configure = getattr(mapper, "SetCullingAndLOD", None)
+        set_lod_count = getattr(mapper, "SetNumberOfLOD", None)
+        if not callable(configure) or not callable(set_lod_count):
+            self._native_culling_fallback_count += 1
+            return False
+        try:
+            set_lod_count(0)
+            configure(True)
+        except Exception:
+            self._native_culling_fallback_count += 1
+            return False
+        self._native_culling_mapper_count += 1
+        return True
+
+    @property
+    def native_instance_culling_stats(self) -> dict[str, int]:
+        return {
+            "enabled_mappers": int(self._native_culling_mapper_count),
+            "fallback_mappers": int(self._native_culling_fallback_count),
+        }
+
+    def _build_static_mesh_group(self, geometry_id: str, mode: Any, entries: list[tuple[str, Any]]) -> Any:
+        group = super()._build_static_mesh_group(geometry_id, mode, entries)
+        self._configure_native_instance_culling(group.mapper, instance_count=len(group.node_ids))
+        return group
 
     def initialize(self, *, width: int, height: int) -> None:
         super().initialize(width=width, height=height)
@@ -64,26 +92,16 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         self._idle_multisamples = max(self.MIN_IDLE_MULTISAMPLES, configured)
 
     def set_interaction_quality(self, interacting: bool) -> bool:
-        """Switch quality without forcing an extra render.
-
-        Returns ``True`` only when the state changed. Rendering remains owned by
-        the controller/widget frame scheduler, preventing duplicate renders for
-        a single mouse event.
-        """
         requested = bool(interacting)
         if requested == self._interaction_quality_active:
             return False
-
         interaction_scene = getattr(self, "set_interaction_scene", None)
         if callable(interaction_scene):
             interaction_scene(requested)
-
         window = self._render_window
         if window is not None:
             try:
-                window.SetMultiSamples(
-                    int(self.INTERACTIVE_MULTISAMPLES if requested else self._idle_multisamples)
-                )
+                window.SetMultiSamples(int(self.INTERACTIVE_MULTISAMPLES if requested else self._idle_multisamples))
             except Exception:
                 pass
             swap_control = getattr(window, "SetSwapControl", None)
@@ -98,19 +116,14 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
                 renderer.SetPass(None if requested else self._ssao_pass)
             except Exception:
                 pass
-            shadow_method = getattr(
-                renderer,
-                "UseShadowsOff" if requested else "UseShadowsOn",
-                None,
-            )
+            shadow_method = getattr(renderer, "UseShadowsOff" if requested else "UseShadowsOn", None)
             if callable(shadow_method):
                 try:
                     shadow_method()
                 except Exception:
                     pass
-
         self._interaction_quality_active = requested
-        self._pending_dirty |= DirtyFlag.QUALITY
+        self._pending_dirty = getattr(self, "_pending_dirty", DirtyFlag.NONE) | DirtyFlag.QUALITY
         return True
 
     def load_scene(self, scene: Any, index: Any) -> None:
@@ -123,13 +136,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         self.profiler.gauge("geometry_resources", len(scene.geometry))
         self.profiler.gauge("reused_instances", max(0, len(index.renderable_node_ids) - len(scene.geometry)))
 
-    def _surface_distance(
-        self,
-        node_id: str,
-        world_point: Vector3,
-        index: Any,
-    ) -> float:
-        """Measure a pick against the actual local mesh surface, not its box."""
+    def _surface_distance(self, node_id: str, world_point: Vector3, index: Any) -> float:
         vtk = self._vtk
         node = index.node(node_id)
         geometry_id = str(node.geometry_id or "")
@@ -140,11 +147,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             evaluator = vtk.vtkImplicitPolyDataDistance()
             evaluator.SetInput(self._mesh_polydata(geometry_id))
             self._surface_distance_cache[geometry_id] = evaluator
-        offset = (
-            Vector3.zero()
-            if self._state is None
-            else self._state.explode_offsets.get(node_id, Vector3.zero())
-        )
+        offset = Vector3.zero() if self._state is None else self._state.explode_offsets.get(node_id, Vector3.zero())
         transform = Matrix4.translation(offset) @ index.world_transform_by_node[node_id]
         local_point = transform.inverse_rigid().transform_point(world_point)
         return abs(float(evaluator.EvaluateFunction(local_point.to_tuple())))
@@ -180,7 +183,6 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         vtk = self._vtk
         if vtk is None or not getattr(group, "node_ids", ()):
             return None
-
         points = vtk.vtkPoints()
         points.SetDataTypeToDouble()
         state = self._state
@@ -190,95 +192,51 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             bounds = index.world_bounds_by_node.get(node_id)
             if bounds is None:
                 continue
-            offset = (
-                Vector3.zero()
-                if state is None
-                else state.explode_offsets.get(node_id, Vector3.zero())
-            )
+            offset = Vector3.zero() if state is None else state.explode_offsets.get(node_id, Vector3.zero())
             center = bounds.center + offset
             points.InsertNextPoint(*center.to_tuple())
             valid_node_ids.append(node_id)
             max_half_diagonal = max(max_half_diagonal, bounds.size.length() * 0.5)
         if not valid_node_ids:
             return None
-
         data = vtk.vtkPolyData()
         data.SetPoints(points)
         locator = vtk.vtkStaticPointLocator()
         locator.SetDataSet(data)
         locator.BuildLocator()
-        entry = _PickLocatorEntry(
-            locator=locator,
-            data=data,
-            node_ids=tuple(valid_node_ids),
-            search_radius=max(max_half_diagonal * 1.35, 2.0),
-        )
+        entry = _PickLocatorEntry(locator=locator, data=data, node_ids=tuple(valid_node_ids), search_radius=max(max_half_diagonal * 1.35, 2.0))
         self._pick_locator_cache[key] = entry
         return entry
 
-    def _candidate_instance_indexes(
-        self,
-        entry: _PickLocatorEntry,
-        point: Vector3,
-    ) -> tuple[int, ...]:
-        """Return spatially local occurrence indexes without scanning a whole group.
-
-        Every occurrence in a glyph group shares the same source geometry.  The
-        locator radius is based on the largest world AABB half diagonal in that
-        group, so an occurrence whose bounds can contain the picked surface is
-        guaranteed to be in the radius result.  Only when the radius produces no
-        candidates do we fall back to the bounded nearest-centre set.
-        """
+    def _candidate_instance_indexes(self, entry: _PickLocatorEntry, point: Vector3) -> tuple[int, ...]:
         vtk = self._vtk
         if vtk is None:
             return ()
         nearby = vtk.vtkIdList()
-        entry.locator.FindPointsWithinRadius(
-            float(entry.search_radius), point.to_tuple(), nearby
-        )
+        entry.locator.FindPointsWithinRadius(float(entry.search_radius), point.to_tuple(), nearby)
         if nearby.GetNumberOfIds():
-            return tuple(
-                int(nearby.GetId(candidate))
-                for candidate in range(nearby.GetNumberOfIds())
-            )
+            return tuple(int(nearby.GetId(candidate)) for candidate in range(nearby.GetNumberOfIds()))
         nearest = vtk.vtkIdList()
         count = min(len(entry.node_ids), self.MAX_PICK_CANDIDATES)
         if count <= 0:
             return ()
         entry.locator.FindClosestNPoints(count, point.to_tuple(), nearest)
-        return tuple(
-            int(nearest.GetId(candidate))
-            for candidate in range(nearest.GetNumberOfIds())
-        )
+        return tuple(int(nearest.GetId(candidate)) for candidate in range(nearest.GetNumberOfIds()))
 
-    def _node_nearest_surface_pick(
-        self,
-        group: Any,
-        world_point: Vector3,
-        index: Any,
-    ) -> str | None:
-        """Resolve an instanced mesh hit from a spatially bounded candidate set."""
+    def _node_nearest_surface_pick(self, group: Any, world_point: Vector3, index: Any) -> str | None:
         entry = self._pick_locator(group, index)
         if entry is None:
             return None
-
         state = self._state
-        # Long members must remain selectable near either end. Ranking only by
-        # instance centre can discard the clicked beam before surface testing.
         bounded_candidates: list[tuple[float, float, str]] = []
-        candidate_indexes = self._candidate_instance_indexes(entry, world_point)
-        for candidate_index in candidate_indexes:
+        for candidate_index in self._candidate_instance_indexes(entry, world_point):
             if candidate_index < 0 or candidate_index >= len(entry.node_ids):
                 continue
             node_id = entry.node_ids[candidate_index]
             bounds = index.world_bounds_by_node.get(node_id)
             if bounds is None:
                 continue
-            offset = (
-                Vector3.zero()
-                if state is None
-                else state.explode_offsets.get(node_id, Vector3.zero())
-            )
+            offset = Vector3.zero() if state is None else state.explode_offsets.get(node_id, Vector3.zero())
             minimum = bounds.minimum + offset
             maximum = bounds.maximum + offset
             distance_sq = self._distance_sq_to_bounds(world_point, minimum, maximum)
@@ -291,11 +249,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             bounds = index.world_bounds_by_node.get(node_id)
             if bounds is None:
                 continue
-            offset = (
-                Vector3.zero()
-                if state is None
-                else state.explode_offsets.get(node_id, Vector3.zero())
-            )
+            offset = Vector3.zero() if state is None else state.explode_offsets.get(node_id, Vector3.zero())
             minimum = bounds.minimum + offset
             maximum = bounds.maximum + offset
             distance_sq = self._distance_sq_to_bounds(world_point, minimum, maximum)
@@ -328,18 +282,22 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             self.render_now(dirty)
 
     def render_now(self, dirty: DirtyFlag = DirtyFlag.ALL) -> None:
-        """Only the central scheduler/capture boundary calls this under Qt."""
         super().render()
 
     def capture_png(self, output: Any, **kwargs: Any) -> Any:
         scheduler = self._render_scheduler
         if scheduler is not None:
             scheduler.flush()
+        was_interacting = bool(self._interaction_quality_active)
+        if was_interacting:
+            self.set_interaction_quality(False)
         self._render_scheduler = None
         try:
             return super().capture_png(output, **kwargs)
         finally:
             self._render_scheduler = scheduler
+            if was_interacting:
+                self.set_interaction_quality(True)
 
     def pick_at(self, x: int, y: int, index: Any) -> Any:
         with self.profiler.span("selection"):
@@ -350,7 +308,6 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
             super()._update_instance_state(state, index)
 
     def performance_snapshot(self, *, include_raw: bool = False) -> dict[str, Any]:
-        """Developer evidence; renderer CPU completion is not display scan-out."""
         self.profiler.gauge("shared_cache", asdict(self.shared_render_cache_stats))
         return self.profiler.snapshot(include_raw=include_raw)
 
