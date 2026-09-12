@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 20
     env:
       BRANCH: agent/cws-pdf-ui-v3-complete-20260909
-      PATCH_SHA256: 5f69601522c573a0a6815dbc733a6296ecac3700500867818e60580667276dd7
+      PATCH_SHA256: f8a172c3ce846f0b1dd1585ddc8547d44b4170a6b9c34e217a9f3a2b67ad7f09
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,17 +24,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Retrieve and verify immutable tested source patch parts
+      - name: Retrieve and verify immutable tested box lasso patch parts
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const crypto = require('crypto');
             const parts = [
-              ['446d0a90120b1d337aab2df301baecadb6197d39', '9bb72ea609f9e93512d36de0c81a97b176f0c2e5d8caef42ef75bb0dfa549a30'],
-              ['9d7111082f604198f8959f9c9a9c4d081c564d1e', 'f7bc4f117bff1e44de8ae8deb19731d72b22cdfaf06ed8dcef8f8c7dc293c0b2'],
-              ['7a856c92effdb5896afd25628c6c0740053d0c51', '3e2b6c0434c4574ba07b2e6850d9651e7f36f7fe13424651e42cd540da75b5a8'],
-              ['5b082d195ae65fd82844e5d2b8612b622bded137', 'bd17ca859ebd63acb091ed72b5de7128115ffc6f3a5e327dbcd4ed7c71c78bd4'],
+              ['762a9222f4e8f43c755197596a8fd5bf0db3d175', '199b19fa632ab9970806ca6ac89c103c53bdc11ed99752a9bc63c7c04dd33ebe'],
+              ['18665fc884dd7f329ae8d54318b6717fd2c15cc0', 'e52c79375b9307342612944eadb382b441383d25dab807ff9f41cb08a42d764d'],
+              ['502324edbb277b0a8361cd7b7a8d7f7bc5d9d7e8', 'bd55471298ba7a7ec84d63f39225718a82ca366ce360ad0a8ce81a9959bdf2fa'],
             ];
             const buffers = [];
             for (let i = 0; i < parts.length; i++) {
@@ -48,8 +47,8 @@ jobs:
             const patch = Buffer.concat(buffers);
             const fullDigest = crypto.createHash('sha256').update(patch).digest('hex');
             if (fullDigest !== process.env.PATCH_SHA256) throw new Error(`Full patch mismatch: ${fullDigest}`);
-            fs.writeFileSync('/tmp/phase_cd.patch', patch);
-      - name: Apply source patch to latest coordinated branch
+            fs.writeFileSync('/tmp/phase_boxlasso.patch', patch);
+      - name: Apply box lasso source patch to latest coordinated branch
         shell: bash
         run: |
           set -euo pipefail
@@ -57,12 +56,12 @@ jobs:
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/$BRANCH)"
           git config user.name 'CWS Viewer Optimization Build'
           git config user.email 'cws-viewer-build@users.noreply.github.com'
-          git am --3way /tmp/phase_cd.patch
+          git am --3way /tmp/phase_boxlasso.patch
           git diff HEAD^ --check
           mkdir -p evidence
           git rev-parse HEAD > evidence/source_commit.txt
           git diff --stat HEAD^ > evidence/change_stat.txt
-          sha256sum /tmp/phase_cd.patch > evidence/PATCH_SHA256
+          sha256sum /tmp/phase_boxlasso.patch > evidence/PATCH_SHA256
       - name: Install locked native runtime
         shell: bash
         run: |
@@ -73,7 +72,7 @@ jobs:
             libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
           python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > evidence/runtime.txt
-      - name: Run native scheduler selection and identity regressions
+      - name: Run native scheduler selection identity and bulk projection regressions
         shell: bash
         run: |
           set -euo pipefail
@@ -89,6 +88,7 @@ jobs:
             tests/bom_selection_identity_smoke.py \
             tests/viewer_indexed_picking_smoke.py \
             tests/viewer_persistent_selection_overlay_smoke.py \
+            tests/viewer_screen_selection_bulk_projection_smoke.py \
             --junitxml=evidence/tests.xml 2>&1 | tee evidence/tests.log
           sha256sum evidence/tests.xml evidence/tests.log > evidence/SHA256SUMS
       - name: Fast-forward publish exact tested source commit
