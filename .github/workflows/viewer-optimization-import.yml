@@ -88,9 +88,15 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y xvfb libxcb-cursor0 libegl1 libopengl0
+          sudo apt-get install -y xvfb libegl1 libopengl0 libgl1 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libxkbcommon-x11-0
           python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > checkpoint/runtime.txt
+          PLUGIN=$(python -c "from PySide6.QtCore import QLibraryInfo; print(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)+'/platforms/libqxcb.so')")
+          ldd "$PLUGIN" | tee checkpoint/xcb_dependencies.txt
+          if grep -q 'not found' checkpoint/xcb_dependencies.txt; then exit 1; fi
+          xvfb-run -a env QT_QPA_PLATFORM=xcb python -c "from PySide6.QtWidgets import QApplication; app=QApplication([]); print('Native XCB application initialized')" 2>&1 | tee checkpoint/qt_preflight.txt
       - name: Verify real Qt scheduler and canonical selection regressions
         shell: bash
         run: |
