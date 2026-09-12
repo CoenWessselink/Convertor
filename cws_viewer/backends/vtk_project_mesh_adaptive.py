@@ -46,10 +46,45 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         self._pick_locator_cache: dict[int, _PickLocatorEntry] = {}
         self._surface_distance_cache: dict[str, Any] = {}
         self._pick_explode_signature: Any = None
+        self._native_culling_mapper_count = 0
+        self._native_culling_fallback_count = 0
 
     @property
     def interaction_quality_active(self) -> bool:
         return bool(self._interaction_quality_active)
+
+    def _configure_native_instance_culling(self, mapper: Any, *, instance_count: int) -> bool:
+        """Enable native GPU frustum culling for large exact-mesh instance groups."""
+        if int(instance_count) < 256:
+            return False
+        configure = getattr(mapper, "SetCullingAndLOD", None)
+        set_lod_count = getattr(mapper, "SetNumberOfLOD", None)
+        if not callable(configure) or not callable(set_lod_count):
+            self._native_culling_fallback_count += 1
+            return False
+        try:
+            set_lod_count(0)
+            configure(True)
+        except Exception:
+            self._native_culling_fallback_count += 1
+            return False
+        self._native_culling_mapper_count += 1
+        return True
+
+    @property
+    def native_instance_culling_stats(self) -> dict[str, int]:
+        return {
+            "enabled_mappers": int(self._native_culling_mapper_count),
+            "fallback_mappers": int(self._native_culling_fallback_count),
+        }
+
+    def _build_static_mesh_group(self, geometry_id: str, mode: Any, entries: list[tuple[str, Any]]) -> Any:
+        group = super()._build_static_mesh_group(geometry_id, mode, entries)
+        # The adaptive backend is the active production path. Configure culling
+        # here as well so the optimization does not depend on replacing the
+        # shared lower-level mesh backend on concurrent integration branches.
+        self._configure_native_instance_culling(group.mapper, instance_count=len(group.node_ids))
+        return group
 
     def initialize(self, *, width: int, height: int) -> None:
         super().initialize(width=width, height=height)
@@ -110,7 +145,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
                     pass
 
         self._interaction_quality_active = requested
-        self._pending_dirty |= DirtyFlag.QUALITY
+        self._pending_dirty = getattr(self, "_pending_dirty", DirtyFlag.NONE) | DirtyFlag.QUALITY
         return True
 
     def load_scene(self, scene: Any, index: Any) -> None:
@@ -332,14 +367,28 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         super().render()
 
     def capture_png(self, output: Any, **kwargs: Any) -> Any:
+        """Capture a still at full idle quality without corrupting interaction state.
+
+        Screenshot requests can arrive while orbit/pan is still in the reduced
+        interaction-quality state. A still image is an explicit synchronous
+        boundary: drain the scheduler, restore the exact/high-quality renderer
+        for the capture, then put the renderer back in its previous interaction
+        state. Width/height remain owned by the proven base capture path, which
+        temporarily renders at the requested pixel size and restores the window.
+        """
         scheduler = self._render_scheduler
         if scheduler is not None:
             scheduler.flush()
+        was_interacting = bool(self._interaction_quality_active)
+        if was_interacting:
+            self.set_interaction_quality(False)
         self._render_scheduler = None
         try:
             return super().capture_png(output, **kwargs)
         finally:
             self._render_scheduler = scheduler
+            if was_interacting:
+                self.set_interaction_quality(True)
 
     def pick_at(self, x: int, y: int, index: Any) -> Any:
         with self.profiler.span("selection"):
