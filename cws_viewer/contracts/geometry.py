@@ -28,16 +28,18 @@ class GeometryLoadStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class TessellationSettings:
-    # The large-model display profile stays source-derived but avoids
-    # sub-pixel tessellation density: at a 57 m project extent, 1 mm chordal
-    # tolerance and 24 circle segments preserve engineering silhouettes while
-    # roughly halving HVPC triangles and cold-load/render cost.
-    linear_deflection_mm: float = 1.0
-    angular_deflection_rad: float = 0.35
-    circle_segments: int = 24
+    # V3 HQ-balanced exact display profile.  Curved IFC/STEP geometry receives
+    # materially finer chordal/angular tessellation while planar steel remains
+    # essentially unchanged.  Runtime interaction stays light through shared
+    # geometry, instancing, culling and the interactive render-quality path.
+    # The version participates in every persistent mesh-cache key, so existing
+    # v2 meshes are invalidated without changing source/entity/geometry identity.
+    linear_deflection_mm: float = 0.35
+    angular_deflection_rad: float = 0.18
+    circle_segments: int = 48
     relative: bool = False
     weld_proxy_sides: int = 8
-    version: str = "cws-tessellation-v2"
+    version: str = "cws-tessellation-v3-hq-balanced"
 
     def __post_init__(self) -> None:
         if self.linear_deflection_mm <= 0:
