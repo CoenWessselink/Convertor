@@ -71,6 +71,7 @@ class ViewerProfiler:
         self._recent_renders: deque[float] = deque(maxlen=1024)
         self._first_input: float | None = None
         self._latest_input: float | None = None
+        self._pending_inputs: dict[str, tuple[float, float]] = {}
         self._auxiliary_depth = 0
         self._observer_window: Any | None = None
         self._observer_ids: list[int] = []
@@ -120,12 +121,22 @@ class ViewerProfiler:
             if self._first_input is None:
                 self._first_input = now
             self._latest_input = now
+            first = self._pending_inputs.get(kind, (now, now))[0]
+            self._pending_inputs[kind] = (first, now)
 
     def input_processed(self, kind: str, received_count: int = 1) -> None:
         with self._lock:
             self._counters["input_processed"] += 1
             self._counters[f"input_processed.{kind}"] += 1
             self._counters["input_coalesced"] += max(0, int(received_count) - 1)
+
+    def input_cancelled(self, kind: str, received_count: int = 1) -> None:
+        """An unchanged/cancelled gesture has no new visible frame to await."""
+        with self._lock:
+            self._counters["input_cancelled"] += max(0, int(received_count))
+            self._pending_inputs.pop(kind, None)
+            self._first_input = min((x[0] for x in self._pending_inputs.values()), default=None)
+            self._latest_input = max((x[1] for x in self._pending_inputs.values()), default=None)
 
     def render_start(self, *_: Any) -> None:
         self._render_stack.append((self.clock(), time.process_time(), time.thread_time(),
@@ -149,6 +160,7 @@ class ViewerProfiler:
             self._recent_renders.append(now)
             first, latest = self._first_input, self._latest_input
             self._first_input = self._latest_input = None
+            self._pending_inputs.clear()
         if first is not None:
             self.record("input_to_render_end_oldest", (now - first) * 1000)
         if latest is not None:

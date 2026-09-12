@@ -71,3 +71,23 @@ RSS drift <10% over ten minutes. Missing evidence does not pass a target.
 Native Windows/GPU, a second representative large model, complete regression,
 soak and exact-commit final evidence remain required before DONE. Existing W18,
 PDF/UI, installer and manufacturing functionality must remain intact.
+
+## Render scheduling and input coalescing
+
+A single RenderScheduler now owns ordinary Qt frames, including QVTK paint
+requests and the previous direct native opacity-render bypass. Dirty categories
+are unioned, at most one timer callback is pending, recursive requests wait for
+the next frame, and capture/teardown have explicit synchronous boundaries.
+Headless backend calls remain synchronous for existing export and test contracts.
+
+Mouse displacement accumulation reuses the existing navigation path. Wheel
+input now retains all detents and the latest cursor, with one camera update per
+navigation interval. Opposite detents cancel explicitly, without leaving a
+false latency backlog. Precise Qt timers are stopped before native teardown.
+
+The actual QVTK host test produced **one native render from 1,000 backend render
+requests**, and one camera update from ten wheel events. The wheel reducer test
+fixes its anchor to isolate reducer correctness; it is not a picker benchmark.
+59 focused tests passed under Linux/Xvfb, including the early native-handle
+resize, capture, selection-pivot, BOM identity and existing navigation contracts.
+This is not yet evidence of target FPS/latency on the full HVPC model.

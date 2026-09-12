@@ -48,8 +48,18 @@ if qt_available():
             self._v15_view_navigation = ViewerFeelNavigationService(self.controller)
             self._feel_pending_dx = 0.0
             self._feel_pending_dy = 0.0
+            self._feel_motion_events = 0
+            self._wheel_pending_steps = 0.0
+            self._wheel_pending_pos: Any | None = None
+            self._wheel_pending_events = 0
+            self._wheel_motion_timer = QtCore.QTimer(self)
+            self._wheel_motion_timer.setSingleShot(True)
+            self._wheel_motion_timer.setTimerType(QtCore.Qt.TimerType.PreciseTimer)
+            self._wheel_motion_timer.setInterval(self.NAVIGATION_FRAME_MS)
+            self._wheel_motion_timer.timeout.connect(self._flush_wheel_motion)
             self._feel_motion_timer = QtCore.QTimer(self)
             self._feel_motion_timer.setSingleShot(True)
+            self._feel_motion_timer.setTimerType(QtCore.Qt.TimerType.PreciseTimer)
             self._feel_motion_timer.setInterval(self.NAVIGATION_FRAME_MS)
             self._feel_motion_timer.timeout.connect(self._flush_navigation_motion)
             self.set_navigation_mode(self.navigation_mode)
@@ -66,16 +76,26 @@ if qt_available():
             self.setCursor(cursor)
 
         def _schedule_navigation_motion(self, dx: float, dy: float) -> None:
+            profiler = getattr(self.backend, "profiler", None)
+            if profiler is not None:
+                profiler.input_received("move")
+            self._feel_motion_events += 1
             self._feel_pending_dx += float(dx)
             self._feel_pending_dy += float(dy)
             if not self._feel_motion_timer.isActive():
                 self._feel_motion_timer.start()
 
+        def _take_navigation_motion(self) -> tuple[float, float]:
+            dx, dy = self._feel_pending_dx, self._feel_pending_dy
+            self._feel_pending_dx = self._feel_pending_dy = 0.0
+            count, self._feel_motion_events = self._feel_motion_events, 0
+            profiler = getattr(self.backend, "profiler", None)
+            if profiler is not None and count:
+                profiler.input_processed("move", count)
+            return dx, dy
+
         def _flush_navigation_motion(self) -> None:
-            dx = self._feel_pending_dx
-            dy = self._feel_pending_dy
-            self._feel_pending_dx = 0.0
-            self._feel_pending_dy = 0.0
+            dx, dy = self._take_navigation_motion()
             if abs(dx) <= 1e-12 and abs(dy) <= 1e-12:
                 return
             button = self._pressed_button
@@ -115,8 +135,11 @@ if qt_available():
             if self.markup_tool_active:
                 super().mousePressEvent(event)
                 return
+            self._wheel_motion_timer.stop()
+            self._flush_wheel_motion()
             self._feel_pending_dx = 0.0
             self._feel_pending_dy = 0.0
+            self._feel_motion_events = 0
             self._feel_motion_timer.stop()
             super().mousePressEvent(event)
             if (
@@ -193,27 +216,48 @@ if qt_available():
             if abs(delta) <= 1e-12:
                 pixel = event.pixelDelta()
                 delta = float(pixel.y()) if not pixel.isNull() else 0.0
-            if abs(delta) <= 1e-12:
+            if not math.isfinite(delta) or abs(delta) <= 1e-12:
                 event.accept()
                 return
+            profiler = getattr(self.backend, "profiler", None)
+            if profiler is not None:
+                profiler.input_received("wheel")
+            # Preserve every detent (including opposite-direction cancellation),
+            # while retaining only the latest cursor and one camera update.
+            self._wheel_pending_steps += max(-12.0, min(12.0, delta / 120.0))
+            self._wheel_pending_pos = QtCore.QPointF(event.position())
+            self._wheel_pending_events += 1
+            if not self._wheel_motion_timer.isActive():
+                self._wheel_motion_timer.start()
+            event.accept()
 
-            # A standard Windows wheel detent is 120 units. 8% per detent gives
-            # a controlled CAD-style step instead of the former 15% jump.
-            steps = delta / 120.0
-            steps = max(-12.0, min(12.0, steps))
-            factor = math.pow(WHEEL_ZOOM_PER_NOTCH, steps)
+        def _flush_wheel_motion(self) -> None:
+            steps, self._wheel_pending_steps = self._wheel_pending_steps, 0.0
+            pos, self._wheel_pending_pos = self._wheel_pending_pos, None
+            count, self._wheel_pending_events = self._wheel_pending_events, 0
+            profiler = getattr(self.backend, "profiler", None)
+            if profiler is not None and count:
+                profiler.input_processed("wheel", count)
+            if pos is None or abs(steps) <= 1e-12:
+                if profiler is not None and count:
+                    profiler.input_cancelled("wheel", count)
+                return
             try:
+                factor = math.pow(WHEEL_ZOOM_PER_NOTCH, steps)
                 self.view_navigation.camera_checkpoint()
-                anchor = self._wheel_anchor(event.position())
+                anchor = self._wheel_anchor(pos)
                 self.view_navigation.zoom_about_point(factor, anchor)
                 overlay = getattr(self, "_phase2_markup_overlay", None)
                 if overlay is not None:
                     overlay.update()
             except Exception as exc:
                 self.backend_failed.emit(f"{type(exc).__name__}: {exc}")
-            event.accept()
 
         def closeEvent(self, event: Any) -> None:
+            self._wheel_motion_timer.stop()
+            self._wheel_pending_steps = 0.0
+            self._wheel_pending_events = 0
+            self._wheel_pending_pos = None
             self._feel_motion_timer.stop()
             super().closeEvent(event)
 

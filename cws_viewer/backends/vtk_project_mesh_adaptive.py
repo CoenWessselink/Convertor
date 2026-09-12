@@ -13,6 +13,7 @@ from typing import Any
 from cws_viewer.backends.vtk_project_mesh_feel_v2 import VtkProjectMeshFeelV2Backend
 from cws_viewer.math3d import Matrix4, Vector3
 from cws_viewer.performance.runtime_profiler import ViewerProfiler
+from cws_viewer.performance.render_scheduler import DirtyFlag
 
 
 @dataclass(slots=True)
@@ -36,6 +37,8 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.profiler = ViewerProfiler()
+        self._render_scheduler: Any | None = None
+        self._pending_dirty = DirtyFlag.ALL
         super().__init__(*args, **kwargs)
         self._interaction_quality_active = False
         self._idle_multisamples = 8
@@ -107,6 +110,7 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
                     pass
 
         self._interaction_quality_active = requested
+        self._pending_dirty |= DirtyFlag.QUALITY
         return True
 
     def load_scene(self, scene: Any, index: Any) -> None:
@@ -146,6 +150,18 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         return abs(float(evaluator.EvaluateFunction(local_point.to_tuple())))
 
     def apply_state(self, state: Any, index: Any) -> None:
+        previous = self._state
+        if previous is None:
+            self._pending_dirty |= DirtyFlag.ALL
+        else:
+            if state.selected_node_ids != previous.selected_node_ids:
+                self._pending_dirty |= DirtyFlag.SELECTION
+            if (state.visible_node_ids, state.ghosted_node_ids) != (previous.visible_node_ids, previous.ghosted_node_ids):
+                self._pending_dirty |= DirtyFlag.VISIBILITY
+            if (state.color_by_node, state.transparency_by_node, state.display_preferences) != (previous.color_by_node, previous.transparency_by_node, previous.display_preferences):
+                self._pending_dirty |= DirtyFlag.COLOR
+            if (state.section_planes, state.clipping_box) != (previous.section_planes, previous.clipping_box):
+                self._pending_dirty |= DirtyFlag.SECTION
         explode_signature = getattr(state, "explode_offsets_by_node", ())
         if explode_signature != self._pick_explode_signature:
             self._pick_locator_cache.clear()
@@ -274,12 +290,34 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         return best_id
 
     def set_camera(self, camera: Any) -> None:
+        self._pending_dirty |= DirtyFlag.CAMERA
         with self.profiler.span("camera_update"):
             super().set_camera(camera)
 
+    def attach_render_scheduler(self, scheduler: Any | None) -> None:
+        self._render_scheduler = scheduler
+
     def render(self) -> None:
         self.profiler.count("render_requests")
+        dirty, self._pending_dirty = self._pending_dirty or DirtyFlag.OVERLAY, DirtyFlag.NONE
+        if self._render_scheduler is not None:
+            self._render_scheduler.request(dirty)
+        else:
+            self.render_now(dirty)
+
+    def render_now(self, dirty: DirtyFlag = DirtyFlag.ALL) -> None:
+        """Only the central scheduler/capture boundary calls this under Qt."""
         super().render()
+
+    def capture_png(self, output: Any, **kwargs: Any) -> Any:
+        scheduler = self._render_scheduler
+        if scheduler is not None:
+            scheduler.flush()
+        self._render_scheduler = None
+        try:
+            return super().capture_png(output, **kwargs)
+        finally:
+            self._render_scheduler = scheduler
 
     def pick_at(self, x: int, y: int, index: Any) -> Any:
         with self.profiler.span("selection"):
@@ -295,6 +333,9 @@ class VtkProjectMeshAdaptiveBackend(VtkProjectMeshFeelV2Backend):
         return self.profiler.snapshot(include_raw=include_raw)
 
     def shutdown(self) -> None:
+        if self._render_scheduler is not None:
+            self._render_scheduler.close()
+            self._render_scheduler = None
         self.profiler.detach()
         super().shutdown()
 

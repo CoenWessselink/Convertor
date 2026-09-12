@@ -79,6 +79,18 @@ class RuntimeProfilerTests(unittest.TestCase):
                 raise ValueError("expected")
         self.assertAlmostEqual(7., profiler.snapshot()["stages"]["selection"]["p99_ms"])
 
+    def test_cancel_one_input_kind_preserves_other_pending_input(self):
+        now = [0.]
+        profiler = ViewerProfiler(clock=lambda: now[0])
+        profiler.input_received("wheel")
+        now[0] = .01
+        profiler.input_received("move")
+        profiler.input_cancelled("wheel", 2)
+        profiler.render_start()
+        now[0] = .02
+        profiler.render_end()
+        self.assertAlmostEqual(10., profiler.snapshot()["stages"]["input_to_render_end_oldest"]["p95_ms"])
+
     def test_distribution_uses_strict_freeze_boundary(self):
         self.assertEqual(1, distribution([1., 100., 100.001])["over_100_ms"])
         self.assertIsNone(distribution([])["over_100_ms"])
