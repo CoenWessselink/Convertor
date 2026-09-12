@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import asdict
 from typing import Any, Iterable
 
 from cws_convertor.project.classification import (
@@ -685,6 +686,15 @@ def build_bom_snapshot(
         + ([] if part_evidence_ready else ["Actueel materiaal- en vrijgavebewijs voor maakdelen ontbreekt of is geblokkeerd"]),
     )
     summary = {
+        # The workspace derives availability and assignments from these canonical
+        # inputs. Bind them into the preflight token too: a reservation change
+        # must invalidate a saved BOM scope even if part quantities are unchanged.
+        # Exclude hub history/undo and the derived BOM cache to keep rebuilds stable.
+        "stock_state_sha256": stable_sha256({
+            "stock_items": {key: asdict(value) for key, value in project.stock_items.items()},
+            "remnants": {key: asdict(value) for key, value in project.remnants.items()},
+            "assignments": (project.settings.get("bom_production_hub") or {}).get("stock_assignments") or {},
+        }),
         "part_group_count": len(part_rows),
         "assembly_group_count": len(assembly_rows),
         "purchase_group_count": len(purchase_rows),

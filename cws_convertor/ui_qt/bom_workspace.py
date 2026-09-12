@@ -677,11 +677,47 @@ if qt_available():
                 )
 
         def _execute_matrix_action(self, definition: BOMActionDefinition) -> None:
+            previous = getattr(self, "_matrix_action_binding", None)
+            self._matrix_action_binding = self._capture_action_binding()
+            try:
+                self._execute_matrix_action_bound(definition)
+            finally:
+                self._matrix_action_binding = previous
+
+        def _capture_action_binding(self) -> dict[str, Any]:
+            workspace, state = self._workspace, self._hub_state
+            if workspace is None or state is None:
+                return {}
+            state.data  # Materialise audit schema before capturing source content.
+            return {
+                "workspace": workspace, "state": state,
+                "source_hash": workspace.project.revision_content_sha256(),
+                "selection": tuple(sorted(getattr(self._selection, "entity_ids", ()) or ())),
+            }
+
+        def _validate_action_binding(self, binding: dict[str, Any]) -> None:
+            if not binding or self._workspace is not binding["workspace"] or self._hub_state is not binding["state"]:
+                raise ValueError("Project gewijzigd tijdens BOM-actie; bereid de actie opnieuw voor")
+            if self._workspace.project.revision_content_sha256() != binding["source_hash"]:
+                raise ValueError("Projectinhoud gewijzigd tijdens BOM-actie; voer preflight opnieuw uit")
+            selection = tuple(sorted(getattr(self._selection, "entity_ids", ()) or ()))
+            if selection != binding["selection"]:
+                raise ValueError("Selectie gewijzigd tijdens BOM-actie; geen bewerking uitgevoerd")
+
+        def _execute_bom_transaction(self, action: str, preflight: BOMBatchPreflight, mutator: Any, **kwargs: Any) -> Any:
+            binding = getattr(self, "_preflight_action_bindings", {}).get(preflight.preflight_sha256)
+            self._validate_action_binding(binding or {})
+            matrix_binding = getattr(self, "_matrix_action_binding", None)
+            if matrix_binding is not None:
+                self._validate_action_binding(matrix_binding)
+            return self._hub_state.execute_transaction(action, preflight, mutator, **kwargs)
+
+        def _execute_matrix_action_bound(self, definition: BOMActionDefinition) -> None:
             action_id = definition.action_id
             ready = bool(self._workspace is not None and self._workspace.bom_snapshot.validation
                          and self._workspace.bom_snapshot.validation.production_ready)
             allowed = next(((enabled, reason) for item, enabled, reason in self._action_matrix.available(
-                self._selected_rows(), production_ready=ready) if item.action_id == action_id), (False, "Onbekende actie"))
+                self._action_rows(), production_ready=ready) if item.action_id == action_id), (False, "Onbekende actie"))
             if not allowed[0]:
                 QtWidgets.QMessageBox.warning(self, "BOM-actie geweigerd", allowed[1])
                 return
@@ -767,7 +803,7 @@ if qt_available():
                 self._release_stock_assignment()
                 return
             if action_id == "stock.shortage":
-                shortage = sum(row.shortage_mm for row in self._selected_rows())
+                shortage = sum(row.shortage_mm for row in self._action_rows())
                 self._record_routed_result(action_id, f"Berekend tekort: {_number(shortage, 0)} mm")
                 QtWidgets.QMessageBox.information(
                     self, "Materiaaltekort", f"Tekort in selectie: {_number(shortage, 0)} mm"
@@ -799,7 +835,7 @@ if qt_available():
         def _record_routed_result(self, action: str, message: str) -> None:
             if self._hub_state is None or self._scope_engine is None or self._workspace is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._scope_engine.preflight(
                 "inspect", rows,
                 expected_snapshot_sha256=self._workspace.bom_snapshot.snapshot_sha256,
@@ -1461,6 +1497,14 @@ if qt_available():
                     rows.setdefault(row.group_id, row)
             return tuple(rows.values())
 
+        def _action_rows(self) -> tuple[BOMWorkspaceRow, ...]:
+            """Resolve action scope without changing how table gestures select groups."""
+            try:
+                return self._exact_export_rows(self._selected_rows())
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "BOM-selectie geblokkeerd", str(exc))
+                return ()
+
         def _checkbox_changed(self, item: Any) -> None:
             if self._syncing or item.column() != 0:
                 return
@@ -1825,7 +1869,7 @@ if qt_available():
                 return ()
             return tuple(dict.fromkeys(
                 entity_id
-                for row in self._selected_rows()
+                for row in self._action_rows()
                 for entity_id in row.entity_ids
                 if entity_id in project.parts
             ))
@@ -1833,7 +1877,7 @@ if qt_available():
         def _open_production_workflow(self) -> None:
             if self._workspace is None or self._read_model is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("release", rows)
             if preflight is None:
                 return
@@ -1848,7 +1892,7 @@ if qt_available():
                 )
             if self._hub_state is not None:
                 self._hub_state.record_result(
-                    "production.release.prepare", preflight,
+                    "production.release", preflight, status="prepared",
                     messages=("Productievrijgavewerkstroom geopend; definitieve release blijft downstream vergrendeld",),
                 )
                 self._mark_project_dirty()
@@ -1860,11 +1904,11 @@ if qt_available():
             part_ids = self._selected_part_ids()
             if not part_ids:
                 return
-            preflight = self._confirm_preflight("machine", self._selected_rows())
+            preflight = self._confirm_preflight("machine", self._action_rows())
             if preflight is None:
                 return
             allowed_groups = set(preflight.eligible_group_ids)
-            eligible_rows = tuple(row for row in self._selected_rows() if row.group_id in allowed_groups)
+            eligible_rows = tuple(row for row in self._action_rows() if row.group_id in allowed_groups)
             part_ids = tuple(dict.fromkeys(
                 entity_id for row in eligible_rows for entity_id in row.entity_ids
                 if entity_id in self._workspace.project.parts
@@ -1922,8 +1966,8 @@ if qt_available():
                 service = MachineRoutingService()
                 if mode.currentIndex() == 0:
                     perform = lambda: service.assign_automatic(project, part_ids, user="bom-operator")
-                    execution = self._hub_state.execute_transaction(
-                        "machine.auto", preflight, perform, entity_ids=part_ids,
+                    execution = self._execute_bom_transaction(
+                        "machine.assign", preflight, perform, entity_ids=part_ids,
                         messages=("Automatische capability-routing uitgevoerd",), user="bom-operator",
                     )
                     assigned = execution.value
@@ -1938,8 +1982,8 @@ if qt_available():
                         project, part_ids, machine.currentText(), user="bom-operator",
                         reason=reason.text(), manual_lock=lock.isChecked(),
                     )
-                    execution = self._hub_state.execute_transaction(
-                        "machine.manual", preflight, perform, entity_ids=part_ids,
+                    execution = self._execute_bom_transaction(
+                        "machine.assign", preflight, perform, entity_ids=part_ids,
                         messages=("Handmatige machinekeuze vastgelegd",), user="bom-operator",
                     )
                     message = (
@@ -1962,7 +2006,7 @@ if qt_available():
         def _accept_automatic_machine(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("machine", rows)
             if preflight is None:
                 return
@@ -1971,7 +2015,7 @@ if qt_available():
                 if entity_id in self._workspace.project.parts
             )
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "machine.auto_accept", preflight,
                     lambda: MachineRoutingService().assign_automatic(
                         self._workspace.project, part_ids, user="bom-operator"
@@ -1988,7 +2032,7 @@ if qt_available():
         def _lock_machine_assignments(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("machine", rows)
             if preflight is None:
                 return
@@ -2002,7 +2046,7 @@ if qt_available():
             if not accepted or not reason.strip():
                 return
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "machine.manual_lock", preflight,
                     lambda: MachineRoutingService().set_manual_lock(
                         self._workspace.project, part_ids, locked=True,
@@ -2067,7 +2111,7 @@ if qt_available():
         ) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight(
                 "comment" if action_id == "edit.comment" else "edit", rows,
                 allow_blocked_review_export=action_id == "edit.comment",
@@ -2107,7 +2151,7 @@ if qt_available():
                 return changed
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     action_id, preflight, mutate, entity_ids=entity_ids,
                     messages=(f"{field_name} ingesteld op {value}",), user="bom-operator",
                 )
@@ -2121,7 +2165,7 @@ if qt_available():
             if self._workspace is None or self._hub_state is None:
                 return
             project = self._workspace.project
-            rows = self._selected_rows()
+            rows = self._action_rows()
             candidates = []
             for assembly in project.assemblies.values():
                 if add or any(
@@ -2171,7 +2215,7 @@ if qt_available():
                 return changed
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "edit.assembly_add" if add else "edit.assembly_remove",
                     preflight, mutate, entity_ids=(*entity_ids, assembly.internal_id),
                     messages=(("Toegevoegd aan " if add else "Verwijderd uit ") + assembly.internal_id,),
@@ -2215,7 +2259,7 @@ if qt_available():
         def _show_stock_plan(self) -> None:
             if self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             try:
                 plan = self._stock_plan(rows)
             except ValueError as exc:
@@ -2232,7 +2276,7 @@ if qt_available():
         def _assign_stock(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             if not rows or any(row.family != "parts" for row in rows):
                 QtWidgets.QMessageBox.information(self, "Voorraadtoewijzing", "Selecteer uitsluitend onderdeelregels.")
                 return
@@ -2270,7 +2314,7 @@ if qt_available():
                 )
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "stock.assign", preflight, mutate, entity_ids=entity_ids,
                     messages=(
                         f"{len(plan.allocations)} fysieke bronstukken atomair gereserveerd",
@@ -2287,7 +2331,7 @@ if qt_available():
         def _release_stock_assignment(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("stock", rows)
             if preflight is None:
                 return
@@ -2297,13 +2341,25 @@ if qt_available():
             )
 
             def mutate() -> tuple[str, ...]:
+                requested_ids = set(self._eligible_entity_ids(rows, preflight))
+                assignments = self._hub_state.data.get("stock_assignments", {})
+                full_rows = self._read_model.family_rows("parts")
+                for group_id in group_ids:
+                    assignment = assignments.get(group_id, {})
+                    # Old records had no occurrence binding. They can only be
+                    # released when the entire canonical group was selected.
+                    bound_ids = set(assignment.get("entity_ids", ())) or {
+                        key for row in full_rows if row.group_id == group_id for key in row.entity_ids
+                    }
+                    if not bound_ids or not bound_ids.issubset(requested_ids):
+                        raise ValueError("Voorraadvrijgave raakt niet-geselecteerde occurrences; selecteer de volledige reservering")
                 return BOMStockAllocator.release_assignments(
                     self._workspace.project, self._hub_state.data, group_ids,
-                    user="bom-operator",
+                    entity_ids=tuple(sorted(requested_ids)), user="bom-operator",
                 )
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "stock.release", preflight, mutate,
                     entity_ids=self._eligible_entity_ids(rows, preflight),
                     messages=("Fysieke voorraadreservering vrijgegeven",),
@@ -2317,7 +2373,7 @@ if qt_available():
         def _generate_purchase_need(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("purchase", rows)
             if preflight is None:
                 return
@@ -2331,7 +2387,7 @@ if qt_available():
                 )
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "purchase.generate", preflight, mutate,
                     messages=("Inkoopbehoeften als canonieke PurchasedItem-objecten aangemaakt",),
                 )
@@ -2345,7 +2401,7 @@ if qt_available():
             if self._workspace is None:
                 return ()
             return tuple(dict.fromkeys(
-                entity_id for row in self._selected_rows() for entity_id in row.entity_ids
+                entity_id for row in self._action_rows() for entity_id in row.entity_ids
                 if entity_id in self._workspace.project.purchased_items
             ))
 
@@ -2366,7 +2422,7 @@ if qt_available():
             value, accepted = QtWidgets.QInputDialog.getText(self, "Inkoop bewerken", "Nieuwe waarde:")
             if not accepted or not value.strip():
                 return
-            preflight = self._confirm_preflight("purchase", self._selected_rows())
+            preflight = self._confirm_preflight("purchase", self._action_rows())
             if preflight is None:
                 return
 
@@ -2382,7 +2438,7 @@ if qt_available():
                 )
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "purchase.edit", preflight, mutate, entity_ids=ids,
                     messages=(f"{label} bijgewerkt",),
                 )
@@ -2399,7 +2455,7 @@ if qt_available():
             if not ids:
                 QtWidgets.QMessageBox.information(self, "Inkoopvrijgave", "Selecteer inkoopregels.")
                 return
-            preflight = self._confirm_preflight("purchase", self._selected_rows())
+            preflight = self._confirm_preflight("purchase", self._action_rows())
             if preflight is None:
                 return
 
@@ -2409,7 +2465,7 @@ if qt_available():
                 )
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "purchase.release", preflight, mutate, entity_ids=ids,
                     messages=("Inkoopregels vrijgegeven",),
                 )
@@ -2437,7 +2493,7 @@ if qt_available():
             )
             if not accepted or not reason.strip():
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("purchase", rows)
             if preflight is None:
                 return
@@ -2449,7 +2505,7 @@ if qt_available():
                 )
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "purchase.cancel", preflight, mutate, entity_ids=ids,
                     messages=(f"Inkoop geannuleerd: {reason.strip()}",),
                 )
@@ -2465,7 +2521,7 @@ if qt_available():
         def _edit_selection(self) -> None:
             if self._workspace is None or self._hub_state is None:
                 return
-            rows = self._selected_rows()
+            rows = self._action_rows()
             preflight = self._confirm_preflight("edit", rows)
             if preflight is None:
                 return
@@ -2525,7 +2581,7 @@ if qt_available():
                 return changed
 
             try:
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     f"edit.{field_name}", preflight, mutate, entity_ids=entity_ids,
                     messages=(f"{field_label} gewijzigd naar {value}",), user="bom-operator",
                 )
@@ -2552,7 +2608,7 @@ if qt_available():
             part_ids = self._selected_part_ids()
             if not part_ids:
                 return
-            preflight = self._confirm_preflight("machine", self._selected_rows())
+            preflight = self._confirm_preflight("machine", self._action_rows())
             if preflight is None:
                 return
             reason, accepted = QtWidgets.QInputDialog.getText(
@@ -2566,7 +2622,7 @@ if qt_available():
                 perform = lambda: MachineRoutingService().reset(
                     self._workspace.project, part_ids, user="bom-operator", reason=reason,
                 )
-                execution = self._hub_state.execute_transaction(
+                execution = self._execute_bom_transaction(
                     "machine.reset", preflight, perform, entity_ids=part_ids,
                     messages=(f"Machinekeuze gereset: {reason or 'geen reden opgegeven'}",),
                     user="bom-operator",
@@ -2580,20 +2636,41 @@ if qt_available():
                 QtWidgets.QMessageBox.warning(self, "Reset geblokkeerd", str(exc))
 
         def _exact_export_rows(self, rows: Iterable[BOMWorkspaceRow]) -> tuple[BOMWorkspaceRow, ...]:
-            """A highlighted aggregate row must not widen an external part selection."""
+            """A highlighted aggregate must not widen an external entity selection."""
             rows = tuple(rows)
             project = getattr(self._workspace, "project", None)
             explicit = set(getattr(self._selection, "entity_ids", ()) or ())
-            if (project is None or not explicit or any(key not in project.parts for key in explicit)
-                    or any(row.family != "parts" for row in rows)):
+            if project is None or not explicit or not rows:
                 return rows
+            if any(project.get_entity(key) is None for key in explicit):
+                raise ValueError("De expliciete selectie bevat verwijderde of onbekende canonieke objecten")
             ids = explicit.intersection(key for row in rows for key in row.entity_ids)
             if not ids:
-                return ()
+                # Conflict rows can legitimately have only a group ID.
+                return rows if all(not row.entity_ids for row in rows) else ()
+            if all(set(row.entity_ids).issubset(ids) for row in rows):
+                return rows
             from cws_convertor.bom.review_export import _part_snapshot
-            exact = BOMWorkspaceReadModel(_part_snapshot(self._workspace.bom_snapshot, project, ids), project)
-            by_group = {row.group_id: row for row in exact.family_rows("parts")}
-            return tuple(by_group[row.group_id] for row in rows if row.group_id in by_group)
+            exact_rows = {}
+            for family in {row.family for row in rows}:
+                family_ids = ids.intersection(key for row in rows if row.family == family for key in row.entity_ids)
+                if not family_ids:
+                    continue
+                if family in {"parts", "materials"} and family_ids.issubset(project.parts):
+                    snapshot = _part_snapshot(self._workspace.bom_snapshot, project, family_ids)
+                else:
+                    scope = BOMScope.create(family=family, entity_ids=family_ids)
+                    snapshot = scoped_bom_snapshot(self._workspace.bom_snapshot, project=project,
+                                                   scope=scope, strict_entities=True)
+                exact = BOMWorkspaceReadModel(snapshot, project)
+                for row in exact.family_rows(family):
+                    if set(row.entity_ids).issubset(family_ids):
+                        exact_rows[(family, row.group_id)] = row
+            result = tuple(exact_rows[(row.family, row.group_id)] for row in rows
+                           if (row.family, row.group_id) in exact_rows)
+            if {key for row in result for key in row.entity_ids} != ids:
+                raise ValueError("De BOM kan de gevraagde occurrences niet exact afsplitsen; selecteer de scope expliciet")
+            return result
 
         def _export_scope(self, action_id: str | bool | None = None) -> None:
             from cws_convertor.bom.review_export import _part_snapshot, _export_review
@@ -2689,6 +2766,7 @@ if qt_available():
             self._preflight_partition_mode = "eligible"
             if self._scope_engine is None or self._workspace is None:
                 return None
+            binding = self._capture_action_binding()
             try:
                 preflight = self._scope_engine.preflight(
                     action, rows,
@@ -2699,6 +2777,9 @@ if qt_available():
             except ValueError as exc:
                 QtWidgets.QMessageBox.warning(self, "BOM-preflight", str(exc))
                 return None
+            bindings = getattr(self, "_preflight_action_bindings", {})
+            bindings[preflight.preflight_sha256] = binding
+            self._preflight_action_bindings = dict(tuple(bindings.items())[-20:])
             impact = preflight.impact
             partitions = "\n".join(
                 f"• {machine}: {len(ids)} occurrences" for machine, ids in impact.machine_partitions
@@ -2739,7 +2820,7 @@ if qt_available():
                 clicked = dialog.clickedButton()
                 if clicked is blocked_button:
                     blocked = set(preflight.blocked_group_ids)
-                    self._select_rows(row for row in self._selected_rows() if row.group_id in blocked)
+                    self._select_rows(row for row in self._action_rows() if row.group_id in blocked)
                     self.detail_tabs.setCurrentIndex(5)
                     return None
                 if clicked is machine_button:
@@ -2758,7 +2839,12 @@ if qt_available():
 
         def _route_scoped_action(self, action: str, route: str) -> None:
             workspace, state = self._workspace, self._hub_state
-            rows = self._selected_rows()
+            if workspace is None:
+                return
+            # Modal confirmation may process a source edit without rebuilding
+            # the BOM. Bind to project content as well as the snapshot hash.
+            source_hash = workspace.project.revision_content_sha256()
+            rows = self._action_rows()
             if action.startswith("export.") or action == "drawing.batch_pdf":
                 try:
                     rows = self._exact_export_rows(rows)
@@ -2770,6 +2856,9 @@ if qt_available():
             preflight = self._confirm_preflight("inspect" if readonly_review else action, rows,
                                                 allow_blocked_review_export=readonly_review)
             if preflight is None:
+                return
+            if self._workspace is not workspace or workspace.project.revision_content_sha256() != source_hash:
+                QtWidgets.QMessageBox.warning(self, "BOM-actie geweigerd", "Project gewijzigd tijdens BOM-preflight")
                 return
             allowed = set(preflight.eligible_group_ids)
             selected = tuple(row for row in rows if row.group_id in allowed)

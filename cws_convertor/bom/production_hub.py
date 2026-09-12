@@ -256,12 +256,14 @@ class BOMStockPiece:
     group_id: str
     occurrence: int
     length_mm: float
+    entity_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "group_id": self.group_id,
             "occurrence": self.occurrence,
             "length_mm": self.length_mm,
+            "entity_ids": list(self.entity_ids),
         }
 
 
@@ -373,7 +375,7 @@ class BOMStockAllocator:
     @staticmethod
     def pieces(rows: Iterable[BOMWorkspaceRow]) -> tuple[BOMStockPiece, ...]:
         return tuple(
-            BOMStockPiece(row.group_id, occurrence, float(row.length_mm))
+            BOMStockPiece(row.group_id, occurrence, float(row.length_mm), tuple(row.entity_ids))
             for row in rows
             for occurrence in range(max(1, int(round(float(row.quantity or 1.0)))))
         )
@@ -585,11 +587,22 @@ class BOMStockAllocator:
 
         if not plan.allocations:
             raise ValueError("Het voorraadplan bevat geen reserveerbare fysieke bron")
+        if not preflight.allowed:
+            raise ValueError("De voorraadpreflight is geblokkeerd")
+        pieces = tuple(piece for allocation in plan.allocations for piece in allocation.pieces) + tuple(plan.unallocated_pieces)
+        if any(not piece.entity_ids for piece in pieces):
+            raise ValueError("Voorraadplan mist exacte canonieke objectidentiteit; bereken het plan opnieuw")
+        planned_entities = {entity_id for piece in pieces for entity_id in piece.entity_ids}
+        if not planned_entities.issubset(set(preflight.impact.entity_ids)) or not planned_entities.issubset(project.parts):
+            raise ValueError("Voorraadplan bevat objecten buiten de bevestigde canonieke selectie")
         planned_groups = {
             piece.group_id for allocation in plan.allocations for piece in allocation.pieces
         } | {piece.group_id for piece in plan.unallocated_pieces}
         if not planned_groups.issubset(set(preflight.eligible_group_ids)):
             raise ValueError("Voorraadplan bevat groepen buiten de bevestigde preflightscope")
+        assignments = hub_data.get("stock_assignments") or {}
+        if any(assignments.get(group_id, {}).get("reservation_id") for group_id in planned_groups):
+            raise ValueError("De selectie heeft al een voorraadreservering; geef die eerst expliciet vrij")
         grouped: dict[tuple[str, str], dict[str, Any]] = {}
         for allocation in plan.allocations:
             value = grouped.setdefault(
@@ -641,6 +654,7 @@ class BOMStockAllocator:
             source_ids = {source["source_id"] for source in sources}
             assignments[group_id] = {
                 "schema": "cws-bom-stock-assignment-2.0",
+                "entity_ids": sorted({entity_id for piece in (*allocated_pieces, *missing) for entity_id in piece.entity_ids}),
                 "source_type": next(iter(source_types)) if len(source_types) == 1 else "mixed",
                 "source_id": next(iter(source_ids)) if len(source_ids) == 1 else "mixed",
                 "sources": sources,
@@ -711,12 +725,29 @@ class BOMStockAllocator:
         hub_data: dict[str, Any],
         group_ids: Iterable[str],
         *,
+        entity_ids: Iterable[str] | None = None,
         user: str = "bom-operator",
     ) -> tuple[str, ...]:
         from cws_convertor.optimization.profile_nesting.reservation import release_reservation
 
         requested = set(_unique(group_ids))
         assignments = hub_data.setdefault("stock_assignments", {})
+        if entity_ids is not None:
+            selected = set(_unique(entity_ids))
+            for group_id in requested:
+                assignment = assignments.get(group_id) or {}
+                if not assignment.get("reservation_id"):
+                    continue
+                bound = set(assignment.get("entity_ids") or ())
+                if not bound:
+                    # Legacy assignments predate occurrence binding. Resolve the
+                    # entire current canonical group; never infer a smaller
+                    # binding from the current selected IDs.
+                    from .engine import _build_part_rows
+                    _rows, part_groups = _build_part_rows(project)
+                    bound = {key for key, value in part_groups.items() if value == group_id}
+                if not bound or not bound.issubset(selected):
+                    raise ValueError("Voorraad vrijgeven zou niet-geselecteerde of onbekende objecten raken")
         reservation_ids = {
             str(assignments[group_id].get("reservation_id") or "")
             for group_id in requested if group_id in assignments

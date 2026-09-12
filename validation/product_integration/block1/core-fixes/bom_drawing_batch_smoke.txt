@@ -1,0 +1,29 @@
+
+--- stderr ---
+test_cancel_after_rendering_blocks_publication (__main__.DrawingBatchTests.test_cancel_after_rendering_blocks_publication) ... ok
+test_cancellation_and_newer_generation_leave_no_batch (__main__.DrawingBatchTests.test_cancellation_and_newer_generation_leave_no_batch) ... ok
+test_changed_material_blocks_publication (__main__.DrawingBatchTests.test_changed_material_blocks_publication) ... ok
+test_changed_mesh_blocks_publication_even_without_new_project_hash (__main__.DrawingBatchTests.test_changed_mesh_blocks_publication_even_without_new_project_hash) ... ok
+test_changed_pdf_blocks_publication (__main__.DrawingBatchTests.test_changed_pdf_blocks_publication) ... ok
+test_duplicate_and_unsafe_marks_cannot_escape_or_overwrite (__main__.DrawingBatchTests.test_duplicate_and_unsafe_marks_cannot_escape_or_overwrite) ... ok
+test_duplicate_ids_are_not_duplicate_drawings (__main__.DrawingBatchTests.test_duplicate_ids_are_not_duplicate_drawings) ... ok
+test_each_entity_uses_its_own_saved_sheet_settings (__main__.DrawingBatchTests.test_each_entity_uses_its_own_saved_sheet_settings) ... ok
+test_empty_deleted_and_invalid_scopes_are_never_broadened (__main__.DrawingBatchTests.test_empty_deleted_and_invalid_scopes_are_never_broadened) ... ok
+test_existing_destination_is_never_overwritten (__main__.DrawingBatchTests.test_existing_destination_is_never_overwritten) ... ok
+test_failure_in_second_document_does_not_publish_first (__main__.DrawingBatchTests.test_failure_in_second_document_does_not_publish_first) ... ok
+test_highlighted_aggregate_cannot_broaden_explicit_part_scope (__main__.DrawingBatchTests.test_highlighted_aggregate_cannot_broaden_explicit_part_scope) ... ok
+test_impossible_saved_scale_aborts_whole_batch_and_cleans_files (__main__.DrawingBatchTests.test_impossible_saved_scale_aborts_whole_batch_and_cleans_files) ... ok
+test_missing_assembly_member_refuses_incomplete_output (__main__.DrawingBatchTests.test_missing_assembly_member_refuses_incomplete_output) ... ok
+test_one_selected_part_does_not_expand_to_other_members (__main__.DrawingBatchTests.test_one_selected_part_does_not_expand_to_other_members) ... ok
+test_same_mark_assemblies_cannot_broaden_explicit_occurrence (__main__.DrawingBatchTests.test_same_mark_assemblies_cannot_broaden_explicit_occurrence) ... ok
+test_selected_assembly_remains_a_complete_assembly_document (__main__.DrawingBatchTests.test_selected_assembly_remains_a_complete_assembly_document) ... ok
+test_stale_or_mismatching_highlight_does_not_select_everything (__main__.DrawingBatchTests.test_stale_or_mismatching_highlight_does_not_select_everything) ... ok
+test_two_real_pdfs_merge_without_changing_project (__main__.DrawingBatchTests.test_two_real_pdfs_merge_without_changing_project) ... ok
+test_worker_does_not_use_mupdf_concurrently_with_the_gui (__main__.DrawingBatchTests.test_worker_does_not_use_mupdf_concurrently_with_the_gui) ... ok
+test_worker_uses_a_copy_not_mutable_viewer_arrays (__main__.DrawingBatchTests.test_worker_uses_a_copy_not_mutable_viewer_arrays) ... ok
+test_wrong_saved_dimension_document_is_not_reused (__main__.DrawingBatchTests.test_wrong_saved_dimension_document_is_not_reused) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 0.878s
+
+OK

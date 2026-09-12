@@ -1,8 +1,4 @@
-"""W03/W18 intent-preserving overrides over the verified BOM dispatcher base.
-
-The full verified dispatcher remains byte-identical in ``bom_action_dispatch_base``.
-This layer only fixes action-specific integration gaps against the current Qt shell.
-"""
+"""Action-specific BOM execution against the existing canonical Qt workspaces."""
 from __future__ import annotations
 
 import os
@@ -33,6 +29,12 @@ def _validate_request(panel: Any, ids: tuple[str, ...], preflight: Any) -> Any:
         raise ValueError("BOM gewijzigd sinds preflight")
     if any(workspace.project.get_entity(key) is None for key in ids):
         raise ValueError("De selectie bevat verwijderde of onbekende canonieke objecten")
+    impact = getattr(preflight, "impact", None)
+    if impact is not None and not set(ids).issubset(set(impact.entity_ids)):
+        raise ValueError("De uitvoerselectie bevat objecten buiten de bevestigde BOM-preflight")
+    selection = getattr(context, "selection", None)
+    if selection is not None and set(getattr(selection, "entity_ids", ())) != set(ids):
+        raise ValueError("De actieve selectie wijkt af van de gevraagde BOM-selectie")
     return workspace
 
 
@@ -175,40 +177,31 @@ def _viewer_intent(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
 
 
 def _drawing_intent(panel: Any, action: str, ids: tuple[str, ...], preflight: Any) -> _Outcome:
-    """Use the current pdf_review route while retaining the verified drawing executor."""
+    """Execute on the current drawing workspace with an explicit print outcome."""
     window = panel.window
-    router = window.workspace_router
-    pages = getattr(router, "pages", {})
-    alias_added = "pdf" not in pages and "pdf_review" in pages
-    if alias_added:
-        pages["pdf"] = pages["pdf_review"]
-    try:
-        if action != "drawing.print":
-            return _base._drawing(panel, action, ids, preflight)
-        if len(ids) != 1:
-            raise ValueError("Printen vereist exact één onderdeel of assembly; gebruik Batch-PDF voor meerdere tekeningen")
-        key = ids[0]
-        _base._open(window, "pdf_review")
-        page = window.pdf_page
-        page.set_context(panel._workspace, window.application_context.selection)
-        if getattr(page, "_entity_id", "") != key:
-            raise ValueError("Printselectie komt niet overeen met de gevraagde canonieke ID")
-        result = page._generate(make_png=True, make_pdf=True)
-        pdf_path = None if result is None else getattr(result, "pdf_path", None)
-        if not pdf_path or not Path(pdf_path).is_file():
-            return _Outcome("blocked", "Tekening kon niet printgereed als PDF worden opgebouwd")
-        if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1" or os.environ.get("QT_QPA_PLATFORM") == "offscreen":
-            return _Outcome("prepared", f"Printgereed PDF gecontroleerd voor {key}; printerdialoog bewust niet geopend in headless test", (str(pdf_path),))
-        from cws_convertor.ui_qt.production_printing import print_pdf_file
-        accepted = print_pdf_file(pdf_path, parent=page)
-        return _Outcome(
-            "passed" if accepted else "cancelled",
-            "Printopdracht naar systeemprinter bevestigd" if accepted else "Printerdialoog geannuleerd; niets afgedrukt",
-            (str(pdf_path),),
-        )
-    finally:
-        if alias_added:
-            pages.pop("pdf", None)
+    if action != "drawing.print":
+        return _base._drawing(panel, action, ids, preflight)
+    if len(ids) != 1:
+        raise ValueError("Printen vereist exact één onderdeel of assembly; gebruik Batch-PDF voor meerdere tekeningen")
+    key = ids[0]
+    _base._open(window, "pdf_review")
+    page = window.pdf_page
+    page.set_context(panel._workspace, window.application_context.selection)
+    if getattr(page, "_entity_id", "") != key:
+        raise ValueError("Printselectie komt niet overeen met de gevraagde canonieke ID")
+    result = page._generate(make_png=True, make_pdf=True)
+    pdf_path = None if result is None else getattr(result, "pdf_path", None)
+    if not pdf_path or not Path(pdf_path).is_file():
+        return _Outcome("blocked", "Tekening kon niet printgereed als PDF worden opgebouwd")
+    if os.environ.get("CWS_HEADLESS_GUI_SMOKE") == "1" or os.environ.get("QT_QPA_PLATFORM") == "offscreen":
+        return _Outcome("prepared", f"Printgereed PDF gecontroleerd voor {key}; printerdialoog bewust niet geopend in headless test", (str(pdf_path),))
+    from cws_convertor.ui_qt.production_printing import print_pdf_file
+    accepted = print_pdf_file(pdf_path, parent=page)
+    return _Outcome(
+        "passed" if accepted else "cancelled",
+        "Printopdracht naar systeemprinter bevestigd" if accepted else "Printerdialoog geannuleerd; niets afgedrukt",
+        (str(pdf_path),),
+    )
 
 
 def _occurrence_export_scope(panel: Any, ids: tuple[str, ...], preflight: Any) -> _Outcome:
@@ -216,6 +209,7 @@ def _occurrence_export_scope(panel: Any, ids: tuple[str, ...], preflight: Any) -
     from cws_convertor.project.manufacturing_contracts import ExportScopeKind
     window, workspace = panel.window, panel._workspace
     page = window.export_page
+    page._bom_export_binding = None
     _base._open(window, "export")
     page.set_context(workspace, window.application_context.selection)
     parts: list[str] = []
@@ -232,8 +226,15 @@ def _occurrence_export_scope(panel: Any, ids: tuple[str, ...], preflight: Any) -
     page.scope.setCurrentIndex(page.scope.findData(ExportScopeKind.SELECTED_PARTS))
     page.scope_values.setText(",".join(parts))
     prepared = page._preflight()
+    grouping = page.grouping.currentData()
+    grouping = str(grouping.value if hasattr(grouping, "value") else grouping)
+    page._bom_export_binding = {
+        "panel": panel, "workspace": workspace, "preflight": preflight,
+        "ids": tuple(sorted(parts)), "grouping": grouping,
+        "formats": tuple(page._formats()), "action": "export.occurrences",
+    }
     window.application_context.update_export_context(
-        active_export_scope=tuple(parts), grouping=str(page.grouping.currentData().value if hasattr(page.grouping.currentData(), "value") else page.grouping.currentData()),
+        active_export_scope=tuple(parts), grouping=grouping,
         formats=tuple(page._formats()), preflight_hash=preflight.preflight_sha256,
     )
     blocked = prepared is None or prepared.blocking_codes or any(item.blocking_codes for item in prepared.items)

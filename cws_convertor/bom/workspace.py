@@ -479,6 +479,14 @@ class BOMWorkspaceReadModel:
             scribing_values.append(explicit or ("ready" if has_scribing else "not_required"))
         hub = dict(((getattr(self.project, "settings", {}) or {}).get("bom_production_hub", {}) or {}))
         assignment = dict((hub.get("stock_assignments") or {}).get(group_id) or {})
+        assigned_entities = set(assignment.get("entity_ids") or ())
+        outside_assignment = set(ids) - assigned_entities if assigned_entities else set()
+        if assigned_entities and not assigned_entities.intersection(ids):
+            assignment = {}  # A sibling occurrence does not own this reservation.
+        elif assignment and not assigned_entities and self.snapshot.summary.get("scope", {}).get("exact_part_selection"):
+            # Legacy group-only bindings cannot prove a projected occurrence
+            # allocation. Keep their release path, but do not claim assignment.
+            assignment = {}
         source_type = str(assignment.get("source_type") or "")
         source_id = str(assignment.get("source_id") or "")
         sources = tuple(assignment.get("sources") or ())
@@ -519,7 +527,18 @@ class BOMWorkspaceReadModel:
             getattr(entity, "entity_type", "") in {"part", "assembly"} for entity in entities
         )
         nesting_raw = self._entity_field(ids, "nesting_status")
-        release_raw = self._entity_field(ids, "release_status", "review_status", "status")
+        # Release authority is an explicit per-entity state. Generic readiness
+        # and review approval must not become a released BOM group, and missing
+        # occurrence states must not disappear from an aggregate.
+        release_values = [self._entity_field((key,), "release_status").strip().casefold() for key in ids]
+        if release_values and all(value in {"released", "approved", "vrijgegeven"} for value in release_values):
+            release_status = "Vrijgegeven"
+        elif release_values and all(value in {"withdrawn", "ingetrokken"} for value in release_values):
+            release_status = "Ingetrokken"
+        elif any(value in blocked_values for value in release_values):
+            release_status = "Geblokkeerd"
+        else:
+            release_status = "Review" if entities else "Niet van toepassing"
         production_raw = self._entity_field(ids, "production_status", "fabrication_status")
         delivery_raw = self._entity_field(ids, "delivery_status", "shipment_status")
         assignment_status = str(assignment.get("status") or "")
@@ -534,7 +553,7 @@ class BOMWorkspaceReadModel:
             "nc_status": "Gereed" if nc_ready else ("Niet van toepassing" if not parts else "Geblokkeerd"),
             "scribing_status": normalized_scribing,
             "conflict_status": "Geblokkeerd" if blocked else "Conflictvrij",
-            "release_status": readiness(release_raw, relevant=bool(entities)),
+            "release_status": release_status,
             "production_status": readiness(production_raw, relevant=bool(parts) or drawing_relevant),
             "delivery_status": readiness(delivery_raw, relevant=bool(entities)),
             "assigned_stock": ", ".join(stock_ids),
@@ -542,9 +561,12 @@ class BOMWorkspaceReadModel:
         }
         if assignment:
             result["stock_status"] = (
-                "Toegewezen" if assignment_status == "allocated" else "Gedeeltelijk"
+                "Toegewezen" if assignment_status == "allocated" and not outside_assignment else "Gedeeltelijk"
             )
-            result["shortage_mm"] = float(assignment.get("unallocated_length_mm") or 0.0)
+            result["shortage_mm"] = float(assignment.get("unallocated_length_mm") or 0.0) + sum(
+                float(part.length_mm or 0.0) * float(part.quantity_total or 0.0)
+                for part in parts if part.internal_id in outside_assignment
+            )
         return result
 
     def _stock_fields(

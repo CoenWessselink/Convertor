@@ -447,7 +447,7 @@ def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = Non
         raise ValueError("Onderdeeltekening vereist één onderdeel")
     if action == "drawing.open_assembly" and key not in project.assemblies:
         raise ValueError("Assemblytekening vereist één assembly")
-    _open(window, "pdf")
+    _open(window, "pdf_review")
     page.set_context(panel._workspace, window.application_context.selection)
     if page._entity_id != key:
         raise ValueError("Tekeningselectie komt niet overeen met de gevraagde canonieke ID")
@@ -461,7 +461,13 @@ def _drawing(panel: Any, action: str, ids: tuple[str, ...], preflight: Any = Non
         after = getattr(page._dimension_document, "drawing_revision", None)
         return _Outcome("passed" if after != before else "cancelled", page.status.text())
     if action in {"drawing.setup", "drawing.format", "drawing.scale", "drawing.views"}:
-        focus = page.scale if action == "drawing.scale" else page.format
+        if action == "drawing.views":
+            buttons = getattr(page, "view_buttons", {})
+            focus = next(iter(buttons.values()), None)
+            if focus is None:
+                raise ValueError("Aanzichtkeuze is niet aangesloten; geen andere bladinstelling geopend")
+        else:
+            focus = page.scale if action == "drawing.scale" else page.format
         focus.setFocus()
         return _Outcome("prepared", f"{action}: bladinstellingen geopend voor {key}; nog geen uitvoer")
     result = page._generate(make_png=True, make_pdf=action in {"drawing.generate", "drawing.regenerate"})
@@ -507,5 +513,11 @@ def _dispatch(panel: Any, action: str, route: str, ids: tuple[str, ...], preflig
         return _export(panel, action, ids, preflight)
     if action.startswith("drawing."):
         return _drawing(panel, action, ids, preflight)
-    panel.action_requested.emit(route)
-    return _Outcome("prepared", f"{action}: scope doorgezet naar {route}; geen voltooide bewerking geclaimd")
+    # Only the explicit legacy toolbar navigation commands may open a workspace
+    # without an executor. A canonical or misspelled action must never lose its
+    # intent by quietly becoming navigation to its route.
+    navigation = {"edit": "edit", "inspect": "inspect", "viewer": "viewer"}
+    if action in navigation and route == navigation[action]:
+        panel.action_requested.emit(route)
+        return _Outcome("prepared", f"{action}: werkruimte geopend voor de selectie; nog niets uitgevoerd")
+    raise ValueError(f"Geen afzonderlijke BOM-uitvoerder voor {action}; route {route!r} niet uitgevoerd")

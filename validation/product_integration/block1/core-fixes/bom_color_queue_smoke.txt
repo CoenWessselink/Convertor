@@ -1,0 +1,9 @@
+
+--- stderr ---
+test_changed_snapshot_mode_revision_or_renderer_reschedules (__main__.ColourQueueTests.test_changed_snapshot_mode_revision_or_renderer_reschedules) ... ok
+test_repeated_selection_echo_schedules_one_colour_update (__main__.ColourQueueTests.test_repeated_selection_echo_schedules_one_colour_update) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK

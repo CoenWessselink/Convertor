@@ -5,22 +5,23 @@ execution coverage for an action merely because the matrix rejects invalid input
 """
 from pathlib import Path
 import sys
-from types import SimpleNamespace
+from dataclasses import asdict
 
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path: sys.path.insert(0,str(ROOT))
 
 from cws_convertor.bom.production_hub import ACTION_DEFINITIONS, BOMActionMatrix
+from cws_convertor.bom.workspace import BOMWorkspaceRow
 
 
 def _row(family: str, *, blocked: bool=False):
-    return SimpleNamespace(
-        family=family, entity_ids=(family+'-1',), blocked=blocked,
+    return BOMWorkspaceRow(
+        family=family, group_id=family+'-group', entity_ids=(family+'-1',), blocked=blocked,
         profile='HEA200', material='S355J2', length_mm=3000.0,
         available_stock_mm=6000.0, assigned_stock='S1', assigned_remnant='',
         shortage_mm=1000.0, stock_status='shortage', supplier='Supplier',
         purchase_status='new', machine='V550', machine_status='ready',
-        release_status='', production_status='', document_status='',
+        release_status='released', production_status='', document_status='ready', nc_status='ready',
     )
 
 
@@ -42,12 +43,26 @@ def run():
         unsupported=next((family for family in all_families if family not in definition.families),None)
         if unsupported is None:
             continue
-        result={item.action_id:(enabled,reason) for item,enabled,reason in matrix.available((_row(unsupported),),production_ready=True)}
+        row = _row(unsupported)
+        before = asdict(row)
+        result={item.action_id:(enabled,reason) for item,enabled,reason in matrix.available((row,),production_ready=True)}
+        assert asdict(row) == before, definition.action_id
         enabled,reason=result[definition.action_id]
         assert not enabled,(definition.action_id,unsupported)
         assert reason=='Niet beschikbaar voor deze objectfamilie',(definition.action_id,reason)
         checked+=1
     assert checked>=60,checked
+
+    # Adding one supported row must never make an unsupported row disappear.
+    for definition in definitions:
+        unsupported = next((family for family in all_families if family not in definition.families), None)
+        if unsupported is None:
+            continue
+        rows = (_row(definition.families[0]), _row(unsupported))
+        before = tuple(asdict(row) for row in rows)
+        enabled, reason = next((enabled, reason) for item, enabled, reason in matrix.available(rows, production_ready=True) if item.action_id == definition.action_id)
+        assert not enabled and reason == 'Niet beschikbaar voor deze objectfamilie', definition.action_id
+        assert tuple(asdict(row) for row in rows) == before, definition.action_id
 
     # Non-review actions must reject blocked rows unless they explicitly declare
     # allow_blocked. This validates the canonical authorization boundary itself.

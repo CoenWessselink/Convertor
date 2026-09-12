@@ -1,0 +1,3 @@
+BOM_W20_NONEMPTY_PURCHASE_WELD_EXPORT = PASS
+
+--- stderr ---
