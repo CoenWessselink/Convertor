@@ -1,0 +1,14 @@
+
+--- stderr ---
+test_existing_canonical_hole_is_adapted_without_losing_provenance (__main__.ProductionEditorTests.test_existing_canonical_hole_is_adapted_without_losing_provenance) ... ok
+test_features_are_normalised_audited_and_rebuilt_deterministically (__main__.ProductionEditorTests.test_features_are_normalised_audited_and_rebuilt_deterministically) ... ok
+test_geometry_edit_invalidates_confirmed_bom_identity (__main__.ProductionEditorTests.test_geometry_edit_invalidates_confirmed_bom_identity) ... ok
+test_invalid_or_ambiguous_feature_data_is_blocked_early (__main__.ProductionEditorTests.test_invalid_or_ambiguous_feature_data_is_blocked_early) ... ok
+test_proposed_scribe_blocks_review_without_guessing (__main__.ProductionEditorTests.test_proposed_scribe_blocks_review_without_guessing) ... ok
+test_scribe_proposals_require_explicit_exact_contact_geometry (__main__.ProductionEditorTests.test_scribe_proposals_require_explicit_exact_contact_geometry) ... ok
+test_semantic_bevel_is_saved_but_exact_rebuild_remains_blocked (__main__.ProductionEditorTests.test_semantic_bevel_is_saved_but_exact_rebuild_remains_blocked) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.386s
+
+OK

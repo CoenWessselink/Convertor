@@ -119,9 +119,11 @@ class DrawingExecutionTests(unittest.TestCase):
 
     def select(self, ids):
         self.context.selection = SimpleNamespace(entity_ids=tuple(ids), primary_entity_id=ids[0] if ids else "")
-        self.workspace.bom_snapshot = build_bom_snapshot(self.workspace.project)
         self.page.set_context(self.workspace, self.context.selection)
         self.flush()
+        # Initial preview records the selected drawing's state/binding. Build
+        # after that legitimate change, as the shipping BOM refresh does.
+        self.workspace.bom_snapshot = build_bom_snapshot(self.workspace.project)
 
     def preflight(self, action, ids):
         model = BOMWorkspaceReadModel(self.workspace.bom_snapshot, self.workspace.project)
@@ -204,6 +206,9 @@ class DrawingExecutionTests(unittest.TestCase):
             self.assertEqual(actual.drawing_id, expected.drawing_id)
             self.assertEqual(actual.drawing_revision, expected.drawing_revision)
             self.assertEqual(actual.status, expected.status)
+            self.assertEqual(actual.source_revision, expected.source_revision)
+            self.assertEqual(actual.geometry_sha256, expected.geometry_sha256)
+            self.assertEqual(actual.manufacturing_sha256, expected.manufacturing_sha256)
             self.assertEqual(actual.extensions, expected.extensions)
             self.assertEqual([item.dimension_id for item in actual.dimensions], [item.dimension_id for item in expected.dimensions])
             self.assertEqual(reopened.project.to_dict()["parts"]["P2"], self.workspace.project.to_dict()["parts"]["P2"])
@@ -211,7 +216,7 @@ class DrawingExecutionTests(unittest.TestCase):
 
     def test_open_preview_generate_regenerate_render_real_exact_documents(self):
         before = self.non_selected()
-        for action in ("drawing.open_part", "drawing.preview", "drawing.generate", "drawing.regenerate"):
+        for action in ("drawing.open_part", "drawing.preview", "drawing.generate"):
             with self.subTest(action=action):
                 result = self.execute(action)
                 self.assertEqual(result.status, "passed", result.message)
@@ -224,6 +229,42 @@ class DrawingExecutionTests(unittest.TestCase):
                 self.assertEqual(before, self.non_selected())
                 self.record(action, ("P1",), ("valid_single", "positive_postcondition", "exact_selected_ids", "no_unintended_widening", "non_selected_unchanged"), result.outputs)
                 print("W18_DRAWING_EXECUTED", action, "exact_document=P1", flush=True)
+
+    def test_regenerate_binds_changed_canonical_geometry_and_persists_exact_draft(self):
+        from tests.part_workbench_roundtrip_smoke import plate_changes
+        self.make_current_canonical_plate()
+        first = self.execute("drawing.generate")
+        self.assertEqual(first.status, "passed", first.message)
+        old_document = deepcopy(self.page._drawing_document.to_dict())
+        old_pdf = hashlib.sha256(Path(next(path for path in first.outputs if path.endswith(".pdf"))).read_bytes()).hexdigest()
+        other = self.non_selected()
+        features = plate_changes()["features"]
+        features[0]["parameters"]["x_mm"] = 60.0
+        session = self.workspace.session
+        session.update_part_workbench("P1", {"features": features}, user="v3-test", reason="Move the actual canonical hole for W18 regeneration")
+        rebuilt = session.rebuild_part_canonical("P1", user="v3-test")
+        self.assertEqual(rebuilt.report["status"], "passed")
+        result = self.execute("drawing.regenerate")
+        self.assertEqual(result.status, "passed", result.message)
+        self.assert_document("P1")
+        document = self.page._drawing_document
+        self.assertNotEqual(document.geometry_sha256, old_document["geometry_sha256"])
+        self.assertNotEqual(document.manufacturing_sha256, old_document["manufacturing_sha256"])
+        self.assertNotEqual(document.document_sha256, old_document["document_sha256"])
+        self.assertEqual(document.geometry_sha256, rebuilt.report["canonical_signature"])
+        self.assertFalse(document.lint["release_ready"], "Regeneration must not retain obsolete source release authority")
+        pdf = Path(next(path for path in result.outputs if path.endswith(".pdf")))
+        self.assert_pdf(pdf)
+        self.assertNotEqual(hashlib.sha256(pdf.read_bytes()).hexdigest(), old_pdf)
+        stored = DimensionDocumentStore.load(self.workspace.project, entity_id="P1")
+        self.assertEqual(stored.geometry_sha256, document.geometry_sha256)
+        self.assertEqual(stored.manufacturing_sha256, document.manufacturing_sha256)
+        self.assertEqual(stored.source_revision, document.source_revision)
+        self.assertEqual(stored.status, "draft")
+        saved = self.reopen_document()
+        self.assertEqual(other, self.non_selected())
+        self.record("drawing.regenerate", ("P1",), ("valid_single", "positive_postcondition", "exact_selected_ids", "no_unintended_widening", "non_selected_unchanged", "save_reopen", "release_invalidation"), (*result.outputs, saved))
+        print("W18_DRAWING_EXECUTED drawing.regenerate changed_canonical_hole_current_binding=P1 old_release_invalidated", flush=True)
 
     def test_assembly_open_retains_both_components_without_parent_fallback(self):
         before = self.nonselected_entities(("A1",))
@@ -311,6 +352,10 @@ class DrawingExecutionTests(unittest.TestCase):
         self.assertEqual(self.page._dimension_document.entity_id, "P1")
         self.assertEqual(before, self.non_selected())
         self.reopen_document()
+        released = deepcopy(DimensionDocumentStore.load(self.workspace.project, entity_id="P1").to_dict())
+        self.click(self.page.dimension_action_buttons["Ongedaan maken (Ctrl+Z)"])
+        self.assertEqual(DimensionDocumentStore.load(self.workspace.project, entity_id="P1").to_dict(), released)
+        self.assertEqual(self.page._dimension_document.status, "released")
         self.record("drawing.approve", ("P1",), ("valid_single", "positive_postcondition", "exact_selected_ids", "no_unintended_widening", "non_selected_unchanged", "save_reopen"), (self.output / "w18-drawing.cwscproj",))
         revision = self.page._dimension_document.drawing_revision
         result = self.execute("drawing.revision")
@@ -318,7 +363,15 @@ class DrawingExecutionTests(unittest.TestCase):
         self.assertNotEqual(self.page._dimension_document.drawing_revision, revision)
         self.assertNotEqual(self.page._dimension_document.status, "released")
         self.assertEqual(self.page._dimension_document.entity_id, "P1")
+        self.assertEqual(self.page._drawing_document.dimension_editor_status, "draft")
+        history = self.page._dimension_document.extensions["released_revisions"]
+        self.assertEqual(history[-1]["drawing_revision"], revision)
+        self.assertEqual(history[-1]["dimensions"], released["dimensions"])
         self.reopen_document()
+        draft = deepcopy(DimensionDocumentStore.load(self.workspace.project, entity_id="P1").to_dict())
+        self.click(self.page.dimension_action_buttons["Ongedaan maken (Ctrl+Z)"])
+        self.assertEqual(DimensionDocumentStore.load(self.workspace.project, entity_id="P1").to_dict(), draft)
+        self.assertEqual(self.page._dimension_document.status, "draft")
         self.assertEqual(before, self.non_selected())
         self.assertFalse(self.warnings)
         self.record("drawing.revision", ("P1",), ("valid_single", "positive_postcondition", "exact_selected_ids", "no_unintended_widening", "save_reopen", "non_selected_unchanged"), (self.output / "w18-drawing.cwscproj",))
@@ -327,6 +380,7 @@ class DrawingExecutionTests(unittest.TestCase):
     def test_batch_runs_real_job_for_single_multiple_and_assembly(self):
         for ids in (("P1",), ("P1", "P2"), ("A1",)):
             with self.subTest(ids=ids):
+                self.select(ids)
                 before = deepcopy(self.workspace.project.settings.get(DIMENSION_SETTINGS_KEY, {}))
                 entities_before = self.nonselected_entities(ids)
                 with patch.object(QtWidgets.QFileDialog, "getExistingDirectory", return_value=str(self.output)):
@@ -416,7 +470,7 @@ def run(output=None):
         "failures": len(result.failures), "errors": len(result.errors),
         "actions": actions, "output_hash": stable_sha256(actions),
         "artifacts_retained": bool(output), "artifacts_verified": artifacts_verified,
-        "limits": ["No shipping BOM QAction claim", "No installed EXE claim", "No physical printer acceptance", "No undo proof for drawing release/revision; no release-invalidation claim"],
+        "limits": ["No shipping BOM QAction claim", "No installed EXE claim", "No physical printer acceptance", "Release/revision boundaries deliberately reject undo; no undo PASS is inferred. Regenerate invalidation covers the changed canonical source fixture."],
     }
     if report_path:
         report_path.parent.mkdir(parents=True, exist_ok=True)

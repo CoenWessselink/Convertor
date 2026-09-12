@@ -15,6 +15,7 @@ class ColourQueueTests(unittest.TestCase):
         self.workspace = NS(bom_snapshot=NS(snapshot_sha256="one"), project=NS(project_name="diagnostic"))
         self.panel = NS(
             _workspace=self.workspace, _read_model=object(), _revision_statuses={}, header_context=Mock(),
+            refresh_button=Mock(),
             viewer=NS(_viewer=object(), set_context=Mock()),
             color_mode=NS(currentText=Mock(return_value="Origineel")),
             _select_context_rows=Mock(), _apply_color_mode=Mock(),

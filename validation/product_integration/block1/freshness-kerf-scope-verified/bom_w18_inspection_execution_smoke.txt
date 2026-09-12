@@ -1,0 +1,12 @@
+test_changed_and_missing_source_are_displayed_without_false_matching_claim (__main__.InspectionExecutionTests.test_changed_and_missing_source_are_displayed_without_false_matching_claim) ... ok
+test_empty_deleted_and_mismatching_scope_never_reuses_previous_report (__main__.InspectionExecutionTests.test_empty_deleted_and_mismatching_scope_never_reuses_previous_report) ... ok
+test_shipping_assembly_action_displays_exact_reciprocal_membership (__main__.InspectionExecutionTests.test_shipping_assembly_action_displays_exact_reciprocal_membership) ... ok
+test_shipping_hash_action_displays_each_actual_entity_hash (__main__.InspectionExecutionTests.test_shipping_hash_action_displays_each_actual_entity_hash) ... ok
+test_shipping_source_action_displays_real_file_and_actual_object_handles (__main__.InspectionExecutionTests.test_shipping_source_action_displays_real_file_and_actual_object_handles) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.523s
+
+OK
+
+--- stderr ---

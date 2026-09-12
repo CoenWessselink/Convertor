@@ -197,10 +197,16 @@ class BomSelectionIdentityTests(unittest.TestCase):
         self.sort()
         self.panel._select_rows(self.canonical_rows({"P1", "P3"}))
         self.panel.search.setText("B3")
-        self.assert_selection({"P3"})
+        self.assertEqual({"P3"}, {key for row in self.panel._selected_rows() for key in row.entity_ids})
+        self.assertEqual({"P1", "P1b", "P3"}, set(self.selection.entity_ids))
+        with patch.object(self.widgets.QMessageBox, "warning") as warning:
+            self.assertEqual((), self.panel._action_rows())
+            self.assertIn("Niet alle geselecteerde objecten", str(warning.call_args))
         self.assert_checkboxes({"P3"})
         self.panel.refresh()
-        self.assert_selection({"P3"})
+        self.assertEqual({"P3"}, {key for row in self.panel._selected_rows() for key in row.entity_ids})
+        with patch.object(self.widgets.QMessageBox, "warning"):
+            self.assertEqual((), self.panel._action_rows())
         self.panel.search.clear()
         self.assert_selection({"P1", "P1b", "P3"})
         self.assert_checkboxes({"P1", "P1b", "P3"})

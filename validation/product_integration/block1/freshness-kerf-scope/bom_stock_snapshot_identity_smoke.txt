@@ -1,0 +1,14 @@
+
+--- stderr ---
+test_active_assignment_cannot_be_overwritten_or_partially_released (__main__.StockSnapshotIdentityTests.test_active_assignment_cannot_be_overwritten_or_partially_released) ... ok
+test_legacy_assignment_requires_the_whole_canonical_group (__main__.StockSnapshotIdentityTests.test_legacy_assignment_requires_the_whole_canonical_group) ... ok
+test_out_of_scope_and_blocked_preflight_cannot_reserve (__main__.StockSnapshotIdentityTests.test_out_of_scope_and_blocked_preflight_cannot_reserve) ... ok
+test_rebuild_and_canonical_reopen_keep_identity_stable (__main__.StockSnapshotIdentityTests.test_rebuild_and_canonical_reopen_keep_identity_stable) ... ok
+test_remnant_and_assignment_each_change_identity (__main__.StockSnapshotIdentityTests.test_remnant_and_assignment_each_change_identity) ... ok
+test_reserved_stock_invalidates_old_preflight_without_changing_parts (__main__.StockSnapshotIdentityTests.test_reserved_stock_invalidates_old_preflight_without_changing_parts) ... ok
+test_selected_occurrence_reservation_does_not_make_sibling_allocated (__main__.StockSnapshotIdentityTests.test_selected_occurrence_reservation_does_not_make_sibling_allocated) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.248s
+
+OK

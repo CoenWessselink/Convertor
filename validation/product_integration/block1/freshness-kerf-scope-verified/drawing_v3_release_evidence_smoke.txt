@@ -1,0 +1,14 @@
+
+--- stderr ---
+test_current_canonical_part_can_still_be_released_through_real_button (__main__.ReleaseEvidenceTests.test_current_canonical_part_can_still_be_released_through_real_button) ... ok
+test_empty_cached_issues_do_not_bypass_real_linter (__main__.ReleaseEvidenceTests.test_empty_cached_issues_do_not_bypass_real_linter) ... ok
+test_long_status_keeps_full_diagnostic_without_vertical_clipping (__main__.ReleaseEvidenceTests.test_long_status_keeps_full_diagnostic_without_vertical_clipping) ... ok
+test_missing_lint_is_not_permission_to_release_review_geometry (__main__.ReleaseEvidenceTests.test_missing_lint_is_not_permission_to_release_review_geometry) ... ok
+test_read_only_project_blocks_mutation_even_with_empty_lint (__main__.ReleaseEvidenceTests.test_read_only_project_blocks_mutation_even_with_empty_lint) ... ok
+test_real_review_lint_remains_blocking (__main__.ReleaseEvidenceTests.test_real_review_lint_remains_blocking) ... ok
+test_refreshes_current_geometry_before_release (__main__.ReleaseEvidenceTests.test_refreshes_current_geometry_before_release) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.881s
+
+OK

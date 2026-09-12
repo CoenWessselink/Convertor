@@ -357,6 +357,9 @@ def _nesting(panel: Any, action: str, ids: tuple[str, ...]) -> _Outcome:
             page.kerf.setFocus(); page.kerf.selectAll()
         else:
             page.phase3_nesting_tabs.setCurrentWidget(page.machine_settings)
+            page.machine_settings.tabs.setCurrentIndex(0)
+            page.machine_settings.kerf_value.setFocus()
+            return _Outcome("prepared", "Wijzig de kerf van het gekozen machineprofiel en sla op; daarna is opnieuw machinevalidatie nodig", page=page.machine_settings)
         return _Outcome("prepared", "Zaag/snede-instellingen geopend; geen fictieve toeslag toegepast en nog geen berekening")
     if action == "optimize.compare":
         if plate:

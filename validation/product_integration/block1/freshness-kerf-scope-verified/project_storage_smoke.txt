@@ -1,0 +1,17 @@
+
+--- stderr ---
+test_autosave_is_lightweight_and_recovery_restores_embedded_source (__main__.ProjectStorageTests.test_autosave_is_lightweight_and_recovery_restores_embedded_source) ... ok
+test_corrupted_manifest_entry_is_rejected (__main__.ProjectStorageTests.test_corrupted_manifest_entry_is_rejected) ... ok
+test_create_embed_open_extract_and_revision (__main__.ProjectStorageTests.test_create_embed_open_extract_and_revision) ... ok
+test_find_autosave_requires_newer_snapshot (__main__.ProjectStorageTests.test_find_autosave_requires_newer_snapshot) ... ok
+test_future_project_schema_in_manifest_is_rejected (__main__.ProjectStorageTests.test_future_project_schema_in_manifest_is_rejected) ... ok
+test_previews_survive_open_edit_save_cycle (__main__.ProjectStorageTests.test_previews_survive_open_edit_save_cycle) ... ok
+test_read_only_session_blocks_save (__main__.ProjectStorageTests.test_read_only_session_blocks_save) ... ok
+test_schema_one_opens_read_only_and_migrates_to_copy (__main__.ProjectStorageTests.test_schema_one_opens_read_only_and_migrates_to_copy) ... ok
+test_session_save_reuses_just_written_verified_snapshot (__main__.ProjectStorageTests.test_session_save_reuses_just_written_verified_snapshot) ... ok
+test_unlisted_or_unsafe_archive_entries_are_rejected (__main__.ProjectStorageTests.test_unlisted_or_unsafe_archive_entries_are_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.878s
+
+OK

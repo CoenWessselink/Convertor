@@ -1,0 +1,20 @@
+
+--- stderr ---
+test_all_87_actions_all_15_scenarios_and_mutating_obligations (__main__.MasterRequirementsV2Tests.test_all_87_actions_all_15_scenarios_and_mutating_obligations) ... ok
+test_checked_in_register_is_valid (__main__.MasterRequirementsV2Tests.test_checked_in_register_is_valid) ... ok
+test_complete_sources_and_all_ten_blocks (__main__.MasterRequirementsV2Tests.test_complete_sources_and_all_ten_blocks) ... ok
+test_dimension_and_scenario_presence_cannot_claim_pass (__main__.MasterRequirementsV2Tests.test_dimension_and_scenario_presence_cannot_claim_pass) ... ok
+test_disabling_acceptance_dimensions_cannot_create_pass (__main__.MasterRequirementsV2Tests.test_disabling_acceptance_dimensions_cannot_create_pass) ... ok
+test_duplicate_and_missing_ids_are_rejected (__main__.MasterRequirementsV2Tests.test_duplicate_and_missing_ids_are_rejected) ... ok
+test_false_external_and_scope_acceptance_rejected (__main__.MasterRequirementsV2Tests.test_false_external_and_scope_acceptance_rejected) ... ok
+test_generic_green_report_cannot_promote_requirement_dimension (__main__.MasterRequirementsV2Tests.test_generic_green_report_cannot_promote_requirement_dimension) ... ok
+test_historical_pass_is_not_acceptance (__main__.MasterRequirementsV2Tests.test_historical_pass_is_not_acceptance) ... ok
+test_missing_required_field_rejected (__main__.MasterRequirementsV2Tests.test_missing_required_field_rejected) ... ok
+test_source_only_and_fabricated_green_claims_rejected (__main__.MasterRequirementsV2Tests.test_source_only_and_fabricated_green_claims_rejected) ... ok
+test_summary_and_source_tampering_rejected (__main__.MasterRequirementsV2Tests.test_summary_and_source_tampering_rejected) ... ok
+test_unknown_runtime_applicability_is_not_counted_as_required (__main__.MasterRequirementsV2Tests.test_unknown_runtime_applicability_is_not_counted_as_required) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 3.655s
+
+OK

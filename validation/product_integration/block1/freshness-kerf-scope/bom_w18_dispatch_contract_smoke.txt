@@ -1,0 +1,19 @@
+
+--- stderr ---
+test_aggregated_parts_are_exact_for_all_action_handlers (__main__.DispatchContracts.test_aggregated_parts_are_exact_for_all_action_handlers) ... ok
+test_changed_active_selection_blocks_before_any_side_effect (__main__.DispatchContracts.test_changed_active_selection_blocks_before_any_side_effect) ... ok
+test_drawing_views_targets_the_existing_view_controls (__main__.DispatchContracts.test_drawing_views_targets_the_existing_view_controls) ... ok
+test_explicit_legacy_navigation_remains_prepared (__main__.DispatchContracts.test_explicit_legacy_navigation_remains_prepared) ... ok
+test_group_selection_keeps_both_entities (__main__.DispatchContracts.test_group_selection_keeps_both_entities) ... ok
+test_ids_outside_preflight_block_before_any_side_effect (__main__.DispatchContracts.test_ids_outside_preflight_block_before_any_side_effect) ... ok
+test_project_edit_during_modal_blocks_transaction (__main__.DispatchContracts.test_project_edit_during_modal_blocks_transaction) ... ok
+test_selection_edit_during_modal_blocks_transaction (__main__.DispatchContracts.test_selection_edit_during_modal_blocks_transaction) ... ok
+test_unchanged_transaction_mutates_only_requested_entity (__main__.DispatchContracts.test_unchanged_transaction_mutates_only_requested_entity) ... ok
+test_unknown_and_unimplemented_actions_never_become_navigation (__main__.DispatchContracts.test_unknown_and_unimplemented_actions_never_become_navigation) ... ok
+test_unknown_occurrence_is_not_silently_dropped (__main__.DispatchContracts.test_unknown_occurrence_is_not_silently_dropped) ... ok
+test_withdraw_requires_explicit_release_for_every_occurrence (__main__.DispatchContracts.test_withdraw_requires_explicit_release_for_every_occurrence) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.181s
+
+OK

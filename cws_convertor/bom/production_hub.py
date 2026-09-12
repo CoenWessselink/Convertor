@@ -1201,7 +1201,7 @@ ACTION_DEFINITIONS = (
     BOMActionDefinition("optimize.stock", "Optimaliseren op aanwezige voorraad", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
     BOMActionDefinition("optimize.remnants_include", "Reststukken meenemen", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
     BOMActionDefinition("optimize.remnants_exclude", "Reststukken uitsluiten", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
-    BOMActionDefinition("optimize.kerf", "Zaagverlies instellen", "Optimalisatie en voorraad", ("parts", "materials"), "optimize"),
+    BOMActionDefinition("optimize.kerf", "Zaagverlies instellen", "Optimalisatie en voorraad", ("parts", "materials"), "optimize", True),
     BOMActionDefinition("stock.plan", "Voorraad- en reststukplan berekenen", "Optimalisatie en voorraad", ("parts",), "stock"),
     BOMActionDefinition("stock.assign", "Toewijzen aan voorraadstuk", "Optimalisatie en voorraad", ("parts",), "stock", True),
     BOMActionDefinition("stock.release", "Voorraadreservering vrijgeven", "Optimalisatie en voorraad", ("parts",), "stock", True),
@@ -1565,6 +1565,9 @@ class BOMScopeEngine:
         visible_rows: Iterable[BOMWorkspaceRow] = (),
         allow_blocked_review_export: bool = False,
     ) -> BOMBatchPreflight:
+        if self.model.project is not None:
+            from .freshness import require_current_bom_snapshot
+            require_current_bom_snapshot(self.model.snapshot, self.model.project)
         if expected_snapshot_sha256 != self.model.snapshot.snapshot_sha256:
             raise ValueError("BOM-snapshot is gewijzigd; vernieuw de selectie en voer preflight opnieuw uit")
         selected = tuple(dict.fromkeys(rows))

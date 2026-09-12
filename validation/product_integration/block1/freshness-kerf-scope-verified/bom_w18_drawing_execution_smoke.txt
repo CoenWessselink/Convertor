@@ -1,0 +1,30 @@
+test_assembly_open_retains_both_components_without_parent_fallback (__main__.DrawingExecutionTests.test_assembly_open_retains_both_components_without_parent_fallback) ... W18_DRAWING_EXECUTED drawing.open_assembly exact_document=A1 components=P1,P2
+ok
+test_batch_runs_real_job_for_single_multiple_and_assembly (__main__.DrawingExecutionTests.test_batch_runs_real_job_for_single_multiple_and_assembly) ... W18_DRAWING_EXECUTED drawing.batch_pdf exact_ids=P1
+W18_DRAWING_EXECUTED drawing.batch_pdf exact_ids=P1,P2
+W18_DRAWING_EXECUTED drawing.batch_pdf exact_ids=A1
+ok
+test_canonical_dimension_check_approve_and_new_revision_reopen (__main__.DrawingExecutionTests.test_canonical_dimension_check_approve_and_new_revision_reopen) ... W18_DRAWING_EXECUTED drawing.dimension_check,drawing.approve,drawing.revision canonical_plate_exact=P1
+ok
+test_open_preview_generate_regenerate_render_real_exact_documents (__main__.DrawingExecutionTests.test_open_preview_generate_regenerate_render_real_exact_documents) ... W18_DRAWING_EXECUTED drawing.open_part exact_document=P1
+W18_DRAWING_EXECUTED drawing.preview exact_document=P1
+W18_DRAWING_EXECUTED drawing.generate exact_document=P1
+ok
+test_print_prepares_actual_pdf_without_claiming_physical_acceptance (__main__.DrawingExecutionTests.test_print_prepares_actual_pdf_without_claiming_physical_acceptance) ... W18_DRAWING_EXTERNAL drawing.print physical_acceptance=BLOCKED_EXTERNAL actual_pdf_prepared=P1
+ok
+test_regenerate_binds_changed_canonical_geometry_and_persists_exact_draft (__main__.DrawingExecutionTests.test_regenerate_binds_changed_canonical_geometry_and_persists_exact_draft) ... W18_DRAWING_EXECUTED drawing.regenerate changed_canonical_hole_current_binding=P1 old_release_invalidated
+ok
+test_review_geometry_cannot_be_approved (__main__.DrawingExecutionTests.test_review_geometry_cannot_be_approved) ... ok
+test_settings_require_real_edit_persistence_and_native_undo (__main__.DrawingExecutionTests.test_settings_require_real_edit_persistence_and_native_undo) ... W18_DRAWING_EXECUTED drawing.setup native_edit_save_reopen_undo=P1
+W18_DRAWING_EXECUTED drawing.format native_edit_save_reopen_undo=P1
+W18_DRAWING_EXECUTED drawing.scale native_edit_save_reopen_undo=P1
+W18_DRAWING_EXECUTED drawing.views native_edit_save_reopen_undo=P1
+ok
+test_stale_invalid_and_widened_selection_reject_before_drawing_mutation (__main__.DrawingExecutionTests.test_stale_invalid_and_widened_selection_reject_before_drawing_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 9.155s
+
+OK
+
+--- stderr ---

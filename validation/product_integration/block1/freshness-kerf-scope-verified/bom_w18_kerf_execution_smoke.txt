@@ -1,0 +1,12 @@
+test_conflicting_profile_and_machine_identities_never_mutate (__main__.KerfExecutionTests.test_conflicting_profile_and_machine_identities_never_mutate) ... ok
+test_invalid_missing_noop_and_unexplained_configuration_never_mutate (__main__.KerfExecutionTests.test_invalid_missing_noop_and_unexplained_configuration_never_mutate) ... ok
+test_shipping_action_rejects_stale_source_before_save (__main__.KerfExecutionTests.test_shipping_action_rejects_stale_source_before_save) ... ok
+test_shipping_action_rolls_back_failed_disk_write (__main__.KerfExecutionTests.test_shipping_action_rolls_back_failed_disk_write) ... ok
+test_shipping_action_saves_exact_machine_and_undo_after_reopen (__main__.KerfExecutionTests.test_shipping_action_saves_exact_machine_and_undo_after_reopen) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.856s
+
+OK
+
+--- stderr ---

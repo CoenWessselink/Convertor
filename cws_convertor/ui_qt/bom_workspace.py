@@ -494,6 +494,11 @@ if qt_available():
             self.header_context = QtWidgets.QLabel("Geen project")
             self.header_context.setObjectName("contextChip")
             layout.addWidget(self.header_context)
+            self.refresh_button = QtWidgets.QPushButton("BOM vernieuwen")
+            self.refresh_button.setToolTip("Bouw de BOM opnieuw op uit de actuele projectinhoud")
+            self.refresh_button.setEnabled(False)
+            self.refresh_button.clicked.connect(self._refresh_canonical_bom)
+            layout.addWidget(self.refresh_button)
             return frame
 
         def _command_bar(self) -> QtWidgets.QHBoxLayout:
@@ -649,7 +654,7 @@ if qt_available():
 
         def _populate_action_matrix(self) -> None:
             self.matrix_menu.clear()
-            rows = self._selected_rows()
+            rows = self._action_rows()
             production_ready = bool(
                 self._read_model is not None
                 and self._read_model.snapshot.validation
@@ -677,12 +682,25 @@ if qt_available():
                 )
 
         def _execute_matrix_action(self, definition: BOMActionDefinition) -> None:
+            try:
+                self._require_current_snapshot()
+            except ValueError as exc:
+                QtWidgets.QMessageBox.warning(self, "BOM-actie geweigerd", str(exc))
+                return
             previous = getattr(self, "_matrix_action_binding", None)
             self._matrix_action_binding = self._capture_action_binding()
             try:
                 self._execute_matrix_action_bound(definition)
             finally:
                 self._matrix_action_binding = previous
+
+        def _require_current_snapshot(self) -> None:
+            from cws_convertor.bom.freshness import require_current_bom_snapshot
+            if self._workspace is None or self._read_model is None:
+                raise ValueError("Geen actuele BOM beschikbaar")
+            require_current_bom_snapshot(self._workspace.bom_snapshot, self._workspace.project)
+            if self._read_model.snapshot.snapshot_sha256 != self._workspace.bom_snapshot.snapshot_sha256:
+                raise ValueError("BOM-weergave is gewijzigd; vernieuw de selectie vóór deze actie")
 
         def _capture_action_binding(self) -> dict[str, Any]:
             workspace, state = self._workspace, self._hub_state
@@ -962,6 +980,7 @@ if qt_available():
             changed = workspace is not self._workspace
             self._workspace = workspace
             self._selection = selection
+            self.refresh_button.setEnabled(workspace is not None)
             if changed:
                 self._read_model = None
                 self._hub_state = BOMHubState(workspace.project) if workspace is not None else None
@@ -1986,7 +2005,12 @@ if qt_available():
             try:
                 service = MachineRoutingService()
                 if mode.currentIndex() == 0:
-                    perform = lambda: service.assign_automatic(project, part_ids, user="bom-operator")
+                    def perform() -> Any:
+                        assigned = service.assign_automatic(project, part_ids, user="bom-operator")
+                        if (set(item.part_id for item in assigned) != set(part_ids)
+                                or any(item.routing_status != "ready" or item.assignment_source != "AUTO" for item in assigned)):
+                            raise ValueError("Niet alle geselecteerde onderdelen hebben een actuele, geldige automatische machinekeuze")
+                        return assigned
                     execution = self._execute_bom_transaction(
                         "machine.assign", preflight, perform, entity_ids=part_ids,
                         messages=("Automatische capability-routing uitgevoerd",), user="bom-operator",
@@ -2664,6 +2688,12 @@ if qt_available():
             self._read_model = None
             self.refresh()
 
+        def _refresh_canonical_bom(self) -> None:
+            try:
+                self._rebuild_bom_snapshot()
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "BOM niet vernieuwd", str(exc))
+
         def _reset_machine(self) -> None:
             if self._workspace is None:
                 return
@@ -2706,7 +2736,10 @@ if qt_available():
                 return rows
             if any(project.get_entity(key) is None for key in explicit):
                 raise ValueError("De expliciete selectie bevat verwijderde of onbekende canonieke objecten")
-            ids = explicit.intersection(key for row in rows for key in row.entity_ids)
+            represented = {key for row in rows for key in row.entity_ids}
+            if represented and explicit - represented:
+                raise ValueError("Niet alle geselecteerde objecten staan in deze BOM-regels; selecteer de gewenste scope expliciet opnieuw")
+            ids = explicit.intersection(represented)
             if not ids:
                 # Conflict rows can legitimately have only a group ID.
                 return rows if all(not row.entity_ids for row in rows) else ()
@@ -2828,8 +2861,9 @@ if qt_available():
             self._preflight_partition_mode = "eligible"
             if self._scope_engine is None or self._workspace is None:
                 return None
-            binding = self._capture_action_binding()
             try:
+                self._require_current_snapshot()
+                binding = self._capture_action_binding()
                 preflight = self._scope_engine.preflight(
                     action, rows,
                     expected_snapshot_sha256=self._workspace.bom_snapshot.snapshot_sha256,
@@ -2975,6 +3009,8 @@ if qt_available():
                     "action": action, "preflight": preflight, "entity_ids": entity_ids,
                     "source_binding": self._capture_action_binding(),
                 }
+            if action == "optimize.kerf" and outcome.page is not None and hasattr(outcome.page, "bind_bom_kerf"):
+                outcome.page.bind_bom_kerf(self, preflight, entity_ids)
             if outcome.start is not None:
                 if action == "drawing.batch_pdf":
                     try:

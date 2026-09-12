@@ -126,6 +126,7 @@ def run_bom_action_evidence(output: Path) -> dict:
                 'current-synthetic':{'production_ready':True,'manufacturing_hash':project.parts['A'].manufacturing_hash},
                 'stale-synthetic':{'production_ready':True,'manufacturing_hash':'stale'},
                 'unbound-synthetic':{'production_ready':True}}}
+            panel.refresh_button.click();process()
             assignment_before=deepcopy(project.settings.get('machine_routing',{}))
             for action in ('machine.recommend','machine.validate','machine.alternatives'):
                 checked.clear();trigger(action,('A',))
@@ -143,6 +144,7 @@ def run_bom_action_evidence(output: Path) -> dict:
             project.settings['manufacturing_machine_capabilities']['A']['current-synthetic']['manufacturing_hash']='changed'
             panel.refresh();process()
             check('Changed capability evidence invalidates displayed advice','verouderd' in panel.detail_labels['machine'].text())
+            panel.refresh_button.click();process()
             for action,formats in [('export.step',('step',)),('export.ifc',('ifc',)),('export.dxf',('dxf',))]:
                 trigger(action,('A',))
                 check(action+' exact formats',host.export_page._formats()==formats)

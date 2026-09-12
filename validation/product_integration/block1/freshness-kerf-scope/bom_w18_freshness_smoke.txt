@@ -1,0 +1,18 @@
+BOM_W18_FRESHNESS_STALE = 87/87 PASS
+BOM_W18_FRESHNESS_MISSING_BINDING = 87/87 PASS
+BOM_W18_FRESHNESS_CORRUPT_SNAPSHOT = 87/87 PASS
+
+--- stderr ---
+test_all_87_shipping_qactions_reject_stale_missing_and_corrupt_snapshot_before_dispatch (__main__.FreshnessTests.test_all_87_shipping_qactions_reject_stale_missing_and_corrupt_snapshot_before_dispatch) ... ok
+test_canonical_fingerprint_excludes_only_derived_and_audit_state (__main__.FreshnessTests.test_canonical_fingerprint_excludes_only_derived_and_audit_state) ... ok
+test_exact_and_general_scoped_snapshots_inherit_original_source_authority (__main__.FreshnessTests.test_exact_and_general_scoped_snapshots_inherit_original_source_authority) ... ok
+test_existing_bom_configuration_survives_cache_refresh (__main__.FreshnessTests.test_existing_bom_configuration_survives_cache_refresh) ... ok
+test_hidden_selected_occurrence_requires_explicit_new_scope (__main__.FreshnessTests.test_hidden_selected_occurrence_requires_explicit_new_scope) ... ok
+test_menu_eligibility_uses_exact_occurrences_inside_an_aggregate (__main__.FreshnessTests.test_menu_eligibility_uses_exact_occurrences_inside_an_aggregate) ... ok
+test_mixed_external_selection_cannot_silently_drop_another_family (__main__.FreshnessTests.test_mixed_external_selection_cannot_silently_drop_another_family) ... ok
+test_stale_stock_3000_to_5000_cannot_reserve_3200_remnant (__main__.FreshnessTests.test_stale_stock_3000_to_5000_cannot_reserve_3200_remnant) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 2.107s
+
+OK

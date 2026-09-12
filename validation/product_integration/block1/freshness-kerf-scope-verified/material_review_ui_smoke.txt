@@ -1,0 +1,12 @@
+
+--- stderr ---
+test_bulk_preview_apply_and_guarded_undo (__main__.MaterialReviewUiSmoke.test_bulk_preview_apply_and_guarded_undo) ... ok
+test_bulk_save_failure_is_atomic (__main__.MaterialReviewUiSmoke.test_bulk_save_failure_is_atomic) ... ok
+test_evidence_queue_and_single_confirmation_are_auditable (__main__.MaterialReviewUiSmoke.test_evidence_queue_and_single_confirmation_are_auditable) ... ok
+test_rejection_keeps_source_material_and_blocks_workbench_review (__main__.MaterialReviewUiSmoke.test_rejection_keeps_source_material_and_blocks_workbench_review) ... ok
+test_selected_step_recognition_uses_background_detached_session (__main__.MaterialReviewUiSmoke.test_selected_step_recognition_uses_background_detached_session) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.130s
+
+OK

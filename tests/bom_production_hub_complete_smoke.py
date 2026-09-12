@@ -62,6 +62,9 @@ class CompleteBomHubTests(unittest.TestCase):
         self.project.add_entity(part("P2", "B2", "HEA200", "S355J2", "F1", 3200.0))
         self.project.add_entity(part("P3", "B3", "IPE240", "S235JR", "F2"))
         self.project.validate()
+        self.rebuild_snapshot()
+
+    def rebuild_snapshot(self) -> None:
         self.snapshot = build_bom_snapshot(
             self.project, user="test", classify_if_needed=False
         )
@@ -276,6 +279,7 @@ class CompleteBomHubTests(unittest.TestCase):
             available_quantity=3.0, reserved_quantity=0.0,
         )
         self.project.add_entity(stock)
+        self.rebuild_snapshot()
         first = next(row for row in self.rows if row.mark == "B1")
         options = BOMStockAllocator().options(self.project, (first,), kerf_mm=3.0)
         option = next(value for value in options if value.source_id == "STOCK-1")
@@ -324,6 +328,7 @@ class CompleteBomHubTests(unittest.TestCase):
             internal_id="STOCK-MIX", name="Handelslengte", profile="HEA200",
             material="S355J2", stock_length_mm=6000.0, available_quantity=1.0,
         ))
+        self.rebuild_snapshot()
         selected = tuple(row for row in self.rows if row.profile == "HEA200")
         allocator = BOMStockAllocator()
         plan = allocator.plan(self.project, selected, kerf_mm=3.0)
@@ -367,13 +372,14 @@ class CompleteBomHubTests(unittest.TestCase):
             internal_id="REM-STALE", name="Reststuk", profile="HEA200",
             material="S355J2", remaining_length_mm=3300.0,
         ))
+        self.rebuild_snapshot()
         selected = (next(row for row in self.rows if row.mark == "B1"),)
         plan = BOMStockAllocator().plan(self.project, selected)
-        self.project.remnants["REM-STALE"].reservation_revision += 1
         preflight = self.engine.preflight(
             "stock", selected, expected_snapshot_sha256=self.snapshot.snapshot_sha256,
             visible_rows=self.rows,
         )
+        self.project.remnants["REM-STALE"].reservation_revision += 1
         with self.assertRaisesRegex(Exception, "intussen gewijzigd"):
             BOMStockAllocator.reserve_plan(
                 self.project, BOMHubState(self.project).data, plan, preflight,

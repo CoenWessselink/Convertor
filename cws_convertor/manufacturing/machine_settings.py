@@ -232,6 +232,39 @@ def apply_machine_settings(project: ProjectModel, imported: ImportedMachineSetti
     return profile_id
 
 
+def set_machine_kerf(project: ProjectModel, profile_id: str, kerf_mm: float, *, reason: str, user: str = "qt-gui") -> str:
+    """Edit the existing optimization profile and invalidate prior validation."""
+    import math
+    from copy import deepcopy
+    if not reason.strip():
+        raise ValueError("Een reden voor de kerfwijziging is verplicht")
+    if not math.isfinite(float(kerf_mm)) or float(kerf_mm) < 0:
+        raise ValueError("Kerf moet een eindige, niet-negatieve maat in mm zijn")
+    raw = project.profile_nesting_machine_profiles.get(profile_id)
+    if raw is None:
+        raise ValueError("Selecteer een bestaand machineprofiel")
+    profile = MachineOptimizationProfile(**deepcopy(raw))
+    canonical = project.machine_profiles.get(profile_id)
+    if profile.profile_id != profile_id:
+        raise ValueError("De identiteit van het machineprofiel wijkt af van de gekozen sleutel")
+    if canonical is not None and canonical.machine_id != profile.machine_id:
+        raise ValueError("De identiteit van de machine verschilt tussen het canonieke en optimalisatieprofiel")
+    if float(profile.kerf_mm) == float(kerf_mm):
+        raise ValueError("De kerf is niet gewijzigd")
+    old_hash = profile.configuration_hash
+    profile.kerf_mm = float(kerf_mm)
+    profile.validation_status = "manual_validation_required"
+    profile.provenance = {**profile.provenance, "kerf_edit": {
+        "method": "user", "user": user, "reason": reason.strip(),
+        "previous_configuration_hash": old_hash, "kerf_mm": float(kerf_mm),
+    }}
+    set_machine_profile(project, profile, user=user)
+    if canonical is not None:
+        canonical.kerf_mm = float(kerf_mm)
+        canonical.properties["machine_validation_status"] = "manual_validation_required"
+    return profile.configuration_hash
+
+
 def project_profile_catalog(project: ProjectModel) -> tuple[dict[str, str], ...]:
     found: dict[tuple[str, str, str], dict[str, str]] = {}
     for part in project.parts.values():

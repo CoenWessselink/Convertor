@@ -1,0 +1,30 @@
+
+--- stderr ---
+test_all_declared_grouping_keys_use_authoritative_metadata (__main__.GroupedExportTests.test_all_declared_grouping_keys_use_authoritative_metadata) ... ok
+test_ambiguous_assembly_does_not_duplicate_full_quantity (__main__.GroupedExportTests.test_ambiguous_assembly_does_not_duplicate_full_quantity) ... ok
+test_cancel_after_first_group_publishes_nothing (__main__.GroupedExportTests.test_cancel_after_first_group_publishes_nothing) ... ok
+test_changed_live_project_mid_batch_is_rejected (__main__.GroupedExportTests.test_changed_live_project_mid_batch_is_rejected) ... ok
+test_conflicting_phase_fields_block (__main__.GroupedExportTests.test_conflicting_phase_fields_block) ... ok
+test_damaged_file_fails_integrity_before_publication (__main__.GroupedExportTests.test_damaged_file_fails_integrity_before_publication) ... ok
+test_dstv_alias_is_nc1_not_invalid_format (__main__.GroupedExportTests.test_dstv_alias_is_nc1_not_invalid_format) ... ok
+test_exact_stable_disjoint_partition (__main__.GroupedExportTests.test_exact_stable_disjoint_partition) ... ok
+test_machine_group_does_not_use_recommendation_or_unbound_report (__main__.GroupedExportTests.test_machine_group_does_not_use_recommendation_or_unbound_report) ... ok
+test_mutated_plan_hash_is_rejected (__main__.GroupedExportTests.test_mutated_plan_hash_is_rejected) ... ok
+test_null_or_boolean_phase_is_not_a_real_group (__main__.GroupedExportTests.test_null_or_boolean_phase_is_not_a_real_group) ... ok
+test_preparing_same_running_job_does_not_replace_it (__main__.GroupedExportTests.test_preparing_same_running_job_does_not_replace_it) ... ok
+test_real_files_are_grouped_and_reopened_without_extra_parts (__main__.GroupedExportTests.test_real_files_are_grouped_and_reopened_without_extra_parts) ... ok
+test_revoked_review_is_not_a_current_preflight (__main__.GroupedExportTests.test_revoked_review_is_not_a_current_preflight) ... ok
+test_second_group_failure_does_not_publish_first_or_overwrite_old (__main__.GroupedExportTests.test_second_group_failure_does_not_publish_first_or_overwrite_old) ... ok
+test_stale_raw_field_is_detected_even_without_hash_refresh (__main__.GroupedExportTests.test_stale_raw_field_is_detected_even_without_hash_refresh) ... ok
+test_unknown_or_missing_group_never_falls_back (__main__.GroupedExportTests.test_unknown_or_missing_group_never_falls_back) ... ok
+test_windows_unsafe_labels_cannot_leave_package (__main__.GroupedExportTests.test_windows_unsafe_labels_cannot_leave_package) ... ok
+test_each_review_format_has_only_requested_payload (__main__.ReviewExportTests.test_each_review_format_has_only_requested_payload) ... ok
+test_empty_explicit_part_scope_never_means_entire_bom (__main__.ReviewExportTests.test_empty_explicit_part_scope_never_means_entire_bom) ... ok
+test_old_outputs_are_not_overwritten (__main__.ReviewExportTests.test_old_outputs_are_not_overwritten) ... ok
+test_partial_group_never_adds_same_mark_or_assembly_siblings (__main__.ReviewExportTests.test_partial_group_never_adds_same_mark_or_assembly_siblings) ... ok
+test_review_writer_failure_does_not_publish_partial_package (__main__.ReviewExportTests.test_review_writer_failure_does_not_publish_partial_package) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.353s
+
+OK

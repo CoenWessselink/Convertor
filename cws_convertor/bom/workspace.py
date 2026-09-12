@@ -1104,6 +1104,8 @@ def scoped_bom_snapshot(
         1 for row in (*part_rows, *purchase_rows, *fastener_rows, *weld_rows, *assembly_rows) if row.blocked
     )
     summary = {
+        "source_content_sha256": snapshot.summary.get("source_content_sha256", ""),
+        "full_project_bom_sha256": snapshot.summary.get("full_project_bom_sha256", snapshot.snapshot_sha256),
         "part_group_count": len(part_rows),
         "assembly_group_count": len(assembly_rows),
         "purchase_group_count": len(purchase_rows),

@@ -17,6 +17,7 @@ from cws_convertor.manufacturing.machine_settings import (
     project_profile_catalog,
     return_remnant_to_stock,
     set_trade_lengths,
+    set_machine_kerf,
 )
 from cws_convertor.production import MaintenanceWindow, MaterialAvailability, Phase2ProductionState
 
@@ -48,7 +49,29 @@ class MachineSettingsPanel(QtWidgets.QWidget):
         self.tabs = QtWidgets.QTabWidget()
         root.addWidget(self.tabs, 1)
         self.machine_table = self._table(("Machine", "Parameter", "Waarde", "Eenheid/bron"))
-        self.tabs.addTab(self.machine_table, "Machineparameters")
+        machine_page = QtWidgets.QWidget()
+        machine_layout = QtWidgets.QVBoxLayout(machine_page)
+        kerf_form = QtWidgets.QHBoxLayout()
+        self.kerf_machine = QtWidgets.QComboBox()
+        self.kerf_machine.setObjectName("kerfMachine")
+        self.kerf_value = QtWidgets.QDoubleSpinBox()
+        self.kerf_value.setObjectName("kerfValue")
+        self.kerf_value.setRange(0, 10000)
+        self.kerf_value.setDecimals(3)
+        self.kerf_value.setSuffix(" mm")
+        self.kerf_reason = QtWidgets.QLineEdit()
+        self.kerf_reason.setPlaceholderText("Reden voor wijziging")
+        self.kerf_apply = QtWidgets.QPushButton("Kerf opslaan")
+        self.kerf_apply.clicked.connect(self._apply_kerf)
+        self.kerf_machine.currentIndexChanged.connect(self._load_kerf)
+        for control in (self.kerf_machine, self.kerf_value, self.kerf_reason, self.kerf_apply):
+            kerf_form.addWidget(control)
+        machine_layout.addLayout(kerf_form)
+        impact = QtWidgets.QLabel("Een kerfwijziging geldt voor nieuwe berekeningen met deze machine. Het machineprofiel moet daarna opnieuw worden gevalideerd.")
+        impact.setWordWrap(True)
+        machine_layout.addWidget(impact)
+        machine_layout.addWidget(self.machine_table)
+        self.tabs.addTab(machine_page, "Machineparameters")
         self.trade_page = self._trade_page()
         self.tabs.addTab(self.trade_page, "Handelslengtes profielen")
         self.plate_page = self._plate_page()
@@ -181,6 +204,8 @@ class MachineSettingsPanel(QtWidgets.QWidget):
         return page
 
     def set_project(self, project: Any, persist_callback: Any = None) -> None:
+        if project is not self.project:
+            self._bom_kerf_binding = None
         self.project = project
         self.persist_callback = persist_callback
         self.refresh()
@@ -198,7 +223,12 @@ class MachineSettingsPanel(QtWidgets.QWidget):
             table.setRowCount(0)
         self.trade_profile.clear()
         self.remnant_profile.clear()
+        selected_machine = self.kerf_machine.currentData()
+        self.kerf_machine.blockSignals(True)
+        self.kerf_machine.clear()
         if project is None:
+            self.kerf_machine.blockSignals(False)
+            self.kerf_apply.setEnabled(False)
             return
         catalog = project_profile_catalog(project)
         for entry in catalog:
@@ -206,10 +236,16 @@ class MachineSettingsPanel(QtWidgets.QWidget):
             self.remnant_profile.addItem(entry["profile"], entry)
         machine_rows: list[tuple[Any, ...]] = []
         for machine_id, raw in sorted(dict(getattr(project, "profile_nesting_machine_profiles", {}) or {}).items()):
+            self.kerf_machine.addItem(machine_id, machine_id)
             data = dict(raw)
             for name in ("kerf_mm", "head_trim_mm", "tail_trim_mm", "min_saw_angle_deg", "max_saw_angle_deg", "clamp_width_left_mm", "clamp_width_right_mm", "common_cut_policy"):
                 machine_rows.append((machine_id, name, data.get(name, ""), "project / vendor XML"))
         self._fill(self.machine_table, machine_rows)
+        previous_index = self.kerf_machine.findData(selected_machine)
+        if previous_index >= 0:
+            self.kerf_machine.setCurrentIndex(previous_index)
+        self.kerf_machine.blockSignals(False)
+        self._load_kerf()
         trade_rows = [(value.get("profile_id", ""), value.get("material", ""), value.get("material_grade", ""), value.get("length_mm", ""), "handelslengte", value.get("available_quantity", "onbeperkt")) for value in dict(getattr(project, "profile_nesting_purchase_options", {}) or {}).values()]
         trade_rows += [(item.profile, item.material, item.grade, item.stock_length_mm, "fysieke voorraad", item.available_quantity) for item in project.stock_items.values() if item.stock_length_mm > 0]
         self._fill(self.trade_table, trade_rows)
@@ -239,6 +275,66 @@ class MachineSettingsPanel(QtWidgets.QWidget):
             self.persist_callback()
         self.changed.emit()
         self.refresh()
+
+    def _load_kerf(self, *_args: Any) -> None:
+        profile_id = self.kerf_machine.currentData()
+        raw = getattr(self.project, "profile_nesting_machine_profiles", {}).get(profile_id)
+        self.kerf_apply.setEnabled(raw is not None)
+        if raw is not None:
+            self.kerf_value.setValue(float(raw.get("kerf_mm") or 0))
+
+    def bind_bom_kerf(self, panel: Any, preflight: Any, entity_ids: tuple[str, ...]) -> None:
+        self._bom_kerf_binding = {"panel": panel, "workspace": panel._workspace,
+            "source_binding": panel._capture_action_binding(), "preflight": preflight,
+            "entity_ids": tuple(entity_ids)}
+
+    def _apply_kerf(self) -> None:
+        from copy import deepcopy
+        binding = getattr(self, "_bom_kerf_binding", None)
+        project = self.project
+        before = None
+        persisted = False
+        try:
+            if project is None or not callable(self.persist_callback):
+                raise ValueError("Open een project met beschikbare projectopslag")
+            if binding:
+                panel = binding["panel"]
+                panel._validate_action_binding(binding["source_binding"])
+                session = binding["workspace"].session
+                if project is not binding["workspace"].project or session.project is not project:
+                    raise ValueError("Machine-instellingen en BOM gebruiken niet hetzelfde project")
+                if session.read_only or session.path is None:
+                    raise ValueError("Kerf wijzigen vereist een opgeslagen, beschrijfbaar project")
+            profile_id = str(self.kerf_machine.currentData() or "")
+            before = deepcopy(project.__dict__)
+            def mutate() -> str:
+                return set_machine_kerf(project, profile_id, self.kerf_value.value(), reason=self.kerf_reason.text())
+            if binding:
+                execution = panel._hub_state.execute_transaction("optimize.kerf", binding["preflight"], mutate,
+                    entity_ids=(profile_id,), messages=("Kerf opgeslagen; machineprofiel vereist opnieuw validatie",))
+            else:
+                mutate()
+            self.persist_callback()
+            persisted = True
+            if binding:
+                panel._rebuild_bom_snapshot()
+                panel._show_batch_result(execution.result)
+            self._bom_kerf_binding = None
+            self.changed.emit()
+            self.refresh()
+            self.status.setText("Kerf opgeslagen. Valideer het gewijzigde machineprofiel voordat u opnieuw voor productie berekent.")
+        except Exception as exc:
+            if persisted:
+                self._bom_kerf_binding = None
+                self.status.setText("Kerf opgeslagen; vernieuw de weergave: " + str(exc))
+                return
+            if before is not None:
+                project.__dict__.clear()
+                project.__dict__.update(before)
+            if binding and before is not None:
+                binding["panel"]._hub_state.record_result("optimize.kerf", binding["preflight"], status="failed", messages=(str(exc),))
+            self.status.setText("Kerf niet opgeslagen: " + str(exc))
+            QtWidgets.QMessageBox.warning(self, "Kerf niet opgeslagen", str(exc))
 
     def _save(self) -> None:
         self._persist()

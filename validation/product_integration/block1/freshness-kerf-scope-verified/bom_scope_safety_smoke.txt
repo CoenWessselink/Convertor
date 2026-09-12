@@ -1,0 +1,30 @@
+
+--- stderr ---
+test_batch_request_not_replaced_by_png_preview (__main__.DispatchGuards.test_batch_request_not_replaced_by_png_preview) ... ok
+test_blocked_backend_package_is_not_reimport_verified (__main__.DispatchGuards.test_blocked_backend_package_is_not_reimport_verified) ... ok
+test_deleted_id_never_falls_back_on_first_part (__main__.DispatchGuards.test_deleted_id_never_falls_back_on_first_part) ... ok
+test_empty_scope_stops_before_any_router (__main__.DispatchGuards.test_empty_scope_stops_before_any_router) ... ok
+test_generic_navigation_is_not_a_completed_action (__main__.DispatchGuards.test_generic_navigation_is_not_a_completed_action) ... ok
+test_grouped_export_without_service_still_fails_closed (__main__.DispatchGuards.test_grouped_export_without_service_still_fails_closed) ... ok
+test_machine_partition_nesting_not_replaced_with_combined (__main__.DispatchGuards.test_machine_partition_nesting_not_replaced_with_combined) ... ok
+test_mixed_families_never_silently_drop_parts (__main__.DispatchGuards.test_mixed_families_never_silently_drop_parts) ... ok
+test_multiple_drawings_cannot_fall_back_to_one_part (__main__.DispatchGuards.test_multiple_drawings_cannot_fall_back_to_one_part) ... ok
+test_production_export_cannot_bypass_global_bom_readiness (__main__.DispatchGuards.test_production_export_cannot_bypass_global_bom_readiness) ... ok
+test_stale_bom_stops_before_any_router (__main__.DispatchGuards.test_stale_bom_stops_before_any_router) ... ok
+test_stale_project_stops_before_any_router (__main__.DispatchGuards.test_stale_project_stops_before_any_router) ... ok
+test_unknown_drawing_intent_is_explicitly_rejected (__main__.DispatchGuards.test_unknown_drawing_intent_is_explicitly_rejected) ... ok
+test_wrong_family_never_opens_wrong_solver (__main__.DispatchGuards.test_wrong_family_never_opens_wrong_solver) ... ok
+test_remnant_flag_survives_real_reservation_record (__main__.PlateRemnantSafety.test_remnant_flag_survives_real_reservation_record) ... ok
+test_changed_project_cannot_commit_old_selected_result (__main__.ProfileScopeSafety.test_changed_project_cannot_commit_old_selected_result) ... ok
+test_duplicate_ids_never_duplicate_quantities (__main__.ProfileScopeSafety.test_duplicate_ids_never_duplicate_quantities) ... ok
+test_explicit_empty_profile_scope_never_becomes_full_project (__main__.ProfileScopeSafety.test_explicit_empty_profile_scope_never_becomes_full_project) ... ok
+test_nonremnant_policy_excludes_remnants_without_excluding_full_stock (__main__.ProfileScopeSafety.test_nonremnant_policy_excludes_remnants_without_excluding_full_stock) ... ok
+test_omitted_scope_preserves_whole_project_behavior (__main__.ProfileScopeSafety.test_omitted_scope_preserves_whole_project_behavior) ... ok
+test_selected_profile_scope_enters_every_solver_snapshot (__main__.ProfileScopeSafety.test_selected_profile_scope_enters_every_solver_snapshot) ... ok
+test_selected_profiles_do_not_mutate_canonical_parts (__main__.ProfileScopeSafety.test_selected_profiles_do_not_mutate_canonical_parts) ... ok
+test_unknown_scope_rejects_entire_request (__main__.ProfileScopeSafety.test_unknown_scope_rejects_entire_request) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.106s
+
+OK

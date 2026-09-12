@@ -1,0 +1,20 @@
+
+--- stderr ---
+test_basket_static_and_dynamic_saved_selection (__main__.CompleteBomHubTests.test_basket_static_and_dynamic_saved_selection) ... ok
+test_compound_query_and_full_selection_action_matrix (__main__.CompleteBomHubTests.test_compound_query_and_full_selection_action_matrix) ... ok
+test_entity_transaction_rolls_back_and_revision_compare_is_exact (__main__.CompleteBomHubTests.test_entity_transaction_rolls_back_and_revision_compare_is_exact) ... ok
+test_mixed_preflight_partitions_and_never_silently_skips (__main__.CompleteBomHubTests.test_mixed_preflight_partitions_and_never_silently_skips) ... ok
+test_mixed_remnant_stock_plan_and_persistent_restart_undo (__main__.CompleteBomHubTests.test_mixed_remnant_stock_plan_and_persistent_restart_undo) ... ok
+test_physical_stock_allocation_transaction_and_release_bound_undo (__main__.CompleteBomHubTests.test_physical_stock_allocation_transaction_and_release_bound_undo) ... ok
+test_procurement_creation_edit_and_release_are_canonical (__main__.CompleteBomHubTests.test_procurement_creation_edit_and_release_are_canonical) ... ok
+test_revision_compare_tracks_rekeyed_fields_and_removed_geometry (__main__.CompleteBomHubTests.test_revision_compare_tracks_rekeyed_fields_and_removed_geometry) ... ok
+test_settings_transaction_is_audited_and_undoable (__main__.CompleteBomHubTests.test_settings_transaction_is_audited_and_undoable) ... ok
+test_stock_plan_fails_closed_when_reservation_revision_changes (__main__.CompleteBomHubTests.test_stock_plan_fails_closed_when_reservation_revision_changes) ... ok
+test_ui_source_contains_complete_production_hub_controls (__main__.CompleteBomHubTests.test_ui_source_contains_complete_production_hub_controls) ... ok
+test_uniform_transaction_records_failure_and_rolls_back (__main__.CompleteBomHubTests.test_uniform_transaction_records_failure_and_rolls_back) ... ok
+test_workflow_fields_and_same_attribute_selection (__main__.CompleteBomHubTests.test_workflow_fields_and_same_attribute_selection) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 2.402s
+
+OK

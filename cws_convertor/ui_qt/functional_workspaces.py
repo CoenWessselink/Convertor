@@ -3868,7 +3868,13 @@ if qt_available():
                 )
                 self._drawing_document = result.document
                 if self._dimension_document is not None and result.document is not None:
+                    previous_binding = (
+                        self._dimension_document.source_revision,
+                        self._dimension_document.geometry_sha256,
+                        self._dimension_document.manufacturing_sha256,
+                    )
                     if not self._dimension_document.dimensions and self._dimension_document.status != "released":
+                        self._dimension_document.source_revision = result.document.source_revision
                         self._dimension_document.geometry_sha256 = result.document.geometry_sha256
                         self._dimension_document.manufacturing_sha256 = result.document.manufacturing_sha256
                     previous_states = [item.state for item in self._dimension_document.dimensions]
@@ -3876,8 +3882,18 @@ if qt_available():
                         result.document,
                         valid_view_ids=(str(item.get("view_id") or item.get("view") or "") for item in result.document.view_contexts),
                     )
+                    current_binding = (
+                        self._dimension_document.source_revision,
+                        self._dimension_document.geometry_sha256,
+                        self._dimension_document.manufacturing_sha256,
+                    )
                     if previous_states != [item.state for item in self._dimension_document.dimensions]:
                         self._persist_dimension_editor("drawing.dimension_anchors_revalidated")
+                    elif previous_binding != current_binding:
+                        # Rendering a refreshed empty draft must retain the
+                        # same source binding after project reopen. Released
+                        # revisions and existing manual anchors remain frozen.
+                        self._persist_dimension_editor("drawing.dimension_source_binding_refreshed")
                 self._update_page_selector(result.page_count)
                 if result.png_path:
                     self._last_png = Path(result.png_path)

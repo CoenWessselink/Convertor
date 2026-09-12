@@ -16,6 +16,7 @@ from cws_convertor.project.model import (
     utc_now_iso,
 )
 from .material_gate import part_material_blockers
+from .freshness import bom_source_content_sha256
 from material_database import MaterialDatabase
 from .models import (
     AssemblyBOMRow,
@@ -686,6 +687,7 @@ def build_bom_snapshot(
         + ([] if part_evidence_ready else ["Actueel materiaal- en vrijgavebewijs voor maakdelen ontbreekt of is geblokkeerd"]),
     )
     summary = {
+        "source_content_sha256": bom_source_content_sha256(project),
         # The workspace derives availability and assignments from these canonical
         # inputs. Bind them into the preflight token too: a reservation change
         # must invalidate a saved BOM scope even if part quantities are unchanged.
@@ -729,6 +731,7 @@ def build_bom_snapshot(
     )
     snapshot.refresh_hash()
     project.settings["bom"] = {
+        **dict(project.settings.get("bom") or {}),
         "schema_version": snapshot.schema_version,
         "snapshot_sha256": snapshot.snapshot_sha256,
         "generated_at": snapshot.generated_at,

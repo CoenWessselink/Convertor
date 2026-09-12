@@ -78,3 +78,49 @@ an explicit business rule for source approval; the user decision is pending.
 Physical printer, machine qualification, installed and real-file acceptance remain
 separate unresolved gates. Building blocks 2-10 remain unstarted under the required
 sequence.
+
+## Snapshot, exact scope and execution-evidence batch
+
+The remote baseline for this batch is `a67102384dd5ae0d99651f738074334ce37115be`.
+
+- Every shipping BOM QAction now verifies the canonical source fingerprint and
+  snapshot integrity before execution. The explicit **BOM vernieuwen** button
+  rebuilds the view after input changes. Derived audit/view caches do not create
+  false source changes; stock, orders, routing and unknown settings stay bound.
+- A grouped or filtered view cannot silently drop members of an explicit
+  selection. Mixed-family and hidden selected IDs require a new explicit scope.
+- Automatic machine assignment, including the dialog's automatic mode, rolls
+  back unless every selected part receives a current ready automatic assignment.
+- Kerf changes complete through the existing machine-settings page and real
+  project Save, retain the selected machine identity and invalidate its prior
+  validation. Save/reopen, undo, stale input and file-write rollback are tested.
+  A newly qualified cutting plan after that change remains unproven.
+- Regenerating a drawing after a canonical geometry change updates its actual
+  PDF/document hash and persists the new draft source binding across reopen.
+  Drawing approval/revision undo remains incomplete; existing immutability is
+  not treated as a user-approved exemption.
+- Fourteen multiple-selection mutations execute through real Qt actions with an
+  additional unselected control object, exact effect checks and save/reopen.
+  Purchase release still blocks undo at its recorded external-release barrier.
+
+The expanded diagnostic matrix produced 81 positive postconditions, five partial
+actions and one physical-printer external blocker. These are not 81 fully
+accepted actions: all applicable negative, multiple-selection, persistence, undo
+and release-invalidation scenarios must also be proven individually. The strict
+15-scenario audit currently closes no complete action.
+
+The first broad regression for this batch is retained in
+`validation/product_integration/block1/freshness-kerf-scope/`: 40 scripts passed,
+two older test fixtures failed, and the source manifest stayed unchanged. After
+correcting the fixtures and the independent-review findings, all **42 scripts
+passed**, with zero failures/skips and an unchanged source manifest, in
+`validation/product_integration/block1/freshness-kerf-scope-verified/`.
+The earlier failed run is retained and is not release acceptance.
+
+The new W18-to-requirements binder requires an exact committed source tree and
+retained, verified scenario artifacts. It attaches individual scenario evidence
+without promoting functional, integration, installed, real-world or release
+acceptance dimensions. Ordinary register validation also rechecks upstream
+artifacts and source blobs. Relative evidence paths survive checkout relocation;
+an artifact missing in the new checkout cannot fall back to the old copy.
+Final committed-source evidence binding is still pending.

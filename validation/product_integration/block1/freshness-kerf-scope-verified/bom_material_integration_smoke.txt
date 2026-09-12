@@ -1,0 +1,14 @@
+
+--- stderr ---
+test_balanced_bom_and_approved_source_do_not_bypass_part_release (__main__.BomMaterialIntegrationTests.test_balanced_bom_and_approved_source_do_not_bypass_part_release) ... ok
+test_exact_material_is_ready_without_mutating_part (__main__.BomMaterialIntegrationTests.test_exact_material_is_ready_without_mutating_part) ... ok
+test_family_and_conflicting_raw_grades_remain_blocked (__main__.BomMaterialIntegrationTests.test_family_and_conflicting_raw_grades_remain_blocked) ... ok
+test_invalid_confidence_never_means_ready (__main__.BomMaterialIntegrationTests.test_invalid_confidence_never_means_ready) ... ok
+test_missing_grade_cannot_be_masked_by_normalized_material (__main__.BomMaterialIntegrationTests.test_missing_grade_cannot_be_masked_by_normalized_material) ... ok
+test_stale_workbench_material_is_not_shown_as_ready (__main__.BomMaterialIntegrationTests.test_stale_workbench_material_is_not_shown_as_ready) ... ok
+test_unknown_material_never_turns_green_from_confidence (__main__.BomMaterialIntegrationTests.test_unknown_material_never_turns_green_from_confidence) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.218s
+
+OK

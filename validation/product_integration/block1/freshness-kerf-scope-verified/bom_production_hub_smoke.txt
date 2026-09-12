@@ -1,0 +1,14 @@
+
+--- stderr ---
+test_panel_renders_canonical_groups_and_multiselects_stable_ids (__main__.BomProductionHubGuiTests.test_panel_renders_canonical_groups_and_multiselects_stable_ids) ... ok
+test_assembly_bom_scope_expands_to_unique_production_parts (__main__.BomProductionHubTests.test_assembly_bom_scope_expands_to_unique_production_parts) ... ok
+test_automatic_machine_assignment_requires_proven_capability (__main__.BomProductionHubTests.test_automatic_machine_assignment_requires_proven_capability) ... ok
+test_manual_machine_assignment_is_persistent_audited_and_fail_closed (__main__.BomProductionHubTests.test_manual_machine_assignment_is_persistent_audited_and_fail_closed) ... ok
+test_purchase_and_weld_identities_never_merge_silently (__main__.BomProductionHubTests.test_purchase_and_weld_identities_never_merge_silently) ... ok
+test_read_model_multiselect_actions_and_scoped_export_snapshot (__main__.BomProductionHubTests.test_read_model_multiselect_actions_and_scoped_export_snapshot) ... ok
+test_snapshot_hash_is_stable_for_unchanged_content (__main__.BomProductionHubTests.test_snapshot_hash_is_stable_for_unchanged_content) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.773s
+
+OK

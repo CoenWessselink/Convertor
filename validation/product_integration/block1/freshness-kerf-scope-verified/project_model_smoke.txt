@@ -1,0 +1,20 @@
+
+--- stderr ---
+test_deep_assembly_cycle_is_rejected (__main__.ProjectModelTests.test_deep_assembly_cycle_is_rejected) ... ok
+test_future_schema_is_rejected_instead_of_assumed_compatible (__main__.ProjectModelTests.test_future_schema_is_rejected_instead_of_assumed_compatible) ... ok
+test_geometry_hash_is_placement_independent (__main__.ProjectModelTests.test_geometry_hash_is_placement_independent) ... ok
+test_invalid_left_handed_transform_is_rejected (__main__.ProjectModelTests.test_invalid_left_handed_transform_is_rejected) ... ok
+test_invalid_quantities_and_overreservation_are_rejected (__main__.ProjectModelTests.test_invalid_quantities_and_overreservation_are_rejected) ... ok
+test_known_schema_versions_migrate_explicitly_to_225 (__main__.ProjectModelTests.test_known_schema_versions_migrate_explicitly_to_225) ... ok
+test_manufacturing_hash_changes_for_material_and_mirror (__main__.ProjectModelTests.test_manufacturing_hash_changes_for_material_and_mirror) ... ok
+test_part_assembly_relation_must_be_reciprocal (__main__.ProjectModelTests.test_part_assembly_relation_must_be_reciprocal) ... ok
+test_roundtrip_summary_identity_and_gate (__main__.ProjectModelTests.test_roundtrip_summary_identity_and_gate) ... ok
+test_scaled_or_sheared_transform_is_rejected (__main__.ProjectModelTests.test_scaled_or_sheared_transform_is_rejected) ... ok
+test_semantic_completion_keeps_failed_validation_blocked (__main__.ProjectModelTests.test_semantic_completion_keeps_failed_validation_blocked) ... ok
+test_stable_entity_id_is_repeatable (__main__.ProjectModelTests.test_stable_entity_id_is_repeatable) ... ok
+test_streaming_canonical_json_matches_legacy_hash_contract (__main__.ProjectModelTests.test_streaming_canonical_json_matches_legacy_hash_contract) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.014s
+
+OK

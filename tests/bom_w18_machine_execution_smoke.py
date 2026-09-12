@@ -59,7 +59,7 @@ def run_case(action, folder, app, scenario="valid_single"):
     from cws_convertor.machine_routing import MachineRoutingService
     from cws_convertor.project import ProjectStore
     from cws_convertor.ui_qt.bom_workspace import BomWorkspacePanel
-    assert action == "machine.auto_accept"
+    assert action in {"machine.auto_accept", "machine.assign"}
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     project, fixture, machine = _fixture()
@@ -113,7 +113,8 @@ def run_case(action, folder, app, scenario="valid_single"):
     try:
         with patch.object(BomWorkspacePanel, "_restore_layout", lambda _self: None), \
                 patch.object(QtWidgets.QMessageBox, "warning", modal), \
-                patch.object(QtWidgets.QMessageBox, "information", modal):
+                patch.object(QtWidgets.QMessageBox, "information", modal), \
+                patch.object(QtWidgets.QDialog, "exec", return_value=QtWidgets.QDialog.DialogCode.Accepted):
             panel = BomWorkspacePanel(host)
             host.setCentralWidget(panel)
             panel.set_context(workspace, selected)
@@ -174,6 +175,9 @@ def run():
         for scenario in ("valid_single", "valid_multiple", "empty_selection", "blocked", "stale", "machine_profile_stale", "invalid", "mixed_selection"):
             run_case("machine.auto_accept", Path(folder) / scenario, app, scenario)
             print("BOM_W18_MACHINE " + scenario + " PASS")
+        for scenario in ("valid_single", "blocked", "stale"):
+            run_case("machine.assign", Path(folder) / ("automatic-dialog-" + scenario), app, scenario)
+            print("BOM_W18_MACHINE_ASSIGN_AUTOMATIC " + scenario + " PASS")
     return 0
 
 

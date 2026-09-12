@@ -389,6 +389,28 @@ def summarize(register: dict[str, Any]) -> dict[str, Any]:
 
 def validate_register(register: dict[str, Any], root: Path = ROOT, *, check_source_hashes: bool = True) -> list[str]:
     errors = []
+    # Many W18 rows share one binding file. Revalidate its complete upstream
+    # matrix, retained artifacts and Git source tree once per validator call;
+    # checking only the binding JSON's own hash would preserve stale PASS rows.
+    evidence_reports: dict[Path, tuple[str, Any, str | None]] = {}
+
+    def current_evidence_report(path: Path) -> tuple[str, Any, str | None]:
+        if path not in evidence_reports:
+            digest, report, failure = "", None, None
+            try:
+                digest = sha256(path)
+                report = read_json(path)
+                if isinstance(report, dict) and report.get("schema") == "cws-w18-requirements-binding-1.0":
+                    # Import only when required, after this module is loaded.
+                    # verify_evidence -> build_evidence -> audit does not call
+                    # validate_register, so write_binding can use this safely.
+                    from tools.bind_w18_requirements_v2 import verify_evidence
+                    verify_evidence(path, root)
+            except (OSError, ValueError, AttributeError, KeyError, TypeError) as exc:
+                failure = str(exc)
+            evidence_reports[path] = digest, report, failure
+        return evidence_reports[path]
+
     if register.get("schema") != SCHEMA:
         errors.append("Wrong register schema")
     commit = register.get("source_commit", "")
@@ -448,10 +470,15 @@ def validate_register(register: dict[str, Any], root: Path = ROOT, *, check_sour
             path = (root / str(evidence.get("path", ""))).resolve()
             if not path.is_relative_to(root.resolve()) or not path.is_file():
                 continue
-            if evidence.get("commit") != commit or evidence.get("result") != "PASS" or sha256(path) != evidence.get("sha256"):
+            digest, report, failure = current_evidence_report(path)
+            if failure:
+                message = f"Current evidence verification failed: {path}: {failure}"
+                if message not in errors:
+                    errors.append(message)
+                continue
+            if evidence.get("commit") != commit or evidence.get("result") != "PASS" or digest != evidence.get("sha256"):
                 continue
             try:
-                report = read_json(path)
                 envelope_keys = ("commit", "app_version", "environment", "input_hash", "scenario", "result", "output_hash")
                 bound = report.get("requirements", {}).get(identifier)
                 if not isinstance(bound, dict) or any(report.get(key) != evidence.get(key) for key in envelope_keys):

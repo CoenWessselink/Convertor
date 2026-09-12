@@ -1,0 +1,9 @@
+
+--- stderr ---
+test_bom_balances_and_traceability (__main__.BOMTests.test_bom_balances_and_traceability) ... ok
+test_export_package_and_formula_injection_guard (__main__.BOMTests.test_export_package_and_formula_injection_guard) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.359s
+
+OK

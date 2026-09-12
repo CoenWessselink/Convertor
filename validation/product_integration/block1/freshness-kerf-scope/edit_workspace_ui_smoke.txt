@@ -1,0 +1,8 @@
+
+--- stderr ---
+test_complete_edit_tab_and_ribbon_workflow (__main__.EditWorkspaceSmoke.test_complete_edit_tab_and_ribbon_workflow) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.759s
+
+OK

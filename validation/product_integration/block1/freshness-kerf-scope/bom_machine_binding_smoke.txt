@@ -1,0 +1,13 @@
+
+--- stderr ---
+test_current_selected_assignment_survives_reopen_without_touching_sibling (__main__.MachineBindingTests.test_current_selected_assignment_survives_reopen_without_touching_sibling) ... ok
+test_legacy_ready_without_binding_is_review_required (__main__.MachineBindingTests.test_legacy_ready_without_binding_is_review_required) ... ok
+test_mutating_one_assignment_does_not_persist_other_stale_projections (__main__.MachineBindingTests.test_mutating_one_assignment_does_not_persist_other_stale_projections) ... ok
+test_part_revision_and_report_change_invalidate_cached_ready_in_bom (__main__.MachineBindingTests.test_part_revision_and_report_change_invalidate_cached_ready_in_bom) ... ok
+test_report_cannot_move_between_canonical_entity_or_machine_buckets (__main__.MachineBindingTests.test_report_cannot_move_between_canonical_entity_or_machine_buckets) ... ok
+test_unbound_stale_wrong_identity_and_negative_reports_cannot_assign_ready (__main__.MachineBindingTests.test_unbound_stale_wrong_identity_and_negative_reports_cannot_assign_ready) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.230s
+
+OK
