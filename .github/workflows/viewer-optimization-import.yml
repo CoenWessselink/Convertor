@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
       - name: Download and verify immutable commit bundle
         uses: actions/github-script@v7
         with:
@@ -72,7 +72,7 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" HEAD
           git config user.name 'CWS Viewer Optimization Build'
           git config user.email 'cws-viewer-build@users.noreply.github.com'
-          git merge --no-ff --no-edit "$CANDIDATE" -m 'perf(viewer): integrate verified profiler and render scheduling checkpoint'
+          git merge --no-ff --no-edit "$CANDIDATE" -m 'perf(viewer): integrate verified optimization checkpoint'
           # cProfile prints trailing blank lines. Normalize only its text copy;
           # raw timing JSON and the immutable imported commits remain unchanged.
           python -c "from pathlib import Path; p=Path('validation/viewer_optimization/baseline/selection_profile.txt'); p.write_text(p.read_text(encoding='utf-8').rstrip()+'\n', encoding='utf-8')"
@@ -83,24 +83,28 @@ jobs:
           git diff --check "$BASE"..HEAD
           git rev-parse HEAD > checkpoint/source_commit.txt
           git log "$BASE"..HEAD --format='%H %P %s' > checkpoint/commits.txt
-      - name: Install isolated verification dependencies
+      - name: Install complete locked application runtime
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y xvfb libxcb-cursor0 libegl1 libopengl0
-          python -m pip install 'numpy<3' pytest psutil Pillow 'lxml==6.0.1' 'PySide6==6.9.2' 'vtk==9.6.2'
+          python -m pip install -r requirements-runtime.lock.txt pytest
           python -m pip freeze > checkpoint/runtime.txt
       - name: Verify real Qt scheduler and canonical selection regressions
         shell: bash
         run: |
           set -euo pipefail
+          EXTRA=()
+          for test in tests/viewer_indexed_picking_smoke.py tests/viewer_screen_selection_smoke.py tests/viewer_persistent_selection_overlay_smoke.py; do
+            if test -f "$test"; then EXTRA+=("$test"); fi
+          done
           xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb python -m pytest -q \
             tests/viewer_render_scheduler_smoke.py tests/viewer_runtime_profiler_smoke.py \
             tests/viewer_scheduler_native_smoke.py tests/viewer_native_initialization_smoke.py \
             tests/viewer_v15_selection_pivot_parity_smoke.py tests/viewer_v15_trimble_feel_v2_smoke.py \
             tests/viewer_v15_feel_fix_smoke.py tests/viewer_v2_core_controller_smoke.py \
-            tests/bom_selection_identity_smoke.py --junitxml=checkpoint/tests.xml 2>&1 | tee checkpoint/tests.log
+            tests/bom_selection_identity_smoke.py "${EXTRA[@]}" --junitxml=checkpoint/tests.xml 2>&1 | tee checkpoint/tests.log
       - name: Publish only the tested merge using normal fast-forward push
         shell: bash
         run: |
