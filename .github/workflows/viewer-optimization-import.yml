@@ -59,6 +59,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p checkpoint
+          cp /tmp/viewer-import-manifest.json checkpoint/import_manifest.json
           BASE=$(python -c "import json; print(json.load(open('/tmp/viewer-import-manifest.json'))['base_commit'])")
           CANDIDATE=$(python -c "import json; print(json.load(open('/tmp/viewer-import-manifest.json'))['candidate_commit'])")
           git bundle verify /tmp/viewer-optimization.bundle
@@ -71,11 +73,16 @@ jobs:
           git config user.name 'CWS Viewer Optimization Build'
           git config user.email 'cws-viewer-build@users.noreply.github.com'
           git merge --no-ff --no-edit "$CANDIDATE" -m 'perf(viewer): integrate verified profiler and render scheduling checkpoint'
+          # cProfile prints trailing blank lines. Normalize only its text copy;
+          # raw timing JSON and the immutable imported commits remain unchanged.
+          python -c "from pathlib import Path; p=Path('validation/viewer_optimization/baseline/selection_profile.txt'); p.write_text(p.read_text(encoding='utf-8').rstrip()+'\n', encoding='utf-8')"
+          git add validation/viewer_optimization/baseline/selection_profile.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore(viewer): normalize profiler report trailing whitespace'
+          fi
           git diff --check "$BASE"..HEAD
-          mkdir -p checkpoint
           git rev-parse HEAD > checkpoint/source_commit.txt
           git log "$BASE"..HEAD --format='%H %P %s' > checkpoint/commits.txt
-          cp /tmp/viewer-import-manifest.json checkpoint/import_manifest.json
       - name: Install isolated verification dependencies
         shell: bash
         run: |
