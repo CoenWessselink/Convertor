@@ -1,0 +1,32 @@
+name: Recognition concurrent source snapshot
+on:
+  push:
+    branches: [agent/cws-recognition-transport-20260913]
+    paths: [.github/workflows/recognition-source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  source-snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Archive exact concurrent commits without modifying their branches
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p snapshot
+          git cat-file -e 543039c3fb3f8ff787e7d8e84e4ac61f36a5095a^{commit}
+          git update-ref refs/heads/concurrent-source-snapshot 543039c3fb3f8ff787e7d8e84e4ac61f36a5095a
+          git bundle create snapshot/concurrent.bundle fd429fcdc0de21f7108232ebff24dae960125f49..concurrent-source-snapshot
+          git log --format='%H %P %s' fd429fcdc0de21f7108232ebff24dae960125f49..concurrent-source-snapshot > snapshot/COMMITS.txt
+          git diff --stat fd429fcdc0de21f7108232ebff24dae960125f49 concurrent-source-snapshot > snapshot/DIFF_STAT.txt
+          sha256sum snapshot/* > snapshot/HASHES.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Recognition_Concurrent_Source_543039c3
+          path: snapshot/*
+          if-no-files-found: error
+          retention-days: 30
