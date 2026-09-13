@@ -25,7 +25,7 @@ on:
       - 'requirements-runtime.lock.txt'
       - '.github/workflows/material-model-recognition.yml'
   push:
-    branches: [agent/cws-product-ui-reintegration-v1, agent/cws-recognition-bom-recovery-20260908]
+    branches: [agent/cws-product-ui-reintegration-v1, agent/cws-recognition-bom-recovery-20260908, agent/cws-recognition-geometry-intelligence-20260913]
     paths:
       - 'cws_convertor/**'
       - 'material_database.py'
