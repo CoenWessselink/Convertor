@@ -1,0 +1,109 @@
+name: Viewer adaptive close-up integration gate
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths:
+      - .github/workflows/adaptive-closeup-integrate.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: viewer-adaptive-closeup-integration
+  cancel-in-progress: false
+jobs:
+  integrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply bounded source integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          geometry = Path('cws_viewer/contracts/geometry.py')
+          text = geometry.read_text(encoding='utf-8')
+          malformed = 'def to_dict(self) -> dict{str, Any]:'
+          if malformed not in text:
+              raise SystemExit('Expected malformed GeometryLoadResult annotation not found; refusing blind patch')
+          text = text.replace(malformed, 'def to_dict(self) -> dict[str, Any]:', 1)
+          if 'def close_up(cls)' in text:
+              raise SystemExit('Close-up profile already present; refusing duplicate integration')
+          needle = '''    @property\n    def fingerprint(self) -> str:\n        return stable_sha256(self.to_dict())\n\n\n@dataclass(frozen=True, slots=True)\nclass GeometryRequest:\n'''
+          replacement = '''    @property\n    def fingerprint(self) -> str:\n        return stable_sha256(self.to_dict())\n\n    @classmethod\n    def close_up(cls) -> "TessellationSettings":\n        """Bounded close-up profile for selected/large-screen curved geometry."""\n        return cls(\n            linear_deflection_mm=0.05,\n            angular_deflection_rad=0.04,\n            circle_segments=128,\n            relative=False,\n            weld_proxy_sides=12,\n            version="cws-tessellation-v5-adaptive-closeup",\n        )\n\n\n@dataclass(frozen=True, slots=True)\nclass GeometryRequest:\n'''
+          if needle not in text:
+              raise SystemExit('TessellationSettings fingerprint boundary not found; refusing blind patch')
+          geometry.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+
+          ui_init = Path('cws_convertor/ui_qt/__init__.py')
+          text = ui_init.read_text(encoding='utf-8')
+          if 'install_adaptive_closeup_refinement' in text:
+              raise SystemExit('Adaptive close-up shell hook already present; refusing duplicate integration')
+          needle = '''from .main_window import (\n    IntegratedProjectPage,\n    WorkspaceRouter,\n)\n'''
+          replacement = needle + '''from .adaptive_closeup_patch import install_adaptive_closeup_refinement\n\ninstall_adaptive_closeup_refinement()\n'''
+          if needle not in text:
+              raise SystemExit('Qt shell import boundary not found; refusing blind patch')
+          ui_init.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+          PY
+          git diff --check
+          python -m py_compile \
+            cws_viewer/contracts/geometry.py \
+            cws_viewer/geometry/silhouette_quality.py \
+            cws_viewer/performance/adaptive_detail.py \
+            cws_convertor/ui_qt/adaptive_closeup_patch.py \
+            cws_convertor/ui_qt/__init__.py \
+            tests/viewer_adaptive_closeup_tessellation_smoke.py
+      - name: Install locked viewer runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-viewer-v9.lock.txt pytest
+      - name: Run adaptive and regression gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/adaptive-closeup
+          PYTHONPATH=. pytest -q \
+            tests/viewer_adaptive_closeup_tessellation_smoke.py \
+            tests/viewer_hq_tessellation_smoke.py \
+            tests/viewer_render_scheduler_smoke.py \
+            tests/viewer_runtime_profiler_smoke.py \
+            tests/viewer_v15_trimble_feel_v2_smoke.py \
+            tests/viewer_v15_feel_fix_smoke.py \
+            tests/viewer_v2_core_controller_smoke.py \
+            tests/bom_selection_identity_smoke.py \
+            tests/viewer_native_instance_culling_smoke.py \
+            tests/viewer_v15_selection_measurement_smoke.py \
+            tests/viewer_v15_selection_pivot_parity_smoke.py \
+            tests/viewer_v15_navigation_contract_smoke.py \
+            tests/viewer_v15_workspace_contract_smoke.py \
+            --disable-warnings --maxfail=1 2>&1 | tee build/adaptive-closeup/pytest.log
+      - name: Commit and fast-forward publish exact tested source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'CWS Viewer Optimization Build'
+          git config user.email 'cws-viewer-build@users.noreply.github.com'
+          git add cws_viewer/contracts/geometry.py cws_convertor/ui_qt/__init__.py
+          git commit -m 'render(viewer): activate adaptive close-up tessellation refinement'
+          SOURCE_SHA=$(git rev-parse HEAD)
+          printf '%s\n' "$SOURCE_SHA" > build/adaptive-closeup/source_commit.txt
+          git diff --check HEAD^
+          git fetch origin agent/cws-pdf-ui-v3-complete-20260909
+          test "$(git rev-parse origin/agent/cws-pdf-ui-v3-complete-20260909)" = "$GITHUB_SHA"
+          git push origin HEAD:agent/cws-pdf-ui-v3-complete-20260909
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Adaptive_Closeup_${{ github.run_id }}
+          path: build/adaptive-closeup/*
+          if-no-files-found: warn
+          retention-days: 30
