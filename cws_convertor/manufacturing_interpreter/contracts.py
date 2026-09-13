@@ -10,7 +10,7 @@ from typing import Any
 ENGINE_VERSION = "mgi-v3.3"
 ALGORITHM_VERSIONS = (
     ("topology", "mgi-topology-v3"),
-    ("axis", "mgi-axis-v3"),
+    ("axis", "mgi-axis-v3.3-full-extent-catalogue-support"),
     ("section", "mgi-section-v3.3-native-interval-proof"),
     ("profile", "mgi-profile-v3.3-native-contour"),
     ("feature", "mgi-feature-v3.1"),

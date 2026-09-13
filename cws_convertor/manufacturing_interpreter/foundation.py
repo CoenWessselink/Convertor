@@ -104,14 +104,25 @@ def refine_axis_from_shape(shape: Any, axis: AxisCandidate) -> AxisCandidate:
             continue
     if not candidates:
         return axis
-    length, start, end, direction = max(candidates, key=lambda item: item[0])
+    _, _, _, direction = max(candidates, key=lambda item: item[0])
+    # A groove/cope can break all longitudinal edges. The longest remaining
+    # edge proves direction, not the full physical member length.
+    points = [_vector(vertex.Center()) for vertex in shape.Vertices()]
+    projections = [_dot(point, direction) for point in points]
+    if not projections:
+        return axis
+    low, high = min(projections), max(projections)
+    length = high-low
+    anchor = _vector(axis.origin_mm)
+    start = tuple(anchor[i]+direction[i]*(low-_dot(anchor, direction)) for i in range(3))
+    end = tuple(start[i]+direction[i]*length for i in range(3))
     return replace(
         axis,
         direction=direction,
         origin_mm=start,
         end_mm=end,
         length_mm=length,
-        signal_scores=tuple(axis.signal_scores) + (("exact_edge_refinement", 1.0),),
+        signal_scores=tuple(axis.signal_scores) + (("exact_edge_direction_full_source_extent", 1.0),),
     )
 
 

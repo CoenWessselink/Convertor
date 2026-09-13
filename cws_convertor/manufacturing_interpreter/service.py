@@ -103,7 +103,10 @@ class ManufacturingGeometryInterpreter:
                 self._cache[cache_key] = report
                 return report
 
+            from .foundation import refine_axis_from_shape
+            axes = tuple(refine_axis_from_shape(shape, axis) for axis in axes)
             selected_axis = axes[0]
+            axis_profile_ambiguous = False
             from .recognition_geometry import reference_section_faces
             end_faces = reference_section_faces(shape, selected_axis)
             section = section_signature(end_faces, selected_axis, topology)
@@ -115,6 +118,26 @@ class ManufacturingGeometryInterpreter:
                 source_faces=end_faces,
                 axis=selected_axis,
             )
+            if profile.status != GeometryProofStatus.PROVEN_WITHIN_POLICY:
+                # Short members may have a transverse dimension longer than
+                # their extrusion. Test the existing candidate axes against the
+                # real catalogue contour, rather than forcing the longest span.
+                alternatives = []
+                for other_axis in axes[1:]:
+                    try:
+                        other_faces = reference_section_faces(shape, other_axis)
+                        other_section = section_signature(other_faces, other_axis, topology)
+                        other_profile = recognize_profile(other_section, self.profile_database,
+                            self.tolerance_policy, request.preferred_profile,
+                            source_faces=other_faces, axis=other_axis)
+                        if other_profile.status == GeometryProofStatus.PROVEN_WITHIN_POLICY:
+                            alternatives.append((other_axis, other_section, other_profile))
+                    except Exception:
+                        continue
+                if len(alternatives) == 1:
+                    selected_axis, section, profile = alternatives[0]
+                elif len(alternatives) > 1:
+                    axis_profile_ambiguous = True
             reconstructed = reconstruct_prismatic(shape, selected_axis)
             proof = prove_equivalence(shape, reconstructed, self.tolerance_policy)
 
@@ -131,10 +154,13 @@ class ManufacturingGeometryInterpreter:
                 else InterpretationReadiness.BLOCKED
             )
             blockers: list[str] = []
+            if axis_profile_ambiguous:
+                blockers.append("AXIS_PROFILE_CANDIDATES_AMBIGUOUS")
+                readiness = InterpretationReadiness.REVIEW_REQUIRED
             from .topology import linear_tolerance
             if any(abs(other.length_mm - selected_axis.length_mm) <= linear_tolerance(self.tolerance_policy)
                    and abs(sum(other.direction[i] * selected_axis.direction[i] for i in range(3))) < 0.99
-                   for other in axes[1:]):
+                   for other in axes if other.axis_id != selected_axis.axis_id):
                 blockers.append("MANUFACTURING_AXIS_AMBIGUOUS")
                 readiness = InterpretationReadiness.REVIEW_REQUIRED
             if not proof_ready:
