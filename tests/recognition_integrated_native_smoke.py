@@ -48,14 +48,15 @@ def load_tests(loader, tests, pattern):
     # Required native intelligence regressions belong to this existing gate.
     # Import errors and zero discovered tests must fail, never become a skip.
     import importlib.util
-    path = ROOT / 'tests' / 'recognition_geometry_intelligence_smoke.py'
-    spec = importlib.util.spec_from_file_location('cws_geometry_intelligence_tests', path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    extra = loader.loadTestsFromModule(module)
-    if extra.countTestCases() == 0:
-        raise RuntimeError('Geometry intelligence regressions were not discovered')
-    tests.addTests(extra)
+    for name in ('recognition_geometry_intelligence_smoke', 'recognition_profile_intelligence_smoke'):
+        path = ROOT / 'tests' / (name + '.py')
+        spec = importlib.util.spec_from_file_location('cws_' + name, path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        extra = loader.loadTestsFromModule(module)
+        if extra.countTestCases() == 0:
+            raise RuntimeError('Required intelligence regressions were not discovered: ' + name)
+        tests.addTests(extra)
     return tests
 
 if __name__=='__main__': unittest.main(verbosity=2)

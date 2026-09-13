@@ -103,18 +103,37 @@ class ManufacturingGeometryInterpreter:
                 self._cache[cache_key] = report
                 return report
 
-            selected_axis = axes[0]
             from .recognition_geometry import reference_section_faces
-            end_faces = reference_section_faces(shape, selected_axis)
-            section = section_signature(end_faces, selected_axis, topology)
-            profile = recognize_profile(
-                section,
-                self.profile_database,
-                self.tolerance_policy,
-                request.preferred_profile,
-            )
-            reconstructed = reconstruct_prismatic(shape, selected_axis)
-            proof = prove_equivalence(shape, reconstructed, self.tolerance_policy)
+            from .foundation import refine_axis_from_shape
+            alternatives = []
+            for candidate_axis in axes[:24]:
+                try:
+                    candidate_axis = refine_axis_from_shape(shape, candidate_axis)
+                    candidate_faces = reference_section_faces(shape, candidate_axis)
+                    candidate_section = section_signature(candidate_faces, candidate_axis, topology)
+                    candidate_profile = recognize_profile(
+                        candidate_section, self.profile_database, self.tolerance_policy,
+                        request.preferred_profile, source_faces=candidate_faces, axis=candidate_axis)
+                    candidate_base = reconstruct_prismatic(shape, candidate_axis)
+                    candidate_proof = prove_equivalence(shape, candidate_base, self.tolerance_policy)
+                    supported = candidate_profile.status in {GeometryProofStatus.PROVEN_WITHIN_POLICY,
+                                                              GeometryProofStatus.AMBIGUOUS}
+                    exact = candidate_proof.status in {GeometryProofStatus.PROVEN_BREP_EQUIVALENT,
+                                                       GeometryProofStatus.PROVEN_WITHIN_POLICY}
+                    # A nontrivial catalogue section can establish the axis of
+                    # a short I/U/L/hollow member. An arbitrary through-cut plate
+                    # section must not hide holes by treating them as an extrusion
+                    # void and preferring that axis solely for perfect reconstruction.
+                    nontrivial = supported and (candidate_profile.profile_type in {"I", "U", "C", "L", "M", "RO", "RU"}
+                                                  or candidate_section.inferred_family in {"I", "U", "L", "M", "RO", "RU"})
+                    rank = (nontrivial, supported, candidate_axis.length_mm, exact, candidate_axis.score)
+                    alternatives.append((rank, candidate_axis, candidate_section, candidate_profile, candidate_proof))
+                except Exception:
+                    continue
+            if not alternatives:
+                raise ValueError("Geen analyse-as met geldige doorsnede en reconstructie")
+            _, selected_axis, section, profile, proof = max(alternatives, key=lambda item: item[0])
+            axes = tuple(selected_axis if axis.axis_id == selected_axis.axis_id else axis for axis in axes)
 
             proof_ready = proof.status in {
                 GeometryProofStatus.PROVEN_BREP_EQUIVALENT,
@@ -129,6 +148,8 @@ class ManufacturingGeometryInterpreter:
                 else InterpretationReadiness.BLOCKED
             )
             blockers: list[str] = []
+            if len(axes) > 24:
+                blockers.append("AXIS_ANALYSIS_BUDGET_EXCEEDED")
             from .topology import linear_tolerance
             if any(abs(other.length_mm - selected_axis.length_mm) <= linear_tolerance(self.tolerance_policy)
                    and abs(sum(other.direction[i] * selected_axis.direction[i] for i in range(3))) < 0.99
@@ -147,6 +168,8 @@ class ManufacturingGeometryInterpreter:
                 )
                 if readiness == InterpretationReadiness.READY:
                     readiness = InterpretationReadiness.REVIEW_REQUIRED
+            if blockers and readiness == InterpretationReadiness.READY:
+                readiness = InterpretationReadiness.REVIEW_REQUIRED
             representability = (
                 ("STEP", "SUPPORTED" if proof_ready else "BLOCKED"),
                 ("IFC", "SUPPORTED" if proof_ready else "BLOCKED"),

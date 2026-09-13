@@ -113,7 +113,7 @@ def apply_custom_section(report, shape, policy):
     from dataclasses import replace
     from .contracts import GeometryProofStatus, ProfileRecognition, stable_id
     proven={GeometryProofStatus.PROVEN_BREP_EQUIVALENT,GeometryProofStatus.PROVEN_WITHIN_POLICY}
-    if report.profile.status in proven or report.equivalence.status not in proven or report.section is None:
+    if report.profile.status in proven | {GeometryProofStatus.AMBIGUOUS} or report.equivalence.status not in proven or report.section is None:
         return report
     # No catalogue match is not a reason to discard a proven custom cross-section.
     # Existing residual, material, target and axis blockers remain in force.

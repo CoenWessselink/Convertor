@@ -66,9 +66,12 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         if not policy_hash:
             policy_hash = stable_sha256(self.tolerance_policy)
         database_revision = self._profile_database_revision()
-        if database_revision != self._database_revision:
+        # Definitions are mutable in the existing library/editor. Count/mtime
+        # alone misses an in-memory thickness change with the same row count.
+        current_database_hash = _database_hash(self.profile_database)
+        if database_revision != self._database_revision or current_database_hash != self._database_hash:
             self._database_revision = database_revision
-            self._database_hash = _database_hash(self.profile_database)
+            self._database_hash = current_database_hash
             self._final_cache.clear()
             self._cache.clear()
         database_hash = self._database_hash

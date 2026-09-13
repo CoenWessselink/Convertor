@@ -12,7 +12,7 @@ ALGORITHM_VERSIONS = (
     ("topology", "mgi-topology-v3"),
     ("axis", "mgi-axis-v3"),
     ("section", "mgi-section-v3.3-native-intervals"),
-    ("profile", "mgi-profile-v3.2"),
+    ("profile", "mgi-profile-v3.3-boundary-proof"),
     ("feature", "mgi-feature-v3.1"),
     ("solver", "mgi-solver-v3.2"),
     ("proof", "mgi-proof-v3.2"),
@@ -212,6 +212,7 @@ class ProfileRecognition:
     area_delta_mm2: float = 0.0
     candidates: tuple[str, ...] = ()
     reason: str = ""
+    boundary_evidence: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -408,13 +409,15 @@ class ProfileMatchCandidate:
     designation: str
     dimension_residual_mm: float
     area_residual_mm2: float
-    perimeter_residual_mm: float
-    moment_residual: float
-    radius_residual_mm: float
-    contour_distance_mm: float
+    perimeter_residual_mm: float | None
+    moment_residual: float | None
+    radius_residual_mm: float | None
+    contour_distance_mm: float | None
     topology_match: bool
     score: float
 
+    proof_status: str = "METRIC_ONLY"
+    measurement_basis: tuple[str, ...] = ()
 
 @dataclass(frozen=True)
 class RecognizedGeometricFeature:

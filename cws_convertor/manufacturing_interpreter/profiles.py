@@ -36,6 +36,9 @@ def recognize_profile(
     database: Any,
     policy: Any,
     preferred_profile: str = "",
+    *,
+    source_faces: Any = None,
+    axis: Any = None,
 ) -> ProfileRecognition:
     definitions = profile_definitions(database)
     preferred = preferred_profile.strip().upper()
@@ -60,8 +63,7 @@ def recognize_profile(
         designation = str(getattr(profile, "designation", ""))
         profile_type = str(getattr(profile, "profile_type", "")).upper()
         profile_family = str(getattr(profile, "family", "")).upper()
-        if preferred and designation.upper() != preferred:
-            continue
+        # A preferred name is a review hint, not evidence excluding alternatives.
         canonical_type = "U" if profile_type == "C" else profile_type
         profile_hollow = canonical_type in {"M", "RO"} or profile_family in {"RHS", "SHS", "CHS"}
         section_hollow = section.inner_wire_count > 0
@@ -73,7 +75,7 @@ def recognize_profile(
         # Fragmentation provides no extra shape evidence: an arbitrary union
         # can share a standard section's bbox and area. The aggregate boundary
         # must establish the family before metrics can validate a candidate.
-        if not exact_family:
+        if not exact_family and not source_faces:
             continue
         expected_width, expected_height = _candidate_dimensions(profile)
         expected_area = abs(float(getattr(profile, "area_mm2", 0.0) or 0.0))
@@ -106,6 +108,41 @@ def recognize_profile(
             reason="Geen geometrisch compatibel catalogusprofiel in de bestaande ProfileDatabase",
         )
 
+    boundary_evidence = {}
+    if source_faces and axis is not None:
+        from .profile_geometry import catalogue_boundary_evidence
+        verified = []
+        for item in compatible:
+            if item[0] > 1.0:
+                continue
+            evidence = catalogue_boundary_evidence(item[2], source_faces, axis, policy)
+            boundary_evidence[item[1]] = evidence
+            if evidence["status"] == "PROVEN":
+                verified.append(item)
+        if not verified:
+            import json
+            return ProfileRecognition(
+                status=GeometryProofStatus.RECOGNITION_INCOMPLETE, family=family,
+                candidates=tuple(item[1] for item in compatible[:5]),
+                reason="Cataloguscontour niet bewezen; gelijke omhulling/oppervlakte is onvoldoende",
+                boundary_evidence=tuple((name, json.dumps(value, sort_keys=True))
+                                        for name, value in boundary_evidence.items()),
+            )
+        compatible = verified
+    else:
+        # Only an analytic full rectangle is determined by this legacy metric
+        # signature. Other families need inner/outer boundary evidence.
+        rectangle = (family == "B" and section.outer_edge_count == 4
+                     and not section.inner_wire_count
+                     and dict(section.edge_type_counts) == {"LINE": 4}
+                     and abs(section.area_mm2 - section.width_mm * section.height_mm)
+                         <= linear_tolerance(policy) ** 2
+                     and abs(section.perimeter_mm - 2 * (section.width_mm + section.height_mm))
+                         <= linear_tolerance(policy))
+        if not rectangle:
+            return ProfileRecognition(status=GeometryProofStatus.METRIC_ONLY, family=family,
+                candidates=tuple(item[1] for item in compatible[:5]),
+                reason="Catalogusmaten zijn kandidaten; native contourbewijs ontbreekt")
     best = compatible[0]
     accepted = best[0] <= 1.0
     ambiguous = (
@@ -119,6 +156,8 @@ def recognize_profile(
             family=family,
             candidates=tuple(item[1] for item in compatible if item[0] <= 1.0),
             reason="Meerdere catalogusprofielen zijn geometrisch niet onderscheidbaar",
+            boundary_evidence=tuple((name, __import__('json').dumps(value, sort_keys=True))
+                                    for name, value in boundary_evidence.items()),
         )
     if not accepted:
         return ProfileRecognition(
@@ -141,5 +180,7 @@ def recognize_profile(
         dimension_delta_mm=best[3],
         area_delta_mm2=best[4],
         candidates=(best[1],),
-        reason="Geometrie matcht exact binnen de centrale tolerance policy",
+        reason="Parametrische catalogusdoorsnede binnen policy; geen bewijs van materiaal of fabricageherkomst",
+        boundary_evidence=tuple((name, __import__('json').dumps(value, sort_keys=True))
+                                for name, value in boundary_evidence.items()),
     )

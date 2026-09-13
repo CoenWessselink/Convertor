@@ -104,7 +104,15 @@ def refine_axis_from_shape(shape: Any, axis: AxisCandidate) -> AxisCandidate:
             continue
     if not candidates:
         return axis
-    length, start, end, direction = max(candidates, key=lambda item: item[0])
+    _, start, end, direction = max(candidates, key=lambda item: item[0])
+    # The longest surviving edge is a direction signal, not the finished length:
+    # local cut-outs may interrupt every longitudinal edge.
+    points = [_vector(vertex.Center()) for vertex in shape.Vertices()]
+    projections = [_dot(point, direction) for point in points]
+    low, high = min(projections), max(projections)
+    start = min(points, key=lambda point: (_dot(point, direction), point))
+    length = high - low
+    end = tuple(start[i] + direction[i] * length for i in range(3))
     return replace(
         axis,
         direction=direction,
@@ -361,10 +369,10 @@ def profile_candidates(profile: Any, section: CrossSectionSignature) -> tuple[Pr
             designation=name,
             dimension_residual_mm=float(getattr(profile, "dimension_delta_mm", 0.0)),
             area_residual_mm2=float(getattr(profile, "area_delta_mm2", 0.0)),
-            perimeter_residual_mm=0.0,
-            moment_residual=0.0,
-            radius_residual_mm=0.0,
-            contour_distance_mm=0.0 if index == 0 else max(section.width_mm, section.height_mm) * 0.01,
+            perimeter_residual_mm=None,
+            moment_residual=None,
+            radius_residual_mm=None,
+            contour_distance_mm=None,
             topology_match=True,
             score=max(0.0, float(getattr(profile, "confidence", 0.0)) - index * 0.05),
         )
