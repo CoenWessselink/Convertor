@@ -416,12 +416,15 @@ class ProfileMatchCandidate:
     designation: str
     dimension_residual_mm: float
     area_residual_mm2: float
-    perimeter_residual_mm: float
-    moment_residual: float
-    radius_residual_mm: float
-    contour_distance_mm: float
+    perimeter_residual_mm: float | None
+    moment_residual: float | None
+    radius_residual_mm: float | None
+    contour_distance_mm: float | None
     topology_match: bool
     score: float
+
+    evidence_status: str = "COARSE_CANDIDATE_ONLY"
+    metric_provenance: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

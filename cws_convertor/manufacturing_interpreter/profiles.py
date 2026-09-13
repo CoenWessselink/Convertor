@@ -139,6 +139,7 @@ def recognize_profile(
             family=family,
             candidates=tuple(item[1] for item in compatible if item[0] <= 1.0),
             reason="Meerdere catalogusprofielen zijn geometrisch niet onderscheidbaar",
+            boundary_evidence=tuple((name, __import__("json").dumps(value, sort_keys=True)) for name, value in sorted(native_evidence.items())),
         )
     if not accepted:
         return ProfileRecognition(

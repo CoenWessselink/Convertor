@@ -51,29 +51,13 @@ def match_full_profile_geometry(
         area = float(getattr(definition, "area_mm2", 0.0) or 0.0)
         area_residual = abs(area - section.area_mm2)
         family = str(getattr(definition, "family", "")).upper()
-        expected_perimeter = _perimeter(family, width, height, thickness)
-        perimeter_residual = abs(expected_perimeter - section.perimeter_mm)
-        expected_moment = max(area, 1.0) * (width * width + height * height) / 12.0
-        observed_moment = max(section.area_mm2, 1.0) * (
-            section.width_mm**2 + section.height_mm**2
-        ) / 12.0
-        moment_residual = abs(expected_moment - observed_moment) / max(
-            expected_moment, observed_moment, 1.0
-        )
-        topology_match = (family in HOLLOW_FAMILIES) == (section.inner_wire_count > 0)
-        radius_residual = 0.0 if radius <= 0.0 else min(
-            abs(radius - min(width, height) * 0.5), abs(radius - thickness)
-        )
-        contour_distance = math.sqrt(
-            dimension_residual**2
-            + (area_residual / max(math.sqrt(max(area, 1.0)), 1.0)) ** 2
-            + (perimeter_residual * 0.25) ** 2
-        )
+        # This compatibility entry point is the fast filter. No source
+        # contour/moments/radii are supplied, so it must not invent errors for
+        # them. Exact authority is native_section_comparison, stored separately.
+        topology_match = (family in HOLLOW_FAMILIES or str(getattr(definition, "profile_type", "")) in {"M", "RO"}) == (section.inner_wire_count > 0)
         normalized = (
             dimension_residual / max(dimension_tolerance, 1e-6)
             + area_residual / max(max(area, section.area_mm2, 1.0) * area_relative, 1e-6)
-            + perimeter_residual / max(section.perimeter_mm * area_relative, dimension_tolerance, 1e-6)
-            + moment_residual
             + (0.0 if topology_match else 10.0)
         )
         candidates.append(
@@ -81,18 +65,20 @@ def match_full_profile_geometry(
                 designation=str(getattr(definition, "designation", "")),
                 dimension_residual_mm=dimension_residual,
                 area_residual_mm2=area_residual,
-                perimeter_residual_mm=perimeter_residual,
-                moment_residual=moment_residual,
-                radius_residual_mm=radius_residual,
-                contour_distance_mm=contour_distance,
+                perimeter_residual_mm=None,
+                moment_residual=None,
+                radius_residual_mm=None,
+                contour_distance_mm=None,
                 topology_match=topology_match,
                 score=1.0 / (1.0 + normalized),
+                metric_provenance=(("dimensions", "measured section versus catalogue nominal"),
+                                   ("area", "measured section versus catalogue area"),
+                                   ("score", "ranking heuristic, not probability or exact match")),
             )
         )
     candidates.sort(
         key=lambda item: (
             -item.score,
-            item.contour_distance_mm,
             item.dimension_residual_mm,
             item.designation,
         )

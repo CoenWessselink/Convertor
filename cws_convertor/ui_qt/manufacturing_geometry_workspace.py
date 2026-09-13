@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from copy import deepcopy
+import json
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -40,10 +42,15 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.interpreter = ManufacturingGeometryInterpreter()
         self.current_report: Any = None
         self._completed_report: Any = None
+        self._completed_reports: dict[str, Any] = {}
+        self._selected_source_options: dict[str, Any] = {}
+        self._selected_part_hash = ""
+        self._selected_part_id = ""
         self.current_source = Path()
         self.current_job_id = ""
         self._submitted_source = ""
         self._submitted_generation = 0
+        self._submitted_binding_hash = ""
         self._build_ui()
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(100)
@@ -112,7 +119,7 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
 
         self.tabs = QtWidgets.QTabWidget()
         self.foundation_table = self._table(["Evidence", "Waarde"])
-        self.feature_table = self._table(["Feature", "Geometrie", "Semantiek", "Confidence", "Proof"])
+        self.feature_table = self._table(["Feature", "Geometrie", "Semantiek", "Matchscore", "Proof"])
         self.feature_table.setProperty("ui_test_id", "mgi.features.table")
         self.feature_table.itemSelectionChanged.connect(self._feature_selected)
         self.hypothesis_table = self._table(["Hypothese", "Features", "Unknown", "Proof", "Score"])
@@ -123,6 +130,16 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.tabs.addTab(self.hypothesis_table, "Hypotheses")
         self.tabs.addTab(self.output_table, "Representability")
         self.tabs.addTab(self.proof_table, "Residual proof")
+        self.section_table = self._table(["Station (mm)", "Meting", "Oppervlak (mm²)", "Omtrek (mm)", "Holtes", "Ixx (mm⁴)", "Iyy (mm⁴)", "Reden"])
+        self.catalogue_table = self._table(["Kandidaat", "Contourbewijs", "Ontbreekt (mm²)", "Extra (mm²)", "Afstandsteekproef (mm)", "Catalogusbron"])
+        self.material_table = self._table(["Eigenschap / bron", "Waarde"])
+        self.body_table = self._table(["Bronbody-occurrence", "Soort", "Geometrie", "Volume (mm³)", "Profiel", "Fysiek maakdeel bewezen"])
+        for table, name, identity in ((self.section_table, "Doorsneden", "mgi.sections.table"),
+                                       (self.catalogue_table, "Profielbewijs", "mgi.catalogue.table"),
+                                       (self.material_table, "Materiaalbronnen", "mgi.material.table"),
+                                       (self.body_table, "Bronbodies", "mgi.bodies.table")):
+            table.setProperty("ui_test_id", identity)
+            self.tabs.addTab(table, name)
         splitter.addWidget(self.tabs)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
@@ -177,8 +194,38 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
                 table.setItem(row_index, column_index, QtWidgets.QTableWidgetItem(value))
         table.resizeColumnsToContents()
 
-    def set_context(self, snapshot: Any) -> None:
-        self.project = getattr(snapshot, "project", self.project)
+    def set_context(self, snapshot: Any, selection: Any = None) -> None:
+        """Bind exactly one existing selected part, never a geometry-list index."""
+        self.project = getattr(snapshot, "project", None)
+        self._selected_source_options = {}
+        self._selected_part_hash = ""
+        self._selected_part_id = ""
+        ids = tuple(getattr(selection, "entity_ids", ()) or ())
+        parts = getattr(self.project, "parts", {})
+        if len(ids) == 1 and ids[0] in parts:
+            part = parts[ids[0]]
+            record = self.project.sources.get(part.source_identity.source_file_id)
+            session = getattr(snapshot, "session", None)
+            path = getattr(session, "source_paths", {}).get(part.source_identity.source_file_id)
+            if record is not None and path and str(part.source_identity.source_format).upper() in {"STEP", "STP"}:
+                from cws_convertor.manufacturing_interpreter.material_evidence import material_evidence_from_part
+                self.source_edit.setText(str(path))
+                self._selected_part_id = part.internal_id
+                self._selected_part_hash = stable_sha256(part.base_to_dict())
+                self._selected_source_options = {
+                    "source_part": deepcopy(part.base_to_dict()), "source_record": deepcopy(record.to_dict()),
+                    "source_sha256": part.source_identity.source_sha256,
+                    "material_evidence": material_evidence_from_part(part),
+                    "project_part_link": (("project_part_id", part.internal_id),
+                                          ("occurrence_id", part.source_identity.occurrence_id)),
+                }
+        self.promote_button.setEnabled(False)
+
+    def _binding_current(self) -> bool:
+        if not self._selected_part_id:
+            return not self._selected_source_options
+        part = getattr(self.project, "parts", {}).get(self._selected_part_id)
+        return part is not None and stable_sha256(part.base_to_dict()) == self._selected_part_hash
 
     def _browse(self) -> None:
         filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Exacte BREP-bron", "", "STEP (*.step *.stp)")
@@ -192,10 +239,12 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             return
         self.current_source = source
         self._submitted_source = str(source.resolve())
+        self._submitted_binding_hash = stable_sha256(self._selected_source_options)
         self.current_job_id = self.job_manager.submit(
             "manufacturing-geometry-interpretation-v3",
             self._analyze_job,
             source,
+            deepcopy(self._selected_source_options),
             description=f"MGI V3 analyse {source.name}",
             timeout=120.0,
             max_retries=1,
@@ -210,13 +259,17 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.status_badge.setText("ANALYSEERT")
         self._timer.start()
 
-    def _analyze_job(self, context: Any, source: Path) -> Any:
+    def _analyze_job(self, context: Any, source: Path, options: dict[str, Any] | None = None) -> Any:
         report = analyze_step_isolated(
             source,
             timeout_seconds=120.0,
             cancel_check=context.is_cancelled,
+            **(options or {}),
         )
-        self._completed_report = report
+        context.check_cancelled()
+        if not context.is_current_generation():
+            raise RuntimeError("Verouderde herkenningstaak")
+        self._completed_reports[context.job_id] = report
         return report.to_dict()
 
     def _poll_job(self) -> None:
@@ -235,14 +288,17 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             record.generation != self._submitted_generation
             or not self.job_manager.is_current_generation(self.current_job_id)
             or current_source != self._submitted_source
+            or not self._binding_current()
+            or stable_sha256(self._selected_source_options) != self._submitted_binding_hash
         ):
+            self._completed_reports.pop(self.current_job_id, None)
             self._completed_report = None
             self.progress.setValue(0)
             self.progress.setFormat("Verouderd jobresultaat genegeerd")
             self.status_badge.setText("STALE")
             return
         if record.status == "completed" and record.result is not None:
-            report = self._completed_report
+            report = self._completed_reports.pop(self.current_job_id, None)
             self._completed_report = None
             if report is None:
                 self.progress.setValue(0)
@@ -251,6 +307,7 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
                 return
             self.set_report(report)
         else:
+            self._completed_reports.pop(self.current_job_id, None)
             self.progress.setValue(0)
             self.progress.setFormat(record.error or record.message or "Analyse mislukt")
             self.status_badge.setText("FAILED")
@@ -319,6 +376,35 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
                 ["Boolean kernel", proof.boolean_kernel_status],
             ],
         )
+        self._fill(self.section_table, [
+            [f"{station.position_mm:.4f}", station.measurement_status,
+             f"{station.signature.area_mm2:.5f}" if station.safe else "ONBEKEND",
+             f"{station.signature.perimeter_mm:.5f}" if station.safe else "ONBEKEND",
+             str(station.void_count) if station.safe else "ONBEKEND",
+             f"{station.moments[0]:.5f}" if station.safe else "ONBEKEND",
+             f"{station.moments[1]:.5f}" if station.safe else "ONBEKEND", station.reason]
+            for station in report.section_stations])
+        candidates = []
+        for name, encoded in report.profile.boundary_evidence:
+            proof = json.loads(encoded)
+            candidates.append([name, str(proof.get("status", "NOT_RUN")),
+                               str(proof.get("source_minus_catalogue_mm2", "ONBEKEND")),
+                               str(proof.get("catalogue_minus_source_mm2", "ONBEKEND")),
+                               str(proof.get("boundary_sample_max_mm", "ONBEKEND")),
+                               str(proof.get("catalogue_source", ""))])
+        self._fill(self.catalogue_table, candidates or [[name, "KANDIDAAT; GEEN CONTOURBEWIJS", "", "", "", ""] for name in report.profile.candidates])
+        material = report.material_evidence
+        self._fill(self.material_table, [["Bewijsstatus", material.status.value], ["Materiaal", material.material or "ONBEKEND"],
+            ["Grade", material.grade or "ONBEKEND"], ["Bron", material.source], ["Bronobject", material.source_entity_id],
+            ["Reden", material.reason], ["Bestand SHA256", report.source_sha256],
+            ["Geometriehash", report.source_geometry_hash], ["Catalogusversiehash", report.profile_database_hash],
+            *[[str(k), str(v)] for k, v in material.evidence]])
+        bodies = dict(report.body_inventory).get("bodies", [])
+        children = {x.part_id: x for x in report.component_reports}
+        self._fill(self.body_table, [[row["body_occurrence_id"], row["topology_kind"], row["status"],
+            str(row["volume_mm3"]) if row["volume_mm3"] is not None else "ONBEKEND",
+            children[row["body_occurrence_id"]].profile.designation if row["body_occurrence_id"] in children else "", "NEE; BRONBODY ≠ BESTELREGEL"]
+            for row in bodies])
         self._update_viewer_overlay(report)
         self.report_changed.emit(report)
 
@@ -326,6 +412,11 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.summary_tree.clear()
         rows = [
             ("Engine", report.engine_version),
+            ("Bronobject / occurrence", report.part_id),
+            ("Bronbestand SHA256", report.source_sha256),
+            ("Profielbesluit", report.profile.designation or report.profile.status.value),
+            ("Fabricageherkomst", "Niet bewezen door doorsnedegelijkenis"),
+            ("BOM", "Bron behouden; geen automatische decompositie"),
             ("Readiness", report.readiness.value),
             ("Analytische groepen", str(len(report.topology.analytic_groups) if report.topology else 0)),
             ("Sectiestations", str(len(report.section_stations))),
@@ -372,6 +463,13 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
     def _promote(self) -> None:
         if self.current_report is None or self.project is None or not self.current_report.hypotheses:
             QtWidgets.QMessageBox.warning(self, "Promotie geblokkeerd", "Een actief project en bewezen hypothese zijn vereist.")
+            return
+        if not self._binding_current():
+            QtWidgets.QMessageBox.warning(self, "Verouderd bewijs", "Projectonderdeel of bronrevisie gewijzigd; analyseer opnieuw.")
+            return
+        part = getattr(self.project, "parts", {}).get(self.current_report.part_id)
+        if part is None or part.geometry_descriptor.get("source_geometry_hash") != self.current_report.source_geometry_hash:
+            QtWidgets.QMessageBox.warning(self, "Bronkoppeling vereist", "Dit rapport hoort niet bij de actuele geselecteerde projectgeometrie.")
             return
         hypothesis = self.current_report.hypotheses[0]
         report_hash = stable_sha256(self.current_report)

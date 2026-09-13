@@ -41,6 +41,8 @@ class SuiteSpec:
 
 
 SUITES = (
+    SuiteSpec("tests/recognition_candidate_metrics_smoke.py", "recognition_candidate_metrics"),
+    SuiteSpec("tests/recognition_review_ui_smoke.py", "recognition_review_ui", ("PySide6.QtWidgets", "cadquery", "OCP")),
     SuiteSpec("tests/recognition_body_inventory_smoke.py", "recognition_body_inventory", ("cadquery", "OCP")),
     SuiteSpec("tests/material_resolution_smoke.py", "material_catalog"),
     SuiteSpec("tests/profile_catalog_lookup_smoke.py", "model_recognition"),
