@@ -41,6 +41,7 @@ class SuiteSpec:
 
 
 SUITES = (
+    SuiteSpec("tests/recognition_body_inventory_smoke.py", "recognition_body_inventory", ("cadquery", "OCP")),
     SuiteSpec("tests/material_resolution_smoke.py", "material_catalog"),
     SuiteSpec("tests/profile_catalog_lookup_smoke.py", "model_recognition"),
     SuiteSpec("tests/ifc_material_recognition_smoke.py", "ifc_semantics"),

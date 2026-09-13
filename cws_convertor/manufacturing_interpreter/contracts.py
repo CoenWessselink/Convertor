@@ -9,6 +9,7 @@ from typing import Any
 
 ENGINE_VERSION = "mgi-v3.3"
 ALGORITHM_VERSIONS = (
+    ("body_inventory", "source-body-occurrences-v1"),
     ("topology", "mgi-topology-v3"),
     ("axis", "mgi-axis-v3.3-full-extent-catalogue-support"),
     ("section", "mgi-section-v3.3-native-interval-proof"),
@@ -313,6 +314,8 @@ class ManufacturingInterpretationReport:
     tolerance_policy_version: str = ""
     tolerance_policy_hash: str = ""
     profile_database_hash: str = ""
+    body_inventory: tuple[tuple[str, Any], ...] = ()
+    component_reports: tuple["ManufacturingInterpretationReport", ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return _plain(self)

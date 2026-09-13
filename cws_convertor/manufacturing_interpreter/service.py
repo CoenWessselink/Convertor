@@ -83,7 +83,10 @@ class ManufacturingGeometryInterpreter:
             return report
 
         try:
-            if len(shape.Solids()) != 1 or not bool(shape.isValid()):
+            from cws_convertor.project.native_topology import native_body_occurrences
+            bodies = native_body_occurrences(shape)
+            if (len(bodies) != 1 or str(bodies[0][1].ShapeType()).upper() != "SOLID"
+                    or not bool(shape.isValid()) or float(bodies[0][1].Volume()) <= 0):
                 report = self._blocked_report(
                     request,
                     GeometryProofStatus.FAILED,
