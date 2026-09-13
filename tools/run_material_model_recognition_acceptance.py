@@ -86,6 +86,7 @@ SUITES = (
     SuiteSpec("tests/production_normalization_smoke.py", "workbench_release"),
     SuiteSpec("tests/production_normalization_safety_smoke.py", "workbench_release"),
     SuiteSpec("tests/bom_material_integration_smoke.py", "bom_material_safety"),
+    SuiteSpec("tests/bom_source_accountability_smoke.py", "bom_source_accountability"),
     SuiteSpec("tests/bom_production_hub_complete_smoke.py", "bom_production_hub"),
     SuiteSpec("tests/bom_production_hub_smoke.py", "bom_production_hub"),
     SuiteSpec("tests/viewer_shared_cache_lasso_smoke.py", "bom_viewer_integration", ("numpy",)),

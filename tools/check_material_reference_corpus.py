@@ -27,6 +27,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from cws_convertor.production_export.readiness import ReadinessGate
+from cws_convertor.bom.engine import build_bom_snapshot
 from cws_convertor.project import ProjectSession
 from cws_convertor.project.classification import _catalog_profile
 from material_database import MaterialDatabase
@@ -83,6 +84,118 @@ def runtime_dependencies() -> dict[str, Any]:
     return {"python": platform.python_version(), "platform": platform.platform(), "native_module_available": available}
 
 
+def build_source_accountability(project: Any, result: Any, source_id: str) -> dict[str, Any]:
+    """Audit source-to-canonical-to-BOM lineage using the existing BOM engine.
+
+    This creates no new project truth. The project is disposable in this audit;
+    the canonical BOM snapshot supplies grouping and balance checks while source
+    identities prove occurrence-level traceability. Raw metadata/relationship
+    entities remain in ``source_class_counts`` and are not misrepresented as
+    physical parts.
+    """
+    source = project.sources[source_id]
+    canonical = [
+        entity for entity in project.iter_entities()
+        if entity.source_identity.source_file_id == source_id
+    ]
+    snapshot = build_bom_snapshot(project, user="reference-corpus-audit", classify_if_needed=False)
+    rows = [row for row in snapshot.traceability if row.get("source_file_id") == source_id]
+    canonical_ids = [entity.internal_id for entity in canonical]
+    trace_ids = [str(row.get("internal_id") or "") for row in rows]
+    occurrence_ids = [str(row.get("occurrence_id") or "") for row in rows]
+    stable_keys = [str(row.get("source_stable_key") or "") for row in rows]
+    source_entity_ids = [str(row.get("source_entity_id") or "") for row in rows]
+    group_ids = [str(row.get("group_id") or "") for row in rows]
+    duplicate_occurrences = sorted(
+        key for key, count in Counter(value for value in occurrence_ids if value).items() if count > 1
+    )
+    duplicate_stable_keys = sorted(
+        key for key, count in Counter(value for value in stable_keys if value).items() if count > 1
+    )
+    duplicate_trace_ids = sorted(
+        key for key, count in Counter(trace_ids).items() if key and count > 1
+    )
+    occurrence_required = str(source.source_format or "").upper() in {"IFC", "STEP", "STP"}
+    missing_occurrences = sorted(
+        row["internal_id"] for row in rows if occurrence_required and not row.get("occurrence_id")
+    )
+    missing_source_entities = sorted(
+        row["internal_id"] for row in rows if not row.get("source_entity_id")
+    )
+    missing_groups = sorted(row["internal_id"] for row in rows if not row.get("group_id"))
+    known_assemblies = set(project.assemblies)
+    invalid_parent_links = sorted({
+        f"{row['internal_id']}->{parent_id}"
+        for row in rows for parent_id in row.get("parent_assembly_ids", ())
+        if parent_id not in known_assemblies or parent_id == row["internal_id"]
+    })
+    assembly_quantitative = sorted(
+        row["internal_id"] for row in rows
+        if row.get("entity_type") == "assembly" and row.get("quantitative_bom_node")
+    )
+    nonassembly_nonquantitative = sorted(
+        row["internal_id"] for row in rows
+        if row.get("entity_type") != "assembly" and not row.get("quantitative_bom_node")
+    )
+    expected = int((result.entity_counts or {}).get("total_materialised", len(canonical)) or 0)
+    importer_preservation = result.evidence.get("all_current_products_preserved")
+    checks = {
+        "materialised_count_matches_import_result": len(canonical) == expected,
+        "bom_traceability_count_matches_canonical": len(rows) == len(canonical),
+        "canonical_entity_coverage": sorted(trace_ids) == sorted(canonical_ids),
+        "traceability_internal_ids_unique": not duplicate_trace_ids,
+        "source_entity_identity_complete": not missing_source_entities,
+        "occurrence_identity_complete_when_required": not missing_occurrences,
+        "occurrence_identity_unique_when_required": (not occurrence_required) or not duplicate_occurrences,
+        "source_stable_keys_unique": not duplicate_stable_keys,
+        "bom_group_destination_complete": not missing_groups,
+        "parent_assembly_links_valid": not invalid_parent_links,
+        "assemblies_are_group_only_not_quantitative_children": not assembly_quantitative,
+        "nonassembly_nodes_have_explicit_quantity_role": not nonassembly_nonquantitative,
+        "canonical_bom_balance_checks_pass": bool(snapshot.validation.passed),
+    }
+    if importer_preservation is not None:
+        checks["importer_reports_all_source_products_preserved"] = bool(importer_preservation)
+    destination_counts = counts(
+        f"{row.get('entity_type')}->{row.get('quantity_role')}" for row in rows
+    )
+    return {
+        "scope": (
+            "Semantic importer physical/logical product scope. Raw schema metadata and relationship "
+            "entities are reported separately in source_class_counts and are not counted as physical BOM nodes."
+        ),
+        "source_id": source_id,
+        "source_format": source.source_format,
+        "source_sha256": source.sha256,
+        "expected_materialised_count": expected,
+        "canonical_entity_count": len(canonical),
+        "bom_traceability_count": len(rows),
+        "quantitative_bom_node_count": sum(bool(row.get("quantitative_bom_node")) for row in rows),
+        "group_only_assembly_count": sum(
+            row.get("quantity_role") == "group_only_assembly" for row in rows
+        ),
+        "destination_counts": destination_counts,
+        "checks": checks,
+        "passed": all(checks.values()),
+        "missing_canonical_entity_ids": sorted(set(canonical_ids) - set(trace_ids)),
+        "unexpected_trace_entity_ids": sorted(set(trace_ids) - set(canonical_ids)),
+        "duplicate_trace_internal_ids": duplicate_trace_ids,
+        "missing_source_entity_ids": missing_source_entities,
+        "missing_occurrence_ids": missing_occurrences,
+        "duplicate_occurrence_ids": duplicate_occurrences,
+        "duplicate_source_stable_keys": duplicate_stable_keys,
+        "missing_bom_group_ids": missing_groups,
+        "invalid_parent_assembly_links": invalid_parent_links,
+        "bom_validation": {
+            "passed": snapshot.validation.passed,
+            "production_ready": snapshot.validation.production_ready,
+            "checks": dict(snapshot.validation.checks),
+            "messages": list(snapshot.validation.messages),
+        },
+        "destinations": rows,
+    }
+
+
 def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
     """Register and import a source in its own new, disposable project."""
     start = time.perf_counter()
@@ -116,6 +229,7 @@ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
             message.code for assessment in assessments
             for message in assessment.messages_for("nc1") if message.severity == "error"
         )
+        accountability = build_source_accountability(session.project, result, registration.source.source_id)
         payload = {
             "file_name": path.name,
             "origin": origin,
@@ -171,6 +285,7 @@ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
             },
             "semantic_import_production_export_allowed": result.production_export_allowed,
             "project_production_export_allowed": session.project.production_gate()["allowed"],
+            "source_object_accountability": accountability,
             "warnings": result.warnings,
             "seconds": {
                 "registration": round(registered - start, 3),
@@ -189,6 +304,7 @@ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
         payload["source_unchanged"]
         and classification_handled == len(parts)
         and unresolved_blocked == len(unresolved_indexes)
+        and bool(payload["source_object_accountability"]["passed"])
     )
     return payload
 
