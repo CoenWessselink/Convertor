@@ -66,12 +66,14 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         if not policy_hash:
             policy_hash = stable_sha256(self.tolerance_policy)
         database_revision = self._profile_database_revision()
-        if database_revision != self._database_revision:
+        # Definitions are mutable: equal length/mtime does not prove equal
+        # catalogue contents. Scope-safe warm results require semantic identity.
+        database_hash = _database_hash(self.profile_database)
+        if database_revision != self._database_revision or database_hash != self._database_hash:
             self._database_revision = database_revision
-            self._database_hash = _database_hash(self.profile_database)
+            self._database_hash = database_hash
             self._final_cache.clear()
             self._cache.clear()
-        database_hash = self._database_hash
         material_evidence = material_evidence_from_request(request)
         cache_key = RecognitionCacheV3.key(
             source_sha256=str(getattr(inspection, "source_sha256", "")),
