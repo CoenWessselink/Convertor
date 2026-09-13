@@ -38,6 +38,10 @@ _TRUSTED_SOURCE_METHODS = {
     "lossless_converter_payload_and_profile_database",
     "embedded_nc1_payload",
     "step_source_metadata",
+    # DXF plate intake only emits this method after binding the labelled
+    # paper-space material table to the physical model contour/part. It is
+    # explicit source metadata, not a filename/colour/project default.
+    "dxf_planar_table_verified",
 }
 
 _GEOMETRY_ONLY_TOKENS = {
