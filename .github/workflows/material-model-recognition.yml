@@ -2,6 +2,12 @@ name: Material and model recognition acceptance
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_ref:
+        description: Exact committed source to check out and test
+        required: true
+        type: string
   pull_request:
     paths:
       - 'cws_convertor/**'
@@ -52,7 +58,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: material-model-recognition-${{ github.ref }}
+  group: material-model-recognition-${{ inputs.source_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -64,6 +70,7 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
       QT_QPA_PLATFORM: offscreen
       CWS_HEADLESS_GUI_SMOKE: '1'
+      CWS_RECOGNITION_EVIDENCE_DIR: ${{ github.workspace }}/build/material_model_recognition/recognition-screenshots
     steps:
       - name: Enable Windows long paths before checkout
         shell: pwsh
@@ -72,6 +79,16 @@ jobs:
         id: checkout
         with:
           fetch-depth: 2
+          ref: ${{ inputs.source_ref || github.sha }}
+      - name: Verify exact checked-out source
+        id: identity
+        shell: pwsh
+        env:
+          EXPECTED_SHA: ${{ inputs.source_ref || github.sha }}
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actual -ne $env:EXPECTED_SHA) { throw "Source identity mismatch" }
+          "source_sha=$actual" >> $env:GITHUB_OUTPUT
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -109,7 +126,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: CWS_Material_Model_Recognition_${{ github.sha }}_Windows_x64
+          name: CWS_Material_Model_Recognition_${{ steps.identity.outputs.source_sha || github.sha }}_Windows_x64
           path: build/material_model_recognition/**
           if-no-files-found: error
           retention-days: 30

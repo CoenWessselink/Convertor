@@ -44,6 +44,8 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.current_job_id = ""
         self._submitted_source = ""
         self._submitted_generation = 0
+        self._submitted_project = None
+        self._submitted_project_hash = ""
         self._build_ui()
         self._timer = QtCore.QTimer(self)
         self._timer.setInterval(100)
@@ -112,7 +114,8 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
 
         self.tabs = QtWidgets.QTabWidget()
         self.foundation_table = self._table(["Evidence", "Waarde"])
-        self.feature_table = self._table(["Feature", "Geometrie", "Semantiek", "Confidence", "Proof"])
+        self.feature_table = self._table(["Feature", "Geometrie", "Semantiek", "Matchscore", "Proof"])
+        self.feature_table.setToolTip("Matchscore is een algoritmische score, geen gekalibreerde statistische kans.")
         self.feature_table.setProperty("ui_test_id", "mgi.features.table")
         self.feature_table.itemSelectionChanged.connect(self._feature_selected)
         self.hypothesis_table = self._table(["Hypothese", "Features", "Unknown", "Proof", "Score"])
@@ -123,6 +126,19 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.tabs.addTab(self.hypothesis_table, "Hypotheses")
         self.tabs.addTab(self.output_table, "Representability")
         self.tabs.addTab(self.proof_table, "Residual proof")
+        self.body_table = self._table(["Bronbody", "Type", "Geometriestatus", "Volume mm³", "Profiel / review"])
+        self.body_table.setProperty("ui_test_id", "mgi.bodies.table")
+        self.body_table.setToolTip("Bronbodies zijn geometrie, geen bewezen maakdelen of bestelaantallen.")
+        self.interface_table = self._table(["Body A", "Body B", "Relatie", "Afstand mm", "Overlap mm³"])
+        self.interface_table.setProperty("ui_test_id", "mgi.interfaces.table")
+        self.section_table = self._table(["Positie mm", "Meting", "Oppervlakte mm²", "Contouren", "Holtes", "Ixx mm⁴", "Iyy mm⁴"])
+        self.section_table.setProperty("ui_test_id", "mgi.sections.table")
+        self.material_table = self._table(["Eigenschap / bewijs", "Waarde"])
+        self.material_table.setProperty("ui_test_id", "mgi.material.table")
+        self.tabs.addTab(self.body_table, "Bronbodies")
+        self.tabs.addTab(self.interface_table, "Contact / overlap")
+        self.tabs.addTab(self.section_table, "Doorsneden")
+        self.tabs.addTab(self.material_table, "Materiaalbewijs")
         splitter.addWidget(self.tabs)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
@@ -192,6 +208,13 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             return
         self.current_source = source
         self._submitted_source = str(source.resolve())
+        self._submitted_project = self.project
+        self._submitted_project_hash = self._project_fingerprint()
+        self.current_report = None
+        self._completed_report = None
+        # A displayed old report must never remain actionable during new work.
+        self.save_button.setEnabled(False)
+        self.promote_button.setEnabled(False)
         self.current_job_id = self.job_manager.submit(
             "manufacturing-geometry-interpretation-v3",
             self._analyze_job,
@@ -219,6 +242,10 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self._completed_report = report
         return report.to_dict()
 
+    def _project_fingerprint(self) -> str:
+        fingerprint = getattr(self.project, "semantic_sha256", None)
+        return str(fingerprint()) if callable(fingerprint) else ""
+
     def _poll_job(self) -> None:
         if not self.current_job_id:
             return
@@ -235,6 +262,8 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             record.generation != self._submitted_generation
             or not self.job_manager.is_current_generation(self.current_job_id)
             or current_source != self._submitted_source
+            or self.project is not self._submitted_project
+            or self._project_fingerprint() != self._submitted_project_hash
         ):
             self._completed_report = None
             self.progress.setValue(0)
@@ -248,6 +277,15 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
                 self.progress.setValue(0)
                 self.progress.setFormat("Jobresultaat bevat geen bindbaar V3-rapport")
                 self.status_badge.setText("FAILED")
+                return
+            from cws_convertor.manufacturing_interpreter.cli import _sha256
+            try:
+                source_current = _sha256(Path(current_source)) == report.source_sha256
+            except OSError:
+                source_current = False
+            if not source_current:
+                self.progress.setFormat("Bron gewijzigd na analyse; rapport niet gepubliceerd")
+                self.status_badge.setText("STALE")
                 return
             self.set_report(report)
         else:
@@ -265,6 +303,8 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
         self.current_job_id = self.job_manager.retry(self.current_job_id)
         record = self.job_manager.get(self.current_job_id)
         self._submitted_generation = record.generation
+        self._submitted_project = self.project
+        self._submitted_project_hash = self._project_fingerprint()
         self._completed_report = None
         self.retry_button.setEnabled(False)
         self.cancel_button.setEnabled(True)
@@ -319,8 +359,46 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
                 ["Boolean kernel", proof.boolean_kernel_status],
             ],
         )
+        self._populate_recognition_evidence(report)
         self._update_viewer_overlay(report)
         self.report_changed.emit(report)
+
+    @staticmethod
+    def _measured_text(value: Any) -> str:
+        return "onbekend / niet bewezen" if value is None else f"{float(value):.6f}"
+
+    def _populate_recognition_evidence(self, report: Any) -> None:
+        inventory = getattr(report, "body_inventory", None)
+        children = {child.part_id: child for child in getattr(report, "body_reports", ())}
+        body_rows = []
+        for body in (inventory.bodies if inventory is not None else ()):
+            child = children.get(body.body_id)
+            if child is not None:
+                label = child.profile.designation or child.profile.reason
+            elif inventory.body_count == 1:
+                label = report.profile.designation or report.profile.reason
+            else:
+                label = body.error or "Geen profielbewijs"
+            body_rows.append([body.body_id, body.kind, body.status,
+                              self._measured_text(body.volume_mm3), label])
+        self._fill(self.body_table, body_rows)
+        self._fill(self.interface_table, [
+            [pair.left_body_id, pair.right_body_id, pair.relation,
+             self._measured_text(pair.distance_mm), self._measured_text(pair.overlap_volume_mm3)]
+            for pair in (inventory.interfaces if inventory is not None else ())])
+        self._fill(self.section_table, [
+            [f"{station.position_mm:.6f}", getattr(station, "measurement_status", "NOT_RUN"),
+             self._measured_text(station.signature.area_mm2) if station.safe else "niet gemeten",
+             str(station.loop_count), str(station.void_count),
+             self._measured_text(station.moments[0]) if station.safe else "niet gemeten",
+             self._measured_text(station.moments[1]) if station.safe else "niet gemeten"]
+            for station in report.section_stations])
+        material = report.material_evidence
+        self._fill(self.material_table, [
+            ["Bewijsstatus", material.status.value], ["Materiaal", material.material or "onbekend"],
+            ["Grade", material.grade or "onbekend"], ["Bron", material.source or "ontbreekt"],
+            ["Bronentiteit", material.source_entity_id or "ontbreekt"], ["Reden", material.reason],
+            *[[key, value] for key, value in material.evidence]])
 
     def _populate_summary(self, report: Any) -> None:
         self.summary_tree.clear()
@@ -333,6 +411,9 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             ("Features", str(len(report.features))),
             ("Hypotheses", str(len(report.hypotheses))),
             ("Blockers", str(len(report.blockers))),
+            ("Bronbodies", str(report.body_inventory.body_count) if getattr(report, "body_inventory", None) else "niet geïnventariseerd"),
+            ("Fysieke maakdelen uit vorm", "niet bewezen; bronstructuur of bevestiging vereist"),
+            ("Fabricageherkomst", "niet uit geometrie afgeleid"),
         ]
         for key, value in rows:
             self.summary_tree.addTopLevelItem(QtWidgets.QTreeWidgetItem([key, value]))
