@@ -1,0 +1,46 @@
+name: Transport verified recognition source commits
+on:
+  push:
+    branches: [agent/cws-recognition-transport-20260913]
+permissions:
+  contents: write
+jobs:
+  publish-exact-objects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify bounded source bundle and publish only the isolated candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p transport-proof
+          python - <<'PY'
+          import hashlib, pathlib
+          chunks = sorted(pathlib.Path('.github/recognition-transport').glob('chunk-*.bin'))
+          assert len(chunks) == 25, 'Incomplete source transport'
+          payload = b''.join(p.read_bytes() for p in chunks)
+          assert len(payload) == 37237, 'Transport length mismatch'
+          assert hashlib.sha256(payload).hexdigest() == '8a5d05e5a7fab73db00a58f2b8449f7c20dbabe743d4590870f6f29188bdb408', 'Transport hash mismatch'
+          pathlib.Path('transport-proof/recognition-code.bundle').write_bytes(payload)
+          PY
+          git bundle verify transport-proof/recognition-code.bundle
+          git fetch transport-proof/recognition-code.bundle HEAD:refs/heads/recognition-candidate
+          test "$(git rev-parse recognition-candidate)" = '761a2897e0a9b9c13aee5e44a4fcf3d740d430a5'
+          git merge-base --is-ancestor fd429fcdc0de21f7108232ebff24dae960125f49 recognition-candidate
+          git diff --name-only fd429fcdc0de21f7108232ebff24dae960125f49 recognition-candidate > transport-proof/CHANGED_FILES.txt
+          git log --format='%H %P %s' fd429fcdc0de21f7108232ebff24dae960125f49..recognition-candidate > transport-proof/COMMITS.txt
+          test "$(wc -l < transport-proof/CHANGED_FILES.txt)" = 26
+          test "$(wc -l < transport-proof/COMMITS.txt)" = 9
+          test -z "$(git diff --name-only fd429fcdc0de21f7108232ebff24dae960125f49 recognition-candidate -- viewer_bridge.py viewer_qt.py viewer_runtime_config.py cws_viewer)"
+          git push origin refs/heads/recognition-candidate:refs/heads/agent/cws-recognition-objects-20260913
+          printf '%s\n' 'Source transfer only. NOT Windows acceptance or release approval.' > transport-proof/SCOPE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Recognition_Source_Transport_761a2897
+          path: transport-proof/
+          if-no-files-found: error
+          retention-days: 30
