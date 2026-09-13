@@ -1,5 +1,5 @@
 name: Build adaptive Viewer installer now
-# exact rebuild trigger for adaptive close-up Viewer
+# exact rebuild trigger v2 after evidence-runtime closeup fix
 on:
   push:
     branches: [agent/cws-pdf-ui-v3-complete-20260909]
