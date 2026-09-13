@@ -25,6 +25,8 @@ def _step_inspection(path: Path) -> SourceGeometryInspection:
     imported = cq.importers.importStep(str(path))
     if len(imported.vals()) != 1:
         raise ValueError("STEP bevat meerdere top-level shapes; exacte onderdeelisolatie vereist")
+    if _sha256(path) != source_sha:
+        raise ValueError("STEP-bron gewijzigd tijdens native import; resultaat is niet verifieerbaar")
     shape = imported.val()
     if len(shape.Solids()) != 1:
         raise ValueError("STEP bevat niet exact één solid; exacte onderdeelisolatie vereist")

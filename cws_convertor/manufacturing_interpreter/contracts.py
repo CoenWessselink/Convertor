@@ -16,6 +16,7 @@ ALGORITHM_VERSIONS = (
     ("feature", "mgi-feature-v3.1"),
     ("solver", "mgi-solver-v3.2"),
     ("proof", "mgi-proof-v3.2"),
+    ("material", "mgi-material-v3.3-scoped-fusion"),
 )
 
 

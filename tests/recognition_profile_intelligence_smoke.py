@@ -78,4 +78,32 @@ class ProfileIntelligenceTests(unittest.TestCase):
             self.assertNotEqual(first.profile_database_hash,second.profile_database_hash)
             self.assertNotEqual(second.profile.status.value,'PROVEN_WITHIN_POLICY')
 
+class SourceRevisionTests(unittest.TestCase):
+    def test_source_changed_during_native_read_is_not_verified(self):
+        from unittest.mock import patch
+        from cws_convertor.manufacturing_interpreter.cli import _step_inspection
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'source.step'
+            cq.exporters.export(independent_i(),str(path))
+            original=cq.importers.importStep
+            def changed_during_read(*args,**kwargs):
+                result=original(*args,**kwargs)
+                path.write_bytes(path.read_bytes()+b'\n')
+                return result
+            with patch.object(cq.importers,'importStep',side_effect=changed_during_read):
+                with self.assertRaisesRegex(ValueError,'gewijzigd'):
+                    _step_inspection(path)
+
+    def test_same_geometry_retains_separate_occurrence_reports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            service=ManufacturingGeometryInterpreter(profile_database=SimpleNamespace(profiles=[definition()]),cache_root=directory)
+            shape=independent_i()
+            first=inspection(shape,'occurrence-A');second=inspection(shape,'occurrence-B')
+            first.source_geometry_hash=second.source_geometry_hash='shared-native-resource'
+            first.source_sha256=second.source_sha256='same-source-file'
+            reports=[service.analyze(ManufacturingInterpretationRequest(inspection=i)) for i in (first,second)]
+            self.assertEqual(['occurrence-A','occurrence-B'],[v.part_id for v in reports])
+            self.assertNotEqual(reports[0].interpretation_id,reports[1].interpretation_id)
+            self.assertTrue(all('MATERIAL_EVIDENCE_UNRESOLVED' in v.blockers for v in reports))
+
 if __name__=='__main__': unittest.main(verbosity=2)

@@ -186,31 +186,56 @@ def normalise_material_evidence(
 
 
 def material_evidence_from_request(request: Any) -> MaterialEvidence:
+    """Resolve scoped evidence without a blind explicit/inspection priority."""
+    from dataclasses import replace
+    import json
     inspection = getattr(request, "inspection", None)
 
     def bound(value: Any) -> MaterialEvidence:
         result = normalise_material_evidence(value)
         proof = dict(result.evidence)
-        for name in ("source_file_id", "source_sha256"):
+        for name in ("source_file_id", "source_sha256", "part_id", "source_geometry_hash"):
             expected = _text(getattr(inspection, name, ""))
             reported = _text(proof.get(name))
             if reported and reported != expected:
-                return normalise_material_evidence({"status": "CONFLICT", "material": result.material,
-                    "grade": result.grade, "reason": "Materiaalbewijs hoort bij een andere of verouderde bron."})
+                return replace(result, status=MaterialEvidenceStatus.CONFLICT, confidence=0.0,
+                    reason=f"Materiaalbewijs heeft een afwijkende of verouderde scope: {name}")
         return result
 
     explicit = getattr(request, "material_evidence", None)
+    values = []
     if explicit is not None:
-        return bound(explicit)
+        values.append(("request", bound(explicit)))
     inspection_value = getattr(inspection, "material_evidence", None)
     if inspection_value is not None:
-        return bound(inspection_value)
+        values.append(("inspection", bound(inspection_value)))
     evidence = getattr(inspection, "evidence", None)
     if isinstance(evidence, Mapping):
-        nested = evidence.get("material_evidence") or evidence.get("material_recognition")
-        if isinstance(nested, Mapping):
-            return bound(nested)
-    return MaterialEvidence()
+        for field in ("material_evidence", "material_recognition"):
+            nested = evidence.get(field)
+            if isinstance(nested, (Mapping, MaterialEvidence)):
+                values.append((field, bound(nested)))
+    if not values:
+        return MaterialEvidence()
+    records = tuple(("material_source:" + location, json.dumps({
+        "status": value.status.value, "material": value.material, "grade": value.grade,
+        "confidence": value.confidence, "source": value.source,
+        "source_path": value.source_path, "source_entity_id": value.source_entity_id,
+        "reason": value.reason, "evidence": list(value.evidence),
+    }, sort_keys=True, ensure_ascii=False)) for location, value in values)
+    confirmed = [value for _, value in values if value.confirmed]
+    keys = {_material_key(value.grade or value.material) for value in confirmed}
+    conflict = any(value.status == MaterialEvidenceStatus.CONFLICT for _, value in values)
+    if conflict or len(keys) > 1:
+        return MaterialEvidence(status=MaterialEvidenceStatus.CONFLICT,
+            reason="Materiaalbronnen of hun object-/revisiescope spreken elkaar tegen; expliciete beoordeling vereist.",
+            evidence=records)
+    # Preserve an explicit unresolved/rejected decision. Identical evidence may
+    # corroborate the value, but never increases confidence or independence.
+    selected = values[0][1] if explicit is not None else next(iter(confirmed), values[0][1])
+    if len(values) == 1:
+        return selected
+    return replace(selected, evidence=tuple(sorted(set((*selected.evidence, *records)))))
 
 
 def _provenance_mapping(value: Any) -> Mapping[str, Any]:
