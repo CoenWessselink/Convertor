@@ -79,6 +79,12 @@ class IFCSemanticImportTests(unittest.TestCase):
             part = next(iter(session.project.parts.values()))
             fastener = next(iter(session.project.fasteners.values()))
             weld = next(iter(session.project.welds.values()))
+            materialised = (assembly, part, fastener, weld)
+            occurrence_ids = [item.source_identity.occurrence_id for item in materialised]
+            self.assertTrue(all(occurrence_ids))
+            self.assertEqual(len(set(occurrence_ids)), len(occurrence_ids))
+            self.assertEqual(part.source_identity.occurrence_id, "PART")
+
             self.assertEqual(assembly.assembly_mark, "MLO4")
             self.assertEqual(part.part_position, "LO4")
             self.assertEqual(part.profile, "STRIP5*120")
