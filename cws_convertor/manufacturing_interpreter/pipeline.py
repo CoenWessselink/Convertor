@@ -148,6 +148,8 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
 
         proof = base.equivalence
         blockers = list(base.blockers)
+        if not stations or any(not station.safe for station in stations):
+            blockers.append("SECTION_MEASUREMENT_INCOMPLETE")
         if residual is not None:
             proof = replace(
                 proof,
@@ -172,6 +174,10 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             ("recognition_cache_key", cache_key),
             ("analytic_face_groups", str(len(topology.analytic_groups))),
             ("section_station_count", str(len(stations))),
+            ("section_measurement_method", "native-plane-intersection-on-analysis-copy"),
+            ("section_measured_count", str(sum(station.safe for station in stations))),
+            ("section_moments_unit", "mm4"),
+            ("extrusion_interval_proof", "independent-two-way-native-BREP"),
             ("section_interval_count", str(len(intervals))),
             ("extrusion_region_count", str(len(regions))),
             ("profile_candidates", str(len(candidates))),

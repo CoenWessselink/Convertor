@@ -151,53 +151,121 @@ def _event_positions(shape: Any, frame: ManufacturingFrame) -> list[float]:
         positions.extend(_projection(_vector(vertex.Center()), frame) for vertex in shape.Vertices())
     except Exception:
         pass
+    # Circular boundary extrema are not necessarily topological vertices.
+    # Include their axial centre/extents so a narrow transverse drilling is
+    # sampled even when all original prism vertices are at the two ends.
+    try:
+        for edge in shape.Edges():
+            if str(edge.geomType()).upper() != "CIRCLE":
+                continue
+            circle = edge._geomAdaptor().Circle()
+            center = tuple(circle.Location().Coord())
+            normal = tuple(circle.Axis().Direction().Coord())
+            center_z = _projection(center, frame)
+            extent = abs(float(circle.Radius())) * math.sqrt(
+                max(0.0, 1.0 - _dot(normal, frame.z_axis) ** 2)
+            )
+            positions.extend((center_z - extent, center_z, center_z + extent))
+    except Exception:
+        # Slice/interval proofs remain mandatory; a missing sampling hint can
+        # never turn an unmeasured interval into a proven extrusion.
+        pass
     if not positions:
-        return [0.0, 1.0]
+        return []
     return sorted(set(round(value, 6) for value in positions))
 
 
 def _station_positions(shape: Any, frame: ManufacturingFrame, linear_mm: float) -> tuple[float, ...]:
     events = _event_positions(shape, frame)
+    if not events:
+        return ()
     lower, upper = events[0], events[-1]
     if upper - lower <= linear_mm:
         return ((lower + upper) * 0.5,)
-    epsilon = max(linear_mm * 2.0, (upper - lower) * 1e-5)
-    candidates = [lower + epsilon, upper - epsilon, (lower + upper) * 0.5]
+    epsilon = min((upper - lower) / 8.0, max(linear_mm * 2.0, (upper - lower) * 1e-5))
+    candidates = [lower + epsilon, upper - epsilon,
+                  *(lower + (upper - lower) * fraction for fraction in (0.25, 0.5, 0.75))]
     for left, right in zip(events, events[1:]):
         if right - left > epsilon * 2.0:
-            candidates.append((left + right) * 0.5)
+            candidates.extend(((left + right) * 0.5, left + epsilon, right - epsilon))
     candidates = sorted(set(round(min(max(item, lower + epsilon), upper - epsilon), 6) for item in candidates))
-    if len(candidates) > 33:
-        step = (len(candidates) - 1) / 32.0
-        candidates = [candidates[round(index * step)] for index in range(33)]
+    if len(candidates) > 129:
+        # Bounded sampling is not completeness: every returned invariant
+        # interval must also pass a two-way native BREP reconstruction proof.
+        step = (len(candidates) - 1) / 128.0
+        candidates = [candidates[round(index * step)] for index in range(129)]
     return tuple(candidates)
 
 
-def _station_signature(
-    base: CrossSectionSignature,
-    position_mm: float,
-    index: int,
-) -> SectionStation:
-    contour_payload = (
-        round(base.area_mm2, 6),
-        round(base.perimeter_mm, 6),
-        round(base.width_mm, 6),
-        round(base.height_mm, 6),
-        base.outer_edge_count,
-        base.inner_wire_count,
-        tuple(base.edge_type_counts),
+def _measure_station(shape: Any, position_mm: float, linear_mm: float) -> tuple[SectionStation, Any]:
+    """Intersect an analysis copy, never relabel the reference end section."""
+    import cadquery as cq
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+    from types import SimpleNamespace
+    from .topology import analyze_topology, section_signature
+
+    plane = cq.Face.makePlane(basePnt=(0.0, 0.0, position_mm), dir=(0.0, 0.0, 1.0))
+    cut = shape.intersect(plane)
+    faces = tuple(cut.Faces())
+    if not faces or not cut.isValid():
+        raise ValueError("Geen geldige gesloten materiaaldwarsdoorsnede op deze positie")
+    # Translate along the analysis axis only. A transverse offset must remain
+    # visible: equal area and bounds do not prove identical swept geometry.
+    flat = cut.translate((0.0, 0.0, -position_mm))
+    topology, _ = analyze_topology(flat, SimpleNamespace(linear_mm=linear_mm))
+    axis = AxisCandidate("section-normal", (0, 0, 1), (0, 0, 0), (0, 0, 1),
+                         1.0, "measured_plane", 1.0)
+    signature = section_signature(tuple(flat.Faces()), axis, topology)
+    props = GProp_GProps()
+    BRepGProp.SurfaceProperties_s(flat.wrapped, props)
+    center = props.CentreOfMass()
+    inertia = props.MatrixOfInertia()
+    # Area moments about the measured centroid in the fixed local basis, mm^4.
+    moments = (float(inertia.Value(1, 1)), float(inertia.Value(2, 2)),
+               -float(inertia.Value(1, 2)))
+    if not all(math.isfinite(v) for v in (*moments, signature.area_mm2)) or signature.area_mm2 <= 0:
+        raise ValueError("Doorsnedemeting heeft niet-eindige of niet-positieve waarden")
+    def q(value: float) -> int:
+        return round(float(value) / linear_mm)
+    edges = []
+    for edge in flat.Edges():
+        start = tuple(q(v) for v in edge.startPoint().toTuple())
+        end = tuple(q(v) for v in edge.endPoint().toTuple())
+        edges.append((str(edge.geomType()), tuple(sorted((start, end))),
+                      tuple(q(v) for v in edge.Center().toTuple()), q(edge.Length())))
+    contour = _stable_id("measured-contour", sorted(edges))
+    station = SectionStation(
+        station_id=_stable_id("station", (round(position_mm, 6), contour)),
+        position_mm=position_mm, safe=True, signature=signature,
+        contour_signature=contour,
+        loop_count=sum(1 + len(face.innerWires()) for face in faces),
+        void_count=sum(len(face.innerWires()) for face in faces),
+        centroid_2d_mm=(float(center.X()), float(center.Y())), moments=moments,
+        measurement_status="MEASURED_NATIVE_BREP", moments_unit="mm4",
     )
-    contour_signature = _stable_id("contour", contour_payload)
-    return SectionStation(
-        station_id=_stable_id("station", (round(position_mm, 6), contour_signature)),
-        position_mm=position_mm,
-        safe=True,
-        signature=replace(base, section_id=_stable_id("section", (contour_payload, index))),
-        contour_signature=contour_signature,
-        loop_count=max(1, 1 + base.inner_wire_count),
-        void_count=base.inner_wire_count,
-        moments=(base.width_mm**2 / 12.0, base.height_mm**2 / 12.0, 0.0),
-    )
+    return station, cut
+
+
+def _interval_proof(shape: Any, left_cut: Any, start: float, end: float,
+                    linear_mm: float, area_relative: float) -> Any:
+    """Prove the volume *between* slices, including features between samples."""
+    import cadquery as cq
+    from types import SimpleNamespace
+    from .reconstruction import prove_equivalence
+
+    box = shape.BoundingBox()
+    margin = max(linear_mm * 4.0, 1.0)
+    # The box is only an intersection tool, never substituted for source data.
+    slab = cq.Solid.makeBox(box.xlen + margin * 2, box.ylen + margin * 2,
+                           end - start, cq.Vector(box.xmin - margin, box.ymin - margin, start))
+    source = shape.intersect(slab)
+    solids = [cq.Solid.extrudeLinear(face.outerWire(), list(face.innerWires()),
+                                    cq.Vector(0, 0, end - start)) for face in left_cut.Faces()]
+    rebuilt = solids[0]
+    for solid in solids[1:]:
+        rebuilt = rebuilt.fuse(solid)
+    return prove_equivalence(source, rebuilt, SimpleNamespace(linear_mm=linear_mm, relative=area_relative))
 
 
 def build_sections_and_regions(
@@ -209,62 +277,76 @@ def build_sections_and_regions(
     area_relative: float,
     topology: SourceTopologyEvidence,
 ) -> tuple[tuple[SectionStation, ...], tuple[SectionInterval, ...], tuple[ExtrusionRegionCandidate, ...]]:
-    stations = tuple(
-        _station_signature(base_section, position, index)
-        for index, position in enumerate(_station_positions(shape, frame, linear_mm))
-    )
+    """Measured stations plus independently validated constant-section regions.
+
+    Finite sampling alone never proves an invariant interval. Original native
+    geometry is untouched; all transforms and Boolean tests use an analysis copy.
+    Failed sections are explicit and cannot inherit a valid reference signature.
+    """
+    from .contracts import GeometryProofStatus
+    if not math.isfinite(linear_mm) or linear_mm <= 0 or not math.isfinite(area_relative) or area_relative <= 0:
+        raise ValueError("Ongeldig doorsnedetolerantiebeleid")
+    if shape is None:
+        return (), (), ()
+    import cadquery as cq
+    local = shape.copy().transformShape(cq.Plane(origin=frame.origin_mm,
+                                               xDir=frame.x_axis, normal=frame.z_axis).fG)
+    local_frame = ManufacturingFrame("analysis-local", (0, 0, 0), (1, 0, 0),
+                                     (0, 1, 0), (0, 0, 1))
+    positions = _station_positions(local, local_frame, linear_mm)
+    stations: list[SectionStation] = []
+    cuts: dict[str, Any] = {}
+    for position in positions:
+        try:
+            station, cut = _measure_station(local, position, linear_mm)
+            cuts[station.station_id] = cut
+        except Exception as exc:
+            empty = CrossSectionSignature(_stable_id("unmeasured", position), "", 0, 0, 0, 0,
+                                          0, 0, (), "UNKNOWN")
+            station = SectionStation(_stable_id("failed-station", position), position, False,
+                                     empty, "", 0, 0, measurement_status="FAILED",
+                                     measurement_error=f"{type(exc).__name__}: {exc}")
+        stations.append(station)
     intervals: list[SectionInterval] = []
     regions: list[ExtrusionRegionCandidate] = []
+    source_length = max(float(local.BoundingBox().zlen), linear_mm)
     supporting_faces = tuple(face.face_id for face in topology.faces)
-    for index, (left, right) in enumerate(zip(stations, stations[1:])):
+    for left, right in zip(stations, stations[1:]):
+        measured = left.safe and right.safe
         denominator = max(abs(left.signature.area_mm2), abs(right.signature.area_mm2), 1.0)
         area_change = abs(left.signature.area_mm2 - right.signature.area_mm2) / denominator
-        same_contour = left.contour_signature == right.contour_signature
-        invariant = same_contour and area_change <= area_relative
+        same_contour = measured and left.contour_signature == right.contour_signature
+        proof = None
+        reason = "SECTION_CHANGE" if measured else "SECTION_MEASUREMENT_FAILED"
+        if same_contour and area_change <= area_relative:
+            try:
+                proof = _interval_proof(local, cuts[left.station_id], left.position_mm,
+                                        right.position_mm, linear_mm, area_relative)
+                reason = "INTERVAL_RESIDUAL_NOT_PROVEN"
+            except Exception:
+                reason = "INTERVAL_PROOF_FAILED"
+        invariant = bool(proof is not None and proof.two_way and proof.independent_reconstruction
+                         and proof.status in {GeometryProofStatus.PROVEN_BREP_EQUIVALENT,
+                                              GeometryProofStatus.PROVEN_WITHIN_POLICY})
         interval = SectionInterval(
             interval_id=_stable_id("interval", (left.station_id, right.station_id)),
-            start_mm=left.position_mm,
-            end_mm=right.position_mm,
+            start_mm=left.position_mm, end_mm=right.position_mm,
             station_ids=(left.station_id, right.station_id),
-            classification="INVARIANT_EXTRUSION" if invariant else "SECTION_CHANGE",
-            invariant=invariant,
-            change_score=area_change,
+            classification="INVARIANT_EXTRUSION" if invariant else reason,
+            invariant=invariant, change_score=area_change,
         )
         intervals.append(interval)
         if invariant:
-            length = max(0.0, right.position_mm - left.position_mm)
-            regions.append(
-                ExtrusionRegionCandidate(
-                    region_id=_stable_id("extrusion-region", (interval.interval_id, left.contour_signature)),
-                    frame_id=frame.frame_id,
-                    start_mm=left.position_mm,
-                    end_mm=right.position_mm,
-                    length_mm=length,
-                    section_id=left.signature.section_id,
-                    supporting_face_ids=supporting_faces,
-                    source_coverage=1.0,
-                    unexplained_positive_volume_mm3=0.0,
-                    unexplained_negative_volume_mm3=0.0,
-                    score=1.0,
-                )
-            )
-    if len(stations) == 1:
-        regions.append(
-            ExtrusionRegionCandidate(
-                region_id=_stable_id("extrusion-region", stations[0].station_id),
-                frame_id=frame.frame_id,
-                start_mm=stations[0].position_mm,
-                end_mm=stations[0].position_mm,
-                length_mm=0.0,
-                section_id=stations[0].signature.section_id,
-                supporting_face_ids=supporting_faces,
-                source_coverage=0.0,
-                unexplained_positive_volume_mm3=0.0,
-                unexplained_negative_volume_mm3=0.0,
-                score=0.0,
-            )
-        )
-    return stations, tuple(intervals), tuple(regions)
+            length = right.position_mm - left.position_mm
+            regions.append(ExtrusionRegionCandidate(
+                region_id=_stable_id("extrusion-region", (interval.interval_id, left.contour_signature)),
+                frame_id=frame.frame_id, start_mm=left.position_mm, end_mm=right.position_mm,
+                length_mm=length, section_id=left.signature.section_id,
+                supporting_face_ids=supporting_faces, source_coverage=length / source_length,
+                unexplained_positive_volume_mm3=proof.source_minus_reconstruction_mm3,
+                unexplained_negative_volume_mm3=proof.reconstruction_minus_source_mm3, score=1.0,
+            ))
+    return tuple(stations), tuple(intervals), tuple(regions)
 
 
 def profile_candidates(profile: Any, section: CrossSectionSignature) -> tuple[ProfileMatchCandidate, ...]:

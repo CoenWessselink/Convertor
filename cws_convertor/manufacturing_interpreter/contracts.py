@@ -7,11 +7,11 @@ import json
 from typing import Any
 
 
-ENGINE_VERSION = "mgi-v3.2"
+ENGINE_VERSION = "mgi-v3.3"
 ALGORITHM_VERSIONS = (
     ("topology", "mgi-topology-v3"),
     ("axis", "mgi-axis-v3"),
-    ("section", "mgi-section-v3.1"),
+    ("section", "mgi-section-v3.3-native-intervals"),
     ("profile", "mgi-profile-v3.2"),
     ("feature", "mgi-feature-v3.1"),
     ("solver", "mgi-solver-v3.2"),
@@ -372,6 +372,9 @@ class SectionStation:
     void_count: int
     centroid_2d_mm: tuple[float, float] = (0.0, 0.0)
     moments: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    measurement_status: str = "LEGACY_UNVERIFIED"
+    measurement_error: str = ""
+    moments_unit: str = "mm4"
 
 
 @dataclass(frozen=True)
