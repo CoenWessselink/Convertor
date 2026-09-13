@@ -6,6 +6,9 @@ from .main_window import (
     IntegratedProjectPage,
     WorkspaceRouter,
 )
+from .adaptive_closeup_patch import install_adaptive_closeup_refinement
+
+install_adaptive_closeup_refinement()
 from .unified_shell import U3_CONTEXT_PROPERTY, U3_CONTEXT_TOKEN
 from .product_workspaces import ProductionWorkflowPanel
 from .u4_shell import (

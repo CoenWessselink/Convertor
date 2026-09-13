@@ -67,6 +67,18 @@ class TessellationSettings:
     def fingerprint(self) -> str:
         return stable_sha256(self.to_dict())
 
+    @classmethod
+    def close_up(cls) -> "TessellationSettings":
+        """Bounded close-up profile for selected/large-screen curved geometry."""
+        return cls(
+            linear_deflection_mm=0.05,
+            angular_deflection_rad=0.04,
+            circle_segments=128,
+            relative=False,
+            weld_proxy_sides=12,
+            version="cws-tessellation-v5-adaptive-closeup",
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class GeometryRequest:
@@ -265,7 +277,7 @@ class GeometryLoadResult:
     def succeeded(self) -> bool:
         return self.status in {GeometryLoadStatus.READY, GeometryLoadStatus.PARTIAL} and self.mesh is not None
 
-    def to_dict(self) -> dict{str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "geometry_id": self.request.geometry_id,
             "status": self.status.value,
