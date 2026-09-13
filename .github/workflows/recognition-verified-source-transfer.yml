@@ -1,0 +1,106 @@
+name: Recognition verified source transfer and Windows acceptance
+on:
+  push:
+    branches: [agent/cws-recognition-source-transfer-20260913]
+    paths: [.github/workflows/recognition-verified-source-transfer.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: recognition-verified-source-transfer
+  cancel-in-progress: false
+jobs:
+  verified-source:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    env:
+      PYTHONUTF8: '1'
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_HEADLESS_GUI_SMOKE: '1'
+    steps:
+      - name: Enable long paths before checkout
+        shell: pwsh
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-runtime.lock.txt
+      - name: Verify all bundle bytes and ancestry before non-forced task-branch publication
+        id: source
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import base64,hashlib,json,os,pathlib,subprocess,tempfile,urllib.request
+          def git(*args):
+              return subprocess.check_output(['git',*args],text=True).strip()
+          base='fd429fcdc0de21f7108232ebff24dae960125f49'
+          head='543039c3fb3f8ff787e7d8e84e4ac61f36a5095a'
+          branch='refs/heads/agent/cws-recognition-geometry-intelligence-20260913'
+          pieces=['007ea234d44000168c3480fe239d3321aa1e171e','db177f17725f8eb9e4e2090fa67abbe15664b31a','bb6cf3233c1d1371208e822fd32686975a069f99','f419892b807a3789fdeebb1f1c5468f66dbee887']
+          chunks=[]
+          for sha in pieces:
+              request=urllib.request.Request('https://api.github.com/repos/CoenWessselink/Convertor/git/blobs/'+sha,headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json'})
+              with urllib.request.urlopen(request,timeout=60) as response:
+                  blob=json.load(response)
+              assert blob['encoding']=='base64' and blob['sha']==sha
+              data=base64.b64decode(blob['content'])
+              assert hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()==sha
+              chunks.append(data)
+          data=b''.join(chunks)
+          bundle_hash=hashlib.sha256(data).hexdigest()
+          assert bundle_hash=='f7da20e71cf3060e95aff09b885d9656c3db0e34950d12adfa5a471e562d6acd'
+          bundle=pathlib.Path(os.environ['RUNNER_TEMP'])/'recognition-code.bundle'
+          bundle.write_bytes(data)
+          subprocess.run(['git','bundle','verify',str(bundle)],check=True)
+          subprocess.run(['git','fetch',str(bundle),'HEAD:refs/heads/verified-recognition-import'],check=True)
+          assert git('rev-parse','verified-recognition-import')==head
+          subprocess.run(['git','merge-base','--is-ancestor',base,head],check=True)
+          assert git('rev-list','--count',base+'..'+head)=='3'
+          allowed={
+              'cws_convertor/manufacturing_interpreter/'+n+'.py'
+              for n in ('cli','contracts','foundation','material_evidence','pipeline','profile_geometry','profiles','service','source_operations')
+          } | {'tests/'+n+'.py' for n in ('recognition_geometry_intelligence_smoke','recognition_integrated_native_smoke','recognition_material_intelligence_smoke','recognition_profile_intelligence_smoke')}
+          changed=set(git('diff','--name-only',base,head).splitlines())
+          assert changed==allowed,(changed,allowed)
+          assert git('rev-parse',head+'^{tree}')=='b7b9686a679fc87854155aacfeba388b8d0ab21e'
+          assert not git('status','--porcelain')
+          subprocess.run(['git','switch','--detach',head],check=True)
+          import py_compile
+          for name in sorted(changed): py_compile.compile(name,doraise=True)
+          remote=git('ls-remote','origin',branch).split()[0]
+          assert remote in (base,head),'Concurrent task work detected: '+remote
+          if remote==base:
+              subprocess.run(['git','push','origin',head+':'+branch],check=True)
+          assert git('ls-remote','origin',branch).split()[0]==head
+          out=pathlib.Path('build/material_model_recognition');out.mkdir(parents=True,exist_ok=True)
+          (out/'TRANSFER.json').write_text(json.dumps({'source_commit':head,'source_tree':git('rev-parse','HEAD^{tree}'),'bundle_sha256':bundle_hash,'workflow_event_commit':os.environ['GITHUB_SHA'],'source_worktree_dirty':bool(git('status','--porcelain')),'changed_files':sorted(changed),'commits':git('log','--format=%H %s',base+'..HEAD').splitlines(),'tests_status':'NOT_RUN','machine_release':False},indent=2),encoding='utf-8')
+          with open(os.environ['GITHUB_OUTPUT'],'a') as stream: stream.write('sha='+head+'\n')
+      - name: Install locked native runtime
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-runtime.lock.txt *> build/material_model_recognition/dependency-install.log
+          $result = $LASTEXITCODE
+          Get-Content build/material_model_recognition/dependency-install.log
+          if ($result -ne 0) { exit $result }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run unmodified strict acceptance runner on exact imported source commit
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD) -ne '543039c3fb3f8ff787e7d8e84e4ac61f36a5095a') { throw 'Wrong source commit' }
+          python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload source-bound native acceptance, never substitute event SHA for code SHA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Recognition_543039c3_Windows_Exact_Source
+          path: build/material_model_recognition/**
+          if-no-files-found: error
+          retention-days: 30
