@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from copy import deepcopy
+import hashlib
 import json
 from typing import Any
 
@@ -305,6 +306,15 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
                 self.progress.setFormat("Jobresultaat bevat geen bindbaar V3-rapport")
                 self.status_badge.setText("FAILED")
                 return
+            try:
+                with Path(current_source).open("rb") as stream:
+                    current_sha = hashlib.file_digest(stream, "sha256").hexdigest()
+            except OSError:
+                current_sha = ""
+            if current_sha != report.source_sha256:
+                self.status_badge.setText("STALE")
+                self.progress.setFormat("Bronbestand gewijzigd vóór publicatie; analyseer opnieuw")
+                return
             self.set_report(report)
         else:
             self._completed_reports.pop(self.current_job_id, None)
@@ -377,7 +387,7 @@ class ManufacturingGeometryWorkspace(QtWidgets.QWidget):
             ],
         )
         self._fill(self.section_table, [
-            [f"{station.position_mm:.4f}", station.measurement_status,
+            [f"{station.position_mm:.4f}", station.status,
              f"{station.signature.area_mm2:.5f}" if station.safe else "ONBEKEND",
              f"{station.signature.perimeter_mm:.5f}" if station.safe else "ONBEKEND",
              str(station.void_count) if station.safe else "ONBEKEND",
