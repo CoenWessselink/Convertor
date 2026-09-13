@@ -63,7 +63,8 @@ def test_phase3_ui_viewerhost_and_report_persistence() -> None:
         assert report is not None
         assert workspace.current_report is report
         assert viewer.payload and viewer.visible
-        assert workspace.tabs.count() == 5
+        assert workspace.tabs.count() == 9
+        assert workspace.section_table.rowCount() == len(report.section_stations)
         target = save_report(report, Path(root) / "report.json")
         loaded = load_report_envelope(
             target,

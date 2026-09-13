@@ -321,8 +321,15 @@ def _inspect_step(
     if cancel_check is not None:
         cancel_check()
     solids = list(shape.Solids())
-    if part.category == "reference" or len(solids) != 1:
-        return _inspection(part,status="resolved_reference",scope="part",geometry_kind="native_surface",
+    from .native_topology import native_body_occurrences, inventory_source_bodies
+    bodies = native_body_occurrences(shape)
+    exact_single_body = (len(bodies) == 1 and str(bodies[0][1].ShapeType()).upper() == "SOLID"
+                         and bool(shape.isValid()) and float(bodies[0][1].Volume()) > 0)
+    if part.category == "reference" or not exact_single_body:
+        evidence['body_inventory'] = inventory_source_bodies(
+            shape, source_scope=": ".join((source.sha256, part.internal_id, str(locator.get("source_geometry_hash", "")))))
+        body_kind = "native_brep_compound" if bodies and all(str(b.ShapeType()).upper() == "SOLID" for _, b in bodies) else "native_surface"
+        return _inspection(part,status="resolved_reference",scope="part",geometry_kind=body_kind,
                            selection_verified=True,production_geometry_exact=False,evidence=evidence,
                            topology={"solid_count":len(solids),"face_count":len(shape.Faces())},
                            blocking_reasons=["Referentieoppervlak of samengestelde shape is geen enkel massief maakdeel"],

@@ -2,7 +2,9 @@ from pathlib import Path
 import sys, unittest
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
-from cws_convertor.manufacturing_interpreter.acceptance_policy import corpus_verdict
+from cws_convertor.manufacturing_interpreter.acceptance_policy import (
+    corpus_verdict, profile_catalog_coverage,
+)
 
 class RecognitionPolicyTests(unittest.TestCase):
     def summary(self):
@@ -25,5 +27,15 @@ class RecognitionPolicyTests(unittest.TestCase):
         value=self.summary();value['true_positive']=0
         self.assertFalse(corpus_verdict(value,rows=self.rows())['passed'])
     def test_missing_reference_cannot_pass(self):self.assertFalse(corpus_verdict(self.summary(),rows=[])['passed'])
+    def test_required_profile_catalog_gap_cannot_false_green(self):
+        import json
+        rows=json.loads((ROOT/'profiles.json').read_text(encoding='utf-8'))['profiles']
+        result=profile_catalog_coverage(rows)
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['status'],'PARTIAL')
+        for family in ('UNP','UPE','T','STRIP'):
+            self.assertIn(family,result['missing'])
+        for family in ('HEA','HEB','HEM','IPE','IPN','UPN','L','RHS','SHS','CHS','ROUND','SQUARE','FLAT'):
+            self.assertIn(family,result['covered'])
 
 if __name__=='__main__':unittest.main(verbosity=2)

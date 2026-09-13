@@ -406,6 +406,7 @@ def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEv
                     ),
                 ).face_id
                 for item in faces
+                if topology.faces
             }
         )
     )

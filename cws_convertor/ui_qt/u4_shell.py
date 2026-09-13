@@ -1078,6 +1078,7 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
                 "plate_nesting_page",
                 "print_center_page",
                 "manufacturability_page",
+                "manufacturing_geometry_page",
             ):
                 target = getattr(self, page_name, None)
                 if page is target:

@@ -131,7 +131,12 @@ def source_authority_state(inspection: Any) -> tuple[Any, ...]:
             valid, count = bool(shape.isValid()), len(shape.Solids())
         except Exception:
             pass
-    return (bool(getattr(inspection, 'production_geometry_exact', False)),
+    evidence = getattr(inspection, "evidence", None) or {}
+    context_names = ("geometry_revision", "source_revision", "occurrence_id", "parent_id", "source_entity_id",
+                     "length_unit", "units", "source_units", "unit_scale_to_mm", "source_placement",
+                     "global_placement", "local_placement", "analysis_transform", "production_orientation", "coordinates")
+    context = {name: getattr(inspection, name, evidence.get(name)) for name in context_names}
+    return (stable_id("recognition-context", context), bool(getattr(inspection, 'production_geometry_exact', False)),
             bool(getattr(inspection, 'selection_verified', False)),
             str(getattr(inspection, 'geometry_kind', '')).lower(),
             str(getattr(inspection, 'scope', '')), shape is not None, valid, count,

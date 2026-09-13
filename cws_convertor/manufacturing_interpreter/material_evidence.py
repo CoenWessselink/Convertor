@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from functools import lru_cache
 from typing import Any, Mapping
 
@@ -37,6 +38,10 @@ _TRUSTED_SOURCE_METHODS = {
     "lossless_converter_payload_and_profile_database",
     "embedded_nc1_payload",
     "step_source_metadata",
+    # DXF plate intake only emits this method after binding the labelled
+    # paper-space material table to the physical model contour/part. It is
+    # explicit source metadata, not a filename/colour/project default.
+    "dxf_planar_table_verified",
 }
 
 _GEOMETRY_ONLY_TOKENS = {
@@ -186,31 +191,55 @@ def normalise_material_evidence(
 
 
 def material_evidence_from_request(request: Any) -> MaterialEvidence:
+    """Fuse linked evidence without allowing argument order to hide conflicts.
+
+    Agreement never raises a match score or creates an independent certificate.
+    Candidates from names/geometry remain proposals, not conflicting authorities.
+    """
+    from .contracts import canonical_json
     inspection = getattr(request, "inspection", None)
+    context = getattr(inspection, "evidence", None) or {}
+    link = dict(getattr(request, "project_part_link", ()) or ())
 
     def bound(value: Any) -> MaterialEvidence:
         result = normalise_material_evidence(value)
         proof = dict(result.evidence)
-        for name in ("source_file_id", "source_sha256"):
-            expected = _text(getattr(inspection, name, ""))
+        for name in ("source_file_id", "source_sha256", "source_geometry_hash", "part_id", "occurrence_id", "source_revision"):
+            expected = _text(getattr(inspection, name, context.get(name, link.get("project_"+name, ""))))
             reported = _text(proof.get(name))
             if reported and reported != expected:
-                return normalise_material_evidence({"status": "CONFLICT", "material": result.material,
-                    "grade": result.grade, "reason": "Materiaalbewijs hoort bij een andere of verouderde bron."})
+                return replace(result, status=MaterialEvidenceStatus.CONFLICT, confidence=0.,
+                    reason="Materiaalbewijs hoort bij een andere occurrence, geometrie of verouderde bron: " + name)
         return result
 
-    explicit = getattr(request, "material_evidence", None)
-    if explicit is not None:
-        return bound(explicit)
-    inspection_value = getattr(inspection, "material_evidence", None)
-    if inspection_value is not None:
-        return bound(inspection_value)
-    evidence = getattr(inspection, "evidence", None)
-    if isinstance(evidence, Mapping):
-        nested = evidence.get("material_evidence") or evidence.get("material_recognition")
-        if isinstance(nested, Mapping):
-            return bound(nested)
-    return MaterialEvidence()
+    values = [getattr(request, "material_evidence", None), getattr(inspection, "material_evidence", None)]
+    if isinstance(context, Mapping):
+        values.extend(context.get(name) for name in ("material_evidence", "material_recognition"))
+    # Identical exports of the same evidence are recorded once, not upweighted.
+    candidates = {}
+    for value in values:
+        if value is not None:
+            item = bound(value)
+            candidates.setdefault(canonical_json(item), item)
+    items = list(candidates.values())
+    if not items:
+        return MaterialEvidence()
+    authorities = [item for item in items if item.confirmed]
+    conflicts = [item for item in items if item.status == MaterialEvidenceStatus.CONFLICT]
+    grades = {_material_key(item.grade or item.material) for item in authorities}
+    audit = tuple(("linked_material_evidence:"+str(i), canonical_json(item)) for i, item in enumerate(items))
+    if conflicts or len(grades) > 1:
+        chosen = conflicts[0] if conflicts else authorities[0]
+        return replace(chosen, status=MaterialEvidenceStatus.CONFLICT, confidence=0.,
+            reason=(chosen.reason if conflicts else "Tegenstrijdige objectgebonden materiaalbronnen; geen automatische bronrangorde."),
+            evidence=tuple(chosen.evidence)+audit)
+    if authorities:
+        chosen = authorities[0]
+        if len(items) == 1:
+            return chosen
+        return replace(chosen, confidence=min(item.confidence for item in authorities),
+                       evidence=tuple(chosen.evidence)+audit)
+    return items[0]
 
 
 def _provenance_mapping(value: Any) -> Mapping[str, Any]:

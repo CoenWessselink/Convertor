@@ -41,6 +41,10 @@ class SuiteSpec:
 
 
 SUITES = (
+    SuiteSpec("tests/recognition_product_body_smoke.py", "recognition_product_accounting"),
+    SuiteSpec("tests/recognition_candidate_metrics_smoke.py", "recognition_candidate_metrics"),
+    SuiteSpec("tests/recognition_review_ui_smoke.py", "recognition_review_ui", ("PySide6.QtWidgets", "cadquery", "OCP")),
+    SuiteSpec("tests/recognition_body_inventory_smoke.py", "recognition_body_inventory", ("cadquery", "OCP")),
     SuiteSpec("tests/material_resolution_smoke.py", "material_catalog"),
     SuiteSpec("tests/profile_catalog_lookup_smoke.py", "model_recognition"),
     SuiteSpec("tests/ifc_material_recognition_smoke.py", "ifc_semantics"),
@@ -82,6 +86,7 @@ SUITES = (
     SuiteSpec("tests/production_normalization_smoke.py", "workbench_release"),
     SuiteSpec("tests/production_normalization_safety_smoke.py", "workbench_release"),
     SuiteSpec("tests/bom_material_integration_smoke.py", "bom_material_safety"),
+    SuiteSpec("tests/bom_source_accountability_smoke.py", "bom_source_accountability"),
     SuiteSpec("tests/bom_production_hub_complete_smoke.py", "bom_production_hub"),
     SuiteSpec("tests/bom_production_hub_smoke.py", "bom_production_hub"),
     SuiteSpec("tests/viewer_shared_cache_lasso_smoke.py", "bom_viewer_integration", ("numpy",)),
@@ -94,6 +99,10 @@ SUITES = (
     SuiteSpec("tests/plate_ui_integration_smoke.py", "plate_ui_integration", ("PySide6.QtWidgets", "shapely"), "run"),
     SuiteSpec("tests/recognition_acceptance_policy_smoke.py", "recognition_usefulness"),
     SuiteSpec("tests/integrated_promotion_smoke.py", "release_promotion"),
+    SuiteSpec("tests/recognition_axis_intelligence_smoke.py", "recognition_axis_intelligence", ("cadquery", "OCP")),
+    SuiteSpec("tests/recognition_evidence_cache_smoke.py", "recognition_evidence_cache", ("cadquery", "OCP")),
+    SuiteSpec("tests/recognition_catalogue_intelligence_smoke.py", "recognition_catalogue_intelligence", ("cadquery", "OCP")),
+    SuiteSpec("tests/recognition_geometry_intelligence_smoke.py", "recognition_geometry_intelligence", ("cadquery", "OCP")),
     SuiteSpec("tests/recognition_integrated_native_smoke.py", "recognition_geometry_integration", ("cadquery", "OCP")),
     SuiteSpec("tests/real_file_recognition_repair_smoke.py", "real_file_intake_repairs", ("cadquery", "OCP", "ezdxf", "fitz", "shapely")),
     SuiteSpec("tests/material_model_acceptance_runner_smoke.py", "acceptance_integrity"),

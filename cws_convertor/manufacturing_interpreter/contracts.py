@@ -7,15 +7,18 @@ import json
 from typing import Any
 
 
-ENGINE_VERSION = "mgi-v3.2"
+ENGINE_VERSION = "mgi-v3.3"
 ALGORITHM_VERSIONS = (
+    ("body_inventory", "source-body-occurrences-v1"),
     ("topology", "mgi-topology-v3"),
-    ("axis", "mgi-axis-v3"),
-    ("section", "mgi-section-v3.1"),
-    ("profile", "mgi-profile-v3.2"),
+    ("axis", "mgi-axis-v3.3-full-extent-catalogue-support"),
+    ("section", "mgi-section-v3.3-native-interval-proof"),
+    ("profile", "mgi-profile-v3.3-native-contour"),
     ("feature", "mgi-feature-v3.1"),
     ("solver", "mgi-solver-v3.2"),
     ("proof", "mgi-proof-v3.2"),
+    ("material_scope", "mgi-material-scope-v3.3"),
+    ("cache_context", "mgi-cache-context-v3.3"),
 )
 
 
@@ -212,6 +215,7 @@ class ProfileRecognition:
     area_delta_mm2: float = 0.0
     candidates: tuple[str, ...] = ()
     reason: str = ""
+    boundary_evidence: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -310,6 +314,8 @@ class ManufacturingInterpretationReport:
     tolerance_policy_version: str = ""
     tolerance_policy_hash: str = ""
     profile_database_hash: str = ""
+    body_inventory: tuple[tuple[str, Any], ...] = ()
+    component_reports: tuple["ManufacturingInterpretationReport", ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return _plain(self)
@@ -372,6 +378,9 @@ class SectionStation:
     void_count: int
     centroid_2d_mm: tuple[float, float] = (0.0, 0.0)
     moments: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    measurement_method: str = "UNMEASURED"
+    status: str = "UNMEASURED"
+    reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -383,6 +392,8 @@ class SectionInterval:
     classification: str
     invariant: bool
     change_score: float = 0.0
+    proof_status: str = "NOT_RUN"
+    reason: str = ""
 
 
 @dataclass(frozen=True)
@@ -405,12 +416,15 @@ class ProfileMatchCandidate:
     designation: str
     dimension_residual_mm: float
     area_residual_mm2: float
-    perimeter_residual_mm: float
-    moment_residual: float
-    radius_residual_mm: float
-    contour_distance_mm: float
+    perimeter_residual_mm: float | None
+    moment_residual: float | None
+    radius_residual_mm: float | None
+    contour_distance_mm: float | None
     topology_match: bool
     score: float
+
+    evidence_status: str = "COARSE_CANDIDATE_ONLY"
+    metric_provenance: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

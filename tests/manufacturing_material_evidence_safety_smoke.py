@@ -65,6 +65,19 @@ class MaterialAuthorityTests(unittest.TestCase):
             setattr(part.field_provenance["material"], name, value)
             self.assertEqual(material_evidence_from_part(part).status.value, "CONFLICT")
 
+    def test_verified_dxf_planar_table_material_is_source_confirmed(self):
+        part = _session().project.parts["part-1"]
+        provenance = part.field_provenance["material"]
+        provenance.method = "dxf_planar_table_verified"
+        provenance.source_path = "DXF Model Part/Bolt + labelled paper-space table"
+        provenance.source_entity_id = "P591"
+        provenance.confidence = 1.0
+        provenance.status = "source_confirmed"
+        evidence = material_evidence_from_part(part)
+        self.assertEqual(evidence.status.value, "SOURCE_CONFIRMED")
+        self.assertTrue(evidence.confirmed)
+        self.assertEqual(evidence.source, "dxf_planar_table_verified")
+
     def test_ifc_material_and_type_entities_may_differ_from_product(self):
         for method in ("ifc_material_association_exact", "ifc_type_material_inheritance", "ifc_property_exact"):
             part = _session().project.parts["part-1"]

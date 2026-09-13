@@ -930,6 +930,17 @@ class STEPSemanticProjectImporter:
             part.export_status = "blocked_reference_geometry"
         else:
             part.geometry_descriptor["geometry_role"] = "physical_solid" if solid_ids else "unresolved"
+        if len(solid_ids) > 1:
+            part.part_type = "step_multibody_product"
+            part.properties.update(body_decomposition_status="REVIEW_REQUIRED", physical_part_count=None,
+                                   source_product_quantity=part.quantity_total,
+                                   body_count_is_not_physical_quantity=True,
+                                   quantitative_role="unresolved_source_product")
+            part.geometry_descriptor["geometry_role"] = "multibody_source_product"
+            part.classification_status = "review_required"
+            part.classification_reason = "Meerdere bronbodies; fysieke maakdelen niet uitsluitend uit bodycount afgeleid"
+            part.nc1_eligible = False
+            part.export_status = "blocked_physical_decomposition_review"
         part.recompute_hashes()
         part.validate_base()
         return part
@@ -1111,12 +1122,16 @@ class STEPSemanticProjectImporter:
                 ids = sorted(index.solid_roots)
             consumed_solids.update(ids)
             # A leaf without shape still has an accountable semantic identity.
-            for number, shape_id in enumerate(ids or ([] if children else [None]), 1):
+            # A product occurrence can contain several geometric bodies. It
+            # is not automatically several physical make parts. Preserve the
+            # verified root selector on ONE review item; semantic child PRODUCT
+            # occurrences continue to materialise individually below.
+            for source_body_ids in ([ids] if ids or not children else []):
                 part = self._make_part(
                     project,source,document,product=product,definition_id=definition_id,
-                    solid_ids=[shape_id] if shape_id is not None else [],occurrence=occurrence,
+                    solid_ids=list(source_body_ids),occurrence=occurrence,
                     local_placement=local,global_placement=global_transform,
-                    name_suffix=f"shape {number}" if len(ids)>1 else "",
+                    name_suffix="",
                     occurrence_path=tuple(path),
                     metrics=metrics if len(index.products)==1 and len(ids)==1 else None,
                     profile_suggestion=profile_suggestion if len(index.products)==1 and len(ids)==1 else None,

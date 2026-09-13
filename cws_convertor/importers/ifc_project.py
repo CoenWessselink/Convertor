@@ -1277,12 +1277,19 @@ def _source_identity(
     part_position: str = "",
     assembly_mark: str = "",
 ) -> SourceIdentity:
+    global_id = entity.string(0)
     return SourceIdentity(
         source_format="IFC",
         source_file_id=source.source_id,
         source_sha256=source.sha256,
         source_entity_id=str(entity.entity_id),
-        global_id=entity.string(0),
+        global_id=global_id,
+        # IFC products are physical occurrences. Preserve a deterministic
+        # occurrence identity instead of leaving this field empty: prefer the
+        # source GlobalId, and fall back to the source entity handle when a
+        # non-conforming export omits it. Source SHA keeps the fallback scoped
+        # to this exact revision.
+        occurrence_id=global_id or f"IFC#{entity.entity_id}",
         part_position=part_position,
         assembly_mark=assembly_mark,
     )

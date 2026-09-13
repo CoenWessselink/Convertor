@@ -41,14 +41,84 @@ def github_json(url: str) -> dict:
         return json.loads(response.read().decode("utf-8"))
 
 
+def github_event() -> dict[str, Any]:
+    path = str(os.environ.get("GITHUB_EVENT_PATH") or "").strip()
+    if not path:
+        return {}
+    try:
+        value = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _sha(value: Any) -> str:
+    text = str(value or "").strip()
+    return text if len(text) == 40 else ""
+
+
 def main() -> int:
-    branch = git("branch", "--show-current") or CANONICAL_BRANCH
+    event = github_event()
+    pull_request = event.get("pull_request") if isinstance(event.get("pull_request"), dict) else {}
+    event_name = str(os.environ.get("GITHUB_EVENT_NAME") or "").strip()
+    is_pull_request = event_name == "pull_request" and bool(pull_request)
+
     head = git("rev-parse", "HEAD")
     parent = git("rev-parse", "HEAD^")
-    tracking = f"origin/{CANONICAL_BRANCH}"
-    tracking_head = git("rev-parse", tracking)
-    ahead_text = git("rev-list", "--left-right", "--count", f"HEAD...{tracking}")
-    ahead, behind = (int(value) for value in ahead_text.split())
+    branch = git("branch", "--show-current")
+
+    pull_request_head_ref = ""
+    pull_request_head_sha = ""
+    pull_request_base_ref = ""
+    pull_request_base_sha = ""
+    merge_base_parent = ""
+    merge_head_parent = ""
+    pull_request_merge_lineage_verified = False
+    tracking_ref_available = False
+
+    if is_pull_request:
+        pr_head = pull_request.get("head") if isinstance(pull_request.get("head"), dict) else {}
+        pr_base = pull_request.get("base") if isinstance(pull_request.get("base"), dict) else {}
+        pull_request_head_ref = str(os.environ.get("GITHUB_HEAD_REF") or pr_head.get("ref") or "").strip()
+        pull_request_head_sha = _sha(pr_head.get("sha"))
+        pull_request_base_ref = str(os.environ.get("GITHUB_BASE_REF") or pr_base.get("ref") or "").strip()
+        pull_request_base_sha = _sha(pr_base.get("sha"))
+        branch = pull_request_head_ref or branch
+        tracking = f"origin/{pull_request_head_ref}" if pull_request_head_ref else ""
+        tracking_head = pull_request_head_sha
+        ahead = None
+        behind = None
+        try:
+            merge_base_parent = git("rev-parse", "HEAD^1")
+            merge_head_parent = git("rev-parse", "HEAD^2")
+        except RuntimeError:
+            merge_base_parent = ""
+            merge_head_parent = ""
+        pull_request_merge_lineage_verified = bool(
+            pull_request_head_ref
+            and pull_request_base_ref
+            and pull_request_head_sha
+            and pull_request_base_sha
+            and merge_base_parent == pull_request_base_sha
+            and merge_head_parent == pull_request_head_sha
+        )
+        branch_head_recorded = pull_request_merge_lineage_verified
+        head_matches_tracking = False
+    else:
+        branch = branch or CANONICAL_BRANCH
+        tracking = f"origin/{CANONICAL_BRANCH}"
+        tracking_head = git("rev-parse", tracking)
+        tracking_ref_available = True
+        ahead_text = git("rev-list", "--left-right", "--count", f"HEAD...{tracking}")
+        ahead, behind = (int(value) for value in ahead_text.split())
+        head_matches_tracking = ahead == 0 and behind == 0 and tracking_head == head
+        branch_head_recorded = bool(
+            branch == CANONICAL_BRANCH
+            and len(head) == 40
+            and len(parent) == 40
+            and tracking_head == head
+        )
+
     status_lines = tuple(
         line
         for line in git("status", "--short", "--untracked-files=no").splitlines()
@@ -86,16 +156,28 @@ def main() -> int:
     workflow_path = ROOT / ".github" / "workflows" / "build-product-ui-reintegration-exe.yml"
     committed_workflow = git("show", f"{head}:.github/workflows/build-product-ui-reintegration-exe.yml")
     payload = {
-        "schema": "cws-phase1-repository-ci-evidence-1.0",
+        "schema": "cws-phase1-repository-ci-evidence-1.1",
         "captured_at": datetime.now(timezone.utc).isoformat(),
         "repository": REPOSITORY,
         "branch": branch,
         "head": head,
         "parent": parent,
         "tracking": tracking,
+        "tracking_head": tracking_head,
+        "tracking_ref_available": tracking_ref_available,
         "ahead": ahead,
         "behind": behind,
-        "head_matches_tracking": ahead == 0 and behind == 0 and tracking_head == head,
+        "head_matches_tracking": head_matches_tracking,
+        "checkout_mode": "pull_request_merge" if is_pull_request else "branch_tracking",
+        "pull_request": {
+            "head_ref": pull_request_head_ref,
+            "head_sha": pull_request_head_sha,
+            "base_ref": pull_request_base_ref,
+            "base_sha": pull_request_base_sha,
+            "merge_base_parent": merge_base_parent,
+            "merge_head_parent": merge_head_parent,
+            "merge_lineage_verified": pull_request_merge_lineage_verified,
+        },
         "working_tree_clean": not status_lines,
         "working_tree_change_count": len(status_lines),
         "working_tree_status": list(status_lines),
@@ -117,7 +199,7 @@ def main() -> int:
             "html_url": latest.get("html_url"),
             "job_count": len(jobs),
         },
-        "branch_head_recorded": bool(branch == CANONICAL_BRANCH and len(head) == 40 and len(parent) == 40 and tracking_head == head),
+        "branch_head_recorded": branch_head_recorded,
         "required_ci_green": bool(
             latest.get("head_sha") == head
             and latest.get("status") == "completed"
@@ -138,6 +220,7 @@ def main() -> int:
         json.dumps(
             {
                 "branch_head_recorded": payload["branch_head_recorded"],
+                "checkout_mode": payload["checkout_mode"],
                 "working_tree_clean": payload["working_tree_clean"],
                 "required_ci_green": payload["required_ci_green"],
                 "status": payload["status"],
@@ -145,7 +228,7 @@ def main() -> int:
             sort_keys=True,
         )
     )
-    return 0
+    return 0 if payload["status"] == "PASS" else 1
 
 
 if __name__ == "__main__":

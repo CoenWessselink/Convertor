@@ -66,12 +66,14 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         if not policy_hash:
             policy_hash = stable_sha256(self.tolerance_policy)
         database_revision = self._profile_database_revision()
-        if database_revision != self._database_revision:
+        # Definitions are mutable: equal length/mtime does not prove equal
+        # catalogue contents. Scope-safe warm results require semantic identity.
+        database_hash = _database_hash(self.profile_database)
+        if database_revision != self._database_revision or database_hash != self._database_hash:
             self._database_revision = database_revision
-            self._database_hash = _database_hash(self.profile_database)
+            self._database_hash = database_hash
             self._final_cache.clear()
             self._cache.clear()
-        database_hash = self._database_hash
         material_evidence = material_evidence_from_request(request)
         cache_key = RecognitionCacheV3.key(
             source_sha256=str(getattr(inspection, "source_sha256", "")),
@@ -100,6 +102,36 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
             self.persistent_cache_hits += 1
 
         base = super().analyze(request)
+        # Native body analysis is part of this same interpreter. It creates no
+        # canonical ProjectModel children and authorizes no BOM decomposition.
+        shape = getattr(inspection, "native_shape", None)
+        kind = str(getattr(inspection, "geometry_kind", "")).lower()
+        if shape is not None and bool(getattr(inspection, "selection_verified", False)) and kind in {
+            "native_brep", "exact_brep", "step_brep", "native_brep_compound", "native_surface",
+        }:
+            from cws_convertor.project.native_topology import native_body_occurrences, inventory_source_bodies
+            occurrences = native_body_occurrences(shape)
+            if (len(occurrences) != 1 or any(str(body.ShapeType()).upper() != "SOLID" for _, body in occurrences)) and getattr(inspection, "scope", "") != "source_body_analysis":
+                from types import SimpleNamespace
+                from .contracts import ManufacturingInterpretationRequest, MaterialEvidence
+                scope = ":".join((base.source_sha256, base.source_file_id, base.part_id, base.source_geometry_hash))
+                inventory = inventory_source_bodies(shape, source_scope=scope)
+                children = []
+                for row, (_, body) in zip(inventory["bodies"], occurrences):
+                    child_inspection = SimpleNamespace(
+                        part_id=row["body_occurrence_id"], source_file_id=base.source_file_id,
+                        source_sha256=base.source_sha256, source_geometry_hash=row["geometry_sha256"],
+                        scope="source_body_analysis", native_shape=body.copy(), selection_verified=True,
+                        production_geometry_exact=row["exact_solid"], geometry_kind="native_brep",
+                        evidence={"parent_id": base.part_id, "body_occurrence_id": row["body_occurrence_id"],
+                                  "body_container_path": row["container_path"], "bom_node_created": False})
+                    children.append(self.analyze(ManufacturingInterpretationRequest(
+                        inspection=child_inspection, material_evidence=MaterialEvidence(),
+                        requested_outputs=request.requested_outputs,
+                        project_part_link=(("analysis_parent_part_id", base.part_id),))))
+                base = replace(base, body_inventory=tuple(inventory.items()), component_reports=tuple(children),
+                               readiness=InterpretationReadiness.REVIEW_REQUIRED,
+                               blockers=tuple(dict.fromkeys((*base.blockers, "PHYSICAL_DECOMPOSITION_NOT_CONFIRMED"))))
         if base.topology is None or base.section is None:
             enriched = replace(
                 base,
