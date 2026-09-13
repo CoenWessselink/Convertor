@@ -7,9 +7,9 @@ import json
 from typing import Any
 
 
-ENGINE_VERSION = "mgi-v3.3"
+ENGINE_VERSION = "mgi-v3.4"
 ALGORITHM_VERSIONS = (
-    ("topology", "mgi-topology-v3"),
+    ("topology", "mgi-topology-v3.4-body-occurrences"),
     ("axis", "mgi-axis-v3"),
     ("section", "mgi-section-v3.3-native-intervals"),
     ("profile", "mgi-profile-v3.3-boundary-proof"),
@@ -277,6 +277,49 @@ class MaterialEvidence:
 
 
 @dataclass(frozen=True)
+class BodyGeometryEvidence:
+    body_id: str
+    source_path: tuple[int, ...]
+    geometry_hash: str
+    kind: str
+    valid: bool
+    closed: bool
+    status: str
+    volume_mm3: float | None
+    area_mm2: float | None
+    bounds_mm: tuple[float, ...] = ()
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class BodyInterfaceEvidence:
+    left_body_id: str
+    right_body_id: str
+    relation: str
+    distance_mm: float | None
+    overlap_volume_mm3: float | None
+    proof: str = "NATIVE_BOOLEAN_AND_DISTANCE"
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class BodyInventory:
+    status: str
+    body_count: int
+    solid_count: int
+    non_solid_count: int
+    bodies: tuple[BodyGeometryEvidence, ...]
+    interfaces: tuple[BodyInterfaceEvidence, ...] = ()
+    sum_solid_volume_mm3: float | None = None
+    union_volume_mm3: float | None = None
+    physical_part_count: int | None = None
+    fabrication_status: str = "UNPROVEN"
+    expected_interface_count: int = 0
+    assessed_interface_count: int = 0
+    errors: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class ManufacturingInterpretationReport:
     interpretation_id: str
     engine_version: str
@@ -312,6 +355,8 @@ class ManufacturingInterpretationReport:
     tolerance_policy_version: str = ""
     tolerance_policy_hash: str = ""
     profile_database_hash: str = ""
+    body_inventory: "BodyInventory | None" = None
+    body_reports: tuple["ManufacturingInterpretationReport", ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return _plain(self)

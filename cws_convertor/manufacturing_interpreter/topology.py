@@ -423,3 +423,156 @@ def section_signature(face: Any, axis: AxisCandidate, topology: SourceTopologyEv
         "component_count": len(faces),
     }
     return CrossSectionSignature(section_id=stable_id("section", payload), **payload)
+
+
+def native_body_shapes(shape: Any, *, max_depth: int = 128) -> tuple[tuple[tuple[int, ...], Any], ...]:
+    """Walk body occurrences without the unique-subshape deduplication of Solids.
+
+    Compound children may reference the very same TShape twice. Source paths
+    remain separate; no physical part count or weld is inferred from this walk.
+    Solid internals are not promoted to bodies, but standalone shells, faces,
+    wires and edges are retained as non-solid source geometry.
+    """
+    if shape is None:
+        return ()
+    result = []
+    def visit(node: Any, path: tuple[int, ...]) -> None:
+        if len(path) > max_depth:
+            raise ValueError("Native body hierarchy exceeds safe depth; inventory incomplete")
+        kind = str(node.ShapeType())
+        if kind in {"Compound", "CompSolid"}:
+            children = tuple(node)
+            if children:
+                for index, child in enumerate(children):
+                    visit(child, (*path, index))
+                return
+        result.append((path, node))
+    visit(shape, ())
+    return tuple(result)
+
+
+def native_shape_sha256(shape: Any) -> str:
+    """Hash actual BREP bytes, not a caller-supplied hash or bounding metrics."""
+    import hashlib
+    from io import BytesIO
+    stream = BytesIO()
+    if not shape.exportBrep(stream):
+        raise ValueError("Native BREP cannot be serialized for evidence")
+    return hashlib.sha256(stream.getvalue()).hexdigest()
+
+
+def inventory_bodies(shape: Any, policy: Any, *, source_identity: str = "",
+                     max_interface_pairs: int = 4096) -> Any:
+    """Read-only native body inventory and exact pairwise contact evidence.
+
+    Every readable body remains accountable, including invalid/open bodies.
+    Pair-budget exhaustion is explicit, never silently reported as no overlap.
+    Additive body volume and Boolean-union volume have different meanings.
+    """
+    from .contracts import BodyGeometryEvidence, BodyInterfaceEvidence, BodyInventory
+    try:
+        native = tuple((path, body.copy()) for path, body in native_body_shapes(shape))
+    except Exception as exc:
+        return BodyInventory("INCOMPLETE", 0, 0, 0, (), errors=(f"{type(exc).__name__}: {exc}",))
+    if not native:
+        return BodyInventory("UNAVAILABLE", 0, 0, 0, ())
+    bodies = []
+    errors = []
+    for path, body in native:
+        kind = str(body.ShapeType())
+        digest = ""
+        valid = closed = False
+        volume = area = None
+        bounds = ()
+        error = ""
+        try:
+            digest = native_shape_sha256(body)
+            valid = bool(body.isValid()) and not bool(body.isNull())
+            shells = tuple(body.Shells()) if kind == "Solid" else ()
+            closed = bool(shells) and all(shell.Closed() for shell in shells)
+            if valid:
+                box = body.BoundingBox()
+                bounds = tuple(float(getattr(box, name)) for name in
+                               ("xmin", "ymin", "zmin", "xmax", "ymax", "zmax"))
+                measured_area = float(body.Area())
+                if math.isfinite(measured_area) and measured_area >= 0:
+                    area = measured_area
+                if kind == "Solid" and closed:
+                    measured_volume = float(body.Volume())
+                    if math.isfinite(measured_volume) and measured_volume > 0:
+                        volume = measured_volume
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            errors.append(f"body {path}: {error}")
+        status = "EXACT_SOLID" if volume is not None else "REFERENCE_GEOMETRY" if valid and kind != "Solid" else "INVALID_OR_OPEN"
+        bodies.append(BodyGeometryEvidence(
+            stable_id("body", (source_identity, path, digest)), path, digest, kind,
+            valid, closed, status, volume, area, bounds, error))
+    interfaces = []
+    solids = [(index, body) for index, (_, body) in enumerate(native)
+              if bodies[index].status == "EXACT_SOLID"]
+    pair_count = len(solids) * (len(solids) - 1) // 2
+    linear = linear_tolerance(policy)
+    for i, (left_index, left) in enumerate(solids):
+        for right_index, right in solids[i + 1:]:
+            if len(interfaces) >= max(0, int(max_interface_pairs)):
+                break
+            relation = "NOT_PROVEN"
+            distance = overlap = None
+            error = ""
+            try:
+                distance = float(left.distance(right))
+                if not math.isfinite(distance) or distance < 0:
+                    raise ValueError("Invalid native separation distance")
+                if distance > linear:
+                    relation, overlap = "DISJOINT", 0.0
+                else:
+                    common = left.intersect(right)
+                    if not common.isValid():
+                        raise ValueError("Invalid native intersection")
+                    # Shape.Volume() on a face/shell is not a solid-volume proof.
+                    pieces = tuple(common.Solids())
+                    overlap = sum(abs(float(piece.Volume())) for piece in pieces)
+                    if not math.isfinite(overlap):
+                        raise ValueError("Invalid native intersection volume")
+                    if overlap > 1e-9:
+                        relation = "OVERLAPPING"
+                    elif distance > 1e-7:
+                        relation = "NEAR_WITHIN_TOLERANCE"
+                    else:
+                        relation = "TOUCHING"
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
+                errors.append(error)
+            interfaces.append(BodyInterfaceEvidence(bodies[left_index].body_id,
+                bodies[right_index].body_id, relation, distance, overlap, error=error))
+    if len(interfaces) != pair_count:
+        errors.append("BODY_INTERFACE_BUDGET_EXCEEDED")
+    all_solids = len(solids) == len(bodies)
+    additive = sum(body.volume_mm3 for body in bodies) if all_solids else None
+    union_volume = None
+    if all_solids and not errors:
+        try:
+            union = solids[0][1].copy()
+            # Avoid expensive unions of strictly separated source bodies.
+            if all(pair.relation in {"DISJOINT", "NEAR_WITHIN_TOLERANCE"} for pair in interfaces):
+                union_volume = additive
+            else:
+                for _, solid in solids[1:]:
+                    union = union.fuse(solid)
+                if not union.isValid():
+                    raise ValueError("Invalid body union")
+                union_volume = sum(abs(float(s.Volume())) for s in union.Solids())
+                if not math.isfinite(union_volume) or union_volume <= 0:
+                    raise ValueError("Invalid body union volume")
+        except Exception as exc:
+            errors.append(f"union: {type(exc).__name__}: {exc}")
+            union_volume = None
+    return BodyInventory(
+        status="COMPLETE" if not errors else "INCOMPLETE",
+        body_count=len(bodies), solid_count=sum(b.kind == "Solid" for b in bodies),
+        non_solid_count=sum(b.kind != "Solid" for b in bodies), bodies=tuple(bodies),
+        interfaces=tuple(interfaces), sum_solid_volume_mm3=additive,
+        union_volume_mm3=union_volume, expected_interface_count=pair_count,
+        assessed_interface_count=len(interfaces), errors=tuple(errors),
+    )

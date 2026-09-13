@@ -48,7 +48,7 @@ def load_tests(loader, tests, pattern):
     # Required native intelligence regressions belong to this existing gate.
     # Import errors and zero discovered tests must fail, never become a skip.
     import importlib.util
-    for name in ('recognition_geometry_intelligence_smoke', 'recognition_profile_intelligence_smoke', 'recognition_material_intelligence_smoke'):
+    for name in ('recognition_geometry_intelligence_smoke', 'recognition_profile_intelligence_smoke', 'recognition_material_intelligence_smoke', 'recognition_body_inventory_smoke', 'recognition_project_batch_scope_smoke'):
         path = ROOT / 'tests' / (name + '.py')
         spec = importlib.util.spec_from_file_location('cws_' + name, path)
         module = importlib.util.module_from_spec(spec)

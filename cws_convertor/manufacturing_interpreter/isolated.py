@@ -25,14 +25,20 @@ def _worker(source: str, options: dict[str, Any], output: Any) -> None:
         expected_sha = str(options.get("source_sha256") or "")
         if expected_sha and inspection.source_sha256 != expected_sha:
             raise ValueError("STEP-bronhash wijkt af van de projectkoppeling")
-        for name in (
-            "part_id",
-            "source_file_id",
-            "source_geometry_hash",
-        ):
+        for name in ("part_id", "source_file_id", "source_geometry_hash"):
             value = options.get(name)
-            if value:
+            if not value:
+                continue
+            if options.get("source_part") is not None:
+                if str(value) != str(getattr(inspection, name, "")):
+                    raise ValueError(f"Verified source selector cannot be relabelled: {name}")
+            else:
                 setattr(inspection, name, str(value))
+        if options.get("source_part") is not None:
+            from .project_link import build_project_part_request
+            # Validate the canonical part/inspection binding even when no
+            # optional override fields were supplied by the caller.
+            build_project_part_request(part, inspection)
         report = ManufacturingGeometryInterpreter().analyze(
             ManufacturingInterpretationRequest(
                 inspection=inspection,
@@ -120,6 +126,8 @@ def analyze_step_isolated(
         status, payload = message
         if status != "PASS":
             raise RuntimeError(str(payload))
+        if cancel_check is not None and cancel_check():
+            raise RuntimeError("MGI native worker cancelled before publication")
         if _sha256(path) != actual_sha256:
             raise ValueError("STEP-bron is gewijzigd tijdens de herkenning")
         return pickle.loads(payload)

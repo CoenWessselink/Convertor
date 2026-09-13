@@ -49,6 +49,74 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         self._database_revision = self._profile_database_revision()
         self._database_hash = _database_hash(self.profile_database)
 
+    def _analyze_body_inventory(self, request: Any, report: Any) -> Any:
+        """Reuse this interpreter for geometric bodies, never invent BOM parts.
+
+        The parent remains the source object. Child reports are read-only shape
+        interpretations with no inherited assembly grade or production release.
+        Explicit project/occurrence selectors remain the route to real parts.
+        """
+        from .contracts import ManufacturingInterpretationRequest, MaterialEvidence
+        from .topology import native_body_shapes
+        from cws_convertor.project.source_geometry import SourceGeometryInspection
+        inspection = request.inspection
+        inventory = report.body_inventory
+        kind = str(getattr(inspection, "geometry_kind", "")).lower()
+        if (inventory is None or inventory.body_count <= 1
+                or not bool(getattr(inspection, "selection_verified", False))
+                or kind not in {"native_brep", "step_brep", "exact_brep", "native_brep_compound", "native_surface"}):
+            return report
+        children = []
+        native = dict(native_body_shapes(inspection.native_shape))
+        # This is a bounded analysis budget, not a silent inventory limit. Every
+        # source body stays in inventory even when detailed analysis is pending.
+        for body in inventory.bodies[:64]:
+            if body.status != "EXACT_SOLID":
+                continue
+            child_inspection = SourceGeometryInspection(
+                part_id=body.body_id, source_file_id=report.source_file_id,
+                source_sha256=report.source_sha256,
+                source_geometry_hash=stable_sha256((report.source_geometry_hash,
+                                                    body.source_path, body.geometry_hash)),
+                status="exact_analysis_body", scope="geometric_body",
+                geometry_kind="native_brep", selection_verified=True,
+                production_geometry_exact=True, native_shape=native[body.source_path].copy(),
+                evidence={"parent_part_id": report.part_id,
+                          "source_body_path": list(body.source_path),
+                          "body_geometry_sha256": body.geometry_hash,
+                          "physical_part_confirmed": False},
+            )
+            child = self.analyze(ManufacturingInterpretationRequest(
+                inspection=child_inspection, requested_outputs=("STEP",),
+                material_evidence=MaterialEvidence(),
+                project_part_link=(("geometric_parent", report.part_id),),
+            ))
+            children.append(replace(child,
+                readiness=InterpretationReadiness.REVIEW_REQUIRED,
+                blockers=tuple(dict.fromkeys((*child.blockers, "GEOMETRIC_BODY_NOT_CONFIRMED_PART"))),
+                evidence=(*child.evidence, ("physical_part_confirmed", "false"),
+                          ("material_inheritance", "none")),
+            ))
+        blockers = ["BODY_STRUCTURE_REQUIRES_REVIEW", "PHYSICAL_PART_COUNT_UNPROVEN"]
+        if inventory.non_solid_count:
+            blockers.append("NON_SOLID_SOURCE_GEOMETRY_RETAINED")
+        if inventory.status != "COMPLETE":
+            blockers.append("BODY_INVENTORY_INCOMPLETE")
+        if len(inventory.bodies) > 64:
+            blockers.append("BODY_ANALYSIS_BUDGET_EXCEEDED")
+        if any(pair.relation == "OVERLAPPING" for pair in inventory.interfaces):
+            blockers.append("SOURCE_BODY_OVERLAP")
+        if not report.material_evidence.confirmed:
+            blockers.append("MATERIAL_EVIDENCE_CONFLICT" if report.material_evidence.status.value == "CONFLICT"
+                            else "MATERIAL_EVIDENCE_UNRESOLVED")
+        return replace(report, body_reports=tuple(children),
+            readiness=InterpretationReadiness.REVIEW_REQUIRED,
+            blockers=tuple(blockers),
+            evidence=(*report.evidence, ("body_count_rule", "source_bodies_not_fabrication_parts"),
+                      ("fabrication_origin", "unproven"),
+                      ("body_interpreter", "shared-public-pipeline")),
+        )
+
     def _profile_database_revision(self) -> tuple[Any, ...]:
         path = getattr(self.profile_database, "path", None)
         try:
@@ -104,6 +172,7 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
 
         base = super().analyze(request)
         if base.topology is None or base.section is None:
+            base = self._analyze_body_inventory(request, base)
             enriched = replace(
                 base,
                 engine_version=ENGINE_VERSION,
@@ -143,6 +212,8 @@ class ManufacturingGeometryInterpreter(_FoundationInterpreter):
         )
         residual = None
         shape = getattr(inspection, "native_shape", None)
+        if shape is not None:
+            shape = shape.copy()
         try:
             reconstructed = reconstruct_prismatic(shape, selected_axis)
             residual = residual_geometry_report(shape, reconstructed, self.tolerance_policy)

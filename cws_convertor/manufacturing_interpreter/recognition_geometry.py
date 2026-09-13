@@ -131,7 +131,14 @@ def source_authority_state(inspection: Any) -> tuple[Any, ...]:
             valid, count = bool(shape.isValid()), len(shape.Solids())
         except Exception:
             pass
-    return (bool(getattr(inspection, 'production_geometry_exact', False)),
+    from .topology import native_shape_sha256
+    native_hash = ""
+    if shape is not None:
+        try:
+            native_hash = native_shape_sha256(shape)
+        except Exception:
+            native_hash = "UNSERIALIZABLE_NATIVE_SHAPE"
+    return (native_hash, bool(getattr(inspection, 'production_geometry_exact', False)),
             bool(getattr(inspection, 'selection_verified', False)),
             str(getattr(inspection, 'geometry_kind', '')).lower(),
             str(getattr(inspection, 'scope', '')), shape is not None, valid, count,

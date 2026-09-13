@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import json
 import re
 import time
@@ -101,11 +102,6 @@ def _run_cwscproj_batch(args: Any) -> int:
         ]
         if not selected:
             raise SystemExit("No matching project parts discovered")
-        source_part_counts: dict[str, int] = {}
-        for part in session.project.parts.values():
-            source_id = str(part.source_identity.source_file_id or "")
-            source_part_counts[source_id] = source_part_counts.get(source_id, 0) + 1
-
         for part in selected:
             source_id = str(part.source_identity.source_file_id or "")
             source = session.project.sources.get(source_id)
@@ -118,19 +114,8 @@ def _run_cwscproj_batch(args: Any) -> int:
                 failures += 1
                 results.append({**row, "status": "FAILED", "reason": "PROJECT_PART_HAS_NO_STEP_SOURCE"})
                 continue
-            # The current source authority can prove a selected STEP part only
-            # when the project source contains one semantic part/solid.  Never
-            # select a solid by list position for a multi-part package.
-            if source_part_counts.get(source_id, 0) != 1:
-                failures += 1
-                results.append(
-                    {
-                        **row,
-                        "status": "BLOCKED",
-                        "reason": "PROJECT_PART_SOURCE_ISOLATION_REQUIRED",
-                    }
-                )
-                continue
+            # Resolve this canonical part through its exact source locator.
+            # A multi-part file is supported; body order and names are not selectors.
             try:
                 source_path = session.resolve_source_path(source_id)
                 descriptor = part.geometry_descriptor if isinstance(part.geometry_descriptor, dict) else {}
@@ -156,6 +141,8 @@ def _run_cwscproj_batch(args: Any) -> int:
                     requested_outputs=("STEP", "IFC", "NC1", "PDF"),
                     material_evidence=material_evidence_from_part(part),
                     project_part_link=project_link,
+                    source_part=part.base_to_dict(),
+                    source_record=asdict(source),
                 )
                 target = output / (
                     f"{_safe_name(part.part_position or 'part')[:60]}-"

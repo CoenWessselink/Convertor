@@ -67,6 +67,9 @@ class ManufacturingGeometryInterpreter:
         selection_verified = bool(getattr(inspection, "selection_verified", False))
         shape = getattr(inspection, "native_shape", None)
         geometry_kind = str(getattr(inspection, "geometry_kind", "")).lower()
+        from .topology import inventory_bodies
+        body_inventory = inventory_bodies(shape, self.tolerance_policy,
+                                           source_identity=cache_key) if shape is not None else None
         source_ok = (
             source_exact
             and selection_verified
@@ -79,16 +82,24 @@ class ManufacturingGeometryInterpreter:
                 GeometryProofStatus.BLOCKED_SOURCE_NOT_EXACT,
                 "Exacte, geverifieerde native BREP-brongeometrie ontbreekt; mesh/proxy kan niet bewijzen",
             )
+            report = replace(report, body_inventory=body_inventory)
             self._cache[cache_key] = report
             return report
 
         try:
-            if len(shape.Solids()) != 1 or not bool(shape.isValid()):
+            # OCCT operations may adjust tolerance/flags on shared TShapes.
+            # All recognition Booleans operate on a detached analysis copy.
+            shape = shape.copy()
+            if (body_inventory is None or body_inventory.status != "COMPLETE"
+                    or body_inventory.body_count != 1
+                    or body_inventory.bodies[0].status != "EXACT_SOLID"
+                    or not bool(shape.isValid())):
                 report = self._blocked_report(
                     request,
                     GeometryProofStatus.FAILED,
-                    "Bron-BREP is ongeldig of bevat niet exact een solid",
+                    "Bron-BREP bevat meerdere bodies, niet-massieve restgeometrie of is ongeldig",
                 )
+                report = replace(report, body_inventory=body_inventory)
                 self._cache[cache_key] = report
                 return report
 
@@ -184,6 +195,7 @@ class ManufacturingGeometryInterpreter:
                 source_geometry_hash=str(getattr(inspection, "source_geometry_hash", "")),
                 source_gate=GeometryProofStatus.PROVEN_WITHIN_POLICY,
                 topology=topology,
+                body_inventory=body_inventory,
                 axis_candidates=axes,
                 selected_axis_id=selected_axis.axis_id,
                 section=section,
@@ -206,6 +218,7 @@ class ManufacturingGeometryInterpreter:
                 GeometryProofStatus.FAILED,
                 f"Interpreterfout: {type(exc).__name__}: {exc}",
             )
+        report = replace(report, body_inventory=body_inventory)
         self._cache[cache_key] = report
         return report
 

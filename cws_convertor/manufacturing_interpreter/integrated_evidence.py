@@ -98,12 +98,17 @@ def run_recognition_evidence(output: str | Path) -> dict[str, Any]:
     cube_request, cube_report = analyze('ambiguous-axis', cube, ())
     check('cube_requires_axis_review', cube_report.readiness.value != 'READY' and 'MANUFACTURING_AXIS_AMBIGUOUS' in cube_report.blockers)
     duplicate = output / 'two-solids.step';cq.exporters.export(cq.Compound.makeCompound([plate, plate.translate((500, 0, 0))]), str(duplicate))
-    try:
-        _step_inspection(duplicate)
-    except ValueError as exc:
-        check('multi_solid_import_rejected', 'isolatie vereist' in str(exc), str(exc))
-    else:
-        check('multi_solid_import_rejected', False)
+    compound_source = _step_inspection(duplicate)
+    compound = interpreter.analyze(ManufacturingInterpretationRequest(inspection=compound_source))
+    check('multi_solid_import_accounted_without_release',
+          not compound_source.production_geometry_exact
+          and compound.body_inventory is not None
+          and compound.body_inventory.body_count == 2
+          and compound.body_inventory.physical_part_count is None
+          and len(compound.body_reports) == 2
+          and all(body.section is not None for body in compound.body_reports)
+          and compound.readiness.value != 'READY'
+          and compound.profile.status.value != 'PROVEN_WITHIN_POLICY', compound.blockers)
     frozen = bool(getattr(sys, 'frozen', False))
     binding_path = Path(sys.executable).parent / 'BUILD_SOURCE.json'
     binding = json.loads(binding_path.read_text(encoding='utf-8')) if frozen and binding_path.is_file() else {}

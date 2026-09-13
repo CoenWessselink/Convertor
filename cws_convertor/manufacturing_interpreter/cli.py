@@ -23,23 +23,27 @@ def _step_inspection(path: Path) -> SourceGeometryInspection:
 
     source_sha = _sha256(path)
     imported = cq.importers.importStep(str(path))
-    if len(imported.vals()) != 1:
-        raise ValueError("STEP bevat meerdere top-level shapes; exacte onderdeelisolatie vereist")
+    shapes = tuple(imported.vals())
+    if not shapes:
+        raise ValueError("STEP-reader levert geen leesbare brongeometrie; inventaris onbekend")
     if _sha256(path) != source_sha:
         raise ValueError("STEP-bron gewijzigd tijdens native import; resultaat is niet verifieerbaar")
-    shape = imported.val()
-    if len(shape.Solids()) != 1:
-        raise ValueError("STEP bevat niet exact één solid; exacte onderdeelisolatie vereist")
+    shape = shapes[0] if len(shapes) == 1 else cq.Compound.makeCompound(shapes)
+    from .topology import native_body_shapes
+    bodies = native_body_shapes(shape)
+    single_solid = (len(bodies) == 1 and str(bodies[0][1].ShapeType()) == "Solid"
+                    and bool(shape.isValid())
+                    and all(shell.Closed() for shell in bodies[0][1].Shells()))
     return SourceGeometryInspection(
         part_id=f"step:{source_sha[:20]}",
         source_file_id=path.name,
         source_sha256=source_sha,
         source_geometry_hash=source_sha,
-        status="exact",
-        scope="single_part",
-        geometry_kind="native_brep",
+        status="exact" if single_solid else "resolved_body_inventory",
+        scope="single_part" if single_solid else "source",
+        geometry_kind="native_brep" if single_solid else "native_brep_compound",
         selection_verified=True,
-        production_geometry_exact=True,
+        production_geometry_exact=single_solid,
         native_shape=shape,
         evidence={"source_path": str(path), "importer": "cadquery.importStep"},
     )
