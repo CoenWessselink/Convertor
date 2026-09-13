@@ -1,0 +1,83 @@
++        "occurrence_identity_unique_when_required": (not occurrence_required) or not duplicate_occurrences,
++        "source_stable_keys_unique": not duplicate_stable_keys,
++        "bom_group_destination_complete": not missing_groups,
++        "parent_assembly_links_valid": not invalid_parent_links,
++        "assemblies_are_group_only_not_quantitative_children": not assembly_quantitative,
++        "nonassembly_nodes_have_explicit_quantity_role": not nonassembly_nonquantitative,
++        "canonical_bom_balance_checks_pass": bool(snapshot.validation.passed),
++    }
++    if importer_preservation is not None:
++        checks["importer_reports_all_source_products_preserved"] = bool(importer_preservation)
++    destination_counts = counts(
++        f"{row.get('entity_type')}->{row.get('quantity_role')}" for row in rows
++    )
++    return {
++        "scope": (
++            "Semantic importer physical/logical product scope. Raw schema metadata and relationship "
++            "entities are reported separately in source_class_counts and are not counted as physical BOM nodes."
++        ),
++        "source_id": source_id,
++        "source_format": source.source_format,
++        "source_sha256": source.sha256,
++        "expected_materialised_count": expected,
++        "canonical_entity_count": len(canonical),
++        "bom_traceability_count": len(rows),
++        "quantitative_bom_node_count": sum(bool(row.get("quantitative_bom_node")) for row in rows),
++        "group_only_assembly_count": sum(
++            row.get("quantity_role") == "group_only_assembly" for row in rows
++        ),
++        "destination_counts": destination_counts,
++        "checks": checks,
++        "passed": all(checks.values()),
++        "missing_canonical_entity_ids": sorted(set(canonical_ids) - set(trace_ids)),
++        "unexpected_trace_entity_ids": sorted(set(trace_ids) - set(canonical_ids)),
++        "duplicate_trace_internal_ids": duplicate_trace_ids,
++        "missing_source_entity_ids": missing_source_entities,
++        "missing_occurrence_ids": missing_occurrences,
++        "duplicate_occurrence_ids": duplicate_occurrences,
++        "duplicate_source_stable_keys": duplicate_stable_keys,
++        "missing_bom_group_ids": missing_groups,
++        "invalid_parent_assembly_links": invalid_parent_links,
++        "bom_validation": {
++            "passed": snapshot.validation.passed,
++            "production_ready": snapshot.validation.production_ready,
++            "checks": dict(snapshot.validation.checks),
++            "messages": list(snapshot.validation.messages),
++        },
++        "destinations": rows,
++    }
++
++
+ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
+     """Register and import a source in its own new, disposable project."""
+     start = time.perf_counter()
+@@ -116,6 +229,7 @@ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
+             message.code for assessment in assessments
+             for message in assessment.messages_for("nc1") if message.severity == "error"
+         )
++        accountability = build_source_accountability(session.project, result, registration.source.source_id)
+         payload = {
+             "file_name": path.name,
+             "origin": origin,
+@@ -171,6 +285,7 @@ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
+             },
+             "semantic_import_production_export_allowed": result.production_export_allowed,
+             "project_production_export_allowed": session.project.production_gate()["allowed"],
++            "source_object_accountability": accountability,
+             "warnings": result.warnings,
+             "seconds": {
+                 "registration": round(registered - start, 3),
+@@ -189,6 +304,7 @@ def measure_source(path: Path, corpus_kind: str, origin: str) -> dict[str, Any]:
+         payload["source_unchanged"]
+         and classification_handled == len(parts)
+         and unresolved_blocked == len(unresolved_indexes)
++        and bool(payload["source_object_accountability"]["passed"])
+     )
+     return payload
+ 
+diff --git a/tools/run_material_model_recognition_acceptance.py b/tools/run_material_model_recognition_acceptance.py
+index f6bba75..cd2bbbd 100644
+--- a/tools/run_material_model_recognition_acceptance.py
++++ b/tools/run_material_model_recognition_acceptance.py
+@@ -86,6 +86,7 @@ SUITES = (
+     SuiteSpec("tests/production_normalization_smoke.py", "workbench_release"),
