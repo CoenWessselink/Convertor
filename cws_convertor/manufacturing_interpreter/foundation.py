@@ -161,7 +161,7 @@ def _station_positions(shape: Any, frame: ManufacturingFrame, linear_mm: float) 
     lower, upper = events[0], events[-1]
     if upper - lower <= linear_mm:
         return ((lower + upper) * 0.5,)
-    epsilon = max(linear_mm * 2.0, (upper - lower) * 1e-5)
+    epsilon = min((upper - lower) / 8.0, max(linear_mm * 2.0, (upper - lower) * 1e-5))
     candidates = [lower + epsilon, upper - epsilon, (lower + upper) * 0.5]
     for left, right in zip(events, events[1:]):
         if right - left > epsilon * 2.0:
@@ -173,31 +173,87 @@ def _station_positions(shape: Any, frame: ManufacturingFrame, linear_mm: float) 
     return tuple(candidates)
 
 
-def _station_signature(
-    base: CrossSectionSignature,
-    position_mm: float,
-    index: int,
-) -> SectionStation:
-    contour_payload = (
-        round(base.area_mm2, 6),
-        round(base.perimeter_mm, 6),
-        round(base.width_mm, 6),
-        round(base.height_mm, 6),
-        base.outer_edge_count,
-        base.inner_wire_count,
-        tuple(base.edge_type_counts),
-    )
-    contour_signature = _stable_id("contour", contour_payload)
-    return SectionStation(
-        station_id=_stable_id("station", (round(position_mm, 6), contour_signature)),
-        position_mm=position_mm,
-        safe=True,
-        signature=replace(base, section_id=_stable_id("section", (contour_payload, index))),
-        contour_signature=contour_signature,
-        loop_count=max(1, 1 + base.inner_wire_count),
-        void_count=base.inner_wire_count,
-        moments=(base.width_mm**2 / 12.0, base.height_mm**2 / 12.0, 0.0),
-    )
+def _measure_station(local_shape: Any, position_mm: float, linear_mm: float) -> tuple[SectionStation, tuple[Any, ...]]:
+    """Intersect the analysis copy; never repeat a reference end-face signature.
+
+    Moments are centroidal area moments in mm^4, measured by the CAD kernel.
+    Virtual slice IDs are not claimed to be original source face identifiers.
+    """
+    import cadquery as cq
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+    from .topology import section_signature
+
+    station_id = _stable_id("station", position_mm)
+    try:
+        section = local_shape.intersect(cq.Face.makePlane(basePnt=(0, 0, position_mm), dir=(0, 0, 1)))
+        faces = tuple(section.Faces())
+        if not faces or not all(face.isValid() and face.Area() > 0 for face in faces):
+            raise ValueError("Empty or invalid section intersection")
+        axis = AxisCandidate("slice-axis", (0., 0., 1.), (0., 0., 0.), (0., 0., 1.), 1., "analysis frame", 0.)
+        topology = SourceTopologyEvidence("virtual-section", 0, (), (), ())
+        signature = section_signature(faces, axis, topology)
+        properties = GProp_GProps()
+        BRepGProp.SurfaceProperties_s(section.wrapped, properties)
+        centre = properties.CentreOfMass()
+        inertia = properties.MatrixOfInertia()
+        # The boundary key includes location, direction-independent endpoints,
+        # interior samples and curve types. Equal area/bounds are not a contour.
+        step = max(1e-8, linear_mm / 100.)
+        def q(point: Any) -> tuple[int, int]:
+            return (round(float(point.x) / step), round(float(point.y) / step))
+        boundaries = []
+        for face in faces:
+            wires = []
+            for wire in (face.outerWire(), *face.innerWires()):
+                edges = []
+                for edge in wire.Edges():
+                    samples = tuple(sorted(q(edge.positionAt(t)) for t in (0., .25, .5, .75, 1.)))
+                    edges.append((str(edge.geomType()), round(float(edge.Length()) / step), samples))
+                wires.append(tuple(sorted(edges)))
+            boundaries.append((wires[0], tuple(sorted(wires[1:]))))
+        boundary_key = _stable_id("measured-contour", sorted(boundaries))
+        station_id = _stable_id("station", (position_mm, boundary_key))
+        signature = replace(signature, section_id=_stable_id("measured-section", (position_mm, boundary_key)),
+                            face_id=station_id, supporting_face_ids=())
+        return SectionStation(
+            station_id=station_id, position_mm=position_mm, safe=True,
+            signature=signature, contour_signature=boundary_key,
+            loop_count=len(faces) + signature.inner_wire_count, void_count=signature.inner_wire_count,
+            centroid_2d_mm=(float(centre.X()), float(centre.Y())),
+            moments=(float(inertia.Value(1, 1)), float(inertia.Value(2, 2)), -float(inertia.Value(1, 2))),
+            measurement_method="native-plane-intersection", status="MEASURED",
+        ), faces
+    except Exception as exc:
+        # Unknown geometry is not a copy of a successful neighbour and is not
+        # interpolated across. No invariant region may cross this station.
+        signature = CrossSectionSignature(station_id, station_id, 0., 0., 0., 0., 0, 0, (), "UNKNOWN", component_count=0)
+        return SectionStation(station_id, position_mm, False, signature, "", 0, 0,
+                              measurement_method="native-plane-intersection", status="FAILED",
+                              reason=f"{type(exc).__name__}: {exc}"), ()
+
+
+def _prove_section_interval(local_shape: Any, faces: tuple[Any, ...], start: float, end: float,
+                            linear_mm: float, area_relative: float) -> Any:
+    """Compare a whole clipped source interval to a real section extrusion.
+
+    Sampling alone is not proof: a small hidden notch between two equal slices
+    must fail the independent, two-way local BREP residual check.
+    """
+    import cadquery as cq
+    from types import SimpleNamespace
+    from .reconstruction import prove_equivalence
+
+    box = local_shape.BoundingBox()
+    margin = max(linear_mm * 2., 1.)
+    clip = cq.Solid.makeBox(box.xlen + 2*margin, box.ylen + 2*margin, end-start,
+                           cq.Vector(box.xmin-margin, box.ymin-margin, start))
+    source = local_shape.intersect(clip)
+    pieces = [cq.Solid.extrudeLinear(f.outerWire(), list(f.innerWires()), cq.Vector(0, 0, end-start)) for f in faces]
+    reconstructed = pieces[0]
+    for piece in pieces[1:]:
+        reconstructed = reconstructed.fuse(piece)
+    return prove_equivalence(source, reconstructed, SimpleNamespace(linear_mm=linear_mm, relative=area_relative))
 
 
 def build_sections_and_regions(
@@ -209,61 +265,86 @@ def build_sections_and_regions(
     area_relative: float,
     topology: SourceTopologyEvidence,
 ) -> tuple[tuple[SectionStation, ...], tuple[SectionInterval, ...], tuple[ExtrusionRegionCandidate, ...]]:
-    stations = tuple(
-        _station_signature(base_section, position, index)
-        for index, position in enumerate(_station_positions(shape, frame, linear_mm))
-    )
-    intervals: list[SectionInterval] = []
-    regions: list[ExtrusionRegionCandidate] = []
-    supporting_faces = tuple(face.face_id for face in topology.faces)
-    for index, (left, right) in enumerate(zip(stations, stations[1:])):
-        denominator = max(abs(left.signature.area_mm2), abs(right.signature.area_mm2), 1.0)
-        area_change = abs(left.signature.area_mm2 - right.signature.area_mm2) / denominator
-        same_contour = left.contour_signature == right.contour_signature
-        invariant = same_contour and area_change <= area_relative
+    """Adaptive measured sections plus independently verified constant regions.
+
+    ``base_section`` is retained for API compatibility, not used as a measured
+    station. Finite samples can propose a region, only its full BREP test can
+    certify it. A refinement budget limits cost, not acceptance tolerances.
+    """
+    import cadquery as cq
+    from .contracts import GeometryProofStatus
+
+    if not (math.isfinite(linear_mm) and linear_mm > 0 and math.isfinite(area_relative) and 0 < area_relative < 1):
+        raise ValueError("Invalid section tolerance policy")
+    # Transform a copy; preserve the source placement, geometry and handedness.
+    plane = cq.Plane(origin=frame.origin_mm, xDir=frame.x_axis, normal=frame.z_axis)
+    local_shape = plane.toLocalCoords(shape.copy())
+    positions = _station_positions(shape, frame, linear_mm)
+    measured = {position: _measure_station(local_shape, position, linear_mm) for position in positions}
+    proofs: dict[tuple[float, float], Any] = {}
+    accepted = {GeometryProofStatus.PROVEN_BREP_EQUIVALENT, GeometryProofStatus.PROVEN_WITHIN_POLICY}
+
+    def interval_proof(left: float, right: float) -> Any:
+        key = (left, right)
+        if key not in proofs:
+            first, faces = measured[left]
+            last, _ = measured[right]
+            if not first.safe or not last.safe or first.contour_signature != last.contour_signature:
+                proofs[key] = None
+            else:
+                try:
+                    proofs[key] = _prove_section_interval(local_shape, faces, left, right, linear_mm, area_relative)
+                except Exception:
+                    proofs[key] = None
+        return proofs[key]
+
+    # Refine observed changes and intervals whose equal endpoints conceal a
+    # residual. Each failed or unresolved interval remains explicitly unproven.
+    for _ in range(2):
+        ordered = sorted(measured)
+        additions = []
+        for left, right in zip(ordered, ordered[1:]):
+            proof = interval_proof(left, right)
+            if right-left > 4*linear_mm and (proof is None or proof.status not in accepted):
+                additions.append((left+right)/2.)
+        for position in additions[:max(0, 65-len(measured))]:
+            measured[position] = _measure_station(local_shape, position, linear_mm)
+        if not additions or len(measured) >= 65:
+            break
+
+    stations = tuple(measured[position][0] for position in sorted(measured))
+    intervals = []
+    regions = []
+    span = max(local_shape.BoundingBox().zlen, linear_mm)
+    for left, right in zip(stations, stations[1:]):
+        proof = interval_proof(left.position_mm, right.position_mm)
+        invariant = bool(proof is not None and proof.status in accepted)
+        denominator = max(abs(left.signature.area_mm2), abs(right.signature.area_mm2), 1.)
+        area_change = abs(left.signature.area_mm2-right.signature.area_mm2) / denominator
+        classification = "INVARIANT_EXTRUSION" if invariant else (
+            "UNRESOLVED_SECTION" if not left.safe or not right.safe else
+            "UNPROVEN_INTERVAL" if left.contour_signature == right.contour_signature else "SECTION_CHANGE")
         interval = SectionInterval(
             interval_id=_stable_id("interval", (left.station_id, right.station_id)),
-            start_mm=left.position_mm,
-            end_mm=right.position_mm,
-            station_ids=(left.station_id, right.station_id),
-            classification="INVARIANT_EXTRUSION" if invariant else "SECTION_CHANGE",
-            invariant=invariant,
-            change_score=area_change,
+            start_mm=left.position_mm, end_mm=right.position_mm,
+            station_ids=(left.station_id, right.station_id), classification=classification,
+            invariant=invariant, change_score=area_change,
+            proof_status=proof.status.value if proof is not None else "NOT_PROVEN",
+            reason=proof.reason if proof is not None else "Sections differ or interval proof unavailable",
         )
         intervals.append(interval)
         if invariant:
-            length = max(0.0, right.position_mm - left.position_mm)
-            regions.append(
-                ExtrusionRegionCandidate(
-                    region_id=_stable_id("extrusion-region", (interval.interval_id, left.contour_signature)),
-                    frame_id=frame.frame_id,
-                    start_mm=left.position_mm,
-                    end_mm=right.position_mm,
-                    length_mm=length,
-                    section_id=left.signature.section_id,
-                    supporting_face_ids=supporting_faces,
-                    source_coverage=1.0,
-                    unexplained_positive_volume_mm3=0.0,
-                    unexplained_negative_volume_mm3=0.0,
-                    score=1.0,
-                )
-            )
-    if len(stations) == 1:
-        regions.append(
-            ExtrusionRegionCandidate(
-                region_id=_stable_id("extrusion-region", stations[0].station_id),
-                frame_id=frame.frame_id,
-                start_mm=stations[0].position_mm,
-                end_mm=stations[0].position_mm,
-                length_mm=0.0,
-                section_id=stations[0].signature.section_id,
-                supporting_face_ids=supporting_faces,
-                source_coverage=0.0,
-                unexplained_positive_volume_mm3=0.0,
-                unexplained_negative_volume_mm3=0.0,
-                score=0.0,
-            )
-        )
+            length = right.position_mm-left.position_mm
+            regions.append(ExtrusionRegionCandidate(
+                region_id=_stable_id("extrusion-region", interval.interval_id), frame_id=frame.frame_id,
+                start_mm=left.position_mm, end_mm=right.position_mm, length_mm=length,
+                section_id=left.signature.section_id,
+                supporting_face_ids=(),  # Virtual section, not all source faces.
+                source_coverage=min(1., length/span),
+                unexplained_positive_volume_mm3=proof.source_minus_reconstruction_mm3,
+                unexplained_negative_volume_mm3=proof.reconstruction_minus_source_mm3,
+                score=1.,
+            ))
     return stations, tuple(intervals), tuple(regions)
 
 
