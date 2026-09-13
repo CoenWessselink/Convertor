@@ -26,7 +26,9 @@ jobs:
           python -m pip install --disable-pip-version-check --no-input \
             PyMuPDF==1.26.7 \
             pypdf==5.9.0 \
-            reportlab==4.4.9
+            reportlab==4.4.9 \
+            XlsxWriter==3.2.9 \
+            cadquery==2.8.0
       - name: Assemble and apply exact guarded patch
         shell: bash
         run: |
