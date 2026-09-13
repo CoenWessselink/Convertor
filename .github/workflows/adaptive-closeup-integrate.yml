@@ -60,13 +60,15 @@ jobs:
             cws_convertor/ui_qt/adaptive_closeup_patch.py \
             cws_convertor/ui_qt/__init__.py \
             tests/viewer_adaptive_closeup_tessellation_smoke.py
-      - name: Install locked viewer runtime
+      - name: Install locked viewer runtime and native display
         shell: bash
         run: |
           set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y xvfb libxcb-cursor0 libegl1 libopengl0
           python -m pip install --upgrade pip
           python -m pip install -r requirements-viewer-v9.lock.txt pytest
-      - name: Run adaptive and regression gates
+      - name: Run adaptive and portable regression gates
         shell: bash
         run: |
           set -euo pipefail
@@ -80,12 +82,18 @@ jobs:
             tests/viewer_v15_feel_fix_smoke.py \
             tests/viewer_v2_core_controller_smoke.py \
             tests/bom_selection_identity_smoke.py \
-            tests/viewer_native_instance_culling_smoke.py \
             tests/viewer_v15_selection_measurement_smoke.py \
             tests/viewer_v15_selection_pivot_parity_smoke.py \
             tests/viewer_v15_navigation_contract_smoke.py \
             tests/viewer_v15_workspace_contract_smoke.py \
             --disable-warnings --maxfail=1 2>&1 | tee build/adaptive-closeup/pytest.log
+      - name: Run native culling render gate under Xvfb
+        shell: bash
+        run: |
+          set -euo pipefail
+          xvfb-run -a -s '-screen 0 1680x1050x24' env QT_QPA_PLATFORM=xcb PYTHONPATH=. \
+            pytest -q tests/viewer_native_instance_culling_smoke.py --disable-warnings --maxfail=1 \
+            2>&1 | tee build/adaptive-closeup/native-culling.log
       - name: Commit and fast-forward publish exact tested source
         shell: bash
         run: |
