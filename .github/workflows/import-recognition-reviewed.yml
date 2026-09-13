@@ -1,0 +1,110 @@
+name: Import reviewed recognition commits and run native Windows acceptance
+on:
+  push:
+    branches: [agent/cws-recognition-transfer-7706358-20260913]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  import-reviewed-objects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      source_sha: ${{ steps.publish.outputs.source_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and publish reviewed Git objects without moving branches
+        id: publish
+        shell: python
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          """Import only reviewed Git objects; branch updates remain connector-authorized."""
+          from pathlib import Path
+          from datetime import datetime, timezone, timedelta
+          import base64, hashlib, json, os, re, subprocess, urllib.request
+          ROOT=Path('.github/recognition-transfer')
+          m=json.loads((ROOT/'manifest.json').read_text())
+          repo=os.environ['GITHUB_REPOSITORY']
+          assert repo=='CoenWessselink/Convertor'
+          api='https://api.github.com/repos/'+repo+'/'
+          def git(*args):
+              return subprocess.check_output(['git',*args])
+          def remote(path, payload=None):
+              body=None if payload is None else json.dumps(payload).encode()
+              req=urllib.request.Request(api+path, data=body, headers={
+                  'Authorization':'Bearer '+os.environ['GITHUB_TOKEN'],
+                  'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',
+                  'Content-Type':'application/json','User-Agent':'cws-reviewed-git-object-transfer'})
+              with urllib.request.urlopen(req,timeout=60) as response:
+                  return json.load(response)
+          raw=base64.b64decode(''.join(p.read_text().strip() for p in sorted(ROOT.glob('part*.b64'))),validate=True)
+          assert hashlib.sha256(raw).hexdigest()==m['bundle_sha256'], 'Bundle checksum mismatch'
+          bundle=Path(os.environ['RUNNER_TEMP'])/'recognition.bundle'; bundle.write_bytes(raw)
+          subprocess.run(['git','bundle','verify',str(bundle)],check=True)
+          subprocess.run(['git','fetch',str(bundle),'HEAD'],check=True)
+          assert git('rev-parse','FETCH_HEAD').decode().strip()==m['head']
+          subprocess.run(['git','merge-base','--is-ancestor',m['base'],m['head']],check=True)
+          changed=set(git('diff','--name-only',m['base'],m['head']).decode().splitlines())
+          assert changed==set(m['files']), 'Unexpected changed file set'
+          for path,digest in m['files'].items():
+              assert hashlib.sha256(git('show',m['head']+':'+path)).hexdigest()==digest, path
+          current=remote('git/ref/heads/'+m['task_branch'])['object']['sha']
+          assert current in (m['base'],m['head']), 'Concurrent work: do not move branch'
+          def identity(line):
+              match=re.fullmatch(r'(.*) <([^<>]+)> (\d+) ([+-]\d{4})',line)
+              assert match, 'Unsupported commit identity'
+              name,email,stamp,offset=match.groups()
+              minutes=int(offset[1:3])*60+int(offset[3:5])
+              zone=timezone(timedelta(minutes=minutes if offset[0]=='+' else -minutes))
+              return {'name':name,'email':email,'date':datetime.fromtimestamp(int(stamp),zone).isoformat()}
+          commits=git('rev-list','--reverse',m['base']+'..'+m['head']).decode().splitlines()
+          for commit in commits:
+              header,message=git('cat-file','-p',commit).decode().split('\n\n',1)
+              fields=[line.split(' ',1) for line in header.splitlines()]
+              attrs=dict(fields); parents=[value for key,value in fields if key=='parent']
+              assert len(parents)==1, 'Only reviewed linear commits are supported'
+              parent=parents[0]
+              files=git('diff','--name-only',parent,commit).decode().splitlines()
+              assert set(files)<=changed
+              entries=[]
+              for path in files:
+                  content=git('show',commit+':'+path)
+                  meta=git('ls-tree',commit,'--',path).decode().split('\t',1)[0].split()
+                  mode,kind,expected_blob=meta
+                  assert mode=='100644' and kind=='blob', 'No symlinks or executable transport'
+                  if path.startswith('.github/workflows/'):
+                      actual=remote('git/blobs/'+expected_blob)['sha']
+                  else:
+                      actual=remote('git/blobs',{'content':base64.b64encode(content).decode(),'encoding':'base64'})['sha']
+                  assert actual==expected_blob, path
+                  entries.append({'path':path,'mode':mode,'type':kind,'sha':actual})
+              tree=remote('git/trees',{'base_tree':git('rev-parse',parent+'^{tree}').decode().strip(),'tree':entries})['sha']
+              assert tree==attrs['tree'], 'Git tree mismatch'
+              result=remote('git/commits',{'tree':tree,'parents':parents,'message':message,
+                  'author':identity(attrs['author']),'committer':identity(attrs['committer'])})
+              assert result['sha']==commit, 'Git commit mismatch: '+result['sha']+' != '+commit
+              print('VERIFIED_GIT_COMMIT '+commit,flush=True)
+          # Deliberately no ref PATCH or git push here. The connected user-authorized
+          # action moves the task ref only after checking exact ancestry, without force.
+          evidence={'source_commit':m['head'],'transfer_commit':os.environ['GITHUB_SHA'],
+                    'verified_commits':commits,'verified_files':m['files'],
+                    'bundle_sha256':m['bundle_sha256'],'branch_mutated':False,
+                    'private_sources_published':False,'status':'GIT_OBJECTS_VERIFIED_NOT_RELEASED'}
+          Path('transfer-proof').mkdir(exist_ok=True)
+          Path('transfer-proof/GIT_OBJECTS.json').write_text(json.dumps(evidence,indent=2))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output: output.write('source_sha='+m['head']+'\n')
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Recognition_Git_Import_${{ github.sha }}
+          path: transfer-proof/GIT_OBJECTS.json
+          if-no-files-found: error
+  native-recognition:
+    needs: import-reviewed-objects
+    uses: ./.github/workflows/material-model-recognition.yml
+    with:
+      source_ref: ${{ needs.import-reviewed-objects.outputs.source_sha }}
