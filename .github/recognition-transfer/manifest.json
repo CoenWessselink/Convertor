@@ -1,0 +1,30 @@
+{
+  "base": "1ed1b265bf25d9d9b79b769d55e279c059945406",
+  "head": "7706358aeffc95618f77fc24447e7178cfbd518a",
+  "bundle_sha256": "fbc6fcbc31cf57ea7e1c0d850289539a24daa09ed1f98d3ccfe354bec62bcabf",
+  "task_branch": "agent/cws-recognition-geometry-intelligence-20260913",
+  "files": {
+    ".github/workflows/material-model-recognition.yml": "39fa70ceed80dbc5122aa752f8fef9399808c14f37ba91fe78c7416a002a7800",
+    "cws_convertor/manufacturing_interpreter/batch_cli.py": "b33d4eaa0b5e361f692785c439ef547f7c93c641d379737459a79c7b2cab9662",
+    "cws_convertor/manufacturing_interpreter/cli.py": "6ef7d35936ffbf117a2f3e0eb632ee3555aa1bf34af18c82a37d872f2cdaf422",
+    "cws_convertor/manufacturing_interpreter/contracts.py": "ce3c751683a58ccb082cfa1ffcbd58d1de8962d6502e0fcb5660b0a37c3af7b0",
+    "cws_convertor/manufacturing_interpreter/integrated_evidence.py": "f70dcd1562d4402f396515e6d7a272262eabab75f797121abf34069be06ea05b",
+    "cws_convertor/manufacturing_interpreter/isolated.py": "65eb4888dd5ff325d2d1d81916a256a67034f66eaab8bdde9c653978f89ca6c8",
+    "cws_convertor/manufacturing_interpreter/pipeline.py": "946e9dc365b1b9db24809ad954de1229d00ab52bace3689fa2b84a6c09a5e65a",
+    "cws_convertor/manufacturing_interpreter/recognition_geometry.py": "154d3c61049479eff9f419417acd136cf4a2c22d58db698b06d17c1e60a3502d",
+    "cws_convertor/manufacturing_interpreter/service.py": "a4ffa0c6c47050a56a1892512fa4bec680ae91f4d424133dc89928783ee70c5c",
+    "cws_convertor/manufacturing_interpreter/topology.py": "5e2e7bae323cb5bf192e4d76c3a13f50f5e2b4f150571f85b47969d85a0d6b84",
+    "cws_convertor/project/semantic_import.py": "c899957c55b2c1cf0b536847eb51f3e09475eb7b5cb221c75600bf6b2f81d76a",
+    "cws_convertor/project/service.py": "11d35404d390d846526765ad89ddb2d3213469e2f02a16b43e400dc845c00c28",
+    "cws_convertor/ui_qt/manufacturing_geometry_workspace.py": "130b28673ea6fe7482f8224b76b35b4141589ba1a12e3290ca20d44578c8956d",
+    "tests/recognition_body_inventory_smoke.py": "abe3bddd1259e9106c733daac92446d2e1dc195ff8377f17a661263c44e9b9be",
+    "tests/recognition_intake_identity_smoke.py": "2711256b3b6107c4d27a00d5ec754f70428006b84d626d3c5156c5d98ca55a72",
+    "tests/recognition_integrated_native_smoke.py": "44eef8cdfae0fbfb09bd1167e71c73c1a5b100f935d39e65fb5bfa0ea2a63557",
+    "tests/recognition_project_batch_scope_smoke.py": "3f302dc9dc3c7870fc8f9454b06d2b1949d0b662d50d6494b1d9d43df32afc6c",
+    "tests/recognition_review_runtime_smoke.py": "03a3d0a03ae09fee88b3d6f8f901a5b2a815b0215ab34f72d65ac061deba5107",
+    "tests/test_manufacturing_interpreter_v3_phase3.py": "a954941ef310136a3f8d1c6c619ced136cc81730a7ed635cc012e9e9c7bd3728",
+    "tools/run_material_model_recognition_acceptance.py": "32113102ea66cb6f6656e6fd6e708559c5662b7ce7aa53d2e99124b00a52cbca"
+  },
+  "transport_only": true,
+  "private_inputs_included": false
+}
