@@ -100,6 +100,7 @@ jobs:
           python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Capture actual BOM controls against the stored HVPC project
+        timeout-minutes: 10
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' && steps.runtime.outcome == 'success' }}
         shell: pwsh
         run: |

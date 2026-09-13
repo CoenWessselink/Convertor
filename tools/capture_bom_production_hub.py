@@ -183,6 +183,11 @@ def main() -> int:
         supported_operations=["saw", "drill", "scribe"],
         enabled=True,
     )
+    # A machine-profile edit changes the project revision. Rebuild through
+    # the existing BOM service; never bypass W18's snapshot freshness gate.
+    workspace.bom_snapshot = build_bom_snapshot(project, user="bom-production-hub-capture", classify_if_needed=False)
+    panel.set_context(workspace, context.selection)
+    machine_capture_snapshot = workspace.bom_snapshot.snapshot_sha256
     panel.group_by.setCurrentText("Niet groeperen")
     panel.table.clearSelection()
     ready_table_row = next(
@@ -215,6 +220,8 @@ def main() -> int:
     finally:
         QtWidgets.QDialog.exec = original_exec
         project.machine_profiles.pop(profile_id, None)
+        workspace.bom_snapshot = build_bom_snapshot(project, user="bom-production-hub-capture", classify_if_needed=False)
+        panel.set_context(workspace, context.selection)
 
     panel._apply_column_preset("production")
     panel._set_viewer_layout("right")
@@ -254,6 +261,9 @@ def main() -> int:
         "project": str(args.project.resolve()),
         "project_name": project.project_name,
         "bom_snapshot_sha256": snapshot.snapshot_sha256,
+        "machine_capture_snapshot_sha256": machine_capture_snapshot,
+        "machine_profile_is_temporary_capture_data": True,
+        "production_assignment_executed": False,
         "bom_build_seconds": round(bom_seconds, 3),
         "summary": snapshot.summary,
         "validation": snapshot.validation.to_dict() if snapshot.validation else {},
