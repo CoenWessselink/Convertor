@@ -27,7 +27,14 @@ class SolverOutcome:
     bounded_candidates: int
 
 
-def _score(proof: Any, residual: Any, features: tuple[RecognizedGeometricFeature, ...], source_volume: float) -> HypothesisScoreBreakdown:
+def _score(
+    proof: Any,
+    residual: Any,
+    features: tuple[RecognizedGeometricFeature, ...],
+    source_volume: float,
+    *,
+    profile_proven: bool = False,
+) -> HypothesisScoreBreakdown:
     proven = proof.status in {GeometryProofStatus.PROVEN_BREP_EQUIVALENT, GeometryProofStatus.PROVEN_WITHIN_POLICY}
     residual_volume = residual.source_minus_reconstruction_mm3 + residual.reconstruction_minus_source_mm3
     residual_score = max(0.0, 1.0 - residual_volume / max(source_volume, 1.0))
@@ -48,7 +55,7 @@ def _score(proof: Any, residual: Any, features: tuple[RecognizedGeometricFeature
         geometry_proof=1.0 if proven else 0.0,
         residual=residual_score,
         boundary_distance=boundary_score,
-        profile_proof=1.0,
+        profile_proof=1.0 if profile_proven else 0.0,
         feature_evidence=feature_score,
         source_coverage=residual_score,
         manufacturing_plausibility=1.0 if unknown == 0 else 0.25,
@@ -70,6 +77,7 @@ def solve_hypotheses(
     policy: Any,
     max_candidates: int = 64,
     timeout_seconds: float = 8.0,
+    profile_proven: bool = False,
 ) -> SolverOutcome:
     started = time.perf_counter()
     candidate_sets = [features]
@@ -87,7 +95,9 @@ def solve_hypotheses(
             residual = residual_geometry_report(source_shape, reconstructed, policy)
         except Exception:
             continue
-        score = _score(proof, residual, candidate_features, source_volume)
+        score = _score(
+            proof, residual, candidate_features, source_volume, profile_proven=profile_proven
+        )
         unknown_ids = tuple(
             feature.feature_id for feature in candidate_features if feature.semantic_type.value == "UNKNOWN"
         )
@@ -115,7 +125,7 @@ def solve_hypotheses(
             negative_feature_ids=(),
             feature_graph_id=feature_graph_id,
             unknown_region_ids=("SOLVER_NO_CANDIDATE",),
-            score=_score(proof, residual, (), source_volume),
+            score=_score(proof, residual, (), source_volume, profile_proven=profile_proven),
             proof_status=proof.status,
             runtime_cost_seconds=0.0,
         )

@@ -35,6 +35,10 @@ def enrich_phase2(report: Any, source_shape: Any, policy: Any, requested_outputs
             features=features,
             feature_graph_id=graph.graph_id,
             policy=policy,
+            profile_proven=report.profile.status in {
+                GeometryProofStatus.PROVEN_BREP_EQUIVALENT,
+                GeometryProofStatus.PROVEN_WITHIN_POLICY,
+            },
         )
     except Exception as exc:
         blockers = tuple(dict.fromkeys((*report.blockers, f"FEATURE_SOLVER_FAILED:{type(exc).__name__}")))

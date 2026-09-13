@@ -56,6 +56,18 @@ def test_phase2_compound_hole_reconstruction_and_representability() -> None:
         assert {target.target for target in report.representability_report.targets} == {"STEP", "IFC", "NC1", "PDF"}
 
 
+def test_hypothesis_score_does_not_claim_unproven_profile() -> None:
+    shape = cq.Workplane("XY").box(123.0, 47.0, 500.0).val()
+    with tempfile.TemporaryDirectory(prefix="cws-mgi-v3-unproven-profile-") as cache_root:
+        report = ManufacturingGeometryInterpreter(
+            profile_database=SimpleNamespace(profiles=[]),
+            cache_root=Path(cache_root),
+        ).analyze(ManufacturingInterpretationRequest(inspection=_inspection(shape, "custom-profile")))
+    assert report.profile.status == GeometryProofStatus.RECOGNITION_INCOMPLETE
+    assert report.hypotheses
+    assert report.hypotheses[0].score.profile_proof == 0.0
+
+
 def test_phase2_promotion_is_confirmation_gated() -> None:
     report = SimpleNamespace(readiness=SimpleNamespace(value="BLOCKED"), part_id="P1",
         source_file_id="fixture.step", source_sha256="fixture-sha", source_geometry_hash="fixture-geometry")
