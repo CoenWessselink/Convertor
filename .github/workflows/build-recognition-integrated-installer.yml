@@ -1,0 +1,201 @@
+name: CWS integrated Windows installer and portable
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/cws-recognition-native-integration-20260913
+    paths:
+      - "*.py"
+      - "*.json"
+      - "cws_project/**"
+      - "cws_convertor/**"
+      - "cws_viewer/**"
+      - "viewer_harness/**"
+      - "project_tab.py"
+      - "pyinstaller_hooks/**"
+      - "templates/**"
+      - "assets/**"
+      - "installer/**"
+      - "tests/**"
+      - "tools/**"
+      - "validation/**"
+      - "requirements*.txt"
+      - "CWS_Convertor.spec"
+      - ".github/workflows/build-recognition-integrated-installer.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integrated-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows-x64:
+    name: Recognition-gated installer and portable
+    runs-on: windows-2022
+    timeout-minutes: 180
+    env:
+      PYTHONUTF8: "1"
+      PYTHONPATH: ${{ github.workspace }}
+      QT_QPA_PLATFORM: offscreen
+      CWS_HEADLESS_GUI_SMOKE: "1"
+      RELEASE_DIR: ${{ github.workspace }}\release\integrated
+      RUNTIME_RESULTS: ${{ github.workspace }}\build\evidence\integrated_installer
+
+    steps:
+      - name: Enable Windows long paths before checkout
+        shell: pwsh
+        run: git config --global core.longpaths true
+
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install Python 3.12 x64
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+          cache: pip
+
+      - name: Install locked build runtime
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -c "import cadquery,OCP,ifcopenshell,PySide6,vtk,fitz; print('native imports OK')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require material and model recognition acceptance
+        shell: pwsh
+        run: |
+          python tools/run_material_model_recognition_acceptance.py --require-native --output build/material_model_recognition_installer
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run Phase 1 source and GUI gates
+        shell: pwsh
+        run: |
+          python tools/run_phase1_unified_gates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build reproducible Phase 1 evidence
+        shell: pwsh
+        run: |
+          python tools/build_phase1_reproducible_evidence.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build and prove one-folder and fresh portable runtime
+        shell: pwsh
+        run: |
+          python tools/build_phase1_windows_release.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Build commit-bound installer
+        shell: pwsh
+        run: |
+          $version = (python -c "from cws_convertor.product import APP_VERSION; print(APP_VERSION)").Trim()
+          if (-not $version) { throw "APP_VERSION ontbreekt" }
+          $commit7 = $env:GITHUB_SHA.Substring(0, 7)
+          "CWS_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CWS_COMMIT7=$commit7" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe niet gevonden" }
+          & $iscc "/DCommit7=$commit7" "installer/CWS_Convertor.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup build mislukt" }
+          $installer = "dist_installer/CWS_Convertor_Setup_${version}_${commit7}_x64.exe"
+          if (-not (Test-Path $installer)) { throw "Installer ontbreekt: $installer" }
+          "CWS_INSTALLER=$((Resolve-Path $installer).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Install and reinstall silently
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:RUNNER_TEMP "CWS_Convertor_Installed"
+          "CWS_INSTALL_DIR=$installDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $arguments = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/CURRENTUSER", "/TASKS=fileassoc", "/DIR=$installDir")
+          foreach ($pass in 1..2) {
+            $process = Start-Process -FilePath $env:CWS_INSTALLER -ArgumentList $arguments -Wait -PassThru -WindowStyle Hidden
+            if ($process.ExitCode -ne 0) { throw "Installatiepass $pass faalde met exitcode $($process.ExitCode)" }
+            if (-not (Test-Path (Join-Path $installDir "CWS_Convertor.exe"))) { throw "GUI ontbreekt na installatiepass $pass" }
+            if (-not (Test-Path (Join-Path $installDir "CWS_Convertor_CLI.exe"))) { throw "CLI ontbreekt na installatiepass $pass" }
+          }
+
+      - name: Test installed runtime and file associations
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path $env:RUNTIME_RESULTS -Force | Out-Null
+          python tests/packaged_runtime_smoke.py --runtime-dir $env:CWS_INSTALL_DIR --label installed --result-dir $env:RUNTIME_RESULTS
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tests/windows_installer_association_smoke.py --runtime-dir $env:CWS_INSTALL_DIR
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Uninstall and verify removal
+        shell: pwsh
+        run: |
+          $uninstaller = Join-Path $env:CWS_INSTALL_DIR "unins000.exe"
+          if (-not (Test-Path $uninstaller)) { throw "Uninstaller ontbreekt" }
+          $process = Start-Process -FilePath $uninstaller -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait -PassThru -WindowStyle Hidden
+          if ($process.ExitCode -ne 0) { throw "Uninstall faalde met exitcode $($process.ExitCode)" }
+          Start-Sleep -Seconds 2
+          if (Test-Path (Join-Path $env:CWS_INSTALL_DIR "CWS_Convertor.exe")) { throw "GUI bleef na uninstall achter" }
+          if (Test-Path (Join-Path $env:CWS_INSTALL_DIR "CWS_Convertor_CLI.exe")) { throw "CLI bleef na uninstall achter" }
+
+      - name: Assemble release files and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path $env:RELEASE_DIR -Force | Out-Null
+          $portable = Get-ChildItem "release/phase1/*Portable.zip" | Select-Object -First 1
+          if (-not $portable) { throw "Geteste portable ZIP ontbreekt" }
+          $portableOut = Join-Path $env:RELEASE_DIR "CWS_Convertor_Portable_${env:CWS_VERSION}_${env:CWS_COMMIT7}_x64.zip"
+          Copy-Item $portable.FullName $portableOut -Force
+          $installerOut = Join-Path $env:RELEASE_DIR (Split-Path $env:CWS_INSTALLER -Leaf)
+          Copy-Item $env:CWS_INSTALLER $installerOut -Force
+          $files = @($installerOut, $portableOut)
+          $manifestFiles = foreach ($file in $files) {
+            $item = Get-Item $file
+            [ordered]@{
+              name = $item.Name
+              bytes = $item.Length
+              sha256 = (Get-FileHash -Algorithm SHA256 $item.FullName).Hash.ToLowerInvariant()
+            }
+          }
+          $manifestFiles | ForEach-Object { "$($_.sha256)  $($_.name)" } | Set-Content -Encoding ascii (Join-Path $env:RELEASE_DIR "SHA256SUMS.txt")
+          $manifest = [ordered]@{
+            schema = "cws-integrated-windows-release-1.0"
+            version = $env:CWS_VERSION
+            commit = $env:GITHUB_SHA
+            run_id = $env:GITHUB_RUN_ID
+            recognition_gate = "passed"
+            phase1_source_gui_gate = "passed"
+            reproducible_evidence_gate = "passed"
+            one_folder_and_fresh_portable_gate = "passed"
+            installer_install_reinstall_runtime_association_uninstall_gate = "passed"
+            status = "passed"
+            files = @($manifestFiles)
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 (Join-Path $env:RELEASE_DIR "WINDOWS_RELEASE_MANIFEST.json")
+          Copy-Item "validation/phases/PHASE_1_WINDOWS_RUNTIME_EVIDENCE.json" $env:RELEASE_DIR -ErrorAction SilentlyContinue
+          Copy-Item "$env:RUNTIME_RESULTS\*.json" $env:RELEASE_DIR -ErrorAction SilentlyContinue
+          Get-Content (Join-Path $env:RELEASE_DIR "SHA256SUMS.txt")
+
+      - name: Upload installer, portable and validation evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_Integrated_${{ github.sha }}_Windows_x64
+          path: |
+            release/integrated/*
+            build/material_model_recognition_installer/**
+            validation/phases/PHASE_1_*.json
+            validation/phases/PHASE_1_CHECKLIST.md
+          if-no-files-found: error
+          retention-days: 30
