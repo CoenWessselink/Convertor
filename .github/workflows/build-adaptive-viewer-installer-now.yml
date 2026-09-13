@@ -1,0 +1,75 @@
+name: Build adaptive Viewer installer now
+on:
+  push:
+    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    paths:
+      - '.github/workflows/build-adaptive-viewer-installer-now.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+env:
+  PYTHONUTF8: '1'
+  PYTHONPATH: ${{ github.workspace }}
+  QT_QPA_PLATFORM: offscreen
+  CWS_HEADLESS_GUI_SMOKE: '1'
+  GALLIUM_DRIVER: llvmpipe
+  LIBGL_ALWAYS_SOFTWARE: '1'
+jobs:
+  installer:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Enable Windows long paths for checkout
+        shell: powershell
+        run: git config --global core.longpaths true
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements-build.lock.txt
+      - name: Install locked build tools and M18 payload
+        shell: powershell
+        run: |
+          python -m pip install -r requirements-build.lock.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/restore_m18_authority.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          choco install innosetup --no-progress -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: ssciwr/setup-mesa-dist-win@6657792673a5d162d5f244db991ba45b4b68989f
+        with:
+          version: '23.3.3'
+          build-type: 'release-msvc'
+          deployment-choice: '1'
+      - name: Build and test onefolder, fresh portable, installer and uninstall
+        shell: powershell
+        run: python tools/build_tested_installer.py
+      - name: Record exact build identity
+        if: always()
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path build/installer-evidence | Out-Null
+          git rev-parse HEAD | Out-File -Encoding ascii build/installer-evidence/BUILT_COMMIT.txt
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: CWS_Adaptive_Viewer_Installer_${{ github.sha }}_Windows_x64
+          path: release/installer/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CWS_Adaptive_Viewer_Installer_Proof_${{ github.sha }}
+          path: |
+            build/installer-evidence/**
+            validation/pdf_ui_v3_function_proof/**
+          if-no-files-found: warn
+          retention-days: 90
