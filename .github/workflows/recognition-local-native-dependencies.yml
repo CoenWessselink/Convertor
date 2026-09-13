@@ -1,0 +1,31 @@
+name: Recognition pinned local native dependencies
+on:
+  push:
+    branches: [agent/cws-recognition-transport-20260913]
+    paths: [.github/workflows/recognition-local-native-dependencies.yml]
+permissions:
+  contents: read
+jobs:
+  offline-wheels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download existing locked versions without executing application code
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p wheels
+          python -m pip download --only-binary=:all: --no-deps --dest wheels PySide6==6.9.2 PySide6_Essentials==6.9.2 PySide6_Addons==6.9.2 shiboken6==6.9.2 ifcopenshell==0.8.5
+          sha256sum wheels/* > wheels/SHA256SUMS.txt
+          python --version > wheels/ENVIRONMENT.txt
+          echo 'Pinned native dependencies for offline Linux verification; NOT Windows acceptance or release evidence.' >> wheels/ENVIRONMENT.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Recognition_Pinned_Linux_Native_Wheels
+          path: wheels/*
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
