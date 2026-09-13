@@ -16,10 +16,10 @@ def _triangle_count(shape_factory, settings: TessellationSettings) -> int:
 
 def test_hq_balanced_profile_is_default_and_versioned() -> None:
     settings = TessellationSettings()
-    assert settings.linear_deflection_mm == 0.35
-    assert settings.angular_deflection_rad == 0.18
-    assert settings.circle_segments == 48
-    assert settings.version == "cws-tessellation-v3-hq-balanced"
+    assert settings.linear_deflection_mm == 0.20
+    assert settings.angular_deflection_rad == 0.12
+    assert settings.circle_segments == 64
+    assert settings.version == "cws-tessellation-v4-ultra-smooth"
 
 
 def test_hq_curves_gain_detail_without_planar_triangle_bloat() -> None:

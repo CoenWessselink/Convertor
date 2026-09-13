@@ -34,12 +34,12 @@ class TessellationSettings:
     # geometry, instancing, culling and the interactive render-quality path.
     # The version participates in every persistent mesh-cache key, so existing
     # v2 meshes are invalidated without changing source/entity/geometry identity.
-    linear_deflection_mm: float = 0.35
-    angular_deflection_rad: float = 0.18
-    circle_segments: int = 48
+    linear_deflection_mm: float = 0.20
+    angular_deflection_rad: float = 0.12
+    circle_segments: int = 64
     relative: bool = False
     weld_proxy_sides: int = 8
-    version: str = "cws-tessellation-v3-hq-balanced"
+    version: str = "cws-tessellation-v4-ultra-smooth"
 
     def __post_init__(self) -> None:
         if self.linear_deflection_mm <= 0:
@@ -265,7 +265,7 @@ class GeometryLoadResult:
     def succeeded(self) -> bool:
         return self.status in {GeometryLoadStatus.READY, GeometryLoadStatus.PARTIAL} and self.mesh is not None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict{str, Any]:
         return {
             "geometry_id": self.request.geometry_id,
             "status": self.status.value,

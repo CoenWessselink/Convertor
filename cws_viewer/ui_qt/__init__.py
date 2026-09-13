@@ -4,6 +4,9 @@ from __future__ import annotations
 from typing import Any
 
 from .qt_compat import qt_available, require_qt
+from .smooth_render_patch import install_ultra_smooth_render_patch as _install_ultra_smooth_render_patch
+
+_install_ultra_smooth_render_patch()
 
 __all__ = [
     "qt_available",
