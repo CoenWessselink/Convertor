@@ -1,0 +1,94 @@
+name: Split tested integrated installer artifacts
+
+on:
+  push:
+    branches:
+      - agent/cws-installer-artifact-delivery-20260913
+    paths:
+      - ".github/workflows/split-integrated-installer-artifacts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  split-tested-artifact:
+    name: Split exact tested installer and portable
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - name: Download exact successful integrated artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: CWS_Convertor_Integrated_e1b9b13c1bb1e004efdc65dd3df6112a3b8950a0_Windows_x64
+          path: source-artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: CoenWessselink/Convertor
+          run-id: 34763343292
+
+      - name: Extract exact deliverables without rebuilding
+        id: split
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Get-ChildItem -Path source-artifact -Recurse -File -Filter 'CWS_Convertor_Setup_*.exe' | Select-Object -First 1
+          $portable = Get-ChildItem -Path source-artifact -Recurse -File -Filter 'CWS_Convertor_Portable_*.zip' | Select-Object -First 1
+          $releaseManifest = Get-ChildItem -Path source-artifact -Recurse -File -Filter 'WINDOWS_RELEASE_MANIFEST.json' | Select-Object -First 1
+          $checksums = Get-ChildItem -Path source-artifact -Recurse -File -Filter 'SHA256SUMS.txt' | Select-Object -First 1
+          if (-not $installer) { throw 'Geteste installer ontbreekt in bronartifact.' }
+          if (-not $portable) { throw 'Geteste portable ZIP ontbreekt in bronartifact.' }
+          New-Item -ItemType Directory -Force -Path split/installer, split/portable, split/evidence | Out-Null
+          Copy-Item $installer.FullName (Join-Path 'split/installer' $installer.Name) -Force
+          Copy-Item $portable.FullName (Join-Path 'split/portable' $portable.Name) -Force
+          if ($releaseManifest) { Copy-Item $releaseManifest.FullName split/evidence/WINDOWS_RELEASE_MANIFEST.json -Force }
+          if ($checksums) { Copy-Item $checksums.FullName split/evidence/SHA256SUMS.txt -Force }
+          $installerOut = Get-Item (Join-Path 'split/installer' $installer.Name)
+          $portableOut = Get-Item (Join-Path 'split/portable' $portable.Name)
+          $delivery = [ordered]@{
+            schema = 'cws-tested-artifact-delivery-1.0'
+            source_commit = 'e1b9b13c1bb1e004efdc65dd3df6112a3b8950a0'
+            source_run_id = '34763343292'
+            source_artifact_id = '10319679058'
+            source_artifact_sha256 = 'dc24103b735e0f3c06d35f356808157aeecd13ab1c805ab57699fef6f6b1a0ef'
+            rebuilt = $false
+            installer = [ordered]@{
+              name = $installerOut.Name
+              bytes = $installerOut.Length
+              sha256 = (Get-FileHash -Algorithm SHA256 $installerOut.FullName).Hash.ToLowerInvariant()
+            }
+            portable = [ordered]@{
+              name = $portableOut.Name
+              bytes = $portableOut.Length
+              sha256 = (Get-FileHash -Algorithm SHA256 $portableOut.FullName).Hash.ToLowerInvariant()
+            }
+          }
+          $delivery | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 split/evidence/DELIVERY_MANIFEST.json
+          Write-Host "INSTALLER=$($delivery.installer.name) bytes=$($delivery.installer.bytes) sha256=$($delivery.installer.sha256)"
+          Write-Host "PORTABLE=$($delivery.portable.name) bytes=$($delivery.portable.bytes) sha256=$($delivery.portable.sha256)"
+
+      - name: Upload installer only
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_Setup_0.10.19-beta-dev_e1b9b13_x64
+          path: split/installer/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload portable only
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_Portable_0.10.19-beta-dev_e1b9b13_x64
+          path: split/portable/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload delivery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS_Convertor_Delivery_Evidence_e1b9b13
+          path: split/evidence/*
+          if-no-files-found: error
+          retention-days: 30
