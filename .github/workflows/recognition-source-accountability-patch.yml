@@ -19,6 +19,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install focused test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --no-input \
+            PyMuPDF==1.26.7 \
+            pypdf==5.9.0 \
+            reportlab==4.4.9
       - name: Assemble and apply exact guarded patch
         shell: bash
         run: |
