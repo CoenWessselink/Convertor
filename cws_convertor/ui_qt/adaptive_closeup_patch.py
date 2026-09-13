@@ -6,6 +6,7 @@ cached display mesh for selected, screen-large, visibly faceted curved resources
 is replaced with a stricter tessellation profile after interaction settles.
 """
 from __future__ import annotations
+import os
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,11 @@ _INSTALLED = False
 
 def install_adaptive_closeup_refinement() -> None:
     global _INSTALLED
+    # Diagnostic/evidence processes are deliberately finite-lived and must not
+    # start background tessellation jobs after their UI assertions complete.
+    # This does not alter normal interactive desktop runtime behaviour.
+    if os.environ.get("CWS_HEADLESS_NONINTERACTIVE") == "1":
+        return
     if _INSTALLED or not qt_available():
         return
 
