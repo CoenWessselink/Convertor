@@ -12,7 +12,7 @@ ALGORITHM_VERSIONS = (
     ("topology", "mgi-topology-v3"),
     ("axis", "mgi-axis-v3"),
     ("section", "mgi-section-v3.3-native-interval-proof"),
-    ("profile", "mgi-profile-v3.2"),
+    ("profile", "mgi-profile-v3.3-native-contour"),
     ("feature", "mgi-feature-v3.1"),
     ("solver", "mgi-solver-v3.2"),
     ("proof", "mgi-proof-v3.2"),
@@ -212,6 +212,7 @@ class ProfileRecognition:
     area_delta_mm2: float = 0.0
     candidates: tuple[str, ...] = ()
     reason: str = ""
+    boundary_evidence: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

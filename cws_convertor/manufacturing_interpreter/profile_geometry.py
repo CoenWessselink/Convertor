@@ -101,3 +101,95 @@ def match_full_profile_geometry(
 
 
 __all__ = ["match_full_profile_geometry"]
+
+
+def _catalogue_section(definition: Any) -> Any:
+    """Reuse the production profile builder; no second catalogue or guessed grade."""
+    import cadquery as cq
+    from pathlib import Path
+    from converter import Header, NC1Part
+    from conversion import build_shape
+
+    kind = str(getattr(definition, 'profile_type', '')).upper()
+    header = Header(order_number='', drawing_number='', part_number='', position_number='',
+                    material='', quantity=1, profile=str(definition.designation), profile_type=kind,
+                    length=10., saw_length=10., dim1=float(definition.dim1), dim2=float(definition.dim2),
+                    dim3=float(definition.dim3), dim4=float(definition.dim4), radius=float(definition.radius),
+                    weight=0., paint_area=0., web_miter_front=0., web_miter_rear=0.,
+                    flange_miter_front=0., flange_miter_rear=0.)
+    part = NC1Part(Path('catalogue-geometry-only'), header, [], [])
+    solid = build_shape(part).val()
+    if not solid.isValid() or len(solid.Solids()) != 1:
+        raise ValueError('Catalogue builder did not yield one valid solid')
+    if any('overgeslagen' in w.lower() for w in part.warnings):
+        raise ValueError('Catalogue builder omitted geometry')
+    section = solid.intersect(cq.Face.makePlane(basePnt=(5., 0., 0.), dir=(1., 0., 0.)))
+    return cq.Plane(origin=(5., 0., 0.), xDir=(0., 1., 0.), normal=(1., 0., 0.)).toLocalCoords(section)
+
+
+def native_section_comparison(source_faces: tuple[Any, ...], axis: Any, definition: Any, policy: Any) -> dict[str, Any]:
+    """Measure bidirectional planar residuals, not bbox/area coincidence.
+
+    Rotations/reflections align a catalogue *cross-section* only. Source solids,
+    occurrence placements and feature/manufacturing handedness are untouched.
+    This proves shape similarity, never rolled versus welded manufacture.
+    """
+    import cadquery as cq
+    from .topology import linear_tolerance, relative_tolerance
+
+    try:
+        normal = source_faces[0].normalAt().normalized()
+        if normal.dot(cq.Vector(*axis.direction)) < 0:
+            normal = -normal
+        lines = [e for f in source_faces for e in f.Edges() if str(e.geomType()).upper() == 'LINE']
+        if lines:
+            edge = max(lines, key=lambda e: e.Length())
+            transverse = (edge.endPoint()-edge.startPoint()).normalized()
+        else:
+            helper = cq.Vector(1, 0, 0) if abs(normal.x) < .9 else cq.Vector(0, 1, 0)
+            transverse = normal.cross(helper).normalized()
+        plane = cq.Plane(origin=source_faces[0].Center(), xDir=transverse, normal=normal)
+        source = plane.toLocalCoords(cq.Compound.makeCompound(list(source_faces))).clean()
+        reference = _catalogue_section(definition).clean()
+        def centred(shape: Any) -> Any:
+            faces = shape.Faces()
+            area = sum(float(f.Area()) for f in faces)
+            centre = sum((f.Center().multiply(float(f.Area())) for f in faces), cq.Vector()).multiply(1./area)
+            return shape.translate(-centre)
+        source, reference = centred(source), centred(reference)
+        linear = linear_tolerance(policy)
+        area_limit = max(linear**2, reference.Area()*relative_tolerance(policy))
+        best = None
+        for mirrored in (False, True):
+            candidate = reference.mirror('YZ') if mirrored else reference
+            for angle in (0., 90., 180., 270.):
+                oriented = candidate.rotate((0,0,0),(0,0,1),angle)
+                missing, extra = source.cut(oriented), oriented.cut(source)
+                missing_area, extra_area = float(missing.Area()), float(extra.Area())
+                # Maximum tested boundary separation supplements two-way area
+                # and local-residual thickness. It is not a Hausdorff certificate.
+                boundary_distance = max(
+                    (cq.Vertex.makeVertex(*edge.positionAt(t).toTuple()).distance(other)
+                     for current, other in ((source, oriented), (oriented, source))
+                     for edge in current.Edges() for t in (0., .25, .5, .75, 1.)), default=float('inf'))
+                local_ok = all(
+                    f.Area() <= linear**2 or
+                    2*f.Area()/max(sum(e.Length() for e in f.Edges()), 1e-12) <= linear
+                    for residual in (missing, extra) for f in residual.Faces())
+                passed = missing_area <= area_limit and extra_area <= area_limit and boundary_distance <= linear and local_ok
+                observation = {'status': 'PROVEN' if passed else 'FAILED',
+                    'source_minus_catalogue_mm2': missing_area, 'catalogue_minus_source_mm2': extra_area,
+                    'boundary_sample_max_mm': boundary_distance, 'linear_tolerance_mm': linear,
+                    'area_tolerance_mm2': area_limit, 'rotation_degrees': angle,
+                    'section_reflected_for_comparison': mirrored,
+                    'method': 'native-two-way-planar-residual-and-local-thickness',
+                    'catalogue_source': str(getattr(definition, 'source', '')),
+                    'catalogue_standard': str(getattr(definition, 'standard', '')),
+                    'fabrication_origin_proven': False}
+                if best is None or missing_area+extra_area < best['source_minus_catalogue_mm2']+best['catalogue_minus_source_mm2']:
+                    best = observation
+                if passed:
+                    return observation
+        return best or {'status':'UNAVAILABLE', 'reason':'No orientation tested'}
+    except Exception as exc:
+        return {'status':'UNAVAILABLE', 'reason':f'{type(exc).__name__}: {exc}'}

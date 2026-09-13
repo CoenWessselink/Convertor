@@ -94,6 +94,7 @@ SUITES = (
     SuiteSpec("tests/plate_ui_integration_smoke.py", "plate_ui_integration", ("PySide6.QtWidgets", "shapely"), "run"),
     SuiteSpec("tests/recognition_acceptance_policy_smoke.py", "recognition_usefulness"),
     SuiteSpec("tests/integrated_promotion_smoke.py", "release_promotion"),
+    SuiteSpec("tests/recognition_catalogue_intelligence_smoke.py", "recognition_catalogue_intelligence", ("cadquery", "OCP")),
     SuiteSpec("tests/recognition_geometry_intelligence_smoke.py", "recognition_geometry_intelligence", ("cadquery", "OCP")),
     SuiteSpec("tests/recognition_integrated_native_smoke.py", "recognition_geometry_integration", ("cadquery", "OCP")),
     SuiteSpec("tests/real_file_recognition_repair_smoke.py", "real_file_intake_repairs", ("cadquery", "OCP", "ezdxf", "fitz", "shapely")),

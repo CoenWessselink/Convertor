@@ -112,6 +112,8 @@ class ManufacturingGeometryInterpreter:
                 self.profile_database,
                 self.tolerance_policy,
                 request.preferred_profile,
+                source_faces=end_faces,
+                axis=selected_axis,
             )
             reconstructed = reconstruct_prismatic(shape, selected_axis)
             proof = prove_equivalence(shape, reconstructed, self.tolerance_policy)
