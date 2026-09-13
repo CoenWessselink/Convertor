@@ -1,7 +1,7 @@
 name: CWS exact-commit source review snapshot
 on:
   push:
-    branches: [agent/cws-pdf-ui-v3-complete-20260909]
+    branches: [agent/cws-pdf-ui-v3-complete-20260909, agent/cws-recognition-geometry-intelligence-20260913]
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,10 @@ jobs:
           mkdir -p snapshot
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           git archive --format=zip --output=snapshot/source.zip "$GITHUB_SHA"
+          if [[ "$GITHUB_REF_NAME" == agent/cws-recognition-geometry-intelligence-* ]]; then
+            git bundle create snapshot/source.bundle HEAD
+            git bundle verify snapshot/source.bundle
+          fi
           git log -30 --format='%H %P %s' > snapshot/ANCESTRY.txt
           git ls-tree -r "$GITHUB_SHA" > snapshot/TREE.txt
           python - <<'PY'
