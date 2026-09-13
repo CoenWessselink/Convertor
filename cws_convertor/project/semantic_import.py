@@ -55,6 +55,7 @@ def purge_source_entities(
         "spatial_trees",
         "product_trees",
         "source_entity_maps",
+        "source_entity_occurrences",
         "mark_groups",
         "geometry_groups",
         "manufacturing_groups",
@@ -90,7 +91,9 @@ def _rebuild_semantic_indexes(project: ProjectModel, source_id: str) -> None:
         for entity in project.iter_entities()
         if entity.source_identity.source_file_id == source_id
     ]
-    source_map: dict[str, str] = {}
+    # STEP definitions/usage labels can occur in several assembly paths.
+    # Keep the canonical occurrences, not the last visited entity only.
+    source_occurrences: dict[str, list[str]] = defaultdict(list)
     assembly_marks: dict[str, list[str]] = defaultdict(list)
     part_positions: dict[str, list[str]] = defaultdict(list)
     geometry_groups: dict[str, list[str]] = defaultdict(list)
@@ -99,7 +102,7 @@ def _rebuild_semantic_indexes(project: ProjectModel, source_id: str) -> None:
     for entity in entities:
         source_entity_id = entity.source_identity.source_entity_id
         if source_entity_id:
-            source_map[source_entity_id] = entity.internal_id
+            source_occurrences[source_entity_id].append(entity.internal_id)
         if entity.entity_type == "assembly":
             mark = getattr(entity, "assembly_mark", "")
             if mark:
@@ -112,7 +115,15 @@ def _rebuild_semantic_indexes(project: ProjectModel, source_id: str) -> None:
             if entity.manufacturing_hash:
                 manufacturing_groups[entity.manufacturing_hash].append(entity.internal_id)
 
-    project.settings.setdefault("source_entity_maps", {})[source_id] = dict(sorted(source_map.items()))
+    occurrence_map = {
+        key: sorted(set(value)) for key, value in sorted(source_occurrences.items())
+    }
+    project.settings.setdefault("source_entity_occurrences", {})[source_id] = occurrence_map
+    # The old scalar lookup remains available for unambiguous mappings only.
+    # Ambiguous lookups must not silently pick one physical occurrence.
+    project.settings.setdefault("source_entity_maps", {})[source_id] = {
+        key: ids[0] for key, ids in occurrence_map.items() if len(ids) == 1
+    }
     project.settings.setdefault("mark_groups", {})[source_id] = {
         "assembly_marks": {key: sorted(value) for key, value in sorted(assembly_marks.items())},
         "part_positions": {key: sorted(value) for key, value in sorted(part_positions.items())},

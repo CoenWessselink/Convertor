@@ -47,6 +47,7 @@ SUITES = (
     SuiteSpec("tests/ifc_semantic_import_smoke.py", "ifc_semantics"),
     SuiteSpec("tests/native_ifc_material_binding_smoke.py", "ifc_semantics", ("numpy",)),
     SuiteSpec("tests/step_semantic_import_smoke.py", "step_semantics"),
+    SuiteSpec("tests/recognition_intake_identity_smoke.py", "source_identity_atomicity"),
     SuiteSpec("tests/project_auto_classification_smoke.py", "classification"),
     SuiteSpec("tests/project_classification_smoke.py", "classification"),
     SuiteSpec("tests/material_classification_safety_smoke.py", "classification"),

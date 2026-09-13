@@ -500,7 +500,9 @@ class ProjectSession:
             paths[source_id] = self.resolve_source_path(source_id)
         original_project = self.project
         original_dirty = self.dirty
-        working = ProjectModel.from_dict(original_project.to_dict())
+        original_data = original_project.to_dict()
+        original_fingerprint = stable_sha256(original_data)
+        working = ProjectModel.from_dict(original_data)
         results: list[SemanticImportResult] = []
         try:
             total = len(selected)
@@ -558,12 +560,36 @@ class ProjectSession:
                     "automatic_classification"
                 ] = classification_summary
             working.validate()
+            # The native/semantic work above runs on the detached transaction.
+            # Revalidate all sources and the active project at the publication
+            # boundary, not just before parsing. A callback may edit/switch the
+            # active project, or the source bytes may have changed meanwhile.
+            for source_id, path in paths.items():
+                if cancel_check is not None:
+                    cancel_check()
+                if sha256_file(path) != working.sources[source_id].sha256:
+                    raise ProjectPackageError(
+                        "Bron gewijzigd tijdens semantische import; resultaat niet toegepast",
+                        code=ErrorCode.PROJECT_INVALID,
+                        details={"source_id": source_id},
+                    )
+            if cancel_check is not None:
+                cancel_check()
+            if (self.project is not original_project
+                    or stable_sha256(original_project.to_dict()) != original_fingerprint):
+                raise ProjectPackageError(
+                    "Project gewijzigd tijdens semantische import; resultaat niet toegepast",
+                    code=ErrorCode.PROJECT_INVALID,
+                )
             self.project = working
             self.dirty = True
             return results
         except Exception:
-            self.project = original_project
-            self.dirty = original_dirty
+            # Nothing from `working` has been published. Do not roll back a
+            # concurrent project switch, user edit, or its dirty flag.
+            if (self.project is original_project
+                    and stable_sha256(original_project.to_dict()) == original_fingerprint):
+                self.dirty = original_dirty
             raise
 
     def semantic_import_source(
