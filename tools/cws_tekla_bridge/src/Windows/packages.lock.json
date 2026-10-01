@@ -64,6 +64,7 @@
           "Tekla.Structures.Model": "[2024.0.0, )"
         }
       }
-    }
+    },
+    ".NETFramework,Version=v4.8/win7-x64": {}
   }
 }

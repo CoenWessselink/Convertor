@@ -7,6 +7,7 @@
     <AssemblyName>Cws.TeklaBridge.Native</AssemblyName>
     <RootNamespace>Cws.TeklaBridge.Native</RootNamespace>
     <Deterministic>true</Deterministic>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
     <TeklaApiVersion Condition="'$(TeklaApiVersion)'==''">2024.0.0</TeklaApiVersion>
   </PropertyGroup>
   <ItemGroup>

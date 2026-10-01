@@ -5,6 +5,9 @@
     <AssemblyName>Cws.TeklaBridge</AssemblyName><RootNamespace>Cws.TeklaBridge.Windows</RootNamespace>
     <Deterministic>true</Deterministic><Version>0.1.0</Version><AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <RuntimeIdentifier>win7-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
   <ItemGroup><ProjectReference Include="../Core/Core.csproj"/><ProjectReference Include="../Native/Native.csproj"/></ItemGroup>
   <ItemGroup><PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" /></ItemGroup>
