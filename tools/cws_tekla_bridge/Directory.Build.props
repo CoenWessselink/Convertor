@@ -1,0 +1,10 @@
+<Project>
+ <PropertyGroup>
+  <Deterministic>true</Deterministic>
+  <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  <Version>0.1.0</Version>
+  <SourceRevisionId Condition="'$(SourceCommit)'!=''">$(SourceCommit)</SourceRevisionId>
+  <UseSharedCompilation>false</UseSharedCompilation>
+ </PropertyGroup>
+</Project>

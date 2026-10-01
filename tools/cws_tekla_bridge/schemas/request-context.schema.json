@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CWS Tekla Bridge RequestContext 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "RequestId",
+    "RunId",
+    "OperationId",
+    "Actor",
+    "Mode",
+    "Scope",
+    "ExpectedModel",
+    "SourceRevision",
+    "DryRun"
+  ],
+  "properties": {
+    "RequestId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "RunId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "OperationId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "SourceRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "PlanHash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ConfirmationToken": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Actor": {
+      "enum": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN",
+        "CODEX_DEV"
+      ]
+    },
+    "Mode": {
+      "enum": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ]
+    },
+    "DryRun": {
+      "type": "boolean"
+    },
+    "Scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Kind",
+        "Values"
+      ],
+      "properties": {
+        "Kind": {
+          "enum": [
+            "ALL",
+            "SELECTION",
+            "PHASE",
+            "MARKS",
+            "CHANGED",
+            "REVIEW"
+          ]
+        },
+        "Values": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "ExpectedModel": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "ModelId",
+        "ModelPath",
+        "ModelName",
+        "TeklaVersion",
+        "Revision"
+      ],
+      "properties": {
+        "ModelId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ModelPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ModelName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "TeklaVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Revision": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

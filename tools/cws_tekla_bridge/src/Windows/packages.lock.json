@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "Microsoft.NETFramework.ReferenceAssemblies": {
+        "type": "Direct",
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "vUc9Npcs14QsyOD01tnv/m8sQUnGTGOw1BCmKcv77LBJY7OxhJ+zJF7UD/sCL3lYNFuqmQEVlkfS4Quif6FyYg==",
+        "dependencies": {
+          "Microsoft.NETFramework.ReferenceAssemblies.net48": "1.0.3"
+        }
+      },
+      "Microsoft.NETFramework.ReferenceAssemblies.net48": {
+        "type": "Transitive",
+        "resolved": "1.0.3",
+        "contentHash": "zMk4D+9zyiEWByyQ7oPImPN/Jhpj166Ky0Nlla4eXlNL8hI/BtSJsgR8Inldd4NNpIAH3oh8yym0W2DrhXdSLQ=="
+      },
+      "Newtonsoft.Json": {
+        "type": "Transitive",
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
+      },
+      "Tekla.Structures": {
+        "type": "Transitive",
+        "resolved": "2024.0.0",
+        "contentHash": "U58HlxKw98BxzQA2AEZAgPQ+8KiGGvlgHWv93ZiSit5igdhLJQJEMc1+Z0gNKEScUsHXtxLyMhanFcmsaYeQ/g=="
+      },
+      "Tekla.Structures.Catalogs": {
+        "type": "Transitive",
+        "resolved": "2024.0.0",
+        "contentHash": "0eNq8a3Zt+Us1Warttza2BE3R4yXXIb2bVYr0GYkomfOM+xUT80ySD28g9B7A3gKzORtaTjHSKNPBjFZDCEZ6A==",
+        "dependencies": {
+          "Tekla.Structures": "2024.0.0",
+          "Tekla.Structures.Datatype": "2024.0.0",
+          "Tekla.Structures.Model": "2024.0.0"
+        }
+      },
+      "Tekla.Structures.Datatype": {
+        "type": "Transitive",
+        "resolved": "2024.0.0",
+        "contentHash": "2Hp4+V48vPFRFarGc1GErCoKoW6PU+jt5CP7VFab3K0Z3yXXGOxj4h6eEMh3+HlWzLLdd20eBfXszL5UU5h/jQ=="
+      },
+      "Tekla.Structures.Model": {
+        "type": "Transitive",
+        "resolved": "2024.0.0",
+        "contentHash": "Dtu0+PofF87m8pQLrU3axsqxq55QJW4dGgUR+TnC/ZtPvj1jdv6OJGaA7LEs44wtMyDUy0CARH13lHZ3A4t7Nw==",
+        "dependencies": {
+          "Tekla.Structures": "2024.0.0",
+          "Tekla.Structures.Datatype": "2024.0.0"
+        }
+      },
+      "Cws.TeklaBridge.Core": {
+        "type": "Project",
+        "dependencies": {
+          "Newtonsoft.Json": "[13.0.3, )"
+        }
+      },
+      "Cws.TeklaBridge.Native": {
+        "type": "Project",
+        "dependencies": {
+          "Cws.TeklaBridge.Core": "[0.1.0, )",
+          "Tekla.Structures.Catalogs": "[2024.0.0, )",
+          "Tekla.Structures.Model": "[2024.0.0, )"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+CWS Tekla Bridge v0.1 - Build 01
+
+1. Pak de volledige ZIP uit.
+2. Start windows\Cws.TeklaBridge.exe op Windows x64 (.NET Framework 4.8).
+3. Lees README.md en BEWIJS_EN_BOUWSTATUS.json voordat u native uitvoering probeert.
+
+De compilerreferentie is Tekla Open API 2024.0.0. Het programma controleert uw echte versie.
+Dit is een testbuild: native modelwrites, verbindingen-AUTO en productie zijn geblokkeerd
+zolang de echte Windows/Tekla/runtime/reference gates niet bewezen zijn.
+
+Source-code, package hashes en geteste broncommit staan in PACKAGE_MANIFEST.json.
+Geen nieuw groot Convertor-programma; Tekla blijft de modelomgeving.

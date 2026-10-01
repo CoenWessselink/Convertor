@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CWS Tekla Bridge immutable authority manifest 1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "SchemaVersion",
+    "Version",
+    "Commit",
+    "RuntimePolicy",
+    "Entries"
+  ],
+  "properties": {
+    "SchemaVersion": {
+      "const": "1.0"
+    },
+    "Version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "Commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40,64}$"
+    },
+    "RuntimePolicy": {
+      "const": "READ_ONLY"
+    },
+    "Entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "SourcePath",
+          "Evidence",
+          "Artifacts"
+        ],
+        "properties": {
+          "SourcePath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "Evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "Status",
+              "Component",
+              "SourceSha256",
+              "Commit",
+              "SchemaVersion",
+              "TestsPassed",
+              "RuntimePassed",
+              "ReferenceModel",
+              "EvidenceIds"
+            ],
+            "properties": {
+              "Status": {
+                "const": "APPROVED"
+              },
+              "Component": {
+                "type": "string",
+                "minLength": 1
+              },
+              "SourceSha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "Commit": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{40,64}$"
+              },
+              "SchemaVersion": {
+                "const": "1.0"
+              },
+              "TestsPassed": {
+                "const": true
+              },
+              "RuntimePassed": {
+                "const": true
+              },
+              "ReferenceModel": {
+                "type": "string",
+                "minLength": 1
+              },
+              "EvidenceIds": {
+                "type": "array",
+                "minItems": 3,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "Artifacts": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "Id",
+                "Kind",
+                "Path",
+                "Sha256"
+              ],
+              "properties": {
+                "Id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "Kind": {
+                  "enum": [
+                    "TESTS",
+                    "RUNTIME",
+                    "REFERENCE_MODEL",
+                    "COUNTEREXAMPLE"
+                  ]
+                },
+                "Path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "Sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

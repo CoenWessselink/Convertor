@@ -1,0 +1,61 @@
+{
+  "SchemaVersion": "1.0",
+  "EvidenceKind": "OFFICIAL_API_REFERENCE_COMPILE_INPUTS_ONLY",
+  "RecordedUtc": "2026-10-01T21:36:40.875281+00:00",
+  "ActualUserTeklaVersion": "UNVERIFIED",
+  "WindowsRuntime": "NOT_RUN",
+  "TeklaRuntime": "NOT_RUN",
+  "NativeWriteAuthority": "NONE_APPROVED",
+  "Packages": [
+    {
+      "Package": "Tekla.Structures.Model",
+      "Version": "2024.0.0",
+      "Author": "Trimble (official NuGet nuspec)",
+      "PackageUrl": "https://api.nuget.org/v3-flatcontainer/tekla.structures.model/2024.0.0/tekla.structures.model.2024.0.0.nupkg",
+      "PackageSha256": "e427529147b0118d250f8747a36dfab3b2c4c646cf32578b61df3ba2399649ed",
+      "ReferenceAssembly": "lib/net48/Tekla.Structures.Model.dll",
+      "ReferenceAssemblySha256": "ebd96ed85d0958a13675644d332ac1ad9f293b23ba60289a41246ca71c3b0154",
+      "ReferenceDocumentation": "lib/net48/Tekla.Structures.Model.xml",
+      "ReferenceDocumentationSha256": "e4ab9447085cca2a949592f5567b2e6a1769b2d4f603a85ea84bc1c9d6a6b204"
+    },
+    {
+      "Package": "Tekla.Structures",
+      "Version": "2024.0.0",
+      "Author": "Trimble (official NuGet nuspec)",
+      "PackageUrl": "https://api.nuget.org/v3-flatcontainer/tekla.structures/2024.0.0/tekla.structures.2024.0.0.nupkg",
+      "PackageSha256": "e68445671a8705b3eaa7d743ddc150eb61090e2a3419806b0506a221f49d0406",
+      "ReferenceAssembly": "lib/net48/Tekla.Structures.dll",
+      "ReferenceAssemblySha256": "3ecfc61f13fa58a57579701b047d02925ec75104429f3ea894dfa15c5b78aca2",
+      "ReferenceDocumentation": "lib/net48/Tekla.Structures.xml",
+      "ReferenceDocumentationSha256": "e495fd1164b17c731fe18fba1b8e7c20e24426564c7e2896d5afcf7bdb1c6705"
+    },
+    {
+      "Package": "Tekla.Structures.Catalogs",
+      "Version": "2024.0.0",
+      "Author": "Trimble (official NuGet nuspec)",
+      "PackageUrl": "https://api.nuget.org/v3-flatcontainer/tekla.structures.catalogs/2024.0.0/tekla.structures.catalogs.2024.0.0.nupkg",
+      "PackageSha256": "8326a25f521e1d6001c207383a5c16cc06e2626fbf6799e348edba31a588cb37",
+      "ReferenceAssembly": "lib/net48/Tekla.Structures.Catalogs.dll",
+      "ReferenceAssemblySha256": "a9b5d3eba1b9d79914516d2f0f93fb3c402aaf7229d9df25d1641a31ef0a7a59",
+      "ReferenceDocumentation": "lib/net48/Tekla.Structures.Catalogs.xml",
+      "ReferenceDocumentationSha256": "83c5b00dc2bee05fb5cc13d060a44aa67f3103db6812c8c93f6a0e80b68eaba1"
+    },
+    {
+      "Package": "Tekla.Structures.Datatype",
+      "Version": "2024.0.0",
+      "Author": "Trimble (official NuGet nuspec)",
+      "PackageUrl": "https://api.nuget.org/v3-flatcontainer/tekla.structures.datatype/2024.0.0/tekla.structures.datatype.2024.0.0.nupkg",
+      "PackageSha256": "40a68f35755d83c329d63b316422d5234e29fe2fdd6d2b4bb8061537241dbcb3",
+      "ReferenceAssembly": "lib/net48/Tekla.Structures.Datatype.dll",
+      "ReferenceAssemblySha256": "cc3d729492a35c8ff38dbd97206bd9c057aca6ec3b5726a0b23f850a83ae669b",
+      "ReferenceDocumentation": "lib/net48/Tekla.Structures.Datatype.xml",
+      "ReferenceDocumentationSha256": "2cb62de47dc728ef2a8d13a15df00e80e83cfb1b9f6a67103e2b73b172d1dbaf"
+    }
+  ],
+  "Notes": [
+    "2024.0.0 is a developer compile reference, not detected user runtime.",
+    "Real ModelHandler.Save/Close/Open APIs verified in official 2024 package XML and compiled against genuine DLLs.",
+    "CommitChanges is not Save/Reopen persistence proof.",
+    "No reference-DLL substitute or fake Tekla package was created."
+  ]
+}

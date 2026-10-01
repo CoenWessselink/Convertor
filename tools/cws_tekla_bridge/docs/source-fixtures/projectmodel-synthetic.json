@@ -1,0 +1,1070 @@
+{
+  "schema_version": "2.25",
+  "app_version": "0.10.21-beta-dev",
+  "project_id": "01d13207-c0c0-467f-90d9-85a02a507e74",
+  "project_name": "TEST_FIXTURE only: Bridge source handover",
+  "description": "",
+  "customer": "",
+  "order_number": "",
+  "project_phase": "",
+  "units": "mm",
+  "coordinate_system": {
+    "name": "project",
+    "origin_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "x_axis": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "y_axis": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "z_axis": [
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "created_at": "2026-10-01T21:25:29+00:00",
+  "modified_at": "2026-10-01T21:25:29+00:00",
+  "created_by": "test",
+  "status": "new",
+  "sources": {
+    "2636e06d-360e-56e0-96ce-5281ab93ce79": {
+      "source_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+      "file_name": "foundation.step",
+      "source_format": "STEP",
+      "sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+      "size_bytes": 32,
+      "original_path": "/tmp/tmp7mdrk_ah/foundation.step",
+      "imported_at": "2026-10-01T21:25:29+00:00",
+      "embedded_path": "",
+      "schema": "",
+      "application": "",
+      "import_strategy": "not_analysed",
+      "analysis_status": "registered",
+      "semantic_import_complete": false,
+      "production_export_allowed": false,
+      "analysis": {},
+      "warnings": [],
+      "metadata": {}
+    }
+  },
+  "materials": {},
+  "production_orders": {},
+  "revisions": [],
+  "validation_issues": [],
+  "audit_log": [
+    {
+      "event_id": "9e8a993c-cc07-4f55-9bd3-79d0259576ff",
+      "timestamp": "2026-10-01T21:25:29+00:00",
+      "user": "test",
+      "action": "project.created",
+      "entity_id": "",
+      "before_hash": "",
+      "after_hash": "",
+      "details": {}
+    },
+    {
+      "event_id": "6df52c24-8063-4c66-95da-bb04343074ff",
+      "timestamp": "2026-10-01T21:25:29+00:00",
+      "user": "test",
+      "action": "source.added",
+      "entity_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+      "before_hash": "",
+      "after_hash": "",
+      "details": {
+        "file_name": "foundation.step",
+        "sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313"
+      }
+    },
+    {
+      "event_id": "acae3325-0055-41bf-858a-20901e4dab56",
+      "timestamp": "2026-10-01T21:25:29+00:00",
+      "user": "test",
+      "action": "entity.added",
+      "entity_id": "6c53eb10-9da9-581e-a1f8-cdfdeb72966e",
+      "before_hash": "",
+      "after_hash": "d7625a95067287326eba6d0926ce1844d52e5501bfc66c2ff067f4e8661f3837",
+      "details": {
+        "entity_type": "part",
+        "name": "HEA ligger"
+      }
+    },
+    {
+      "event_id": "65e5f97a-79e4-4aa1-94b3-50dbf2cb3c86",
+      "timestamp": "2026-10-01T21:25:29+00:00",
+      "user": "test",
+      "action": "entity.added",
+      "entity_id": "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01",
+      "before_hash": "",
+      "after_hash": "459083192e8c591a53b4e2555d4e1bc67cb5e653e900c6faa84205e2ddc802e7",
+      "details": {
+        "entity_type": "assembly",
+        "name": "M1"
+      }
+    },
+    {
+      "event_id": "46cdddd8-5f60-47d1-a865-6333b54b6f6e",
+      "timestamp": "2026-10-01T21:25:29+00:00",
+      "user": "TEST_FIXTURE",
+      "action": "entity.added",
+      "entity_id": "348c87f1-12fc-53f7-9b54-fdf5b532de0c",
+      "before_hash": "",
+      "after_hash": "6f5857315c3c27f943d0f436df66ebe7dd5f326addf552d618a251f3bf8b8dad",
+      "details": {
+        "entity_type": "part",
+        "name": "P1"
+      }
+    }
+  ],
+  "settings": {},
+  "migration_history": [],
+  "assemblies": {
+    "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01": {
+      "internal_id": "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01",
+      "name": "M1",
+      "category": "assembly",
+      "source_identity": {
+        "source_format": "STEP",
+        "source_file_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "source_entity_id": "#10",
+        "global_id": "",
+        "product_id": "A-001",
+        "occurrence_id": "",
+        "part_position": "",
+        "assembly_mark": "M1"
+      },
+      "local_placement": {
+        "matrix": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "global_placement": {
+        "matrix": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "properties": {},
+      "field_provenance": {},
+      "confidence": 1.0,
+      "status": "new",
+      "revision": "",
+      "validation_issues": [],
+      "created_at": "2026-10-01T21:25:29+00:00",
+      "modified_at": "2026-10-01T21:25:29+00:00",
+      "assembly_mark": "M1",
+      "quantity": 1,
+      "child_assembly_ids": [],
+      "part_ids": [
+        "6c53eb10-9da9-581e-a1f8-cdfdeb72966e"
+      ],
+      "main_part_id": "6c53eb10-9da9-581e-a1f8-cdfdeb72966e",
+      "purchased_item_ids": [],
+      "fastener_ids": [],
+      "weld_ids": [],
+      "total_weight_kg": 0.0,
+      "surface_area_m2": 0.0,
+      "production_status": "new",
+      "drawing_status": "not_created",
+      "artifact_ids": [],
+      "entity_type": "assembly"
+    }
+  },
+  "parts": {
+    "6c53eb10-9da9-581e-a1f8-cdfdeb72966e": {
+      "internal_id": "6c53eb10-9da9-581e-a1f8-cdfdeb72966e",
+      "name": "P1",
+      "category": "make_part",
+      "source_identity": {
+        "source_format": "STEP",
+        "source_file_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "source_entity_id": "#42",
+        "global_id": "",
+        "product_id": "P-001",
+        "occurrence_id": "O-001",
+        "part_position": "P1",
+        "assembly_mark": "M1"
+      },
+      "local_placement": {
+        "matrix": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "global_placement": {
+        "matrix": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "properties": {},
+      "field_provenance": {},
+      "confidence": 1.0,
+      "status": "new",
+      "revision": "",
+      "validation_issues": [],
+      "created_at": "2026-10-01T21:25:29+00:00",
+      "modified_at": "2026-10-01T21:25:29+00:00",
+      "part_position": "P1",
+      "assembly_ids": [
+        "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01"
+      ],
+      "quantity_total": 1,
+      "quantity_per_assembly": {
+        "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01": 1
+      },
+      "part_type": "unknown",
+      "profile": "PL10",
+      "profile_type": "P",
+      "material": "S275JR",
+      "material_grade": "S275JR",
+      "length_mm": 200.0,
+      "mass_each_kg": 0.0,
+      "surface_area_each_m2": 0.0,
+      "canonical_part": {
+        "schema_version": "1.1",
+        "converter_version": "0.10.21-beta-dev",
+        "source_format": "STEP",
+        "source_file": "",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "imported_at": "",
+        "import_method": "TEST_FIXTURE_ONLY",
+        "part_id": "SYNTHETIC-PLATE",
+        "header": {
+          "order_number": "",
+          "drawing_number": "",
+          "part_number": "",
+          "position_number": "P1",
+          "material": "S275JR",
+          "quantity": 1,
+          "profile": "PL10",
+          "profile_type": "P",
+          "length": 200.0,
+          "saw_length": 0.0,
+          "dim1": 100.0,
+          "dim2": 10.0,
+          "dim3": 0.0,
+          "dim4": 0.0,
+          "radius": 0.0,
+          "weight": 0.0,
+          "paint_area": 0.0,
+          "web_miter_front": 0.0,
+          "web_miter_rear": 0.0,
+          "flange_miter_front": 0.0,
+          "flange_miter_rear": 0.0,
+          "info": []
+        },
+        "product": {
+          "name": "",
+          "mark": "",
+          "project_number": "",
+          "project_name": "",
+          "client": "",
+          "assembly_id": "",
+          "material_code": "",
+          "material_grade": "",
+          "density_kg_m3": 0.0,
+          "coating": "",
+          "surface_treatment": "",
+          "profile_category": "",
+          "profile_series": "",
+          "profile_designation": "",
+          "profile_standard": "",
+          "length_mm": 0.0,
+          "plate_thickness_mm": 0.0,
+          "main_dimensions_mm": [],
+          "mass_each_kg": 0.0,
+          "mass_total_kg": 0.0,
+          "area_each_m2": 0.0,
+          "area_total_m2": 0.0
+        },
+        "contours": [
+          {
+            "kind": "outer",
+            "face": "v",
+            "points": [
+              {
+                "x": 0.0,
+                "q": 0.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "x": 200.0,
+                "q": 0.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "x": 200.0,
+                "q": 100.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "x": 0.0,
+                "q": 100.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          }
+        ],
+        "holes": [
+          {
+            "face": "v",
+            "x": 40.0,
+            "q": 40.0,
+            "diameter": 14.0,
+            "datum": "",
+            "operation": "HOLE_ONLY",
+            "depth": 0.0
+          }
+        ],
+        "unsupported_blocks": [],
+        "warnings": [],
+        "coordinate_frame": {
+          "origin_mm": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "x_axis": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "y_axis": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "z_axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "geometry": {},
+        "recognition": {},
+        "properties": {},
+        "drawing": {
+          "views": [],
+          "projection_method": "first_angle",
+          "scale": "",
+          "sheet_format": "A3",
+          "orientation": "landscape",
+          "sheet_number": 1,
+          "sheet_count": 1,
+          "dimensions": [],
+          "dimension_chains": [],
+          "annotations": [],
+          "symbols": [],
+          "notes": [],
+          "title_block": {},
+          "revisions": [],
+          "template_id": "default",
+          "company_style_id": "default",
+          "drawing_status": "concept",
+          "visible_content_sha256": ""
+        },
+        "field_evidence": {},
+        "validation": {
+          "warnings": [],
+          "errors": [],
+          "unresolved_questions": [],
+          "geometric_comparison": {},
+          "feature_comparison": {},
+          "export_status": "blocked",
+          "production_export_allowed": false,
+          "released_by": "",
+          "released_at": ""
+        },
+        "audit_log": [],
+        "attachments": {}
+      },
+      "geometry_descriptor": {
+        "kind": "synthetic_plate_test",
+        "source_inspection": {
+          "geometry_kind": "TEST_FIXTURE_ONLY",
+          "selection_verified": false,
+          "production_geometry_exact": false
+        }
+      },
+      "production_features": [
+        {
+          "kind": "contour",
+          "face": "outer:v",
+          "points": [
+            {
+              "x": 0.0,
+              "q": 0.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "x": 200.0,
+              "q": 0.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "x": 200.0,
+              "q": 100.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "x": 0.0,
+              "q": 100.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "hole",
+          "face": "v",
+          "x": 40.0,
+          "q": 40.0,
+          "diameter": 14.0,
+          "depth": 0.0,
+          "operation": "HOLE_ONLY"
+        }
+      ],
+      "reference_sides": [],
+      "mirrored": false,
+      "tolerances": {},
+      "coating": "",
+      "geometry_hash": "1e75136956464c0d16b18e730655b8b3ac0d3056a9b3ca449ad656454c2c0b1d",
+      "manufacturing_hash": "e6636251f06c5d21011d8bbd1ea46aa4ffe77cad5b66c5ab3760ee7a4a16f60d",
+      "hash_algorithm_version": "cws-geometry-v1",
+      "manufacturing_hash_version": "cws-manufacturing-v1",
+      "nc1_eligible": true,
+      "export_status": "blocked",
+      "workbench": {},
+      "classification_status": "unclassified",
+      "classification_method": "",
+      "classification_rule_id": "",
+      "classification_reason": "",
+      "classification_confidence": 0.0,
+      "normalized_profile": "",
+      "normalized_material": "",
+      "profile_confidence": 0.0,
+      "material_confidence": 0.0,
+      "production_identity_hash": "",
+      "production_identity_version": "cws-production-identity-v1",
+      "bom_group_key": "",
+      "entity_type": "part",
+      "manufacturing_faces": [],
+      "manufacturing_faces_state": {}
+    },
+    "348c87f1-12fc-53f7-9b54-fdf5b532de0c": {
+      "internal_id": "348c87f1-12fc-53f7-9b54-fdf5b532de0c",
+      "name": "P1",
+      "category": "make_part",
+      "source_identity": {
+        "source_format": "STEP",
+        "source_file_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "source_entity_id": "#42",
+        "global_id": "",
+        "product_id": "P-001",
+        "occurrence_id": "O-002",
+        "part_position": "P1",
+        "assembly_mark": "M1"
+      },
+      "local_placement": {
+        "matrix": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "global_placement": {
+        "matrix": [
+          [
+            1.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        ]
+      },
+      "properties": {},
+      "field_provenance": {},
+      "confidence": 1.0,
+      "status": "new",
+      "revision": "",
+      "validation_issues": [],
+      "created_at": "2026-10-01T21:25:29+00:00",
+      "modified_at": "2026-10-01T21:25:29+00:00",
+      "part_position": "P1",
+      "assembly_ids": [],
+      "quantity_total": 1,
+      "quantity_per_assembly": {},
+      "part_type": "unknown",
+      "profile": "PL10",
+      "profile_type": "P",
+      "material": "S275JR",
+      "material_grade": "S275JR",
+      "length_mm": 200.0,
+      "mass_each_kg": 0.0,
+      "surface_area_each_m2": 0.0,
+      "canonical_part": {
+        "schema_version": "1.1",
+        "converter_version": "0.10.21-beta-dev",
+        "source_format": "STEP",
+        "source_file": "",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "imported_at": "",
+        "import_method": "TEST_FIXTURE_ONLY",
+        "part_id": "SYNTHETIC-PLATE",
+        "header": {
+          "order_number": "",
+          "drawing_number": "",
+          "part_number": "",
+          "position_number": "P1",
+          "material": "S275JR",
+          "quantity": 1,
+          "profile": "PL10",
+          "profile_type": "P",
+          "length": 200.0,
+          "saw_length": 0.0,
+          "dim1": 100.0,
+          "dim2": 10.0,
+          "dim3": 0.0,
+          "dim4": 0.0,
+          "radius": 0.0,
+          "weight": 0.0,
+          "paint_area": 0.0,
+          "web_miter_front": 0.0,
+          "web_miter_rear": 0.0,
+          "flange_miter_front": 0.0,
+          "flange_miter_rear": 0.0,
+          "info": []
+        },
+        "product": {
+          "name": "",
+          "mark": "",
+          "project_number": "",
+          "project_name": "",
+          "client": "",
+          "assembly_id": "",
+          "material_code": "",
+          "material_grade": "",
+          "density_kg_m3": 0.0,
+          "coating": "",
+          "surface_treatment": "",
+          "profile_category": "",
+          "profile_series": "",
+          "profile_designation": "",
+          "profile_standard": "",
+          "length_mm": 0.0,
+          "plate_thickness_mm": 0.0,
+          "main_dimensions_mm": [],
+          "mass_each_kg": 0.0,
+          "mass_total_kg": 0.0,
+          "area_each_m2": 0.0,
+          "area_total_m2": 0.0
+        },
+        "contours": [
+          {
+            "kind": "outer",
+            "face": "v",
+            "points": [
+              {
+                "x": 0.0,
+                "q": 0.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "x": 200.0,
+                "q": 0.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "x": 200.0,
+                "q": 100.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              },
+              {
+                "x": 0.0,
+                "q": 100.0,
+                "datum": "",
+                "notch": "",
+                "radius": 0.0,
+                "weld": [
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0
+                ]
+              }
+            ]
+          }
+        ],
+        "holes": [
+          {
+            "face": "v",
+            "x": 40.0,
+            "q": 40.0,
+            "diameter": 14.0,
+            "datum": "",
+            "operation": "HOLE_ONLY",
+            "depth": 0.0
+          }
+        ],
+        "unsupported_blocks": [],
+        "warnings": [],
+        "coordinate_frame": {
+          "origin_mm": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "x_axis": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "y_axis": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "z_axis": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        "geometry": {},
+        "recognition": {},
+        "properties": {},
+        "drawing": {
+          "views": [],
+          "projection_method": "first_angle",
+          "scale": "",
+          "sheet_format": "A3",
+          "orientation": "landscape",
+          "sheet_number": 1,
+          "sheet_count": 1,
+          "dimensions": [],
+          "dimension_chains": [],
+          "annotations": [],
+          "symbols": [],
+          "notes": [],
+          "title_block": {},
+          "revisions": [],
+          "template_id": "default",
+          "company_style_id": "default",
+          "drawing_status": "concept",
+          "visible_content_sha256": ""
+        },
+        "field_evidence": {},
+        "validation": {
+          "warnings": [],
+          "errors": [],
+          "unresolved_questions": [],
+          "geometric_comparison": {},
+          "feature_comparison": {},
+          "export_status": "blocked",
+          "production_export_allowed": false,
+          "released_by": "",
+          "released_at": ""
+        },
+        "audit_log": [],
+        "attachments": {}
+      },
+      "geometry_descriptor": {
+        "kind": "synthetic_plate_test",
+        "source_inspection": {
+          "geometry_kind": "TEST_FIXTURE_ONLY",
+          "selection_verified": false,
+          "production_geometry_exact": false
+        }
+      },
+      "production_features": [
+        {
+          "kind": "contour",
+          "face": "outer:v",
+          "points": [
+            {
+              "x": 0.0,
+              "q": 0.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "x": 200.0,
+              "q": 0.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "x": 200.0,
+              "q": 100.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            {
+              "x": 0.0,
+              "q": 100.0,
+              "datum": "",
+              "notch": "",
+              "radius": 0.0,
+              "weld": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            }
+          ]
+        },
+        {
+          "kind": "hole",
+          "face": "v",
+          "x": 40.0,
+          "q": 40.0,
+          "diameter": 14.0,
+          "depth": 0.0,
+          "operation": "HOLE_ONLY"
+        }
+      ],
+      "reference_sides": [],
+      "mirrored": false,
+      "tolerances": {},
+      "coating": "",
+      "geometry_hash": "1e75136956464c0d16b18e730655b8b3ac0d3056a9b3ca449ad656454c2c0b1d",
+      "manufacturing_hash": "e6636251f06c5d21011d8bbd1ea46aa4ffe77cad5b66c5ab3760ee7a4a16f60d",
+      "hash_algorithm_version": "cws-geometry-v1",
+      "manufacturing_hash_version": "cws-manufacturing-v1",
+      "nc1_eligible": true,
+      "export_status": "blocked",
+      "workbench": {},
+      "classification_status": "unclassified",
+      "classification_method": "",
+      "classification_rule_id": "",
+      "classification_reason": "",
+      "classification_confidence": 0.0,
+      "normalized_profile": "",
+      "normalized_material": "",
+      "profile_confidence": 0.0,
+      "material_confidence": 0.0,
+      "production_identity_hash": "",
+      "production_identity_version": "cws-production-identity-v1",
+      "bom_group_key": "",
+      "entity_type": "part",
+      "manufacturing_faces": [],
+      "manufacturing_faces_state": {}
+    }
+  },
+  "purchased_items": {},
+  "fasteners": {},
+  "welds": {},
+  "stock_items": {},
+  "remnants": {},
+  "production_operations": {},
+  "machine_profiles": {},
+  "machine_jobs": {},
+  "profile_nesting_runs": {},
+  "profile_nesting_settings": {},
+  "profile_nesting_machine_profiles": {},
+  "profile_nesting_tool_library": {},
+  "profile_nesting_formula_library": {},
+  "profile_nesting_purchase_options": {},
+  "profile_nesting_reservations": {},
+  "profile_nesting_reservation_revision": 0,
+  "manufacturing_contact_patches": {},
+  "manufacturing_contact_states": {},
+  "manufacturing_rulesets": {},
+  "manufacturing_marks": {},
+  "manufacturing_mark_states": {},
+  "manufacturing_marking_tools": {},
+  "manufacturing_machine_capabilities": {},
+  "manufacturing_machine_mark_evaluations": {},
+  "manufacturing_nesting_mark_bindings": {},
+  "manufacturing_sequences": {},
+  "manufacturing_export_scopes": {},
+  "manufacturing_dstv_roundtrips": {},
+  "manufacturing_release_records": {},
+  "manufacturing_simulations": {},
+  "manufacturing_adapter_rehearsals": {},
+  "manufacturing_adapter_evidence_cases": {},
+  "manufacturing_adapter_certificates": {},
+  "manufacturing_adapter_certificate_revocations": {},
+  "manufacturing_adapter_sdk_manifests": {},
+  "manufacturing_adapter_certification_batches": {},
+  "manufacturing_adapter_certificate_supersessions": {},
+  "manufacturing_adapter_lab_matrices": {},
+  "manufacturing_adapter_lab_campaigns": {},
+  "manufacturing_adapter_lab_impacts": {},
+  "manufacturing_adapter_lab_diffs": {},
+  "manufacturing_adapter_lab_candidates": {},
+  "manufacturing_fleet_sites": {},
+  "manufacturing_fleet_machine_bindings": {},
+  "manufacturing_fleet_policies": {},
+  "manufacturing_fleet_trusted_signers": {},
+  "manufacturing_fleet_external_approvals": {},
+  "manufacturing_fleet_recertification_queues": {},
+  "manufacturing_fleet_deployments": {},
+  "manufacturing_deployment_stations": {},
+  "manufacturing_deployment_control_policies": {},
+  "manufacturing_deployment_rollout_plans": {},
+  "manufacturing_deployment_rollback_references": {},
+  "manufacturing_deployment_release_requests": {},
+  "manufacturing_deployment_operator_approvals": {},
+  "manufacturing_deployment_airgap_exports": {},
+  "manufacturing_deployment_import_receipts": {},
+  "manufacturing_deployment_receipts": {},
+  "manufacturing_deployment_acknowledgements": {},
+  "manufacturing_deployment_withdrawals": {},
+  "manufacturing_media_devices": {},
+  "manufacturing_media_custody_policies": {},
+  "manufacturing_media_custody_sessions": {},
+  "manufacturing_media_custody_events": {},
+  "manufacturing_station_reconciliations": {},
+  "manufacturing_rollback_drills": {},
+  "manufacturing_deployment_closures": {}
+}

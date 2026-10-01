@@ -1,0 +1,28 @@
+name: CWS Tekla Bridge single build
+on:
+  push:
+    branches: [feature/cws-tekla-bridge-v0.1]
+    paths: ['tools/cws_tekla_bridge/**', '.github/workflows/cws-tekla-bridge-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.413'
+      - name: Compile real Open API references and run bridge contracts
+        shell: pwsh
+        run: tools/cws_tekla_bridge/scripts/build.ps1 -Smoke
+      - name: Retain commit-bound binary and disconnected Windows evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CWS-Tekla-Bridge-${{ github.sha }}
+          path: tools/cws_tekla_bridge/artifacts/
+          if-no-files-found: error
+          retention-days: 14

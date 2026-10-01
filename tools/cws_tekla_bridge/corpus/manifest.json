@@ -1,0 +1,19 @@
+{
+  "SchemaVersion": "1.0",
+  "TargetModelCount": 20,
+  "Cases": [
+    {
+      "CaseId": "het-koraal-native-reference",
+      "ReferenceModel": "Het Koraal",
+      "BindingArtifactId": null,
+      "HardGate": true,
+      "SourcePath": null,
+      "SourceFileSha256": null,
+      "SnapshotPath": null,
+      "SnapshotFileSha256": null,
+      "BeforeSourcePath": null,
+      "BeforeSourceFileSha256": null,
+      "RuntimeEvidence": null
+    }
+  ]
+}

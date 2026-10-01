@@ -1,0 +1,23 @@
+{
+  "schema": "cws-bridge-source-handover-probe/1",
+  "source_commit": "bfdbc99ec33f80d6ce5a2ee629dd494caf767d74",
+  "status": "PASS_TEST_FIXTURE_ONLY",
+  "checks": [
+    "snapshot readback does not mutate Project Model",
+    "SteelModel JSON roundtrip verifies canonical snapshot hash",
+    "two explicit source occurrence identities remain distinct",
+    "S275JR is retained exactly in both handover formats",
+    "Project Model roundtrip preserves explicit contour and hole payload",
+    "SteelModel read snapshot does not claim an omitted geometry payload",
+    "synthetic/unverified source geometry remains manual validation required",
+    "stale-source is rejected",
+    "snapshot-tamper is rejected"
+  ],
+  "count": 9,
+  "native_runtime_proven": false,
+  "geometry_write_authority": false,
+  "fixtures": {
+    "projectmodel-synthetic.json": "4e91194ab5f6952ec6d4893aa6a1803dfff38d1185024ed357404903c487ad7a",
+    "steelmodel-synthetic.json": "13114c60dd5ee9a0da7d740e36e9d11d661a3b55cfa9398985c120446c40d989"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cws:tekla-bridge:review-proposal:1.0",
+  "title": "CWS single occurrence project proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "Model",
+    "Scope",
+    "SourceId",
+    "SourceRevision",
+    "CanonicalId",
+    "PhysicalRole",
+    "Field",
+    "OldValue",
+    "NewValue",
+    "Actor",
+    "Reason",
+    "EvidenceIds"
+  ],
+  "properties": {
+    "ProposalId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "SourceId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "SourceRevision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "CanonicalId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "PhysicalRole": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "OldValue": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "NewValue": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Actor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "OperationHash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Status": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "CreatedUtc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "Model": {
+      "type": "object"
+    },
+    "Scope": {
+      "type": "object"
+    },
+    "EvidenceIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "Field": {
+      "enum": [
+        "Material",
+        "Profile",
+        "GeometryHash",
+        "ManufacturingHash",
+        "Phase",
+        "Mark"
+      ]
+    }
+  }
+}

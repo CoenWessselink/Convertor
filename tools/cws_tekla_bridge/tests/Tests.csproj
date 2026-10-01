@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><LangVersion>latest</LangVersion><Nullable>disable</Nullable><AssemblyName>Cws.TeklaBridge.Tests</AssemblyName></PropertyGroup>
+ <ItemGroup><ProjectReference Include="../src/Core/Core.csproj" /></ItemGroup>
+ <ItemGroup>
+  <Compile Include="../src/Native/NativeGuards.cs" Link="NativeGuards.cs" />
+  <Compile Include="../src/Native/DisconnectedAdapter.cs" Link="DisconnectedAdapter.cs" />
+ </ItemGroup>
+</Project>

@@ -1,0 +1,208 @@
+{
+  "schema": "cws-bridge-source-authority-freeze/1",
+  "captured_at_utc": "2026-10-01T21:23:17.921422+00:00",
+  "status": "REFERENCE_ONLY_NO_AUTHORITY_PROMOTION",
+  "remote": "https://github.com/CoenWessselink/Convertor.git",
+  "default_branch_head": "36bf3d2144716f3deb7f5d1c67b72fe8c1154810",
+  "required_branch": "feature/cws-tekla-bridge-v0.1",
+  "source_commit": "bfdbc99ec33f80d6ce5a2ee629dd494caf767d74",
+  "agents_md_found": false,
+  "remote_mutated_by_preflight": false,
+  "upstream_sources": [
+    {
+      "path": "canonical_model.py",
+      "sha256": "0898a791d6e1fe1e3572d9711105c729c1ecb5f72b7e46d5a9ceb085c51c4922",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/steel_model/contracts.py",
+      "sha256": "ca9f710cef81ab18ae407975d96e9913453d3a1f36ea5c00fa4a06635df595a8",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/steel_model/_canonical.py",
+      "sha256": "06fcafd661a2bacee504da5118f8d196ba5c1665ca9d6b0ef0a5cbe9aafbeb47",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/steel_model/adapter.py",
+      "sha256": "e38e90f0a5eab0e49af0d1f17f58597b40abe63f3d4a446a4170738b12ab29a1",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/steel_model/tolerances.py",
+      "sha256": "6159db285163e34be96f3c87d3d90c4f2fc8cf186e1de553d37761f2f210ed2a",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/project/model.py",
+      "sha256": "d82554bee8e583811cd6a2df54cc8e8c06ce1499150bf45d4b76e5417e75ab24",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/project/canonical_rebuild.py",
+      "sha256": "a7bb7b29776c357f926275409169f02b71675808f1cca7835f0f338873d86b92",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/manufacturing_interpreter/pipeline.py",
+      "sha256": "b455bbe9f4562cd876d67aa58acac1f3278a6415a3ab0f5abe99f251dd3f7f05",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/manufacturing_interpreter/contracts.py",
+      "sha256": "c8a8a4ca7a73fe730b2186409c1cba6759c9b5a91d9a9cd960fba0baaaeaaa89",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/manufacturing_interpreter/reconstruction.py",
+      "sha256": "45d75e1655d94f32fa6d4bc54924db7150b7a59479e428ed47300b10d427ac1f",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "cws_convertor/manufacturing_interpreter/equivalence_v3.py",
+      "sha256": "2106aa25c1bf24b0d18a88a525db2cce82134dc6ecaa04f9c9b4c73dfbecdc78",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "material_database.py",
+      "sha256": "42231447b547ca382015d7f83a0d488153201122fb2e4483a64b1b0273c1bfaf",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "materials.json",
+      "sha256": "0e63184be355d37b8ce988b8b4134cdb06e9b15bfe37c5916473246220a74da8",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "tests/steel_model_foundation_smoke.py",
+      "sha256": "c3cf5002e943e7aed6a3ac3c695db886c9ce7fa746da3b9c731bea9190ba5cef",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "requirements-runtime.lock.txt",
+      "sha256": "9db56250b9e7c01434df5e3dd2ffd9c0093eafa55ad24278f07d0c3642cd549c",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "requirements-build.lock.txt",
+      "sha256": "535df6a35461dd78e39604c9660cc01b142cc04eebdebd009afc1c9c34f346a2",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "requirements.txt",
+      "sha256": "5ffbd9e70595c9f3a1e75fa6b3896be05802931bb08625bd88d1d5ae12fad1b1",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "validation/manufacturing_interpreter_v3/CORPUS_MANIFEST.json",
+      "sha256": "177c32524c506175c72048546c4ad91b9ec65e0cf0b8c3099c2623bced4f4fc0",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "validation/manufacturing_interpreter_v3/WINDOWS_PACKAGED_ACCEPTANCE.json",
+      "sha256": "19fe2fca8fe48d1c069b22abef6e80385ddf1919cbf3fe5ca0142eb419852b62",
+      "evidence_status": "REFERENCE_ONLY"
+    },
+    {
+      "path": "validation/results/v08-canonical-rebuild-windows.json",
+      "sha256": "298333a4dec5e43aec3ff1e0ec22fd00861e22d76b92a2804f6b490a813760cf",
+      "evidence_status": "REFERENCE_ONLY"
+    }
+  ],
+  "attached_contracts": [
+    {
+      "name": "01_Masterprompt.md",
+      "sha256": "4fe91260d5a1635b1afa094d31b1afcbcccb0981e5b7ae3906b35adb4dd9c3c0"
+    },
+    {
+      "name": "02_API_Authorization_Contract.md",
+      "sha256": "2f679212e83ae68e84f7be61022d4c8ff5bea6953ad17d363e0b9828a2343db1"
+    },
+    {
+      "name": "03_Opdrachtprompt_Bouwfasen.md",
+      "sha256": "f6a050413ac34a52442ba30c57968c287868f042e3f1910023981a6cd9d76db1"
+    },
+    {
+      "name": "README.txt",
+      "sha256": "45742556a0fbdf2bad1e85e287f3e564a95b01eb553b15f57652dfe7e9d3b9a4"
+    },
+    {
+      "name": "UI_All_Screens.png",
+      "sha256": "b336d3715809476116d156c33baf91177bea47f08d497883ccc8000b76e47dc7"
+    },
+    {
+      "name": "UI_Simple_Bridge.png",
+      "sha256": "f0e725bae5eb13c38586e36e56c9c119fbde40ac0aed1cfb2ad1dcaa44b179f4"
+    }
+  ],
+  "standard_sources": [
+    {
+      "name": "CWS_TEKLA_ACTUELE_STANDAARD.json",
+      "sha256": "1372f1f42d6df60b0c513a75083cf9a080bb4ea3ba6651eec4bb91ed48f3f2a9",
+      "library_file_id": "libfile_7988be0850ec8191a291e58a39b632c9",
+      "version": 20
+    },
+    {
+      "name": "Startinstructie_CWS_Tekla.txt",
+      "sha256": "bb533d80353985a46665690d96ea0d63923b2f718f552bd05b64e1f2a51b6360",
+      "library_file_id": "libfile_f7245a0aa7088191ac02f6dddad65c69",
+      "version": 19
+    },
+    {
+      "name": "CWS_Tekla_Standaard_v1.20.md",
+      "sha256": "4cdb73ff00657855d69ba6024860eec1892d74eefecd80e60f5fadf6b1b0511a",
+      "library_file_id": "libfile_3a0522a74d188191b225b5dd2630d709",
+      "version": 0
+    },
+    {
+      "name": "Foutregister_v1.20.json",
+      "sha256": "c89e1d1762b72a09b626b411233e94b4aac7058c83392aa730339323d4fbd893",
+      "library_file_id": "libfile_298f8e53c4dc81919062cfee2feb3c3c",
+      "version": 0
+    },
+    {
+      "name": "CWS_Tekla_Doorlooptijd_en_Een_Ronde_v1.20.md",
+      "sha256": "5db38d84f5def07e7575db95f9db15fb3608474752147414a55c49ad9848798c",
+      "library_file_id": "libfile_84f0b3bf51448191bdf54797eec9b8bb",
+      "version": 0
+    },
+    {
+      "name": "CWS_Tekla_Aanvulling_Naaldwijk_V07_FIX19_FIX23_2026-10-01.md",
+      "sha256": "1cabdbc2bec3435a0114d71c447ef4e5ad28e5fdf5dea7773d0efeb2a8ae7339",
+      "library_file_id": "libfile_cf8a9144b2608191a90cdc3a7dddb16a",
+      "version": 0
+    }
+  ],
+  "test_evidence": {
+    "command": "python tests/steel_model_foundation_smoke.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "DEPENDENCY_LIGHT_LINUX_READ_CONTRACTS",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "python": "3.12.14",
+    "source_commit": "bfdbc99ec33f80d6ce5a2ee629dd494caf767d74",
+    "test_file_sha256": "c3cf5002e943e7aed6a3ac3c695db886c9ce7fa746da3b9c731bea9190ba5cef",
+    "native_runtime_proven": false
+  },
+  "unavailable_evidence": [
+    "Windows x64/Tekla runtime and DLL identity",
+    "Het Koraal model/reference run",
+    "20 supplied representative source models",
+    "Current native save/reopen/readback",
+    "Current numbering and independent all-object IFC",
+    "Approved connection family attributes/fingerprints",
+    "Commit-bound Windows installer execution",
+    "validation/phases/PHASE_3_WINDOWS_RUNTIME_EVIDENCE.json",
+    "release/phase3/PHASE_3_RELEASE_MANIFEST.json"
+  ],
+  "authority_manifest_default": "NO_APPROVED_NATIVE_WRITES",
+  "source_handover_probe": {
+    "report": "source-fixtures/source-handover-report.json",
+    "sha256": "63c3323161e3e4f4f0e4fde25cf224bc766cab82977f91b98d993ec2413a884f",
+    "passed": 9,
+    "scope": "TEST_FIXTURE_ONLY_READ_HANDOVER",
+    "native_runtime_proven": false
+  }
+}

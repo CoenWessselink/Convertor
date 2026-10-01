@@ -1,0 +1,460 @@
+{
+  "schema_version": "1.0",
+  "project_id": "01d13207-c0c0-467f-90d9-85a02a507e74",
+  "project_name": "TEST_FIXTURE only: Bridge source handover",
+  "project_model_schema": "2.25",
+  "project_semantic_sha256": "e0334a8b1a39ea62bda8ed7f0283aa1b8593e1716bf1496c573ad5389cfefd40",
+  "product_name": "CWS Convertor",
+  "compatibility_product_name": "SteelConverter",
+  "units": "mm",
+  "coordinate_system": {
+    "name": "project",
+    "origin_mm": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "x_axis": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "y_axis": [
+      0.0,
+      1.0,
+      0.0
+    ],
+    "z_axis": [
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "project_status": "new",
+  "sources": [
+    {
+      "source_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+      "source_format": "STEP",
+      "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+      "file_name": "foundation.step",
+      "import_strategy": "not_analysed",
+      "analysis_status": "registered",
+      "semantic_import_complete": false,
+      "production_export_allowed": false,
+      "schema": "",
+      "application": ""
+    }
+  ],
+  "entities": [
+    {
+      "steel_model_id": "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01",
+      "entity_type": "assembly",
+      "name": "M1",
+      "category": "assembly",
+      "status": "new",
+      "source": {
+        "source_file_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+        "source_format": "STEP",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "source_entity_id": "#10",
+        "global_id": "",
+        "product_id": "A-001",
+        "occurrence_id": ""
+      },
+      "local_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "global_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "accuracy_status": "not_applicable",
+      "geometry_kind": "none",
+      "geometry_hash": "",
+      "manufacturing_hash": "",
+      "validation_issue_codes": [],
+      "display_properties": {
+        "name": "M1",
+        "entity_type": "assembly",
+        "category": "assembly",
+        "status": "new",
+        "revision": "",
+        "confidence": 1.0,
+        "assembly_mark": "M1",
+        "quantity": 1,
+        "total_weight_kg": 0.0,
+        "surface_area_m2": 0.0,
+        "production_status": "new",
+        "drawing_status": "not_created"
+      }
+    },
+    {
+      "steel_model_id": "348c87f1-12fc-53f7-9b54-fdf5b532de0c",
+      "entity_type": "part",
+      "name": "P1",
+      "category": "make_part",
+      "status": "new",
+      "source": {
+        "source_file_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+        "source_format": "STEP",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "source_entity_id": "#42",
+        "global_id": "",
+        "product_id": "P-001",
+        "occurrence_id": "O-002"
+      },
+      "local_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "global_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "accuracy_status": "manual_validation_required",
+      "geometry_kind": "TEST_FIXTURE_ONLY",
+      "geometry_hash": "1e75136956464c0d16b18e730655b8b3ac0d3056a9b3ca449ad656454c2c0b1d",
+      "manufacturing_hash": "e6636251f06c5d21011d8bbd1ea46aa4ffe77cad5b66c5ab3760ee7a4a16f60d",
+      "validation_issue_codes": [],
+      "display_properties": {
+        "name": "P1",
+        "entity_type": "part",
+        "category": "make_part",
+        "status": "new",
+        "revision": "",
+        "confidence": 1.0,
+        "part_position": "P1",
+        "quantity_total": 1,
+        "part_type": "unknown",
+        "profile": "PL10",
+        "profile_type": "P",
+        "material": "S275JR",
+        "material_grade": "S275JR",
+        "length_mm": 200.0,
+        "mass_each_kg": 0.0,
+        "surface_area_each_m2": 0.0,
+        "mirrored": false,
+        "export_status": "blocked",
+        "nc1_eligible": true
+      }
+    },
+    {
+      "steel_model_id": "6c53eb10-9da9-581e-a1f8-cdfdeb72966e",
+      "entity_type": "part",
+      "name": "P1",
+      "category": "make_part",
+      "status": "new",
+      "source": {
+        "source_file_id": "2636e06d-360e-56e0-96ce-5281ab93ce79",
+        "source_format": "STEP",
+        "source_sha256": "25bdbce8f3930e778844aff9e6deb9dd4aa5f01315979d7f7eebc68bbc301313",
+        "source_entity_id": "#42",
+        "global_id": "",
+        "product_id": "P-001",
+        "occurrence_id": "O-001"
+      },
+      "local_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "global_transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "accuracy_status": "manual_validation_required",
+      "geometry_kind": "TEST_FIXTURE_ONLY",
+      "geometry_hash": "1e75136956464c0d16b18e730655b8b3ac0d3056a9b3ca449ad656454c2c0b1d",
+      "manufacturing_hash": "e6636251f06c5d21011d8bbd1ea46aa4ffe77cad5b66c5ab3760ee7a4a16f60d",
+      "validation_issue_codes": [],
+      "display_properties": {
+        "name": "P1",
+        "entity_type": "part",
+        "category": "make_part",
+        "status": "new",
+        "revision": "",
+        "confidence": 1.0,
+        "part_position": "P1",
+        "quantity_total": 1,
+        "part_type": "unknown",
+        "profile": "PL10",
+        "profile_type": "P",
+        "material": "S275JR",
+        "material_grade": "S275JR",
+        "length_mm": 200.0,
+        "mass_each_kg": 0.0,
+        "surface_area_each_m2": 0.0,
+        "mirrored": false,
+        "export_status": "blocked",
+        "nc1_eligible": true
+      }
+    }
+  ],
+  "relations": [
+    {
+      "relation_type": "assembly.part",
+      "source_id": "2e4a0c1a-20f5-5eea-bb10-6aeb840d6d01",
+      "target_id": "6c53eb10-9da9-581e-a1f8-cdfdeb72966e"
+    }
+  ],
+  "validation": [],
+  "tolerance_policy": {
+    "schema_version": "1.0",
+    "policy_id": "steelconverter-default-v1",
+    "rules": [
+      {
+        "property_path": "entity.count",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "entity.type",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.area_mm2",
+        "mode": "numerical_tolerance",
+        "absolute_tolerance": null,
+        "relative_tolerance": 0.001,
+        "unit": "mm2",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.bbox_mm",
+        "mode": "numerical_tolerance",
+        "absolute_tolerance": 0.05,
+        "relative_tolerance": null,
+        "unit": "mm",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.centroid_mm",
+        "mode": "numerical_tolerance",
+        "absolute_tolerance": 0.05,
+        "relative_tolerance": null,
+        "unit": "mm",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.length_mm",
+        "mode": "numerical_tolerance",
+        "absolute_tolerance": 0.05,
+        "relative_tolerance": null,
+        "unit": "mm",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.solid_count",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.valid",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "geometry.volume_mm3",
+        "mode": "numerical_tolerance",
+        "absolute_tolerance": null,
+        "relative_tolerance": 0.001,
+        "unit": "mm3",
+        "notes": ""
+      },
+      {
+        "property_path": "metadata.application",
+        "mode": "metadata_variable",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "metadata.exported_at",
+        "mode": "metadata_variable",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "metadata.original_path",
+        "mode": "metadata_variable",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "part.mass_kg",
+        "mode": "numerical_tolerance",
+        "absolute_tolerance": null,
+        "relative_tolerance": 0.001,
+        "unit": "kg",
+        "notes": ""
+      },
+      {
+        "property_path": "part.material",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "part.position",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "part.profile",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "source.entity_id",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "source.sha256",
+        "mode": "exact",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": ""
+      },
+      {
+        "property_path": "unverified.*",
+        "mode": "manual_validation_required",
+        "absolute_tolerance": null,
+        "relative_tolerance": null,
+        "unit": "",
+        "notes": "No expected value may be invented without owner validation."
+      }
+    ],
+    "recognition": {
+      "version": "mgi-recognition-v3",
+      "axis_angle_deg": 0.15,
+      "section_linear_mm": 0.05,
+      "section_area_relative": 0.001,
+      "surface_group_mm": 0.05,
+      "profile_dimension_mm": 0.15,
+      "profile_contour_mm": 0.2,
+      "profile_radius_mm": 0.15,
+      "boolean_sliver_mm3": 0.01,
+      "boundary_distance_mm": 0.1,
+      "residual_volume_relative": 0.0005,
+      "feature_merge_mm": 0.1,
+      "feature_axis_mm": 0.1,
+      "ambiguity_margin": 0.02
+    }
+  },
+  "snapshot_sha256": "2927af7bc744dd6de9f7cba822dddecd2679874dcc14cb8b4886274924a0d80c"
+}

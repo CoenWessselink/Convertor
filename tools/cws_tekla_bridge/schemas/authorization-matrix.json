@@ -1,0 +1,1459 @@
+{
+  "schemaVersion": "1.0",
+  "version": "1.0.0",
+  "defaultDeny": true,
+  "gates": [
+    "CAPABILITY",
+    "ACTOR_AUTHORITY",
+    "EVIDENCE_AUTHORITY",
+    "RUN_MODE_AUTHORITY"
+  ],
+  "endpoints": [
+    {
+      "Endpoint": "assemblies",
+      "Level": "L0",
+      "Capability": "model.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "audit/final",
+      "Level": "L0",
+      "Capability": "model.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "authority/manifest",
+      "Level": "L0",
+      "Capability": "authority.read",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "authority/promote",
+      "Level": "L5",
+      "Capability": "authority.promote",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": true,
+      "RuntimeForbidden": true,
+      "EvidenceComponent": "authority.governance",
+      "Actors": [
+        "ADMIN",
+        "CODEX_DEV"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "authority/propose",
+      "Level": "L1",
+      "Capability": "authority.propose",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "authorization/matrix",
+      "Level": "L0",
+      "Capability": "authorization.read",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "beam/upsert",
+      "Level": "L2",
+      "Capability": "part.upsert",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.beam",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "bolt/upsert",
+      "Level": "L2",
+      "Capability": "feature.bolt",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.bolt",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "build-plan",
+      "Level": "L0",
+      "Capability": "plan.create",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "build-plan/execute",
+      "Level": "L2",
+      "Capability": "plan.execute",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.write",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "build-plan/validate",
+      "Level": "L0",
+      "Capability": "plan.validate",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "capabilities",
+      "Level": "L0",
+      "Capability": "bridge.capabilities",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "catalogs/components",
+      "Level": "L0",
+      "Capability": "catalog.components",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "catalogs/materials",
+      "Level": "L0",
+      "Capability": "catalog.materials",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "catalogs/profiles",
+      "Level": "L0",
+      "Capability": "catalog.profiles",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "catalogs/shapes",
+      "Level": "L0",
+      "Capability": "catalog.shapes",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "connections/apply",
+      "Level": "L2",
+      "Capability": "connection.apply",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "connection.family",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "connections/candidates",
+      "Level": "L0",
+      "Capability": "connection.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "connections/inspect",
+      "Level": "L0",
+      "Capability": "connection.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "connections/propose",
+      "Level": "L0",
+      "Capability": "connection.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "connections/reconcile",
+      "Level": "L2",
+      "Capability": "connection.reconcile",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "connection.family",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "connections/validate",
+      "Level": "L0",
+      "Capability": "connection.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "cut/upsert",
+      "Level": "L2",
+      "Capability": "feature.cut",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.cut",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "fitting/upsert",
+      "Level": "L2",
+      "Capability": "feature.fitting",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.fitting",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "geometry/compare",
+      "Level": "L0",
+      "Capability": "geometry.compare",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "geometry/summary",
+      "Level": "L0",
+      "Capability": "geometry.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "health",
+      "Level": "L0",
+      "Capability": "bridge.health",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "hole/upsert",
+      "Level": "L2",
+      "Capability": "feature.hole",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.hole",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "model/identity",
+      "Level": "L0",
+      "Capability": "model.identity",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "model/stats",
+      "Level": "L0",
+      "Capability": "model.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "objects",
+      "Level": "L0",
+      "Capability": "model.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "part/remove",
+      "Level": "L2",
+      "Capability": "part.remove",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.remove",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "parts",
+      "Level": "L0",
+      "Capability": "model.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "plate/upsert",
+      "Level": "L2",
+      "Capability": "part.upsert",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.plate",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "polybeam/upsert",
+      "Level": "L2",
+      "Capability": "part.upsert",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.polybeam",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "production/nc",
+      "Level": "L4",
+      "Capability": "production.nc",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": true,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "production.nc",
+      "Actors": [
+        "AUTHORIZED_REVIEWER"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "production/number",
+      "Level": "L4",
+      "Capability": "production.number",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": true,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "production.number",
+      "Actors": [
+        "AUTHORIZED_REVIEWER"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "readback",
+      "Level": "L0",
+      "Capability": "model.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "reopen",
+      "Level": "L2",
+      "Capability": "persist.reopen",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.persistence",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "review/history",
+      "Level": "L0",
+      "Capability": "review.read",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "review/propose",
+      "Level": "L1",
+      "Capability": "review.propose",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "review/resolve",
+      "Level": "L3",
+      "Capability": "review.resolve",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": true,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "project.resolution",
+      "Actors": [
+        "USER",
+        "AUTHORIZED_REVIEWER"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "runs",
+      "Level": "L0",
+      "Capability": "runs.read",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "runs/events",
+      "Level": "L0",
+      "Capability": "runs.read",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "save",
+      "Level": "L2",
+      "Capability": "persist.save",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.persistence",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "selection",
+      "Level": "L0",
+      "Capability": "selection.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "selection/read",
+      "Level": "L0",
+      "Capability": "selection.read",
+      "Mutation": false,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "selection/set",
+      "Level": "L1",
+      "Capability": "selection.set",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "self-heal",
+      "Level": "L2",
+      "Capability": "repair.safe",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.repair",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "session",
+      "Level": "L0",
+      "Capability": "bridge.session",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "shape/upsert",
+      "Level": "L2",
+      "Capability": "part.upsert",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.shape",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "transactions/begin",
+      "Level": "L2",
+      "Capability": "transaction.write",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.transaction",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "transactions/commit",
+      "Level": "L2",
+      "Capability": "transaction.write",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.transaction",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "transactions/journal",
+      "Level": "L0",
+      "Capability": "journal.read",
+      "Mutation": false,
+      "RequiresModel": false,
+      "RequiresEvidence": false,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": null,
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO",
+        "PROPOSE",
+        "CHECK_ONLY"
+      ],
+      "Methods": [
+        "GET"
+      ]
+    },
+    {
+      "Endpoint": "uda/set",
+      "Level": "L2",
+      "Capability": "uda.write",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.uda",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    },
+    {
+      "Endpoint": "weld/upsert",
+      "Level": "L2",
+      "Capability": "feature.weld",
+      "Mutation": true,
+      "RequiresModel": true,
+      "RequiresEvidence": true,
+      "RequiresHumanConfirmation": false,
+      "RuntimeForbidden": false,
+      "EvidenceComponent": "native.weld",
+      "Actors": [
+        "SYSTEM",
+        "GPT",
+        "CWS_ENGINE",
+        "USER",
+        "AUTHORIZED_REVIEWER",
+        "ADMIN"
+      ],
+      "Modes": [
+        "AUTO"
+      ],
+      "Methods": [
+        "POST"
+      ]
+    }
+  ]
+}

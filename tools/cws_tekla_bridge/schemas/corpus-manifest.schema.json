@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cws:tekla-bridge:corpus:1.0",
+  "title": "CWS Tekla Bridge frozen corpus manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "SchemaVersion",
+    "TargetModelCount",
+    "Cases"
+  ],
+  "properties": {
+    "SchemaVersion": {
+      "const": "1.0"
+    },
+    "TargetModelCount": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "Cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "CaseId",
+          "ReferenceModel",
+          "HardGate"
+        ],
+        "properties": {
+          "CaseId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ReferenceModel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "BindingArtifactId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "SourcePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "SourceFileSha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "SnapshotPath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "SnapshotFileSha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "BeforeSourcePath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "BeforeSourceFileSha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "HardGate": {
+            "type": "boolean"
+          },
+          "RuntimeEvidence": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

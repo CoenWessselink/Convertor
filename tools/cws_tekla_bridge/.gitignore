@@ -1,0 +1,5 @@
+**/bin/
+**/obj/
+artifacts/
+evidence/latest-tests.json
+**/*.user
