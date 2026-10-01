@@ -1,6 +1,6 @@
 # Native Tekla adapter: implementation and proof boundary
 
-The adapter targets .NET Framework 4.8, Windows x64 and strongly typed official Trimble Open API NuGet packages. `2024.0.0` is the current developer **compile candidate**, not the user's detected Tekla version. It refuses connection if the exact configured installed version is absent or differs from `TeklaStructuresInfo.GetCurrentProgramVersion`, or if its major version differs from the loaded API assembly. The current environment has no Windows/Tekla runtime; it establishes compile compatibility only.
+The adapter targets .NET Framework 4.8, Windows x64 and strongly typed official Trimble Open API NuGet packages. `2024.0.0` is the current developer **compile candidate**, not the user's detected Tekla version. It refuses connection if the exact configured installed version is absent or differs from `TeklaStructuresInfo.GetCurrentProgramVersion`, or if its major version differs from the loaded API assembly. No live licensed Tekla session has been tested. Windows compilation, disconnected UI startup and per-user script installation have separate CI evidence; they do not establish native Tekla runtime behavior.
 
 | Capability | Implemented API path | Evidence and shipping status |
 |---|---|---|

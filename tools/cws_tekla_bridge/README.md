@@ -18,12 +18,12 @@ De bestaande Convertor-snapshot kan via `scripts/import_steel_model.py` read-onl
 |---|---|---|
 | 0 | Actuele GitHub-branch/bronfreeze; standaard v1.20; schemas, autorisatiematrix, authoritycontrole | Bron- en contracttests; native authority nog leeg |
 | 1 | Compacte Windows x64-shell, 11 schermen, dynamische loopback API/sessiontoken, versiecontrole | Windows-startstatus in bewijsbestand; actieve Tekla-verbinding nog te bewijzen |
-| 2 | Native model/part/catalogus/selectie lezen; canonical mapping; onafhankelijk geometry-readback | Echt Tekla-model nog te lezen/testen |
+| 2 | Native model/part/catalogus/selectie lezen; canonical mapping; punten/plaatsing/bbox observeren | Echt Tekla-model nog te lezen/testen; exacte BRep/manufacturing niet bewezen |
 | 3 | Gevalideerde plannen, native beam/polybeam/plate-code, journal/checkpoints, ownership-bescherming | Native write/save/reopen/idempotentie nog te bewijzen; standaard geblokkeerd |
 | 4 | Bronfreeze, conflictbewaking, one-round planning/execution/readback, begrensde veilige herstelroute | Het Koraal offline broncontrole; native eindregressie NOT_RUN |
 | 5 | Corpus-runner met SHA-controle, echte referentie/snapshot-vereisten | 20-modelcorpus NOT_RUN; geen fictieve vervanging |
-| 6 | Revisies/delta, scope/dependencies, expliciete REMOVE-intentie en bescherming manual werk | Native revisieronde NOT_RUN |
-| 7 | Fingerprints, families/attributes parser, connection inspect/propose | Echte TS-map/detailvoorbeelden nog nodig voor bewijs |
+| 6 | Revisies/delta, scoped planning, expliciete REMOVE-intentie en bescherming manual werk | Native revisieronde NOT_RUN; dependency graph/uitbreiding niet geïmplementeerd |
+| 7 | Core-services voor connection fingerprints/analyse/voorstellen en families/attributes parser | Volledige UI/API-inspect/propose-werkstroom niet aangesloten; echte TS-map/detailvoorbeelden nog nodig |
 | 8 | AUTO-authority/applicability/runtime/clash-gates | Native connection apply/readback niet geïmplementeerd; BLOCKED |
 | 9 | Persistent review, scoped projectbesluiten, korte eenmalige lokale challenges, source-superseding | Besluit→native rebuild→persistentie nog te bewijzen |
 | 10 | Reproduceerbare single-build CI, versiegebonden binair, hashes, installatiescript, releaseblokkades | Nummering/NC/productie NOT_RUN; Windows-scriptinstallatie zie bewijsbestand |
