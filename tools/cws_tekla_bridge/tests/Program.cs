@@ -25,7 +25,7 @@ namespace Cws.TeklaBridge.Tests {
    }
    var suite=new TestSuite();
    foreach(var type in Assembly.GetExecutingAssembly().GetTypes().Where(t=>t.Name.EndsWith("Tests") && t.GetMethod("Run",new[]{typeof(TestSuite)})!=null).OrderBy(t=>t.Name)) type.GetMethod("Run").Invoke(null,new object[]{suite});
-   var report=new {SchemaVersion="1.0",SourceVersion=typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,RecordedAtUtc=DateTime.UtcNow.ToString("o"),Environment="LINUX_NET8_TEST_FIXTURE",TestCount=suite.Results.Count,Passed=suite.Results.Count(x=>x.Status=="PASS"),Failed=suite.Results.Count(x=>x.Status!="PASS"),WindowsRuntime="NOT_RUN",TeklaRuntime="NOT_RUN",Results=suite.Results};
+   var report=new {SchemaVersion="1.0",SourceVersion=typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion,RecordedAtUtc=DateTime.UtcNow.ToString("o"),Environment=System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)?"WINDOWS_NET8_TEST_FIXTURE":"LINUX_NET8_TEST_FIXTURE",TestCount=suite.Results.Count,Passed=suite.Results.Count(x=>x.Status=="PASS"),Failed=suite.Results.Count(x=>x.Status!="PASS"),WindowsRuntime="NOT_RUN",TeklaRuntime="NOT_RUN",Results=suite.Results};
    string output=args.Length>0?args[0]:"evidence/latest-tests.json"; var directory=Path.GetDirectoryName(Path.GetFullPath(output));Directory.CreateDirectory(directory);File.WriteAllText(output,JsonUtil.Serialize(report));
    Console.WriteLine("RESULT "+report.Passed+"/"+report.TestCount+" passed; Windows/Tekla NOT_RUN");
    return report.TestCount==0 || report.Failed>0?1:0;
