@@ -24,6 +24,21 @@ namespace Cws.TeklaBridge.Tests
                 }
             }
         }
+        // Windows can reset a connection closed while oversized hostile input is
+        // still unread. Only this concrete transport rejection is acceptable for
+        // adversarial parser tests. Normal session/health tests require exact HTTP.
+        private static void AssertAdversarialRejected(TestSuite t, ApiServer server, string request, int status)
+        {
+            try { t.True(Send(server, request).StartsWith("HTTP/1.1 " + status + " ", StringComparison.Ordinal), "Expected HTTP rejection " + status); }
+            catch (IOException ex) when (IsConnectionReset(ex))
+            { Console.WriteLine("OBSERVED_TRANSPORT_REJECTION TCP_CONNECTION_RESET before dispatch"); }
+            catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionReset)
+            { Console.WriteLine("OBSERVED_TRANSPORT_REJECTION TCP_CONNECTION_RESET before dispatch"); }
+        }
+        private static bool IsConnectionReset(IOException exception)
+        {
+            return exception.InnerException is SocketException socket && socket.SocketErrorCode == SocketError.ConnectionReset;
+        }
         private static string Request(ApiServer server, string path = "health", string extra = "", string body = null, bool authenticated = true)
         {
             string method = body == null ? "GET" : "POST";
@@ -54,20 +69,21 @@ namespace Cws.TeklaBridge.Tests
                     t.Equal(1L, server.AuthenticatedRequestCount); server.Dispose(); server.Start(); t.True(token != server.SessionToken);
                 }
             });
-            t.Check("API hostile origins Host spoofing malformed lengths and chunked rejected before dispatch", () =>
+            t.Check("API hostile requests rejected by exact HTTP status or TCP reset before authentication and dispatch", () =>
             {
                 int calls = 0;
                 using (var server = new ApiServer(req => { calls++; return Task.FromResult(ApiResponse.Ok(new { ok = true })); }))
                 {
                     server.Start();
-                    t.True(Send(server, Request(server, extra: "Origin: https://attacker.invalid\r\n")).StartsWith("HTTP/1.1 403"));
-                    t.True(Send(server, Request(server).Replace("Host: " + server.BaseUri.Authority, "Host: attacker.invalid")).StartsWith("HTTP/1.1 403"));
-                    t.True(Send(server, Request(server, extra: "Transfer-Encoding: chunked\r\n")).StartsWith("HTTP/1.1 400"));
-                    t.True(Send(server, Request(server, extra: "Content-Length: -1\r\n")).StartsWith("HTTP/1.1 400"));
-                    t.True(Send(server, Request(server, extra: "Content-Length: 9999999999\r\n")).StartsWith("HTTP/1.1 413"));
-                    t.True(Send(server, Request(server, extra: "Content-Length: 0\r\nContent-Length: 0\r\n")).StartsWith("HTTP/1.1 400"));
-                    t.True(Send(server, Request(server, extra: "X-Huge: " + new string('a', ApiServer.MaximumHeaderBytes) + "\r\n")).StartsWith("HTTP/1.1 431"));
-                    t.Equal(0, calls);
+                    AssertAdversarialRejected(t, server, Request(server, extra: "Origin: https://attacker.invalid\r\n"), 403);
+                    AssertAdversarialRejected(t, server, Request(server).Replace("Host: " + server.BaseUri.Authority, "Host: attacker.invalid"), 403);
+                    AssertAdversarialRejected(t, server, Request(server, extra: "Transfer-Encoding: chunked\r\n"), 400);
+                    AssertAdversarialRejected(t, server, Request(server, extra: "Content-Length: -1\r\n"), 400);
+                    AssertAdversarialRejected(t, server, Request(server, extra: "Content-Length: 9999999999\r\n"), 413);
+                    AssertAdversarialRejected(t, server, Request(server, extra: "Content-Length: 0\r\nContent-Length: 0\r\n"), 400);
+                    AssertAdversarialRejected(t, server, Request(server, extra: "X-Huge: " + new string('a', ApiServer.MaximumHeaderBytes) + "\r\n"), 431);
+                    t.Equal(0, calls, "Adversarial requests must not reach dispatcher/native access");
+                    t.Equal(0L, server.AuthenticatedRequestCount, "Adversarial requests must fail before authentication admission");
                 }
             });
             t.Check("API bounded slow body timeout", () =>

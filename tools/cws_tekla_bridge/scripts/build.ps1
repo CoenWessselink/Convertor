@@ -32,4 +32,26 @@ try {
     if (-not (Test-Path (Join-Path $Evidence 'windows-startup.json'))) { throw 'Windows startup evidence missing.' }
   }
   @{schema_version='1.0';commit=$Commit;branch=$Branch;tekla_compile_reference=$TeklaApiVersion;windows_compile='PASS';windows_smoke=$(if($Smoke){'PASS'}else{'NOT_RUN'});active_tekla='NOT_RUN';save_reopen_readback='NOT_RUN';production_release=$false} | ConvertTo-Json | Set-Content (Join-Path $Output 'build-evidence.json') -Encoding UTF8
+  # Exercise the same per-user PowerShell installer shipped in the package.
+  $PackageScripts = Join-Path $Output 'scripts'
+  New-Item -ItemType Directory -Force -Path $PackageScripts | Out-Null
+  Copy-Item (Join-Path $PSScriptRoot 'Install-CWS-Bridge.ps1') $PackageScripts
+  Copy-Item (Join-Path $PSScriptRoot 'Install.cmd') $PackageScripts
+  $PackageFiles = @(Get-ChildItem $Output -File -Recurse | Where-Object { $_.Name -ne 'PACKAGE_MANIFEST.json' } | ForEach-Object {
+    @{path=[IO.Path]::GetRelativePath($Output, $_.FullName).Replace('\','/');sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()}
+  })
+  @{source_commit=$Commit;files=$PackageFiles;production_release=$false} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $Output 'PACKAGE_MANIFEST.json') -Encoding UTF8
+  if ($Smoke) {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PackageScripts 'Install-CWS-Bridge.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'Per-user installer smoke failed.' }
+    $InstalledExe = Join-Path $env:LOCALAPPDATA ("CWS\TeklaBridge\versions\" + $Commit + "\Cws.TeklaBridge.exe")
+    if (-not (Test-Path $InstalledExe)) { throw 'Installed executable missing.' }
+    $ExpectedHash = (Get-FileHash (Join-Path $Output 'windows/Cws.TeklaBridge.exe') -Algorithm SHA256).Hash
+    if ((Get-FileHash $InstalledExe -Algorithm SHA256).Hash -ne $ExpectedHash) { throw 'Installed executable differs from the tested build.' }
+    $ShortcutPath = Join-Path ([Environment]::GetFolderPath('Desktop')) 'CWS Tekla Bridge.lnk'
+    $Shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($ShortcutPath)
+    if ($Shortcut.TargetPath -ne $InstalledExe) { throw 'Installed shortcut does not target the frozen build.' }
+    @{schema_version='1.0';commit=$Commit;status='PASS_PER_USER_SCRIPT_INSTALL';windows=$true;exe_sha256=$ExpectedHash.ToLowerInvariant();active_tekla='NOT_RUN';production_release=$false} | ConvertTo-Json | Set-Content (Join-Path $Output 'installer-smoke.json') -Encoding UTF8
+  }
+
 } finally { Pop-Location }

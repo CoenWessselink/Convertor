@@ -20,7 +20,7 @@ $Shell = New-Object -ComObject WScript.Shell
 $Shortcut = $Shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Desktop')) 'CWS Tekla Bridge.lnk'))
 $Shortcut.TargetPath = $Exe
 $Shortcut.WorkingDirectory = $Destination
-$Shortcut.Description = 'CWS Tekla Bridge v0.1 – testbuild; Tekla runtime gates pending'
+$Shortcut.Description = 'CWS Tekla Bridge v0.1 - testbuild; Tekla runtime gates pending'
 $Shortcut.Save()
 Write-Host "Installed testbuild $($Manifest.source_commit)."
 Write-Host 'Start CWS Tekla Bridge from the desktop. Tekla connection and release gates are shown in the app.'
