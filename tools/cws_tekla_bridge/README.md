@@ -31,7 +31,7 @@ De bestaande Convertor-snapshot kan via `scripts/import_steel_model.py` read-onl
 | 10 | Reproduceerbare single-build CI, versiegebonden binair, hashes, installatiescript, releaseblokkades | Nummering/NC/productie NOT_RUN; Windows EXE- en scriptinstallatie zie afzonderlijke bewijsbestanden |
 
 ## Valideren en reproduceren
-`powershell -File scripts/build.ps1 -Smoke -Installer` vanaf de exacte GitHub-branch met een schone bronversie. Dependencies zijn in packages.lock.json vastgelegd. De Windows-smoke maakt een echte afbeelding van het draaiende disconnected formulier en controleert de lokale API; dat is uitsluitend UI-startbewijs.
+`pwsh -File scripts/build.ps1 -Smoke -Installer` vanaf de exacte GitHub-branch met een schone bronversie. Dependencies zijn in packages.lock.json vastgelegd. De Windows-smoke maakt een echte afbeelding van het draaiende disconnected formulier en controleert de lokale API; dat is uitsluitend UI-startbewijs.
 
 `dotnet exec artifacts/tests/Cws.TeklaBridge.Tests.dll --corpus corpus/manifest.json corpus-report.json` rapporteert ontbrekende echte referenties als NOT_RUN en eindigt dan met exitcode 2. Een fixture kan nooit RELEASED opleveren.
 

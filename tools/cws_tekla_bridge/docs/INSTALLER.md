@@ -8,9 +8,9 @@ Dit blijft de bestaande v0.1-testbuild. De app start disconnected; native writes
 
 ## Bouwen
 
-Gebruik een volledige checkout van `CoenWessselink/Convertor`, branch `feature/cws-tekla-bridge-v0.1`, met een schone bronversie. Vereist zijn .NET SDK 8.0.413, de vastgelegde NuGet-dependencies en een geïnstalleerde Inno Setup 6-compiler (`ISCC.exe`). De Windows-CI gebruikt de compiler van het Windows-runnerimage en registreert zijn daadwerkelijke versie en SHA-256.
+Gebruik een volledige checkout van `CoenWessselink/Convertor`, branch `feature/cws-tekla-bridge-v0.1`, met een schone bronversie. Vereist zijn PowerShell 7, .NET SDK 8.0.413, de vastgelegde NuGet-dependencies en een geïnstalleerde Inno Setup 6-compiler (`ISCC.exe`). De Windows-CI gebruikt de compiler van het Windows-runnerimage en registreert zijn daadwerkelijke versie en SHA-256.
 
-`powershell -File tools/cws_tekla_bridge/scripts/build.ps1 -Smoke -Installer`
+`pwsh -File tools/cws_tekla_bridge/scripts/build.ps1 -Smoke -Installer`
 
 De build controleert de broncommit van de app, compileert de installer en test de geproduceerde EXE op Windows: installatie, iedere geïnstalleerde payloadhash, snelkoppelingen, daadwerkelijke start van de geïnstalleerde app, herinstallatie en verwijderen. Een afzonderlijke sentinelcontrole verifieert dat gebruikersgegevens behouden blijven. De test gebruikt een eigen tijdelijke installatiemap; het native Tekla-runtimebewijs blijft `NOT_RUN`.
 

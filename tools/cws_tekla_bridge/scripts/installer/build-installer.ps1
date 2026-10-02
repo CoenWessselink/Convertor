@@ -57,9 +57,21 @@ if (-not $IsccPath) {
 if (-not $IsccPath -or -not (Test-Path -LiteralPath $IsccPath -PathType Leaf)) { throw 'ISCC.exe is not installed. Install Inno Setup from jrsoftware.org or pass its verified compiler path with -IsccPath.' }
 $IsccPath = [IO.Path]::GetFullPath($IsccPath)
 $CompilerInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo($IsccPath)
-if ($CompilerInfo.ProductName -notlike '*Inno Setup*' -or $CompilerInfo.FileDescription -notlike '*Compiler*' -or [version]($CompilerInfo.FileMajorPart.ToString()+'.'+$CompilerInfo.FileMinorPart+'.'+$CompilerInfo.FileBuildPart) -lt [version]'6.3.0') { throw 'Selected compiler is not a supported Inno Setup command-line compiler (6.3+).' }
 $CompilerSignature = Get-AuthenticodeSignature -LiteralPath $IsccPath
 if ($CompilerSignature.Status -notin @('Valid','NotSigned')) { throw "Compiler Authenticode validation failed: $($CompilerSignature.Status)" }
+# The ISCC wrapper PE resource is not the compiler-engine version. Inno 6
+# has no --version flag; /? identifies the command and its real compile banner
+# reports the engine version. Keep stderr capture PS5-compatible.
+$SavedErrorPreference = $ErrorActionPreference
+try {
+  $ErrorActionPreference = 'Continue'
+  $CompilerHelp = @(& $IsccPath '/?' 2>&1 | ForEach-Object { $_.ToString() })
+  $CompilerHelpExit = $LASTEXITCODE
+} finally { $ErrorActionPreference = $SavedErrorPreference }
+Write-Host ("ISCC PE metadata: ProductName='{0}', FileDescription='{1}', ProductVersion='{2}', FileVersion='{3}'" -f $CompilerInfo.ProductName,$CompilerInfo.FileDescription,$CompilerInfo.ProductVersion,$CompilerInfo.FileVersion)
+$CompilerIdentity = $CompilerHelp | Where-Object { $_ -match '^Inno Setup [0-9]+(?: \(32-bit\))? Command-Line Compiler$' } | Select-Object -First 1
+Write-Host ("ISCC observed help banner: " + ($CompilerHelp -join [Environment]::NewLine))
+if ($CompilerHelpExit -ne 0 -or -not $CompilerIdentity) { throw 'Selected executable does not report the official Inno Setup command-line compiler identity.' }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 $Files = Get-PayloadFiles
 $TestedManifestPath = Join-Path (Split-Path $WindowsArtifactsRoot -Parent) 'PACKAGE_MANIFEST.json'
@@ -82,13 +94,27 @@ $Manifest = @{schema_version='1.0';source_commit=$SourceCommit;app_version=$AppV
 Write-Json $ManifestPath $Manifest
 $InstallerPath = Join-Path $OutputRoot 'CWS_Tekla_Bridge_v0.1_Setup.exe'
 if (Test-Path -LiteralPath $InstallerPath) { Remove-Item -LiteralPath $InstallerPath -Force }
-$Arguments = @('/Qp', "/DPayloadDir=$WindowsArtifactsRoot", "/DOutputDir=$OutputRoot", "/DManifestFile=$ManifestPath", "/DSourceCommit=$SourceCommit", (Join-Path $PSScriptRoot 'CWS-Tekla-Bridge.iss'))
-& $IsccPath @Arguments
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $InstallerPath -PathType Leaf)) { throw 'Inno Setup compilation failed.' }
+$Arguments = @("/DPayloadDir=$WindowsArtifactsRoot", "/DOutputDir=$OutputRoot", "/DManifestFile=$ManifestPath", "/DSourceCommit=$SourceCommit", (Join-Path $PSScriptRoot 'CWS-Tekla-Bridge.iss'))
+[IO.File]::WriteAllLines((Join-Path $OutputRoot 'compiler-help.txt'), [string[]]$CompilerHelp, (New-Object Text.UTF8Encoding($false)))
+try {
+  $ErrorActionPreference = 'Continue'
+  $CompilerOutput = @(& $IsccPath @Arguments 2>&1 | ForEach-Object { $_.ToString() })
+  $CompilerExit = $LASTEXITCODE
+} finally { $ErrorActionPreference = $SavedErrorPreference }
+foreach ($Line in $CompilerOutput) { Write-Host $Line }
+[IO.File]::WriteAllLines((Join-Path $OutputRoot 'compiler-output.txt'), [string[]]$CompilerOutput, (New-Object Text.UTF8Encoding($false)))
+if ($CompilerExit -ne 0 -or -not (Test-Path -LiteralPath $InstallerPath -PathType Leaf)) { throw 'Inno Setup compilation failed.' }
+$EngineBanner = $CompilerOutput | Where-Object { $_ -match '^Compiler engine version:' } | Select-Object -First 1
+$EngineMatch = [regex]::Match([string]$EngineBanner, '^Compiler engine version:\s+.*?\b(?<version>[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)\b')
+if (-not $EngineMatch.Success -or [version]$EngineMatch.Groups['version'].Value -lt [version]'6.3.0') {
+  Remove-Item -LiteralPath $InstallerPath -Force
+  throw 'The observed compiler-engine version is missing or unsupported (6.3+ required).'
+}
+$CompilerVersion = $EngineMatch.Groups['version'].Value
 $AfterFiles = Get-PayloadFiles
 if (($Files | ConvertTo-Json -Depth 5 -Compress) -cne ($AfterFiles | ConvertTo-Json -Depth 5 -Compress)) { throw 'Windows payload changed during installer compilation.' }
 $SetupSignature = Get-AuthenticodeSignature -LiteralPath $InstallerPath
-$InstallerEvidence = @{schema_version='1.0';source_commit=$SourceCommit;status='PASS_INSTALLER_COMPILE';installer_file='CWS_Tekla_Bridge_v0.1_Setup.exe';installer_sha256=(Get-FileHash -LiteralPath $InstallerPath -Algorithm SHA256).Hash.ToLowerInvariant();tested_artifact_manifest_sha256=(Get-FileHash -LiteralPath $TestedManifestPath -Algorithm SHA256).Hash.ToLowerInvariant();payload_manifest_sha256=(Get-FileHash -LiteralPath $ManifestPath -Algorithm SHA256).Hash.ToLowerInvariant();compiler=@{path=$IsccPath;product=$CompilerInfo.ProductName;version=$CompilerInfo.ProductVersion;sha256=(Get-FileHash -LiteralPath $IsccPath -Algorithm SHA256).Hash.ToLowerInvariant();authenticode=$CompilerSignature.Status.ToString()};setup_authenticode=$SetupSignature.Status.ToString();install_scope='PER_USER_NO_ELEVATION_REQUEST';windows_install_smoke='NOT_RUN';active_tekla='NOT_RUN';production_release=$false}
+$InstallerEvidence = @{schema_version='1.0';source_commit=$SourceCommit;status='PASS_INSTALLER_COMPILE';installer_file='CWS_Tekla_Bridge_v0.1_Setup.exe';installer_sha256=(Get-FileHash -LiteralPath $InstallerPath -Algorithm SHA256).Hash.ToLowerInvariant();tested_artifact_manifest_sha256=(Get-FileHash -LiteralPath $TestedManifestPath -Algorithm SHA256).Hash.ToLowerInvariant();payload_manifest_sha256=(Get-FileHash -LiteralPath $ManifestPath -Algorithm SHA256).Hash.ToLowerInvariant();compiler=@{path=$IsccPath;product=$CompilerIdentity;version=$CompilerVersion;engine_banner=$EngineBanner;pe_product_version=$CompilerInfo.ProductVersion;pe_file_version=$CompilerInfo.FileVersion;sha256=(Get-FileHash -LiteralPath $IsccPath -Algorithm SHA256).Hash.ToLowerInvariant();authenticode=$CompilerSignature.Status.ToString()};setup_authenticode=$SetupSignature.Status.ToString();install_scope='PER_USER_NO_ELEVATION_REQUEST';windows_install_smoke='NOT_RUN';active_tekla='NOT_RUN';production_release=$false}
 Write-Json (Join-Path $OutputRoot 'installer-build-evidence.json') $InstallerEvidence
 if ($Smoke) {
   & (Join-Path $PSScriptRoot 'smoke-installer.ps1') -InstallerPath $InstallerPath -ManifestPath $ManifestPath -EvidenceRoot (Join-Path $OutputRoot 'installer-smoke')
