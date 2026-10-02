@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$TeklaApiVersion = '2024.0.0', [switch]$Smoke)
+param([string]$TeklaApiVersion = '2024.0.0', [switch]$Smoke, [switch]$Installer)
 $ErrorActionPreference = 'Stop'
 $BridgeRoot = Split-Path $PSScriptRoot -Parent
 Push-Location $BridgeRoot
@@ -54,4 +54,7 @@ try {
     @{schema_version='1.0';commit=$Commit;status='PASS_PER_USER_SCRIPT_INSTALL';windows=$true;exe_sha256=$ExpectedHash.ToLowerInvariant();active_tekla='NOT_RUN';production_release=$false} | ConvertTo-Json | Set-Content (Join-Path $Output 'installer-smoke.json') -Encoding UTF8
   }
 
+  if ($Installer) {
+    & (Join-Path $PSScriptRoot 'installer/build-installer.ps1') -SourceCommit $Commit -Smoke:$Smoke
+  }
 } finally { Pop-Location }

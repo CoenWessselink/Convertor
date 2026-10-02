@@ -1,7 +1,8 @@
 CWS Tekla Bridge v0.1 - Build 01
 
 1. Pak de volledige ZIP uit.
-2. Start windows\Cws.TeklaBridge.exe op Windows x64 (.NET Framework 4.8).
+2. Gebruik installer\CWS_Tekla_Bridge_v0.1_Setup.exe uit de installerbuild.
+   Portable alternatief: windows\Cws.TeklaBridge.exe op Windows x64 (.NET Framework 4.8).
 3. Lees README.md en BEWIJS_EN_BOUWSTATUS.json voordat u native uitvoering probeert.
 
 De compilerreferentie is Tekla Open API 2024.0.0. Het programma controleert uw echte versie.

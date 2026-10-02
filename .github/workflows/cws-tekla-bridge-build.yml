@@ -15,9 +15,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.413'
-      - name: Compile real Open API references and run bridge contracts
+      - name: Compile bridge and verify executable installer lifecycle
         shell: pwsh
-        run: tools/cws_tekla_bridge/scripts/build.ps1 -Smoke
+        run: tools/cws_tekla_bridge/scripts/build.ps1 -Smoke -Installer
       - name: Retain commit-bound binary and disconnected Windows evidence
         if: always()
         uses: actions/upload-artifact@v4
