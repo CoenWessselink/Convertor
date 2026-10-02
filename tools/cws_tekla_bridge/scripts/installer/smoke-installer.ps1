@@ -16,9 +16,12 @@ if (Get-Process -Name 'Cws.TeklaBridge' -ErrorAction SilentlyContinue) { throw '
 $Id = [Guid]::NewGuid().ToString('N')
 $TempRoot = Join-Path ([IO.Path]::GetTempPath()) ('CWS-Installer-Smoke-' + $Id)
 $InstallDir = Join-Path $TempRoot 'Installed App'
-$GroupName = 'CWS Tekla Bridge Installer Smoke ' + $Id
+# DisableProgramGroupPage fixes the installed Start Menu group to this name;
+# Inno ignores /GROUP in that mode. Test the actual shipped default.
+$GroupName = 'CWS Tekla Bridge'
 $GroupDir = Join-Path ([Environment]::GetFolderPath('Programs')) $GroupName
 $ShortcutPath = Join-Path $GroupDir 'CWS Tekla Bridge.lnk'
+if (Test-Path -LiteralPath $GroupDir) { throw 'An existing bridge Start Menu group exists. Smoke refuses to replace it.' }
 $DesktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'CWS Tekla Bridge.lnk'
 $DataRoot = Join-Path $env:LOCALAPPDATA 'CWS\TeklaBridge'
 $OwnedFiles = New-Object 'Collections.Generic.List[string]'
