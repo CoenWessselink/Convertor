@@ -44,14 +44,14 @@ function Get-PayloadFiles {
   })
 }
 if (-not $IsccPath) {
-  $CompilerCommand = Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue
-  if ($CompilerCommand) { $IsccPath = $CompilerCommand.Source }
+  $CompilerCandidates = @()
+  foreach ($Base in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+    if ($Base) { $CompilerCandidates += Join-Path $Base 'Inno Setup 6\ISCC.exe'; $CompilerCandidates += Join-Path $Base 'Inno Setup 7\ISCC.exe' }
+  }
+  $IsccPath = $CompilerCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
   if (-not $IsccPath) {
-    $CompilerCandidates = @()
-    foreach ($Base in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
-      if ($Base) { $CompilerCandidates += Join-Path $Base 'Inno Setup 6\ISCC.exe'; $CompilerCandidates += Join-Path $Base 'Inno Setup 7\ISCC.exe' }
-    }
-    $IsccPath = $CompilerCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    $CompilerCommand = Get-Command 'ISCC.exe' -ErrorAction SilentlyContinue
+    if ($CompilerCommand) { $IsccPath = $CompilerCommand.Source }
   }
 }
 if (-not $IsccPath -or -not (Test-Path -LiteralPath $IsccPath -PathType Leaf)) { throw 'ISCC.exe is not installed. Install Inno Setup from jrsoftware.org or pass its verified compiler path with -IsccPath.' }
@@ -71,7 +71,9 @@ try {
 Write-Host ("ISCC PE metadata: ProductName='{0}', FileDescription='{1}', ProductVersion='{2}', FileVersion='{3}'" -f $CompilerInfo.ProductName,$CompilerInfo.FileDescription,$CompilerInfo.ProductVersion,$CompilerInfo.FileVersion)
 $CompilerIdentity = $CompilerHelp | Where-Object { $_ -match '^Inno Setup [0-9]+(?: \(32-bit\))? Command-Line Compiler$' } | Select-Object -First 1
 Write-Host ("ISCC observed help banner: " + ($CompilerHelp -join [Environment]::NewLine))
-if ($CompilerHelpExit -ne 0 -or -not $CompilerIdentity) { throw 'Selected executable does not report the official Inno Setup command-line compiler identity.' }
+# Inno 6's documented help path returns 1 (ISCC.dpr: ShowUsage; Halt(1)).
+# A successful actual compilation below must still return exactly 0.
+if ($CompilerHelpExit -notin @(0,1) -or -not $CompilerIdentity) { throw 'Selected executable does not report the official Inno Setup command-line compiler identity.' }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
 $Files = Get-PayloadFiles
 $TestedManifestPath = Join-Path (Split-Path $WindowsArtifactsRoot -Parent) 'PACKAGE_MANIFEST.json'
